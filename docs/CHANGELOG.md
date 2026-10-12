@@ -125,6 +125,7 @@ checking whether it is still current.
 ### Changed
 
 - **The documentation states what is.** *docs/Quality_framework_documentation.md* describes the framework in the present tense: no dates, no "decided", no comparison with the earlier framework in §§ 1–5. Each stage's rules are under § 5 *How each stage works*, numbered as the code cites them. Appendix A records the forks — the options weighed, the one chosen and why the others were not — so a later revision does not repeat them and changes an answer on purpose; Appendix B keeps where the practices came from. Stale statements found on the way were corrected: five checkpoints, the slot table with the shipped methods, *tools/* for shared code, the stage table's gates for stages 3 and 10.
+- **The diagrams show the flow as it is.** The flowchart and both sequence diagrams name, per stage, every plugin, framework skill and gate of *agent/stages.yaml*; stages 12 and 13 start on their own event; a rejected release closes its pull request and comes back as a wish; the person deploys to staging and CI tags the release; the agent's inside is drawn with its real tools. `tests/consistency/test_diagrams.py` fails when a diagram drifts from the manifest. Corrected on the way: `check_track_rule_gate` (stage 10) and `check_nonconformances_gate` (stage 11) were drawn at stages 3 and 9, and a rejection was drawn as a route into problem resolution. Origin: internal.
   Origin: internal
 
 ### Fixed

@@ -852,141 +852,156 @@ the findings back to the skill that produced the work and runs it again, **up to
 stage and **escalates to the architect** with the findings of every attempt. The
 architect fixes the work, gives guidance for another attempt, or stops.
 
-Legend: rectangles — the agent triggers a skill or tool; circles — the agent
-calls a person (checkpoint); diamonds — gates; dotted arrows — back to an
-earlier step.
+Legend: rectangles — the agent triggers a plugin or tool, with the rules it
+loads; circles — the agent calls a person (checkpoint); rounded boxes — a person
+starts the work; diamonds — gates; dotted arrows — back to an earlier step.
+Stages 12 and 13 start on an event, not in the flow.
+
+Every diagram of the flow names each stage's plugins, rules and gates exactly
+as *agent/stages.yaml* declares them; *tests/consistency/test_diagrams.py*
+fails when one drifts.
 
 ```mermaid
 flowchart TD
   start(["Customer writes the wishes<br/>W-01, W-02 …"]):::human
 
   subgraph P1["1 · SWE.2 Software architecture — diagram, drawn first"]
-    d1["Agent triggers create_diagram_plugin<br/>(e.g. archify)<br/>draft diagram from the wishes"]:::agent
+    d1["Agent triggers create_diagram_plugin<br/>(e.g. archify)<br/>draft diagram from the wishes<br/>rules: draw_diagram_skill"]:::agent
     g1{"check_diagram_contract_gate<br/>verify_diagram_to_wishes_link_gate"}:::gate
     h1(("Checkpoint 1<br/>Architect reviews<br/>the diagram")):::human
+    g1a{"verify_diagram_approval_gate"}:::gate
     d1 --> g1
     g1 -- pass --> h1
     g1 -. fail .-> d1
     h1 -. "changes requested" .-> d1
+    h1 -- approved --> g1a
   end
 
   subgraph P2["2 · SWE.1 Software requirements"]
-    r1["Agent triggers create_requirements_plugin<br/>derive system- and software-level<br/>requirements from the approved diagram"]:::agent
+    r1["Agent triggers create_requirements_plugin<br/>derive system- and software-level<br/>requirements from the approved diagram<br/>rules: write_requirements_skill,<br/>define_glossary_terms_skill,<br/>specify_nfr_measurement_skill"]:::agent
     g2{"check_requirements_contract_gate<br/>verify_requirements_to_diagram_link_gate<br/>check_glossary_gate"}:::gate
     h2(("Checkpoint 2<br/>Architect approves<br/>the requirements")):::human
+    g2a{"verify_requirements_approval_gate"}:::gate
     r1 --> g2
     g2 -- pass --> h2
     g2 -. fail .-> r1
     h2 -. "wording wrong" .-> r1
+    h2 -- approved --> g2a
   end
 
   subgraph P3["3 · SWE.2 Software architecture"]
-    t1["Agent triggers create_architecture_plugin<br/>propose the tech stack from the requirements,<br/>respecting the constraint requirements"]:::agent
-    gt{"check_stack_decision_gate"}:::gate
+    t1["Agent triggers create_architecture_plugin<br/>propose the tech stack from the requirements,<br/>respecting the constraint requirements<br/>rules: choose_stack_skill, record_decisions_skill"]:::agent
+    gt{"check_stack_decision_gate<br/>verify_decision_records_gate"}:::gate
     h3(("Checkpoint 3<br/>Architect approves<br/>the tech stack")):::human
     t1 --> gt
     gt -- pass --> h3
     gt -. fail .-> t1
     h3 -. "changes requested" .-> t1
     h3 -- approved --> a1
-    a1["Agent triggers create_architecture_plugin<br/>software components and their interfaces,<br/>refining the diagram"]:::agent
-    g3{"check_design_contract_gate<br/>verify_decision_records_gate · check_testability_gate"}:::gate
+    a1["Agent triggers create_architecture_plugin<br/>software components and their interfaces,<br/>refining the diagram<br/>rules: write_design_skill, ensure_testability_skill,<br/>create_security_tests_skill"]:::agent
+    g3{"verify_stack_approval_gate<br/>check_design_contract_gate · check_testability_gate"}:::gate
     a1 --> g3
     g3 -. fail .-> a1
   end
 
   subgraph P4["4 · SWE.3 Software detailed design (BP1–BP2)"]
-    s1["Agent triggers create_detailed_design_plugin<br/>detailed design of the software units,<br/>per software component"]:::agent
+    s1["Agent triggers create_detailed_design_plugin<br/>detailed design of the software units,<br/>per software component;<br/>create_diagram_plugin draws its diagrams<br/>rules: write_detailed_design_skill,<br/>validate_env_config_skill"]:::agent
     g4a{"check_detailed_design_contract_gate"}:::gate
     s1 --> g4a
     g4a -. fail .-> s1
   end
 
   subgraph P5["5 · SWE.4 Software unit verification — unit tests first"]
-    u1["create_unit_tests_plugin<br/>unit tests + one stub per unit,<br/>written first, without the code"]:::agent
-    g5r{"verify_test_first_gate<br/>red run · check_verification_plan_gate"}:::gate
+    u1["Agent triggers create_unit_tests_plugin<br/>unit tests + one stub per unit,<br/>written first, without the code<br/>rules: enforce_test_first_skill,<br/>validate_env_config_skill, create_security_tests_skill"]:::agent
+    g5r{"check_verification_plan_gate<br/>verify_test_first_gate — red run"}:::gate
     u1 --> g5r
     g5r -. fail .-> u1
   end
 
   subgraph P6["6 · SWE.3 unit construction (BP3) + SWE.4 Software unit verification"]
-    c1["create_unit_code_plugin<br/>replace the stubs with the units,<br/>only to turn the unit tests green"]:::agent
-    g4b{"verify_code_to_design_link_gate"}:::gate
-    g5{"verify_test_first_gate<br/>verify_tests_to_requirements_link_gate"}:::gate
-    c1 --> g4b
-    g4b -. fail .-> c1
+    c1["Agent triggers create_unit_code_plugin<br/>replace the stubs with the units,<br/>only to turn the unit tests green<br/>rules: enforce_test_first_skill, construct_units_skill,<br/>run_verification_suites_skill, validate_env_config_skill,<br/>create_security_tests_skill, emit_log_events_skill"]:::agent
+    g5{"verify_test_first_gate · verify_code_to_design_link_gate<br/>check_stack_commands_gate · verify_tests_to_requirements_link_gate<br/>check_env_config_gate · verify_security_tests_gate"}:::gate
+    c1 --> g5
+    g5 -. "fail: the code" .-> c1
     g5 -. "fail: a test is wrong" .-> u1
   end
 
   subgraph P7["7 · SWE.5 Software component verification and integration verification"]
-    i1["Agent triggers create_integration_tests_plugin<br/>software component tests, then<br/>integration tests along the flows"]:::agent
-    g6{"verify_tests_to_components_link_gate<br/>verify_tests_to_flows_link_gate · verify_log_events_gate"}:::gate
+    i1["Agent triggers create_integration_tests_plugin<br/>component tests, then integration tests<br/>along the flows, in a test-only commit;<br/>then create_unit_code_plugin until they pass<br/>rules: verify_integration_skill, emit_log_events_skill"]:::agent
+    g6{"check_verification_plan_gate · verify_test_first_gate<br/>verify_tests_to_components_link_gate<br/>verify_tests_to_flows_link_gate · verify_log_events_gate"}:::gate
     i1 --> g6
     g6 -. fail .-> i1
   end
 
   subgraph P8["8 · SWE.6 Software verification"]
-    v1["Agent triggers create_software_tests_plugin<br/>tests of the integrated software,<br/>one or more per requirement,<br/>system-level ones end-to-end"]:::agent
-    g7{"verify_nfr_thresholds_gate<br/>check_verification_report_gate"}:::gate
+    v1["Agent triggers create_software_tests_plugin<br/>tests of the integrated software, one or more<br/>per requirement, system-level ones end-to-end,<br/>in a test-only commit; then create_unit_code_plugin<br/>rules: verify_software_skill, configure_observability_skill,<br/>specify_nfr_measurement_skill"]:::agent
+    g7{"check_verification_plan_gate · verify_test_first_gate<br/>verify_software_tests_to_requirements_link_gate<br/>verify_nfr_thresholds_gate · check_observability_gate<br/>check_verification_report_gate"}:::gate
     v1 --> g7
     g7 -. fail .-> v1
   end
 
   subgraph P9["9 · SUP.1 Quality assurance"]
-    q1["Agent opens the pull request<br/>CI re-runs every gate<br/>reviewer agent reviews"]:::agent
-    g8{"verify_required_checks_gate<br/>check_nonconformances_gate"}:::gate
-    h4(("Checkpoint 4<br/>Person reviews<br/>if the PR is sampled")):::human
+    q1["Agent opens the pull request, CI re-runs every gate;<br/>review_pull_request_plugin reviews from its own account<br/>rules: review_code_skill, report_framework_feedback_skill,<br/>track_nonconformances_skill"]:::agent
+    g8{"verify_framework_integrity_gate · verify_required_checks_gate<br/>scan_security_gate · check_framework_feedback_gate<br/>verify_host_settings_gate"}:::gate
+    h4(("Checkpoint 4<br/>A person approves on the host<br/>if the PR is sampled")):::human
     q1 --> g8
-    g8 -. fail .-> q1
+    g8 -. "fail: back to the crew of its stage" .-> q1
     g8 -- pass --> h4
   end
 
   subgraph P10["10 · SUP.8 Configuration management"]
-    m1["Agent merges to the main branch<br/>and records the baseline"]:::agent
-    g9{"verify_baseline_gate<br/>check_commit_conventions_gate"}:::gate
+    m1["Agent merges to the main branch;<br/>for a release, write_release_tool writes the<br/>release record and the agent opens its pull request<br/>rules: record_baseline_skill"]:::agent
+    g9{"check_commit_conventions_gate · verify_branch_protection_gate<br/>check_config_items_gate · check_track_rule_gate<br/>verify_architecture_tests_gate<br/>at release: verify_baseline_gate · verify_backup_gate"}:::gate
     m1 --> g9
   end
 
   subgraph P11["11 · VAL.1 Validation"]
-    x1["Agent prepares the acceptance package<br/>staging deploy, wish to test evidence"]:::agent
+    x1["Agent triggers create_validation_scenarios_plugin<br/>scenarios from the wishes only;<br/>for a release: the person deploys the PR head to staging,<br/>write_validation_record_tool records the results<br/>rules: validate_release_skill"]:::agent
+    g10{"verify_acceptance_to_wishes_link_gate · verify_release_evidence_gate<br/>at release: check_nonconformances_gate · check_escalations_gate<br/>report_quality_trends_gate · check_retro_actions_gate"}:::gate
     h5(("Checkpoint 5<br/>Customer accepts<br/>or rejects")):::human
-    g10{"verify_acceptance_to_wishes_link_gate<br/>verify_release_evidence_gate"}:::gate
-    x1 --> h5
-    h5 -- accepted --> g10
+    x1 --> g10
+    g10 -. "fail: a scenario failed — back to the crew of its stage" .-> x1
+    g10 -- "only finding: no decision yet" --> h5
   end
 
-  subgraph P12["12 · SUP.9 Problem resolution management"]
-    pr["Agent records the problem<br/>reproduce it with a failing test"]:::agent
-    g11{"check_problem_record_gate<br/>verify_problem_closure_gate"}:::gate
+  subgraph P12["12 · SUP.9 Problem resolution management — on a reported defect"]
+    pr0(["Someone reports a defect"]):::human
+    pr["Agent records and analyses the problem;<br/>a critical one waits for /authorize-urgent-fix;<br/>create_unit_tests_plugin reproduces it with a failing test,<br/>create_unit_code_plugin fixes it<br/>rules: resolve_problems_skill, enforce_test_first_skill"]:::agent
+    g11{"check_problem_record_gate · check_urgent_fix_gate<br/>verify_problem_closure_gate<br/>at release: report_problem_trends_gate"}:::gate
+    pr0 --> pr
     pr --> g11
   end
 
-  subgraph P13["13 · SUP.10 Change request management"]
-    ch["Agent records the change request<br/>architect approves it"]:::agent
-    g12{"check_change_record_gate<br/>verify_change_approval_gate"}:::gate
+  subgraph P13["13 · SUP.10 Change request management — on a changed wish"]
+    ch0(["Customer asks for something<br/>different from what was agreed"]):::human
+    ch["Agent records and analyses the change request;<br/>a person in change_approvers gives /approve-change<br/>rules: manage_changes_skill"]:::agent
+    g12{"check_change_record_gate · verify_change_approval_gate<br/>verify_change_trace_gate<br/>at release: verify_change_closure_gate"}:::gate
+    ch0 --> ch
     ch --> g12
   end
 
-  rel(["Release — baselined"]):::done
+  rel(["Release — merged, tagged by CI"]):::done
+  wish(["New or amended wish —<br/>the flow starts again at 1"]):::human
+  deliver(["Delivered as any<br/>pull request (9)"]):::done
 
   start --> d1
-  h1 -- approved --> r1
+  g1a -- pass --> r1
   h2 -. "diagram is wrong" .-> d1
-  h2 -- approved --> t1
+  g2a -- pass --> t1
   g3 -- pass --> s1
   g4a -- pass --> u1
   g5r -- "RED" --> c1
-  g4b -- "GREEN" --> g5
-  g5 -- pass --> i1
+  g5 -- "GREEN" --> i1
   g6 -- pass --> v1
   g7 -- pass --> q1
   h4 -- "approved / not sampled" --> m1
   g9 -- pass --> x1
-  g10 -- pass --> rel
-  h5 -. "rejected: defect" .-> pr
-  h5 -. "rejected: wish changed" .-> ch
-  g11 -. "fix re-enters at the failing test" .-> u1
-  g12 -. "updated wishes" .-> start
+  h5 -- accepted --> rel
+  h5 -. "rejected: release PR closed" .-> wish
+  rel ~~~ pr0
+  rel ~~~ ch0
+  g11 --> deliver
+  g12 -- "approved" --> wish
 
   classDef agent fill:#dbe7f3,stroke:#3b6e9e,stroke-width:2px,color:#1d2430
   classDef human fill:#f6e3c8,stroke:#b5761f,stroke-width:2px,color:#1d2430
@@ -1095,12 +1110,10 @@ sequenceDiagram
   actor A as Architect
   participant AG as ASPICE Agent
   participant DP as create_diagram_plugin<br/>(e.g. archify)
-  participant SK as create_* plugins<br/>(requirements, architecture,<br/>detailed design, tests)
-  participant MT as create_unit_tests_plugin
-  participant MP as create_unit_code_plugin
+  participant PL as create_* plugins<br/>(requirements, architecture, detailed design,<br/>unit tests, unit code, integration tests,<br/>software tests, validation scenarios)
+  participant RV as review_pull_request_plugin<br/>(reviewer agent)
   participant G as Gates
-  participant RA as review_code_skill<br/>(reviewer agent)
-  actor R as Reviewer (person)
+  actor R as Person (reviewer, approver)
   participant CI as Repository + CI
 
   C->>AG: Wishes document (W-01, W-02 …)
@@ -1108,7 +1121,7 @@ sequenceDiagram
   rect rgba(59,110,158,0.12)
   Note over C,CI: 1 · SWE.2 Software architecture — diagram, drawn first
   loop until the architect approves
-    AG->>DP: Draft the diagram from the wishes
+    AG->>DP: Draft the diagram from the wishes (rules: draw_diagram_skill)
     DP-->>AG: Draft diagram, every element names its wish
     AG->>G: check_diagram_contract_gate, verify_diagram_to_wishes_link_gate
     G-->>AG: Pass (on fail, back to the plugin)
@@ -1121,10 +1134,10 @@ sequenceDiagram
   rect rgba(59,110,158,0.06)
   Note over C,CI: 2 · SWE.1 Software requirements
   loop until the architect approves
-    AG->>SK: Derive system- and software-level requirements from the diagram
-    SK-->>AG: Requirements
+    AG->>PL: Derive system- and software-level requirements from the diagram (rules: write_requirements_skill, define_glossary_terms_skill, specify_nfr_measurement_skill)
+    PL-->>AG: Requirements
     AG->>G: check_requirements_contract_gate, verify_requirements_to_diagram_link_gate, check_glossary_gate
-    G-->>AG: Pass (on fail, back to the skill)
+    G-->>AG: Pass (on fail, back to the plugin)
     AG->>A: Checkpoint 2 — approve the requirements
     A-->>AG: Approval, corrections, or the diagram is wrong (back to 1)
   end
@@ -1133,86 +1146,114 @@ sequenceDiagram
 
   rect rgba(59,110,158,0.12)
   Note over C,CI: 3 · SWE.2 Software architecture
-  AG->>SK: Propose the tech stack from the requirements and constraints
-  SK-->>AG: Stack + decision record
-  AG->>G: check_stack_decision_gate
+  AG->>PL: Propose the tech stack from the requirements and constraints (rules: choose_stack_skill, record_decisions_skill)
+  PL-->>AG: Stack + decision record
+  AG->>G: check_stack_decision_gate, verify_decision_records_gate
   AG->>A: Checkpoint 3 — approve the tech stack
   A-->>AG: Approval or changes
-  AG->>G: verify_stack_approval_gate
-  AG->>SK: Software components and interfaces, refining the diagram
-  SK-->>AG: Architecture model
-  AG->>G: check_design_contract_gate, verify_decision_records_gate, check_track_rule_gate
-  G-->>AG: Pass (on fail, back to the skill)
+  AG->>PL: Software components and interfaces, refining the diagram (rules: write_design_skill, ensure_testability_skill, create_security_tests_skill)
+  PL-->>AG: Architecture model
+  AG->>G: verify_stack_approval_gate, check_design_contract_gate, check_testability_gate
+  G-->>AG: Pass (on fail, back to the plugin)
   end
 
   rect rgba(59,110,158,0.06)
-  Note over C,CI: 4–6 · SWE.3 Detailed design and unit construction + SWE.4 Unit verification (tests first)
-  AG->>SK: Detailed design of the software units, per component
-  SK-->>AG: Detailed design
+  Note over C,CI: 4 · SWE.3 Software detailed design (BP1–BP2)
+  AG->>PL: Detailed design of the software units, per component (rules: write_detailed_design_skill, validate_env_config_skill)
+  AG->>DP: Draw the design diagrams
+  PL-->>AG: Detailed design
   AG->>G: check_detailed_design_contract_gate
-  loop for every batch of units (one component)
-    AG->>MT: Unit tests + one stub per unit, without the code (SWE.4)
-    MT-->>AG: Test-only commit — every new test fails (RED)
-    AG->>MP: Replace the stubs until the tests pass, never edit a test (SWE.3)
-    MP-->>AG: Tests pass — GREEN, then refactor
   end
-  AG->>G: verify_test_first_gate, verify_tests_to_requirements_link_gate, verify_code_to_design_link_gate
+
+  rect rgba(59,110,158,0.12)
+  Note over C,CI: 5 · SWE.4 Software unit verification — unit tests first
+  AG->>PL: Unit tests + one stub per unit, without the code, one test-only commit (rules: enforce_test_first_skill, validate_env_config_skill, create_security_tests_skill)
+  PL-->>AG: Every new test fails (RED)
+  AG->>G: check_verification_plan_gate, verify_test_first_gate
+  end
+
+  rect rgba(59,110,158,0.06)
+  Note over C,CI: 6 · SWE.3 unit construction (BP3) + SWE.4 Software unit verification
+  AG->>PL: Replace the stubs until the tests pass, never edit a test (rules: enforce_test_first_skill, construct_units_skill, run_verification_suites_skill, validate_env_config_skill, create_security_tests_skill, emit_log_events_skill)
+  PL-->>AG: Tests pass — GREEN, then refactor
+  AG->>G: verify_test_first_gate, verify_code_to_design_link_gate, check_stack_commands_gate, verify_tests_to_requirements_link_gate, check_env_config_gate, verify_security_tests_gate
   G-->>AG: Pass (on fail, back to the plugin whose work broke)
   end
 
   rect rgba(59,110,158,0.12)
   Note over C,CI: 7 · SWE.5 Software component verification and integration verification
-  AG->>SK: Component tests, then integration tests along the flows
-  SK-->>AG: Tests and results
-  AG->>G: verify_tests_to_components_link_gate, verify_tests_to_flows_link_gate, verify_log_events_gate
-  G-->>AG: Pass (on fail, back to the skill)
+  AG->>PL: Component tests, then integration tests along the flows, test-only commit — then the unit code plugin until they pass (rules: verify_integration_skill, emit_log_events_skill)
+  PL-->>AG: Tests and results
+  AG->>G: check_verification_plan_gate, verify_test_first_gate, verify_tests_to_components_link_gate, verify_tests_to_flows_link_gate, verify_log_events_gate
+  G-->>AG: Pass (on fail, back to the plugin)
   end
 
   rect rgba(59,110,158,0.06)
   Note over C,CI: 8 · SWE.6 Software verification
-  AG->>SK: Test the integrated software against every requirement (system-level ones end-to-end)
-  SK-->>AG: Results, measured values
-  AG->>G: verify_nfr_thresholds_gate, check_verification_report_gate
-  G-->>AG: Pass (on fail, back to the skill)
+  AG->>PL: Test the integrated software against every requirement, test-only commit — then the unit code plugin (rules: verify_software_skill, configure_observability_skill, specify_nfr_measurement_skill)
+  PL-->>AG: Results, measured values
+  AG->>G: check_verification_plan_gate, verify_test_first_gate, verify_software_tests_to_requirements_link_gate, verify_nfr_thresholds_gate, check_observability_gate, check_verification_report_gate
+  G-->>AG: Pass (on fail, back to the plugin)
   end
 
   rect rgba(181,118,31,0.10)
   Note over C,CI: 9 · SUP.1 Quality assurance
   AG->>CI: Open the pull request
-  CI->>G: Re-run every gate (verify_required_checks_gate)
-  AG->>RA: Review the pull request
-  RA-->>AG: Review record
+  CI->>G: Re-run every gate: verify_framework_integrity_gate, verify_required_checks_gate, scan_security_gate, check_framework_feedback_gate, verify_host_settings_gate
+  AG->>RV: Review the pull request's head (rules: review_code_skill, report_framework_feedback_skill, track_nonconformances_skill)
+  RV->>CI: Review, posted from its own account
   opt the pull request is in the sample
-    AG->>R: Checkpoint 4 — review
-    R-->>AG: Approval or changes
+    R->>CI: Checkpoint 4 — approve the head on the host
   end
-  AG->>G: check_nonconformances_gate
   end
 
   rect rgba(181,118,31,0.05)
   Note over C,CI: 10 · SUP.8 Configuration management
-  AG->>CI: Merge to the main branch, record the baseline
-  CI->>G: verify_baseline_gate, check_commit_conventions_gate
+  AG->>CI: Merge to the main branch (rules: record_baseline_skill)
+  CI->>G: check_commit_conventions_gate, verify_branch_protection_gate, check_config_items_gate, check_track_rule_gate, verify_architecture_tests_gate
+  opt the architect asks for a release
+    AG->>CI: Release branch, release record (write_release_tool), its pull request
+    CI->>G: verify_baseline_gate, verify_backup_gate
+  end
   end
 
   rect rgba(79,138,74,0.12)
   Note over C,CI: 11 · VAL.1 Validation
-  AG->>CI: Deploy to staging, build the acceptance package
-  AG->>C: Checkpoint 5 — accept against the wishes
-  alt accepted
-    C-->>AG: Accepted
-    AG->>G: verify_acceptance_to_wishes_link_gate, verify_release_evidence_gate
-    AG->>CI: Release, baselined
-  else rejected — defect
-    C-->>AG: Rejected, does not work as specified
-    Note over AG,G: 12 · SUP.9 Problem resolution — record it, re-enter at a failing unit test (5)
-    AG->>G: check_problem_record_gate
-  else rejected — the wish changed
-    C-->>AG: Rejected, I now need something else
-    Note over AG,G: 13 · SUP.10 Change request — record it, back to the wishes (1)
-    AG->>A: Approve the change request
-    AG->>G: check_change_record_gate, verify_change_approval_gate
+  AG->>PL: Validation scenarios from the wishes only (rules: validate_release_skill)
+  AG->>G: verify_acceptance_to_wishes_link_gate
+  opt release
+    R->>CI: Deploy the release pull request's head to staging (the product's pipeline)
+    AG->>CI: Validation record (write_validation_record_tool)
+    CI->>G: verify_release_evidence_gate, check_nonconformances_gate, check_escalations_gate, report_quality_trends_gate, check_retro_actions_gate
+    AG->>C: Checkpoint 5 — accept against the wishes
+    alt accepted
+      C-->>AG: Accepted
+      AG->>CI: Merge — CI tags the release
+    else rejected
+      C-->>AG: Rejected, with a reason
+      AG->>CI: Close the release pull request — the reason becomes a new or amended wish
+    end
   end
+  end
+
+  rect rgba(181,118,31,0.10)
+  Note over C,CI: 12 · SUP.9 Problem resolution management — on a reported defect
+  R->>AG: A defect is reported
+  AG->>CI: Record and analyse the problem issue (rules: resolve_problems_skill, enforce_test_first_skill)
+  opt critical
+    R->>CI: /authorize-urgent-fix
+  end
+  AG->>PL: Reproduce with a failing test (@problem), then fix the code — delivered as any pull request (9)
+  CI->>G: check_problem_record_gate, check_urgent_fix_gate, verify_problem_closure_gate, report_problem_trends_gate
+  end
+
+  rect rgba(181,118,31,0.05)
+  Note over C,CI: 13 · SUP.10 Change request management — on a changed wish
+  C->>AG: I now need something different from what was agreed
+  AG->>CI: Record and analyse the change request issue (rules: manage_changes_skill)
+  R->>CI: /approve-change (a person in change_approvers)
+  AG->>AG: Re-enter the flow at 1 as a new or amended wish
+  CI->>G: check_change_record_gate, verify_change_approval_gate, verify_change_trace_gate, verify_change_closure_gate
   end
 ```
 
@@ -1230,7 +1271,7 @@ sequenceDiagram
   box rgb(246,227,200) People
     actor C as Customer
     actor A as Architect
-    actor R as Reviewer (person)
+    actor R as Person (reviewer, approver)
   end
   participant AG as ASPICE Agent
   box rgb(219,231,243) Plugins
@@ -1242,23 +1283,35 @@ sequenceDiagram
     participant APP as create_unit_code_plugin<br/>(derive_unit_code_plugin)
     participant INT as create_integration_tests_plugin<br/>(derive_integration_tests_plugin)
     participant SWT as create_software_tests_plugin<br/>(derive_software_tests_plugin)
+    participant REV as review_pull_request_plugin<br/>(derive_review_plugin)
+    participant VAL as create_validation_scenarios_plugin<br/>(derive_validation_scenarios_plugin)
   end
   box rgb(232,236,242) Framework skills — the rules loaded alongside
+    participant DRW as draw_diagram_skill
     participant RQA as write_requirements_skill
     participant GLO as define_glossary_terms_skill
     participant NFR as specify_nfr_measurement_skill
+    participant STK as choose_stack_skill
     participant DA as write_design_skill
+    participant ADR as record_decisions_skill
     participant TD as ensure_testability_skill
     participant STT as create_security_tests_skill
-    participant ADR as record_decisions_skill
-    participant TDD as enforce_test_first_skill
-    participant LOG as emit_log_events_skill
+    participant DDA as write_detailed_design_skill
     participant ENV as validate_env_config_skill
+    participant TDD as enforce_test_first_skill
+    participant CON as construct_units_skill
     participant VSE as run_verification_suites_skill
+    participant LOG as emit_log_events_skill
+    participant VIN as verify_integration_skill
+    participant VSW as verify_software_skill
     participant OBS as configure_observability_skill
     participant CRV as review_code_skill
-    participant SAG as validate_release_skill
     participant FF as report_framework_feedback_skill
+    participant NC as track_nonconformances_skill
+    participant BSL as record_baseline_skill
+    participant SAG as validate_release_skill
+    participant PRB as resolve_problems_skill
+    participant CHG as manage_changes_skill
   end
   box rgb(226,239,224) Checks
     participant G as Gates
@@ -1269,6 +1322,7 @@ sequenceDiagram
 
   rect rgba(59,110,158,0.12)
   Note over C,CI: 1 · SWE.2 Software architecture — diagram, drawn first
+  AG->>DRW: Load the diagram rules
   loop until the architect approves
     AG->>ARC: Draft the diagram from the wishes
     ARC-->>AG: Draft diagram, every element names its wish
@@ -1282,10 +1336,10 @@ sequenceDiagram
 
   rect rgba(59,110,158,0.06)
   Note over C,CI: 2 · SWE.1 Software requirements
+  AG->>RQA: Load the requirement rules (fields, level, kind, criticality)
+  AG->>GLO: Load the glossary rules
+  AG->>NFR: Load the rules for non-functional requirements
   loop until the architect approves
-    AG->>RQA: Load the requirement rules (fields, level, kind, criticality)
-    AG->>GLO: Load the glossary rules
-    AG->>NFR: Load the rules for non-functional requirements
     AG->>SPEC: Derive system- and software-level requirements from the diagram
     SPEC-->>AG: Requirements + glossary entries
     AG->>G: check_requirements_contract_gate, verify_requirements_to_diagram_link_gate, check_glossary_gate
@@ -1298,99 +1352,153 @@ sequenceDiagram
 
   rect rgba(59,110,158,0.12)
   Note over C,CI: 3 · SWE.2 Software architecture
-  AG->>DA: Load the design document rules
-  AG->>TD: Load the testability rules (ports, composition root)
+  AG->>STK: Load the stack rules
   AG->>ADR: Load the decision record rules
   AG->>ARCH: Propose the tech stack from the requirements and constraints
   ARCH-->>AG: Stack + decision record
-  AG->>G: check_stack_decision_gate
+  AG->>G: check_stack_decision_gate, verify_decision_records_gate
   AG->>A: Checkpoint 3 — approve the tech stack
   A-->>AG: Approval or changes
-  AG->>G: verify_stack_approval_gate
+  AG->>DA: Load the design document rules
+  AG->>TD: Load the testability rules (ports, composition root)
+  AG->>STT: Load the security test templates (trust boundaries)
   AG->>ARCH: Software components and interfaces, refining the diagram
   ARCH-->>AG: Architecture model + decision records
-  AG->>G: check_design_contract_gate, verify_decision_records_gate, check_track_rule_gate, check_testability_gate
+  AG->>G: verify_stack_approval_gate, check_design_contract_gate, check_testability_gate
   G-->>AG: Pass (on fail, back to create_architecture_plugin)
   end
 
   rect rgba(59,110,158,0.06)
-  Note over C,CI: 4–6 · SWE.3 Detailed design and unit construction + SWE.4 Unit verification (tests first)
-  AG->>DA: Load the design document rules
-  AG->>STT: Load the security test templates
+  Note over C,CI: 4 · SWE.3 Software detailed design (BP1–BP2)
+  AG->>DDA: Load the detailed design rules
+  AG->>ENV: Load the configuration rules
   AG->>DDS: Detailed design of the software units, per component
+  DDS->>ARC: Draw the design diagrams
   DDS-->>AG: Detailed design
   AG->>G: check_detailed_design_contract_gate
-  AG->>TDD: Load the TDD rules (RED, GREEN, REFACTOR)
-  AG->>LOG: Load the logging rules
-  AG->>ENV: Load the configuration rules
-  loop for every batch of units (one component)
-    AG->>TST: Without the code: unit tests + one stub per unit, one commit (SWE.4)
-    AG->>G: Red run on that commit — every new test fails (RED)
-    AG->>APP: Replace the stubs until the tests pass, never edit a test (SWE.3)
-    APP-->>AG: Tests pass — GREEN, then refactor
+  G-->>AG: Pass (on fail, back to create_detailed_design_plugin)
   end
-  AG->>G: verify_test_first_gate, verify_tests_to_requirements_link_gate, verify_code_to_design_link_gate, verify_security_tests_gate, check_env_config_gate
+
+  rect rgba(59,110,158,0.12)
+  Note over C,CI: 5 · SWE.4 Software unit verification — unit tests first
+  AG->>TDD: Load the TDD rules (RED, GREEN, REFACTOR)
+  AG->>ENV: Load the configuration rules
+  AG->>STT: Load the security test templates
+  AG->>TST: Without the code: unit section of the plan, unit tests + one stub per unit, one test-only commit per component
+  TST-->>AG: Test-only commit
+  AG->>G: check_verification_plan_gate, verify_test_first_gate (red run — every new test fails)
+  G-->>AG: Pass (on fail, back to create_unit_tests_plugin)
+  end
+
+  rect rgba(59,110,158,0.06)
+  Note over C,CI: 6 · SWE.3 unit construction (BP3) + SWE.4 Software unit verification
+  AG->>TDD: Load the TDD rules
+  AG->>CON: Load the unit construction rules
+  AG->>VSE: Load the verification rules (suites per level)
+  AG->>ENV: Load the configuration rules
+  AG->>STT: Load the security test templates
+  AG->>LOG: Load the logging rules
+  AG->>APP: Replace the stubs until the tests pass, never edit a test
+  APP-->>AG: Tests pass — GREEN, then refactor
+  AG->>G: verify_test_first_gate, verify_code_to_design_link_gate, check_stack_commands_gate, verify_tests_to_requirements_link_gate, check_env_config_gate, verify_security_tests_gate
   G-->>AG: Pass (on fail, back to the plugin whose work broke)
   end
 
   rect rgba(59,110,158,0.12)
   Note over C,CI: 7 · SWE.5 Software component verification and integration verification
-  AG->>VSE: Load the verification rules (suites per level)
-  AG->>INT: Component tests, then integration tests along the flows
-  INT-->>AG: Tests and results
-  AG->>G: verify_tests_to_components_link_gate, verify_tests_to_flows_link_gate, verify_log_events_gate
-  G-->>AG: Pass (on fail, back to create_integration_tests_plugin)
+  AG->>VIN: Load the integration verification rules
+  AG->>LOG: Load the logging rules
+  AG->>INT: Integration section of the plan, component tests, integration tests along the flows — test-only commit
+  INT-->>AG: Tests
+  AG->>APP: Change the code until they pass, never edit a test
+  APP-->>AG: Tests pass
+  AG->>G: check_verification_plan_gate, verify_test_first_gate, verify_tests_to_components_link_gate, verify_tests_to_flows_link_gate, verify_log_events_gate
+  G-->>AG: Pass (on fail, back to the plugin whose work broke)
   end
 
   rect rgba(59,110,158,0.06)
   Note over C,CI: 8 · SWE.6 Software verification
-  AG->>VSE: Load the verification rules (software level)
+  AG->>VSW: Load the software verification rules
   AG->>OBS: Load the observability rules (alerts, dashboards, health checks)
-  AG->>SWT: Test the integrated software against every requirement (system-level ones end-to-end)
-  SWT-->>AG: Results, measured values
-  AG->>G: verify_nfr_thresholds_gate, check_verification_report_gate, check_observability_gate
-  G-->>AG: Pass (on fail, back to create_software_tests_plugin)
+  AG->>NFR: Load the measurement rules
+  AG->>SWT: Software section of the plan, a test per requirement (system-level ones end-to-end), measurements, observability — test-only commit
+  SWT-->>AG: Tests
+  AG->>APP: Change the code until they pass, never edit a test
+  APP-->>AG: Results, measured values
+  AG->>G: check_verification_plan_gate, verify_test_first_gate, verify_software_tests_to_requirements_link_gate, verify_nfr_thresholds_gate, check_observability_gate, check_verification_report_gate
+  G-->>AG: Pass (on fail, back to the plugin whose work broke)
   end
 
   rect rgba(181,118,31,0.10)
   Note over C,CI: 9 · SUP.1 Quality assurance
-  AG->>CI: Open the pull request
-  CI->>G: Re-run every gate (verify_required_checks_gate, scan_security_gate)
-  AG->>CRV: Reviewer agent reviews with the review checklist
-  CRV-->>AG: Review record
+  AG->>CI: Push the branch, open the pull request
+  CI->>G: Re-run every gate: verify_framework_integrity_gate, verify_required_checks_gate, scan_security_gate, check_framework_feedback_gate, verify_host_settings_gate
+  AG->>CRV: Load the review checklist
+  AG->>NC: Load the non-conformance rules
+  AG->>REV: Review the pull request's head
+  REV->>CI: Review, posted from its own account
   opt the pull request is in the sample
-    AG->>R: Checkpoint 4 — review
-    R-->>AG: Approval or changes
+    R->>CI: Checkpoint 4 — approve the head on the host
   end
   AG->>FF: Record any framework weakness found
-  AG->>G: check_nonconformances_gate, check_framework_feedback_gate
   end
 
   rect rgba(181,118,31,0.05)
   Note over C,CI: 10 · SUP.8 Configuration management
-  AG->>CI: Merge to the main branch, record the baseline
-  CI->>G: verify_baseline_gate, check_commit_conventions_gate
+  AG->>BSL: Load the baseline rules (commits, branches, releases)
+  AG->>CI: Merge the accepted pull request to the main branch
+  CI->>G: check_commit_conventions_gate, verify_branch_protection_gate, check_config_items_gate, check_track_rule_gate, verify_architecture_tests_gate
+  opt the architect asks for a release
+    AG->>CI: Release branch, release record (write_release_tool), its pull request
+    CI->>G: verify_baseline_gate, verify_backup_gate
+  end
   end
 
   rect rgba(79,138,74,0.12)
   Note over C,CI: 11 · VAL.1 Validation
-  AG->>SAG: Load the acceptance rules (staging, end-to-end, acceptance)
-  AG->>CI: Deploy to staging, build the acceptance package
-  AG->>C: Checkpoint 5 — accept against the wishes
-  alt accepted
-    C-->>AG: Accepted
-    AG->>G: verify_acceptance_to_wishes_link_gate, verify_release_evidence_gate
-    AG->>CI: Release, baselined
-  else rejected — defect
-    C-->>AG: Rejected, does not work as specified
-    Note over AG,G: 12 · SUP.9 Problem resolution — record it, re-enter at a failing unit test (5)
-    AG->>G: check_problem_record_gate
-  else rejected — the wish changed
-    C-->>AG: Rejected, I now need something else
-    Note over AG,G: 13 · SUP.10 Change request — record it, back to the wishes (1)
-    AG->>A: Approve the change request
-    AG->>G: check_change_record_gate, verify_change_approval_gate
+  AG->>SAG: Load the validation rules
+  AG->>VAL: Validation scenarios and the plan's validation section, from the wishes only
+  VAL-->>AG: Scenarios
+  AG->>G: verify_acceptance_to_wishes_link_gate
+  opt release
+    R->>CI: Deploy the release pull request's head to staging (the product's pipeline)
+    AG->>CI: Validation record of the deployed commit (write_validation_record_tool)
+    CI->>G: verify_release_evidence_gate, check_nonconformances_gate, check_escalations_gate, report_quality_trends_gate, check_retro_actions_gate
+    AG->>C: Checkpoint 5 — accept against the wishes
+    alt accepted
+      C-->>AG: Accepted
+      AG->>CI: Merge — CI tags the release
+    else rejected
+      C-->>AG: Rejected, with a reason
+      AG->>CI: Close the release pull request — the reason becomes a new or amended wish
+    end
   end
+  end
+
+  rect rgba(181,118,31,0.10)
+  Note over C,CI: 12 · SUP.9 Problem resolution management — on a reported defect
+  R->>AG: A defect is reported
+  AG->>PRB: Load the problem rules
+  AG->>TDD: Load the TDD rules
+  AG->>CI: Record and analyse the problem issue (cause, impact, severity)
+  opt critical
+    R->>CI: /authorize-urgent-fix (a person in urgent_approvers)
+  end
+  AG->>TST: Reproduce the defect with a failing test marked @problem — test-only commit
+  AG->>APP: Fix the code until it passes, never edit the test
+  AG->>CI: Deliver as any pull request (9) — once on main, the reporter gives /confirm-fixed
+  CI->>G: check_problem_record_gate, check_urgent_fix_gate, verify_problem_closure_gate, report_problem_trends_gate
+  end
+
+  rect rgba(181,118,31,0.05)
+  Note over C,CI: 13 · SUP.10 Change request management — on a changed wish
+  C->>AG: I now need something different from what was agreed
+  AG->>CHG: Load the change rules
+  AG->>CI: Record and analyse the change request issue
+  R->>CI: /approve-change (a person in change_approvers)
+  AG->>AG: Re-enter the flow at 1 as a new or amended wish — every commit names the issue
+  R->>CI: /confirm-change by the initiator, once its last commit is on main
+  CI->>G: check_change_record_gate, verify_change_approval_gate, verify_change_trace_gate, verify_change_closure_gate
   end
 ```
 
@@ -1399,7 +1507,8 @@ sequenceDiagram
 How the agent itself works: it reads the configuration, works out the current
 stage from what is on disk, loads the plugin and rules for that stage, runs the
 plugin, runs the gates, retries or escalates on failure, records the human
-decision, and moves on. Working out the stage from the repository means the
+decision (seals 1, 2, 3 and 5; seal 4 is a review on the code host), and moves
+on. Each participant is the tool of that name in *agent/*. Working out the stage from the repository means the
 agent can resume at any time without a state file of its own.
 
 ```mermaid
@@ -1408,65 +1517,68 @@ sequenceDiagram
   actor H as Person<br/>(architect, reviewer, customer)
   actor A as Architect
   box rgb(219,231,243) ASPICE Agent — inside
-    participant OR as Orchestrator
-    participant CFG as Config reader
-    participant SR as Stage resolver
-    participant SL as Skill loader
-    participant GR as Gate runner
-    participant RP as Retry policy
-    participant CP as Checkpoint manager
+    participant OR as run_aspice_agent<br/>(orchestrator)
+    participant CFG as read_config_tool
+    participant SR as resolve_stage_tool
+    participant SL as load_skills_tool
+    participant GR as run_gates_tool
+    participant RP as count_retries_tool
+    participant CP as record_checkpoint_tool
   end
-  participant SK as Skill or plugin
+  participant ST as read_stages_tool<br/>(stages.yaml)
+  participant SK as Plugin + framework skills
   participant G as Gate scripts
   participant REPO as Repository<br/>(artifacts, approvals, results)
 
   H->>OR: Start, or resume work on the product
+  OR->>OR: Authorize — a question is answered, nothing changes
   OR->>CFG: Load the configuration
-  CFG->>REPO: Read qf.yaml (paths, slot table) and find each slot's skill on the machine
+  CFG->>REPO: Read qf.yaml (paths, slot table) and find each slot's skill on the machine (environment.yaml)
   REPO-->>CFG: Configuration
-  CFG-->>OR: Valid configuration (every slot filled, every plugin pinned) or stop with the missing field
+  CFG-->>OR: ok, or stop with every problem (e.g. PLUGIN_NOT_INSTALLED)
 
-  loop until released or blocked
+  loop until complete or blocked
     OR->>SR: Which stage is the product in?
-    SR->>REPO: Read what exists — wishes, diagram, approvals, requirements, design, tests, results
-    REPO-->>SR: Repository state
-    SR-->>OR: Current stage = first ASPICE process whose gates do not yet pass
+    SR->>ST: The stages, in order
+    SR->>GR: Run each stage's gates on what exists
+    GR-->>SR: Pass or findings
+    SR->>CP: Is its approval current (every hash still matches)?
+    CP-->>SR: Current approval, or none
+    SR-->>OR: First stage not done — complete, not_implemented, awaiting_checkpoint, gates_failing or invalid_config
 
-    OR->>SL: Skills for this stage
-    SL->>CFG: Look up the slot of this stage
-    CFG-->>SL: Plugin skill (pinned version) + framework rules of the stage
-    SL-->>OR: Skill to run + rules to load
-
-    loop first run + up to 3 retries, until the gates pass
-      OR->>SK: Run the skill with the stage inputs (+ previous findings, if any)
-      SK->>REPO: Write the work product
-      SK-->>OR: Done
-      OR->>GR: Run the gates of this stage
-      GR->>G: Run each gate script
-      G->>REPO: Read the work product and its links
-      G-->>GR: Pass or findings
-      GR-->>OR: Result
-      alt findings
-        OR->>RP: Gate failed — retry?
-        RP-->>OR: Retry with the findings (max 3), then escalate
+    alt gates_failing
+      OR->>SL: Skills for this stage
+      SL->>ST: The stage's slot, extra slots and framework skills
+      SL->>CFG: Each slot's plugin (pinned)
+      SL-->>OR: Plugin skill file + also_plugins + framework_skills
+      loop first run + up to 3 retries, until the gates pass
+        OR->>SK: Do the work by the method, in the framework's form (+ previous findings, if any)
+        SK->>REPO: Write the work product
+        OR->>GR: Run the gates of this stage
+        GR->>G: Run each gate script
+        G->>REPO: Read the work product and its links
+        G-->>GR: Pass or findings
+        GR-->>OR: Result
+        OR->>RP: Record the attempt
+        RP-->>OR: pass, retry (with retries_left) or escalate
       end
-    end
-
-    alt still failing after 3 retries
-      OR->>A: Escalate — the stage is blocked, here are the findings of every attempt
-      A-->>OR: Fix, guidance, or stop
-    else gates pass and the stage has a human checkpoint
-      OR->>CP: Ask for the decision
-      CP->>H: Review this work product
-      H-->>CP: Approve or request changes
-      CP->>REPO: Record the decision (who, when, what was approved)
-      CP-->>OR: Approved, or changes as findings for the skill
-    else gates pass, no checkpoint
-      OR->>REPO: Stage evidence stays on disk (results, report)
+      opt escalate
+        OR->>A: The stage is blocked — the findings of every attempt
+        A-->>OR: Fix, guidance for a new round (count_retries_tool reset), or stop
+      end
+    else awaiting_checkpoint — seal 4
+      OR->>H: The sampled pull request waits for your approval on the host
+    else awaiting_checkpoint — seals 1, 2, 3, 5
+      OR->>H: Review this work product
+      H-->>OR: Approve or request changes
+      OR->>CP: Record the decision the person gave
+      CP->>REPO: Approval (who, role, when, SHA-256 of every file covered)
+    else not_implemented or invalid_config
+      OR->>H: Report the reason, and stop
     end
   end
 
-  OR->>H: Released — or blocked, with the reason
+  OR->>H: Close — verified outcome, pending checks, open assumptions, next step
 ```
 
 ### Slots and plugins — one configuration for every plugin
@@ -1608,7 +1720,8 @@ Customer: wishes ──► Agent: draft diagram ──► Architect: corrects + 
    ──► Agent: proposes the tech stack ──► Architect: approves the stack (3)
    ──► Agents: architecture, design, tests, code (SWE.2–SWE.6) ──► Gates check every rule
    ──► Reviewer agent on every PR + a person on the sample (4)
-   ──► Release on staging ──► Customer: acceptance (5)
+   ──► Merge (baseline) ──► Release pull request deployed to staging by the person
+   ──► Customer: acceptance (5) ──► merged, tagged by CI
 ```
 
 **Human checkpoints.** Five points where a person decides, each recorded so a
@@ -3042,6 +3155,13 @@ label together.
 - **Findings of the first real run** (2026-10-05). A new domain term left
   unmarked is *accepted* as not checkable — a heuristic gate would guess.
   *Not taken:* a gate that guesses which words are domain terms.
+- **D65 — Diagrams name every gate and skill** (2026-10-12, option A).
+  *Chosen:* the flowchart and both sequence diagrams name each stage's
+  plugins, framework skills and gates, complete in one picture; a consistency
+  test holds them to *agent/stages.yaml*. *Not taken:* diagrams that show the
+  flow and the plugins only and point to the stage table for the gates and
+  skills (B) — fewer names to keep in step, but no picture shows a stage
+  whole. → § 5 *The ASPICE Agent — the flow*.
 
 ### A.2 Diagram and requirements stages — stages 1 and 2
 
