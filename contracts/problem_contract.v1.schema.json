@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/problem_contract.v1.schema.json",
+  "title": "problem.v1",
+  "description": "One problem (SUP.9 BP1, BP2, BP4, BP5): a fenced ```yaml problem block in the body of a host issue labelled problem; the issue's number is the problem's ID, named by its tests with @problem[<n>]. The template is required from the start; the analysis — cause, impact, severity — once the status is past open or a test names the problem, and the alert once the severity is high or critical: those are rules of check_problem_record_gate, not of this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["what", "where", "reproduce", "expected", "actual", "status"],
+  "properties": {
+    "what": { "description": "What happens, in one line.", "$ref": "#/$defs/line" },
+    "where": { "description": "Where it happens: the screen, interface or component as the reporter sees it.", "$ref": "#/$defs/line" },
+    "reproduce": { "description": "The steps and input that make it happen.", "$ref": "#/$defs/text" },
+    "expected": { "$ref": "#/$defs/text" },
+    "actual": { "$ref": "#/$defs/text" },
+    "status": { "enum": ["open", "under-analysis", "fixed", "closed"] },
+    "cause": { "description": "Why it happened (BP2).", "$ref": "#/$defs/text" },
+    "impact": {
+      "description": "What it affects, by identifier (BP2).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirements", "components"],
+      "properties": {
+        "requirements": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^REQ-[0-9]{4,}$" } },
+        "components": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" } }
+      }
+    },
+    "severity": { "enum": ["low", "medium", "high", "critical"] },
+    "affected_parties": {
+      "description": "Who else is affected (BP4), e.g. the customer, the teams using a component.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/line" }
+    },
+    "notified": { "description": "The date the affected parties were notified (BP4).", "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "change_request": { "description": "The issue number of the change request that carries the fix, when it needs a change of requirements or design (BP5, SUP.10).", "type": "integer", "minimum": 1 }
+  },
+  "$defs": {
+    "line": { "type": "string", "minLength": 1, "pattern": "^[^\\n]+$" },
+    "text": { "type": "string", "minLength": 1 }
+  }
+}

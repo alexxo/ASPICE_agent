@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/diagram_contract.v1.schema.json",
+  "title": "diagram.v1",
+  "description": "The elements of one diagram, as the framework's adapter reads them from the diagram tool's source (Archify JSON first) plus the diagram's invariants file (invariants.v1). Gates never read a diagram tool's format directly: they read this element list. A requirement's derived_from points at <diagram>#<id>.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["diagram", "type", "source", "elements"],
+  "properties": {
+    "diagram": {
+      "description": "Diagram ID: the source file name up to its first dot (cache-miss-request.sequence.json -> cache-miss-request).",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "type": {
+      "description": "The diagram type, as the diagram tool declares it.",
+      "enum": ["architecture", "sequence", "workflow", "dataflow", "lifecycle"]
+    },
+    "source": {
+      "description": "Repository-relative path of the diagram source.",
+      "type": "string",
+      "minLength": 1
+    },
+    "elements": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/element" }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label"],
+      "properties": {
+        "id": {
+          "description": "Unique within the diagram. Taken from the diagram source (Archify component, participant, connection or message ID) or from the invariants file (INV-<n>).",
+          "$ref": "#/$defs/id"
+        },
+        "kind": { "enum": ["node", "edge", "message", "invariant"] },
+        "label": {
+          "description": "Every element is labelled: an unlabelled edge or message is a check_diagram_contract_gate finding, so the adapter never emits one.",
+          "type": "string",
+          "minLength": 1
+        },
+        "from": { "$ref": "#/$defs/id" },
+        "to": { "$ref": "#/$defs/id" },
+        "source": {
+          "description": "Where the element is declared, when not in the diagram source (invariants come from <diagram>.invariants.yaml).",
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "description": "Line of the declaration, for findings, when the adapter can tell.",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "enum": ["edge", "message"] } } },
+          "then": { "required": ["from", "to"] },
+          "else": { "not": { "anyOf": [{ "required": ["from"] }, { "required": ["to"] }] } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "invariant" } } },
+          "then": {
+            "required": ["source"],
+            "properties": { "id": { "pattern": "^INV-[1-9][0-9]*$" } }
+          }
+        }
+      ]
+    }
+  }
+}

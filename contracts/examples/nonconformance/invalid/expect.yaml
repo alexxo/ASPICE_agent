@@ -1,0 +1,2 @@
+missing-found-in.yaml: {path: "", keyword: required}
+found-in-as-text.yaml: {path: "found_in", keyword: type}

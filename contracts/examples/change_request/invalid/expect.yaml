@@ -1,0 +1,3 @@
+size-in-days.yaml: {path: "size", keyword: enum}
+missing-reason.yaml: {path: "", keyword: required}
+element-without-diagram.yaml: {path: "affected/elements/0", keyword: pattern}

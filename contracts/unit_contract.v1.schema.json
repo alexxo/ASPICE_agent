@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/unit_contract.v1.schema.json",
+  "title": "unit.v1",
+  "description": "One software unit of a component's detailed design (SWE.3 BP1). Stored as a fenced ```yaml unit block in <component-id>.md under qf.yaml paths.detailed_design_dir, one file per component; this schema validates one block. That the file is named after an architecture component, that every unit comes from a node of that component's design diagram and every node is a unit, and that calls name units of the same component are gate rules of check_detailed_design_contract_gate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "derived_from",
+    "name",
+    "responsibility",
+    "inputs",
+    "outputs"
+  ],
+  "properties": {
+    "id": {
+      "description": "The unit's ID — the ID of the design-diagram node it comes from, unique in the product. Code and tests name it as @unit[<id>].",
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "derived_from": {
+      "description": "The node of the component's design diagram <component-id>.architecture.json, as <component-id>#<node>. The design diagram is drawn at stage 4 and agreed at the pull request, not at a checkpoint.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*#[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]+$"
+    },
+    "responsibility": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]+$",
+      "description": "What it is responsible for, in one sentence."
+    },
+    "inputs": {
+      "description": "What the unit receives. Empty when it takes nothing.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/port"
+      }
+    },
+    "outputs": {
+      "description": "What the unit returns or emits. Empty when it produces nothing.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/port"
+      }
+    },
+    "calls": {
+      "description": "SWE.3 BP1 relationships: the units of the same component this unit depends on and calls.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+      }
+    }
+  },
+  "$defs": {
+    "port": {
+      "description": "One input or output. A numeric one has a valid range and a unit of measure; any other declares both as not applicable.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type",
+        "range",
+        "unit"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\n]+$"
+        },
+        "type": {
+          "description": "The type in the product's language, e.g. number, int, string, Session.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\n]+$"
+        },
+        "range": {
+          "description": "The valid range, both ends inclusive, or 'not applicable' for a value that is not numeric.",
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "min",
+                "max"
+              ],
+              "properties": {
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                }
+              }
+            },
+            {
+              "const": "not applicable"
+            }
+          ]
+        },
+        "unit": {
+          "description": "The unit of measure, e.g. °C, ms, count; 'not applicable' exactly when the range is.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\n]+$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "range": {
+                "const": "not applicable"
+              }
+            },
+            "required": [
+              "range"
+            ]
+          },
+          "then": {
+            "properties": {
+              "unit": {
+                "const": "not applicable"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "unit": {
+                "not": {
+                  "const": "not applicable"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

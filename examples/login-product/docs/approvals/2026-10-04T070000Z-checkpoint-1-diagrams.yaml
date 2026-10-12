@@ -1,0 +1,18 @@
+# Checkpoint 1: the architect approved the diagrams (approval.v1).
+checkpoint: 1
+decision: approved
+approver:
+  name: Example Architect
+  role: architect
+date: "2026-10-04T09:00:00+02:00"
+subject:
+  - path: docs/diagrams/auth-flow.architecture.json
+    sha256: ed5123524aafbce65e05898271eca668c5a586e85a91ea8a8d8a9d5fb8e41f31
+  - path: docs/diagrams/auth-flow.wishes.yaml
+    sha256: df84a42bf8207a33e99dfa7a57d33be0c5f6f2866f5e9f4e4b8271e15c6d4792
+  - path: docs/diagrams/login.invariants.yaml
+    sha256: 47adc95d9ccafce43667747b559b08f2fb61d1b14b42fefe6e9edd814fadb3ab
+  - path: docs/diagrams/login.sequence.json
+    sha256: 05c06ffadb798359fc62f8a71e3adce3490edec4626f59bf5c13d317e15951f4
+  - path: docs/diagrams/login.wishes.yaml
+    sha256: 8c77eec3c7a33d151db1f06d58f32ec7c2b97b8eb7e0388089fb59112f33e149

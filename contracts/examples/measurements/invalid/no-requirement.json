@@ -1,0 +1,4 @@
+{
+  "contract": "measurements.v1",
+  "measurements": [{ "value": 180, "unit": "ms" }]
+}

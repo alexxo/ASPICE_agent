@@ -1,0 +1,2 @@
+due-not-a-date.yaml: {path: "due", keyword: pattern}
+missing-owner.yaml: {path: "", keyword: required}

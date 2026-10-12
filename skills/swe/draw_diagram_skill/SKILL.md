@@ -1,0 +1,76 @@
+---
+name: draw_diagram_skill
+description: "Rules for the diagrams drawn first at SWE.2: every element identified and labelled, every flow connected, rules in the invariants file, the link to the wishes in the wishes file, and the architect's approval before requirements are derived."
+---
+
+# skill: draw_diagram_skill
+
+**Stage:** 1 · SWE.2 Software architecture — diagram, drawn first
+**Loaded with:** create_diagram_plugin
+**Contract:** contracts/diagram_wishes_contract.v1.schema.json
+**Gates:** check_diagram_contract_gate, verify_diagram_to_wishes_link_gate, verify_diagram_approval_gate
+
+## What it governs
+
+The diagrams drawn from the customer's wishes before anything else, and the two
+files next to each one. The diagram plugin (e.g. Archify) brings the drawing and
+its own format; this skill brings what the framework needs from the result, so
+that requirements can be derived from it element by element. When the plugin's
+habits disagree with these rules, the rules win: the gates read only what the
+rules ask for.
+
+## Inputs
+
+- The **customer's wishes** (*W-01*, *W-02*, …), in *qf.yaml paths.wishes_file*.
+- **qf.yaml** — *paths.diagrams_dir*.
+- The **existing diagrams**, if any — grow them, do not redraw them.
+- On a retry: the **findings** of the previous attempt; at checkpoint 1: the
+  architect's comment.
+
+## Contract
+
+Per diagram, in *paths.diagrams_dir*, three files sharing its ID:
+
+| File | Contract | Holds |
+|---|---|---|
+| *&lt;id&gt;.&lt;type&gt;.json* | the diagram tool's own (read through the adapter into *diagram.v1*) | The drawing: nodes, edges, messages |
+| *&lt;id&gt;.invariants.yaml* | *invariants.v1* | The rules the drawing cannot show, *INV-&lt;n&gt;*, each naming the elements it constrains |
+| *&lt;id&gt;.wishes.yaml* | *diagram_wishes.v1* | Which wishes each element realises |
+
+The ID is the file name up to its first dot, lower-case words joined by
+hyphens (*login.sequence.json* → *login*). An element is referenced as
+*&lt;id&gt;#&lt;element&gt;* — the form requirements will use in *derived_from*.
+
+## Rules
+
+| # | Rule | Checked by |
+|---|---|---|
+| R1 | There is at least one diagram | check_diagram_contract_gate · NO_DIAGRAMS |
+| R2 | The file name is a valid diagram ID and the diagram tool's file can be read | check_diagram_contract_gate · INVALID_DIAGRAM_ID, UNREADABLE_DIAGRAM, UNSUPPORTED_DIAGRAM_TYPE |
+| R3 | Every element has an ID and a label; every edge and message has both endpoints | check_diagram_contract_gate · MISSING_ID, MISSING_LABEL, MISSING_ENDPOINT |
+| R4 | An ID is used once in a diagram | check_diagram_contract_gate · DUPLICATE_ID |
+| R5 | Every edge and message connects nodes that exist | check_diagram_contract_gate · DANGLING_ENDPOINT |
+| R6 | Every node takes part in at least one edge or message | check_diagram_contract_gate · ORPHAN_NODE |
+| R7 | A rule the drawing cannot show goes in the invariants file and names only elements that exist | check_diagram_contract_gate · INVALID_INVARIANTS, INVARIANTS_FOR_OTHER_DIAGRAM, UNKNOWN_CONSTRAINED_ELEMENT |
+| R8 | Every diagram has its wishes file, linking only elements and wishes that exist | verify_diagram_to_wishes_link_gate · MISSING_WISH_LINKS, INVALID_WISH_LINKS, UNKNOWN_ELEMENT, UNKNOWN_WISH |
+| R9 | Every wish of kind behaviour is realised by an element of some diagram; a constraint need not be | verify_diagram_to_wishes_link_gate · NO_WISHES, UNCOVERED_WISH |
+| R10 | The architect approves the diagrams at checkpoint 1 before any requirement is derived, and the approval covers their current content | verify_diagram_approval_gate · MISSING_APPROVAL, APPROVAL_OUTDATED, APPROVED_TOO_LATE, NOT_A_GIT_REPOSITORY |
+| R11 | Every flow has its error path, and no flow is ambiguous | Checkpoint 1 |
+
+## Not checkable
+
+The architect confirms these at checkpoint 1:
+
+- The diagram says what the wishes mean — the right elements, not only linked ones.
+- Error paths are drawn, and no flow can be read two ways.
+- Every behaviour a wish asks for is either drawn or written as an invariant.
+
+## Example
+
+```yaml diagram_wishes
+diagram: login
+links:
+  web-app: [W-01]
+  auth-service: [W-01]
+  INV-1: [W-02]
+```

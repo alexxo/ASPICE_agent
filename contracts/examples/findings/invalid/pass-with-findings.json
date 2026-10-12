@@ -1,0 +1,1 @@
+{ "gate": "check_glossary_gate", "result": "pass", "findings": [{ "gate": "check_glossary_gate", "rule": "UNDEFINED_TERM", "file": "docs/requirements/login.md", "line": 12, "message": "Term session is not defined in the glossary." }] }

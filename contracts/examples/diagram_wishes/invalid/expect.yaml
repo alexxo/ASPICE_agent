@@ -1,0 +1,4 @@
+no-links.yaml: {path: "links", keyword: minProperties}
+element-without-wishes.yaml: {path: "links/user", keyword: minItems}
+wish-id-not-w-form.yaml: {path: "links/user/0", keyword: pattern}
+missing-diagram.yaml: {path: "", keyword: required}

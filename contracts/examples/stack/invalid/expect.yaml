@@ -1,0 +1,15 @@
+missing-unit-suite.yaml: {path: "suites", keyword: required}
+suite-outside-vocabulary.yaml: {path: "suites", keyword: enum}
+unpinned-tool-version.yaml: {path: "checks/lint/version", keyword: pattern}
+missing-decision-record.yaml: {path: "", keyword: required}
+missing-lint.yaml: {path: "checks", keyword: required}
+language-version-latest.yaml: {path: "language/version", keyword: pattern}
+missing-test-files.yaml: {path: "", keyword: required}
+suite-without-results.yaml: {path: "suites/integration", keyword: required}
+unit-suite-without-coverage.yaml: {path: "suites/unit", keyword: required}
+missing-code-files.yaml: {path: "", keyword: required}
+check-without-version-command.yaml: {path: "checks/lint", keyword: required}
+suite-without-version-command.yaml: {path: "suites/integration", keyword: required}
+missing-env-read-patterns.yaml: {path: "", keyword: required}
+missing-security-scans.yaml: {path: "", keyword: required}
+scan-without-results.yaml: {path: "security_scans/secrets", keyword: required}

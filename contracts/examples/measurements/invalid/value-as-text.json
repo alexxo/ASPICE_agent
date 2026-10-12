@@ -1,0 +1,4 @@
+{
+  "contract": "measurements.v1",
+  "measurements": [{ "requirement": "REQ-0060", "value": "180 ms" }]
+}

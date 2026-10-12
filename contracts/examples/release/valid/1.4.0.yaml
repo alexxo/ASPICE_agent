@@ -1,0 +1,7 @@
+contract: release.v1
+version: 1.4.0
+changed:
+  - docs/requirements
+  - src
+  - st
+framework: v6.0.0

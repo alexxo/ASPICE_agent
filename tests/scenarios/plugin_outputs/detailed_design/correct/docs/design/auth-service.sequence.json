@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": { "title": "Auth service — sign-in", "output": "auth-service-sequence.html" },
+  "participants": [
+    { "id": "check-credentials", "type": "backend", "label": "Check credentials" },
+    { "id": "count-failures", "type": "backend", "label": "Count failures" },
+    { "id": "open-session", "type": "backend", "label": "Open session" }
+  ],
+  "messages": [
+    { "id": "count-failure", "from": "check-credentials", "to": "count-failures", "y": 120, "label": "wrong password: count it" },
+    { "id": "locked-or-not", "from": "count-failures", "to": "check-credentials", "y": 150, "label": "locked?", "variant": "return" },
+    { "id": "open", "from": "check-credentials", "to": "open-session", "y": 190, "label": "right password: open a session" },
+    { "id": "session", "from": "open-session", "to": "check-credentials", "y": 220, "label": "session", "variant": "return" }
+  ]
+}

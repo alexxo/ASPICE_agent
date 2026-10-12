@@ -1,0 +1,276 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/verification_plan_contract.v1.schema.json",
+  "title": "verification_plan.v1",
+  "description": "The product's verification plan (SWE.4 BP1, BP2): one section per verification level. Stored as one fenced ```yaml verification_plan block in qf.yaml paths.verification_plan_file, written by the tester before the first unit test and agreed at the pull request. The unit section is written at stage 5; the integration section by the assembler at stage 7 (SWE.5 BP1, BP3), required by check_verification_plan_gate once the product has integration tests; the software section by the bridge tester at stage 8 (SWE.6 BP1, BP2), required once the product has software-level tests; the validation section by the crew that writes the validation scenarios at stage 11 (VAL.1 BP1, BP2), required once the product has a scenario. That the measured coverage reaches the minimum is a rule of check_stack_commands_gate, not of this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "unit"
+  ],
+  "properties": {
+    "contract": {
+      "const": "verification_plan.v1"
+    },
+    "unit": {
+      "description": "Unit verification (SWE.4).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "techniques",
+        "pass_fail_criteria",
+        "entry_criteria",
+        "exit_criteria",
+        "infrastructure",
+        "selection",
+        "regression",
+        "coverage"
+      ],
+      "properties": {
+        "techniques": {
+          "description": "How unit tests are derived, e.g. one test per acceptance criterion, boundary values at every range limit.",
+          "$ref": "#/$defs/list"
+        },
+        "pass_fail_criteria": {
+          "description": "When a unit test run passes, and what a failure blocks.",
+          "$ref": "#/$defs/text"
+        },
+        "entry_criteria": {
+          "description": "What must hold before unit verification starts.",
+          "$ref": "#/$defs/list"
+        },
+        "exit_criteria": {
+          "description": "What must hold for unit verification to be done.",
+          "$ref": "#/$defs/list"
+        },
+        "infrastructure": {
+          "description": "The test runner, test doubles and other tools needed.",
+          "$ref": "#/$defs/list"
+        },
+        "selection": {
+          "description": "Which unit tests run, and when (SWE.4 BP2).",
+          "$ref": "#/$defs/text"
+        },
+        "regression": {
+          "description": "Which existing unit tests run again when code changes (SWE.4 BP2).",
+          "$ref": "#/$defs/text"
+        },
+        "coverage": {
+          "description": "The minimum code coverage the unit tests must reach (SWE.4 BP2).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "metric",
+            "minimum"
+          ],
+          "properties": {
+            "metric": {
+              "enum": [
+                "lines",
+                "branches"
+              ]
+            },
+            "minimum": {
+              "description": "Percent.",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        }
+      }
+    },
+    "integration": {
+      "description": "Component and integration verification (SWE.5 BP1–BP3). That the order names existing components, each component in some step, is a rule of check_verification_plan_gate; that each step's selection has a passing test, of verify_tests_to_components_link_gate.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "techniques",
+        "pass_fail_criteria",
+        "entry_criteria",
+        "exit_criteria",
+        "infrastructure",
+        "regression",
+        "order"
+      ],
+      "properties": {
+        "techniques": {
+          "description": "How component and integration tests are derived, e.g. one test per flow of the approved sequence diagrams.",
+          "$ref": "#/$defs/list"
+        },
+        "pass_fail_criteria": {
+          "$ref": "#/$defs/text"
+        },
+        "entry_criteria": {
+          "$ref": "#/$defs/list"
+        },
+        "exit_criteria": {
+          "$ref": "#/$defs/list"
+        },
+        "infrastructure": {
+          "description": "What the tests need, e.g. a test database in a container, a stub for an external service.",
+          "$ref": "#/$defs/list"
+        },
+        "regression": {
+          "description": "Which component and integration tests run again when a component changes (SWE.5 BP3).",
+          "$ref": "#/$defs/text"
+        },
+        "order": {
+          "description": "The integration order (SWE.5 BP1): the steps in which the components are integrated.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "step",
+              "components",
+              "preconditions",
+              "selection"
+            ],
+            "properties": {
+              "step": {
+                "$ref": "#/$defs/text"
+              },
+              "components": {
+                "description": "The components integrated in this step.",
+                "$ref": "#/$defs/ids"
+              },
+              "preconditions": {
+                "description": "What must be true before the step, e.g. database migrated.",
+                "$ref": "#/$defs/list"
+              },
+              "selection": {
+                "description": "The flows and components whose tests run after this step (SWE.5 BP3).",
+                "$ref": "#/$defs/ids"
+              }
+            }
+          }
+        }
+      }
+    },
+    "software": {
+      "description": "Software verification (SWE.6 BP1, BP2): the integrated software against every requirement of both levels.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "techniques",
+        "pass_fail_criteria",
+        "entry_criteria",
+        "exit_criteria",
+        "infrastructure",
+        "selection",
+        "regression",
+        "order"
+      ],
+      "properties": {
+        "techniques": {
+          "description": "How software-level tests are derived, e.g. one test per acceptance criterion, a benchmark per performance requirement.",
+          "$ref": "#/$defs/list"
+        },
+        "pass_fail_criteria": {
+          "$ref": "#/$defs/text"
+        },
+        "entry_criteria": {
+          "$ref": "#/$defs/list"
+        },
+        "exit_criteria": {
+          "$ref": "#/$defs/list"
+        },
+        "infrastructure": {
+          "description": "The environment the integrated software runs in, e.g. deployed in a test environment with sample data.",
+          "$ref": "#/$defs/list"
+        },
+        "selection": {
+          "description": "Which software-level tests run, and when (SWE.6 BP2).",
+          "$ref": "#/$defs/text"
+        },
+        "regression": {
+          "description": "Which software-level tests run again after a change (SWE.6 BP2).",
+          "$ref": "#/$defs/text"
+        },
+        "order": {
+          "description": "The order in which the suites run (SWE.6 BP1), from the suite vocabulary.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["unit", "integration", "software", "bench", "security", "e2e"]
+          }
+        }
+      }
+    },
+    "validation": {
+      "description": "Validation (VAL.1 BP1, BP2): the product against the customer's wishes, in conditions close to the customer's. That every scenario is listed and every listed scenario exists is a rule of check_verification_plan_gate.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selection", "regression", "scenarios"],
+      "properties": {
+        "selection": {
+          "description": "Which scenarios run before each release (VAL.1 BP2): every automated one, and which of those run by hand.",
+          "$ref": "#/$defs/text"
+        },
+        "regression": {
+          "description": "Which scenarios run again after a change, e.g. every scenario of a wish the release touches (VAL.1 BP2).",
+          "$ref": "#/$defs/text"
+        },
+        "scenarios": {
+          "description": "Every scenario, in the order they run (VAL.1 BP1).",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["scenario", "technique", "pass_fail_criteria", "entry_criteria", "environment"],
+            "properties": {
+              "scenario": {
+                "description": "The scenario's repository path, under qf.yaml paths.validation_scenarios_dir.",
+                "type": "string",
+                "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\s]+$"
+              },
+              "technique": {
+                "description": "e.g. acceptance test, guided demo, trial use.",
+                "$ref": "#/$defs/text"
+              },
+              "pass_fail_criteria": {
+                "description": "When the customer counts the scenario as passed, in their terms.",
+                "$ref": "#/$defs/text"
+              },
+              "entry_criteria": {
+                "description": "What must hold before it runs, e.g. the release deployed to staging with realistic data.",
+                "$ref": "#/$defs/list"
+              },
+              "environment": {
+                "description": "Where it runs: conditions close to the customer's, e.g. staging with realistic data and the same integrations.",
+                "$ref": "#/$defs/text"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+      }
+    },
+    "list": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/text"
+      }
+    }
+  }
+}

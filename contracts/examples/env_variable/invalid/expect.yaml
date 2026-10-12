@@ -1,0 +1,4 @@
+lowercase-name.md: {path: "name", keyword: pattern}
+required-not-a-boolean.md: {path: "required", keyword: type}
+missing-valid-values.md: {path: "", keyword: required}
+unknown-field.md: {path: "", keyword: additionalProperties}

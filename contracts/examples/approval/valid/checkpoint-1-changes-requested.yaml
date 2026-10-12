@@ -1,0 +1,10 @@
+checkpoint: 1
+decision: changes-requested
+approver:
+  name: Alex
+  role: architect
+date: 2026-10-02T09:05:00Z
+subject:
+  - path: docs/diagrams/login.sequence.mmd
+    sha256: 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
+comment: The lockout path has no error message back to the user; add it.

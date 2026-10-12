@@ -1,0 +1,5 @@
+missing-constrains.yaml: {path: "invariants/0", keyword: required}
+id-not-inv-form.yaml: {path: "invariants/0/id", keyword: pattern}
+constrains-nothing.yaml: {path: "invariants/0/constrains", keyword: minItems}
+no-invariants.yaml: {path: "invariants", keyword: minItems}
+diagram-id-not-slug.yaml: {path: "diagram", keyword: pattern}

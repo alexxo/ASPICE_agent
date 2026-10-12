@@ -1,0 +1,9 @@
+what: The account locks too early.
+where: sign-in page
+reproduce: Three wrong passwords.
+expected: Five attempts.
+actual: Three attempts.
+status: under-analysis
+impact:
+  requirements: [the lockout requirement]
+  components: [auth-service]

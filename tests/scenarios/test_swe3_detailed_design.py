@@ -1,0 +1,111 @@
+"""Scenario — the SWE.3 detailed design stage end to end, on a copy of the example product.
+
+The product starts where the SWE.2 scenario ends: requirements approved at
+checkpoint 2, the stack approved at checkpoint 3, and an architecture that
+passes its gates. The loop of agent/run_aspice_agent.md is driven with the
+agent's own tools; each attempt copies a scripted plugin output
+(tests/scenarios/plugin_outputs/detailed_design/) into the product. Stage 4 has
+no checkpoint: the design is agreed at the pull request.
+
+- the method and the diagram plugin are both loaded;
+- a design that passes the gate moves the product to stage 5;
+- a broken design is caught and fixed by a retry;
+- a design that stays broken reaches the architect after the first run and 3 retries.
+"""
+
+import json
+import shutil
+from datetime import datetime, timezone
+
+from product_builder import commit_all
+
+from agent.count_retries_tool import decide, record_attempt
+from agent.load_skills_tool import load_skills
+from agent.read_stages_tool import stage
+from agent.record_checkpoint_tool import record_checkpoint
+from agent.resolve_stage_tool import resolve_stage
+from agent.run_gates_tool import reached_gates, run_gates
+
+OUTPUTS = "tests/scenarios/plugin_outputs"
+APPROVED = datetime(2026, 10, 4, 15, 0, tzinfo=timezone.utc)
+
+
+def _write(repo_root, product, output):
+    """The plugin writes its files where the product keeps them."""
+    shutil.copytree(repo_root / OUTPUTS / output, product, dirs_exist_ok=True)
+
+
+def _architecture_done(repo_root, product):
+    """Where the SWE.2 scenario ends: stack approved, architecture passing."""
+    target = product / "docs" / "requirements" / "login.md"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(repo_root / OUTPUTS / "requirements" / "correct" / "login.md", target)
+    record_checkpoint(product, 2, "approved", "Example Architect", "architect", now=APPROVED)
+    commit_all(product, "requirements approved at checkpoint 2")
+    _write(repo_root, product, "architecture/stack")
+    commit_all(product, "stack written")
+    record_checkpoint(product, 3, "approved", "Example Architect", "architect")
+    commit_all(product, "stack approved at checkpoint 3")
+    _write(repo_root, product, "architecture/correct")
+    commit_all(product, "architecture written")
+    state = resolve_stage(product)
+    assert (state["stage"], state["status"]) == ("detailed_design", "gates_failing")
+    assert [f["rule"] for f in state["findings"]] == ["NO_DETAILED_DESIGN"]
+    assert state["done"] == ["diagram", "requirements", "architecture"]
+
+
+def _attempts(product_root, repo_root, outputs):
+    """The plugin writes, the stage's gate judges, the counter decides."""
+    detailed_design = stage("detailed_design")
+    for output in outputs:
+        _write(repo_root, product_root, f"detailed_design/{output}")
+        results = run_gates(product_root, reached_gates(product_root, detailed_design))
+        record_attempt(product_root, "detailed_design", results)
+        decision = decide(product_root, "detailed_design")
+        if decision["decision"] != "retry":
+            break
+    return decision
+
+
+def _rules(product, number):
+    log = product / ".qf/attempts/detailed_design" / f"attempt-{number}.json"
+    return sorted(f["rule"] for gate in json.loads(log.read_text()) for f in gate["findings"])
+
+
+def test_the_method_and_the_diagram_plugin_are_loaded(repo_root, product):
+    _architecture_done(repo_root, product)
+    loaded = load_skills(product, "detailed_design")
+    assert loaded["plugin"]["skill_file"].endswith(
+        "plugins/swe/derive_detailed_design_plugin/SKILL.md"
+    )
+    assert [p["name"] for p in loaded["also_plugins"]] == ["archify"]
+    assert [p.split("/")[-2] for p in loaded["framework_skills"]] == [
+        "write_detailed_design_skill",
+        "validate_env_config_skill",
+    ]
+
+
+def test_a_passing_design_moves_the_product_to_stage_5(repo_root, product):
+    _architecture_done(repo_root, product)
+    decision = _attempts(product, repo_root, ["correct"])
+    assert decision["decision"] == "pass"
+    commit_all(product, "detailed design written")
+    state = resolve_stage(product)
+    assert (state["stage"], state["status"]) == ("unit_tests", "gates_failing")
+    rules = {f["rule"] for f in state["findings"]}
+    assert {"MISSING_VERIFICATION_PLAN", "MISSING_UNIT_TEST"} <= rules  # stage 5 is due
+    assert state["done"] == ["diagram", "requirements", "architecture", "detailed_design"]
+
+
+def test_a_broken_design_is_caught_and_fixed_by_a_retry(repo_root, product):
+    _architecture_done(repo_root, product)
+    decision = _attempts(product, repo_root, ["broken", "correct"])
+    assert decision["decision"] == "pass"
+    assert _rules(product, 1) == ["INVALID_RANGE", "UNSHOWN_CALL"]
+    assert _rules(product, 2) == []
+
+
+def test_a_design_that_stays_broken_reaches_the_architect(repo_root, product):
+    _architecture_done(repo_root, product)
+    decision = _attempts(product, repo_root, ["broken"] * 5)
+    assert (decision["decision"], decision["attempts"]) == ("escalate", 4)

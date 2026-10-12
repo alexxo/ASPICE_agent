@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/decision_contract.v1.schema.json",
+  "title": "decision.v1",
+  "description": "One architectural decision record (SWE.2 BP3). Stored as one fenced ```yaml decision block in qf.yaml paths.decisions_dir/NNNN-<slug>.md; this schema validates the block. That the choice is one of the options, that the file name matches the ID, and that IDs are unique are gate rules of verify_decision_records_gate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "status",
+    "date",
+    "context",
+    "options",
+    "choice",
+    "consequences"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^ADR-[0-9]{4}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]+$"
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "accepted",
+        "superseded"
+      ]
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "context": {
+      "description": "What forces the decision: the requirements, constraints and risks involved.",
+      "type": "string",
+      "minLength": 1
+    },
+    "options": {
+      "description": "The alternatives considered — at least two, or it was no decision.",
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "pros",
+          "cons"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\n]+$"
+          },
+          "pros": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\n]+$"
+            }
+          },
+          "cons": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\n]+$"
+            }
+          }
+        }
+      }
+    },
+    "choice": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]+$",
+      "description": "The name of the option chosen."
+    },
+    "consequences": {
+      "description": "What follows from the choice, good and bad.",
+      "type": "string",
+      "minLength": 1
+    },
+    "supersedes": {
+      "type": "string",
+      "pattern": "^ADR-[0-9]{4}$"
+    }
+  }
+}

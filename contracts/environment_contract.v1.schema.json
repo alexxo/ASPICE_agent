@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/environment_contract.v1.schema.json",
+  "title": "environment.v1",
+  "description": "Where this machine keeps the plugins the slots name, so the ASPICE Agent can load and run them. Owned by the person, never committed: <product>/.qf/environment.yaml for a project-scoped setup, ~/.config/quality-framework/environment.yaml for a per-user one (the first found counts). Without it, the conventional skill folders are searched. Paths may start with ~; relative paths are relative to the file.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "skill_dirs": {
+      "description": "Folders holding one sub-folder per skill (<dir>/<skill>/SKILL.md), searched in order before the conventional ones.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "plugins": {
+      "description": "Skills installed somewhere special: skill name → its SKILL.md.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z0-9]+([_-][a-z0-9]+)*$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "SKILL\\.md$"
+      }
+    }
+  }
+}

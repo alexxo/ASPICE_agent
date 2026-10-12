@@ -1,0 +1,6 @@
+# Rules of the login flow that the diagram cannot draw (invariants.v1).
+diagram: login
+invariants:
+  - id: INV-1
+    statement: After five consecutive failed sign-ins the account is locked.
+    constrains: [submit-credentials]

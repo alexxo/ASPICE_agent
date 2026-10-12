@@ -1,0 +1,11 @@
+what: Lock an account after ten failed sign-ins, not five.
+initiator: product owner
+reason: Support handles too many lockouts of people who mistyped.
+status: analysed
+affected:
+  wishes: [W-02]
+  elements: [login#INV-1]
+  requirements: [REQ-0047]
+depends_on: []
+size: S
+problem: 12

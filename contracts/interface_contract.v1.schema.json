@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/interface_contract.v1.schema.json",
+  "title": "interface.v1",
+  "description": "One interface between components (SWE.2 BP1). Stored as a fenced ```yaml interface block next to the components; this schema validates one block. That every edge of the architecture diagram is an interface and that from and to name components are gate rules of check_design_contract_gate; that every interface declares its implementations is a rule of check_testability_gate. An external interface names the security test templates its boundary needs (principle #16); that the component at the product's end has a passing test for each is a rule of verify_security_tests_gate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "derived_from",
+    "from",
+    "to",
+    "external",
+    "protocol",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "description": "The interface's ID — the ID of the diagram edge it comes from.",
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "derived_from": {
+      "description": "The architecture-diagram edge, as <diagram>#<edge>.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*#[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "from": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "to": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "external": {
+      "description": "true when it crosses the system boundary (one end is an external actor).",
+      "type": "boolean"
+    },
+    "protocol": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]+$",
+      "description": "How the two ends talk, e.g. HTTPS + JSON, in-process call, message queue."
+    },
+    "data": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]+$",
+      "description": "What crosses it."
+    },
+    "security_templates": {
+      "description": "Principle #16: the security test templates the component at the product's end must pass, from the framework's catalog. Required when external is true.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "authentication",
+          "authorization",
+          "input-validation",
+          "stored-data",
+          "outbound-calls"
+        ]
+      }
+    },
+    "implementations": {
+      "description": "Principle #15: what fills the 'to' end of the interface — the real implementation and a test double that replaces it in isolated tests. Optional in the schema; that every interface declares it is a rule of check_testability_gate.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "real",
+        "double"
+      ],
+      "properties": {
+        "real": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\n]+$",
+          "description": "The real implementation, e.g. HTTPS client of the auth service."
+        },
+        "double": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "name"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "stub",
+                "fake",
+                "in-memory",
+                "mock"
+              ]
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\n]+$"
+            }
+          }
+        }
+      }
+    }
+  },
+  "if": {
+    "required": [
+      "external"
+    ],
+    "properties": {
+      "external": {
+        "const": true
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "security_templates"
+    ]
+  }
+}

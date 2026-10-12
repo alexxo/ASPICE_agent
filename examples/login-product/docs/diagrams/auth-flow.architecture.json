@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Auth flow",
+    "output": "auth-flow.html"
+  },
+  "components": [
+    { "id": "web-app", "type": "frontend", "label": "Web app", "sublabel": "sign-in form" },
+    { "id": "auth-service", "type": "backend", "label": "Auth service", "sublabel": "Java 21" }
+  ],
+  "connections": [
+    { "id": "signin-request", "from": "web-app", "to": "auth-service", "label": "sign in" }
+  ]
+}

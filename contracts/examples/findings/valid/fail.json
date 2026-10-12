@@ -1,0 +1,20 @@
+{
+  "gate": "verify_requirements_to_diagram_link_gate",
+  "result": "fail",
+  "findings": [
+    {
+      "gate": "verify_requirements_to_diagram_link_gate",
+      "rule": "UNKNOWN_ELEMENT",
+      "file": "docs/requirements/login.md",
+      "line": 31,
+      "message": "REQ-0047 derives from login#INV-9, which the diagram login does not declare; use an existing element ID."
+    },
+    {
+      "gate": "verify_requirements_to_diagram_link_gate",
+      "rule": "UNCOVERED_ELEMENT",
+      "file": "docs/diagrams/auth-flow.flowchart.mmd",
+      "line": null,
+      "message": "Edge auth-flow#E2 is covered by no requirement; derive at least one requirement from it."
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+contract: validation.v1
+version: 1.4.0
+environment:
+  name: staging
+  commit: release/v1.4.0
+results:
+  - scenario: validation/scenarios/market-day-demo.md
+    technique: guided demo
+    result: pass

@@ -1,0 +1,12 @@
+{
+  "diagram": "auth-flow",
+  "type": "architecture",
+  "source": "docs/diagrams/auth-flow.architecture.json",
+  "elements": [
+    { "id": "web-app", "kind": "node", "label": "Web app" },
+    { "id": "auth-service", "kind": "node", "label": "Auth service" },
+    { "id": "session-store", "kind": "node", "label": "Session store" },
+    { "id": "signin-request", "kind": "edge", "label": "sign-in request", "from": "web-app", "to": "auth-service" },
+    { "id": "failure-counter", "kind": "edge", "label": "read and write failure counter", "from": "auth-service", "to": "session-store" }
+  ]
+}

@@ -1,0 +1,77 @@
+# release.yml — the official baseline of an accepted release.
+#
+# Copy to .github/workflows/release.yml in the product, next to
+# quality_gates.yml. A release is a pull request: on a release/v<version>
+# branch, tools/write_release_tool.py writes the release record to qf.yaml
+# paths.releases_dir (the version is computed from the commits since the last
+# release, never chosen), the gates run on it, it is validated on staging
+# (tools/write_validation_record_tool.py writes the validation record), and the
+# village accepts it there (seal 5); until then CI stays red on it. Only after
+# its merge does this workflow stamp the baseline: it tags
+# the merge commit v<version> with an annotated tag, then checks the tag and
+# the mirror. A merge with no new release record does nothing.
+#
+# The mirror (qf.yaml mirror) must be readable from CI. Keep it in sync with
+# the host's mirroring, or add a step here that pushes the tag to it; until the
+# tag is there the backup check stays red, and re-running the job checks again.
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the product and its pinned framework, with its history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Refuse to run without the pinned framework
+        run: |
+          test -f .framework/tools/write_release_tool.py || {
+            echo "Add the framework as a git submodule at .framework, pinned to a release." >&2
+            exit 1
+          }
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the framework's runtime dependencies
+        run: pip install -r .framework/requirements.txt
+
+      - name: Check the release before stamping it
+        env:
+          QF_HOST_TOKEN: ${{ secrets.QF_HOST_TOKEN }}
+        run: python .framework/gates/sup/verify_baseline_gate.py --root .
+
+      - name: Tag the accepted release
+        run: |
+          versions=$(python .framework/tools/write_release_tool.py --root . --pending)
+          if [ -z "$versions" ]; then
+            echo "No release in this merge."
+            exit 0
+          fi
+          if [ "$(printf '%s\n' "$versions" | wc -l)" -ne 1 ]; then
+            echo "More than one release record has no tag: $versions" >&2
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$versions" -m "Release $versions"
+          git push origin "v$versions"
+
+      - name: Check the official baseline
+        env:
+          QF_HOST_TOKEN: ${{ secrets.QF_HOST_TOKEN }}
+        run: python .framework/gates/sup/verify_baseline_gate.py --root .
+
+      - name: Check the backup
+        run: python .framework/gates/sup/verify_backup_gate.py --root .

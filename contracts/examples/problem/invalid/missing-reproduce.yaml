@@ -1,0 +1,5 @@
+what: The account locks too early.
+where: sign-in page
+expected: Five attempts.
+actual: Three attempts.
+status: open

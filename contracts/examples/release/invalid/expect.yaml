@@ -1,0 +1,3 @@
+version-with-v.yaml: {path: "version", keyword: pattern}
+missing-framework.yaml: {path: "", keyword: required}
+plugin-versions.yaml: {path: "", keyword: additionalProperties}

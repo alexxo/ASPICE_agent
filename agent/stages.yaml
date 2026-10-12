@@ -1,0 +1,266 @@
+# The ASPICE Agent's stage manifest: one entry per stage, in the order of the V.
+#
+# The agent's tools read this file; nothing about a stage is hard-coded.
+#   number        the stage's position in the flow (§ 5 The ASPICE Agent — the flow)
+#   process       the ASPICE 4.1 process the stage implements
+#   slot          the qf.yaml slot whose plugin does the work (none for SUP/VAL stages)
+#   also_slots    other slots whose plugins the agent loads too (stage 4: the diagram
+#                 plugin draws the design diagrams)
+#   skills        the framework skills loaded next to the plugin
+#   gates         the gates the framework implements today — they decide the stage
+#   gates_after_checkpoint
+#                 gates of work that may only start once the checkpoint approved
+#                 (stage 3: components only after the stack is approved); run
+#                 only while that approval is current
+#   planned_gates the stage's other gates, designed but not built; reported as not run
+#   checkpoint    the human checkpoint closing the stage, if any (1–5)
+#   approves      which files that checkpoint's approval covers; release (seal 5) is due
+#                 only while a release is proposed, and a gate checks it so CI blocks
+#                 the merge until the customer accepts
+#   checkpoint_on_host
+#                 true: the checkpoint is a person's review on the code host, not a
+#                 file the agent records (seal 4); a gate checks it, and the stage
+#                 waits for it while that gate's only finding is the missing approval
+#   implemented   false: the agent stops here and says the stage is not built yet
+#   trigger       flow (walked in order) or event (problem and change requests): an event
+#                 stage's gates run once the flow is done, on every pull request
+
+stages:
+  - id: diagram
+    number: 1
+    process: SWE.2 Software architecture — diagram, drawn first
+    slot: create_diagram_plugin
+    skills:
+      - draw_diagram_skill
+    gates:
+      - check_diagram_contract_gate
+      - verify_diagram_to_wishes_link_gate
+      - verify_diagram_approval_gate
+    planned_gates: []
+    checkpoint: 1
+    approves: diagrams
+    implemented: true
+    trigger: flow
+
+  - id: requirements
+    number: 2
+    process: SWE.1 Software requirements
+    slot: create_requirements_plugin
+    skills:
+      - write_requirements_skill
+      - define_glossary_terms_skill
+      - specify_nfr_measurement_skill
+    gates:
+      - check_requirements_contract_gate
+      - verify_requirements_to_diagram_link_gate
+      - check_glossary_gate
+      - verify_requirements_approval_gate
+    planned_gates: []
+    checkpoint: 2
+    approves: requirements
+    implemented: true
+    trigger: flow
+
+  - id: architecture
+    number: 3
+    process: SWE.2 Software architecture
+    slot: create_architecture_plugin
+    skills:
+      - choose_stack_skill
+      - write_design_skill
+      - record_decisions_skill
+      - ensure_testability_skill
+      - create_security_tests_skill
+    gates:
+      - check_stack_decision_gate
+      - verify_decision_records_gate
+    gates_after_checkpoint:
+      - verify_stack_approval_gate
+      - check_design_contract_gate
+      - check_testability_gate
+    planned_gates: []
+    checkpoint: 3
+    approves: stack
+    implemented: true
+    trigger: flow
+
+  - id: detailed_design
+    number: 4
+    process: SWE.3 Software detailed design and unit construction — design (BP1, BP2)
+    slot: create_detailed_design_plugin
+    also_slots:
+      - create_diagram_plugin
+    skills:
+      - write_detailed_design_skill
+      - validate_env_config_skill
+    gates:
+      - check_detailed_design_contract_gate
+    planned_gates: []
+    implemented: true
+    trigger: flow
+
+  - id: unit_tests
+    number: 5
+    process: SWE.4 Software unit verification — unit tests first (BP1)
+    slot: create_unit_tests_plugin
+    skills:
+      - enforce_test_first_skill
+      - validate_env_config_skill
+      - create_security_tests_skill
+    gates:
+      - check_verification_plan_gate
+      - verify_test_first_gate
+    planned_gates: []
+    implemented: true
+    trigger: flow
+
+  - id: unit_construction
+    number: 6
+    process: SWE.3 unit construction (BP3) + SWE.4 Software unit verification (BP2–BP5)
+    slot: create_unit_code_plugin
+    skills:
+      - enforce_test_first_skill
+      - construct_units_skill
+      - run_verification_suites_skill
+      - validate_env_config_skill
+      - create_security_tests_skill
+      - emit_log_events_skill
+    gates:
+      - verify_test_first_gate
+      - verify_code_to_design_link_gate
+      - check_stack_commands_gate
+      - verify_tests_to_requirements_link_gate
+      - check_env_config_gate
+      - verify_security_tests_gate
+    planned_gates: []
+    implemented: true
+    trigger: flow
+
+  - id: integration_verification
+    number: 7
+    process: SWE.5 Software component verification and integration verification
+    slot: create_integration_tests_plugin
+    also_slots:
+      - create_unit_code_plugin
+    skills:
+      - verify_integration_skill
+      - emit_log_events_skill
+    gates:
+      - check_verification_plan_gate
+      - verify_test_first_gate
+      - verify_tests_to_components_link_gate
+      - verify_tests_to_flows_link_gate
+      - verify_log_events_gate
+    planned_gates: []
+    implemented: true
+    trigger: flow
+
+  - id: software_verification
+    number: 8
+    process: SWE.6 Software verification
+    slot: create_software_tests_plugin
+    also_slots:
+      - create_unit_code_plugin
+    skills:
+      - verify_software_skill
+      - configure_observability_skill
+      - specify_nfr_measurement_skill
+    gates:
+      - check_verification_plan_gate
+      - verify_test_first_gate
+      - verify_software_tests_to_requirements_link_gate
+      - verify_nfr_thresholds_gate
+      - check_observability_gate
+      - check_verification_report_gate
+    planned_gates: []
+    implemented: true
+    trigger: flow
+
+  - id: quality_assurance
+    number: 9
+    process: SUP.1 Quality assurance
+    slot: review_pull_request_plugin
+    skills:
+      - review_code_skill
+      - report_framework_feedback_skill
+      - track_nonconformances_skill
+    gates:
+      - verify_framework_integrity_gate
+      - verify_required_checks_gate
+      - scan_security_gate
+      - check_framework_feedback_gate
+      - verify_host_settings_gate
+    planned_gates: []
+    checkpoint: 4
+    approves: pull_request
+    checkpoint_on_host: true
+    implemented: true
+    trigger: flow
+
+  - id: configuration_management
+    number: 10
+    process: SUP.8 Configuration management
+    skills:
+      - record_baseline_skill
+    gates:
+      - check_commit_conventions_gate
+      - verify_branch_protection_gate
+      - check_config_items_gate
+      - check_track_rule_gate
+      - verify_architecture_tests_gate
+      - verify_baseline_gate
+      - verify_backup_gate
+    planned_gates: []
+    implemented: true
+    trigger: flow
+
+  - id: validation
+    number: 11
+    process: VAL.1 Validation
+    slot: create_validation_scenarios_plugin
+    skills:
+      - validate_release_skill
+    gates:
+      - verify_acceptance_to_wishes_link_gate
+      - verify_release_evidence_gate
+      - check_nonconformances_gate
+      - check_escalations_gate
+      - report_quality_trends_gate
+      - check_retro_actions_gate
+    planned_gates: []
+    checkpoint: 5
+    approves: release
+    implemented: true
+    trigger: flow
+
+  - id: problem_resolution
+    number: 12
+    process: SUP.9 Problem resolution management
+    slot: create_unit_tests_plugin
+    also_slots:
+      - create_unit_code_plugin
+    skills:
+      - resolve_problems_skill
+      - enforce_test_first_skill
+    gates:
+      - check_problem_record_gate
+      - check_urgent_fix_gate
+      - verify_problem_closure_gate
+      - report_problem_trends_gate
+    planned_gates: []
+    implemented: true
+    trigger: event
+
+  - id: change_request
+    number: 13
+    process: SUP.10 Change request management
+    skills:
+      - manage_changes_skill
+    gates:
+      - check_change_record_gate
+      - verify_change_approval_gate
+      - verify_change_trace_gate
+      - verify_change_closure_gate
+    planned_gates: []
+    implemented: true
+    trigger: event

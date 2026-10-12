@@ -1,0 +1,5 @@
+numeric-without-unit.md: {path: "inputs/0/unit", keyword: not}
+unit-without-range.md: {path: "outputs/0/unit", keyword: const}
+port-without-range.md: {path: "inputs/0", keyword: required}
+unit-without-outputs.md: {path: "", keyword: required}
+derived-from-without-element.md: {path: "derived_from", keyword: pattern}

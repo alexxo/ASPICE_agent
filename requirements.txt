@@ -1,0 +1,5 @@
+# Runtime dependencies of the gates, adapters and agent tools.
+# Installed where the gates run — the product's CI and the machine running the
+# agent — never shipped with the product.
+PyYAML>=6,<7
+jsonschema>=4,<5

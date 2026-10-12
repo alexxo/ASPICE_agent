@@ -1,0 +1,4 @@
+{ "diagram": "auth-flow", "type": "flowchart", "source": "docs/diagrams/auth-flow.architecture.json", "elements": [
+  { "id": "a", "kind": "node", "label": "A" },
+  { "id": "b", "kind": "node", "label": "B" }
+] }

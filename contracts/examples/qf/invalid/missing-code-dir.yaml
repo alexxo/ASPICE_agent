@@ -1,0 +1,45 @@
+contract: qf.v1
+
+paths:
+  requirements_dir: docs/requirements
+  glossary_file: docs/glossary.md
+  wishes_file: docs/wishes.md
+  diagrams_dir: docs/diagrams
+  approvals_dir: docs/approvals
+  architecture_dir: docs/architecture
+  decisions_dir: docs/decisions
+  stack_file: docs/architecture/stack.yaml
+  detailed_design_dir: docs/design
+  verification_plan_file: docs/verification-plan.md
+  env_variables_file: docs/configuration.md
+  integration_tests_dir: it
+  software_tests_dir: st
+  observability_dir: observability
+  framework_dir: .framework
+  ci_file: .github/workflows/quality_gates.yml
+  framework_feedback_file: FRAMEWORK_FEEDBACK.md
+  releases_dir: releases
+  validation_scenarios_dir: validation/scenarios
+  validation_records_dir: validation/records
+
+slots:
+  create_diagram_plugin: archify
+  create_requirements_plugin: gentle-ai/sdd-spec
+  create_architecture_plugin: gentle-ai/sdd-design
+  create_detailed_design_plugin: gentle-ai/sdd-design
+  create_unit_tests_plugin: gentle-ai/sdd-apply
+  create_unit_code_plugin: gentle-ai/sdd-apply
+  create_integration_tests_plugin: gentle-ai/sdd-verify
+  create_software_tests_plugin: gentle-ai/sdd-verify
+  review_pull_request_plugin: quality-framework/derive_review_plugin
+  create_validation_scenarios_plugin: quality-framework/derive_validation_scenarios_plugin
+
+review:
+  agents: [qf-reviewer-bot]
+  sample_every: 5
+
+urgent_approvers: [lead-bob]
+change_approvers: [lead-bob]
+escalate_after_days: 30
+
+mirror: https://gitlab.com/acme/login.git

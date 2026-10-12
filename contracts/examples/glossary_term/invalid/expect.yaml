@@ -1,0 +1,3 @@
+missing-definition.md: {path: "", keyword: required}
+multiline-definition.md: {path: "definition", keyword: pattern}
+unknown-field.md: {path: "", keyword: additionalProperties}

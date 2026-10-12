@@ -1,0 +1,6 @@
+wrong-role-for-checkpoint.yaml: {path: "approver/role", keyword: const}
+changes-requested-without-comment.yaml: {path: "", keyword: required}
+truncated-hash.yaml: {path: "subject/0/sha256", keyword: pattern}
+empty-subject.yaml: {path: "subject", keyword: minItems}
+date-without-offset.yaml: {path: "date", keyword: pattern}
+unknown-checkpoint.yaml: {path: "checkpoint", keyword: enum}

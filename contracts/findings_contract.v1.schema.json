@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/findings_contract.v1.schema.json",
+  "title": "findings.v1",
+  "description": "What every gate prints on stdout as JSON. The gate runner reads it; on fail, the findings go back to the plugin unchanged for the next retry, and to the architect on escalation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["gate", "result", "findings"],
+  "properties": {
+    "gate": { "$ref": "#/$defs/gate" },
+    "result": { "enum": ["pass", "fail"] },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "result": { "const": "pass" } }, "required": ["result"] },
+      "then": { "properties": { "findings": { "maxItems": 0 } } },
+      "else": { "properties": { "findings": { "minItems": 1 } } }
+    }
+  ],
+  "$defs": {
+    "gate": {
+      "description": "Gate name, action_what_kind with kind gate.",
+      "type": "string",
+      "pattern": "^(check|verify|report|scan)_[a-z0-9]+(_[a-z0-9]+)*_gate$"
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate", "rule", "file", "line", "message"],
+      "properties": {
+        "gate": { "$ref": "#/$defs/gate" },
+        "rule": {
+          "description": "Stable rule ID in UPPER_SNAKE_CASE (e.g. MISSING_FIELD, UNKNOWN_ELEMENT).",
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$"
+        },
+        "file": { "description": "Repository-relative path.", "type": "string", "minLength": 1 },
+        "line": {
+          "description": "1-based line, or null when the finding concerns the file as a whole.",
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "message": {
+          "description": "What is wrong and what is expected, written for the plugin that must fix it.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

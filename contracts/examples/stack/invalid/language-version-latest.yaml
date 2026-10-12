@@ -1,0 +1,43 @@
+contract: stack.v1
+
+language: {name: python, version: latest}
+runtime: {name: cpython, version: 3.12.7}
+frameworks:
+  - {name: fastapi, version: 0.115.2, purpose: HTTP API}
+libraries:
+  - {name: pydantic, version: 2.9.2, purpose: input validation}
+data_stores:
+  - {name: postgresql, version: "16.4", purpose: accounts and sessions}
+
+code_files: ["**/*.py"]
+test_files: ["**/test_*.py"]
+integration_test_files: ["**/test_*.py"]
+software_test_files: ["**/test_*.py"]
+env_read_patterns: ['os\.getenv\("([A-Z0-9_]+)"\)']
+
+suites:
+  unit:        {run: pytest tests/unit --junitxml=build/unit.xml --cov --cov-report=xml:build/unit-coverage.xml, tool: pytest, version: 8.3.3, version_command: pytest --version,
+                results: build/unit.xml, coverage: build/unit-coverage.xml}
+  integration: {run: pytest tests/integration --junitxml=build/integration.xml, tool: pytest, version: 8.3.3, version_command: pytest --version,
+                results: build/integration.xml}
+  bench:       {run: pytest --benchmark-only --junitxml=build/bench.xml, tool: pytest-benchmark, version: 4.0.0, version_command: pip show pytest-benchmark,
+                results: build/bench.xml}
+
+checks:
+  lint:   {run: ruff check ., tool: ruff, version: 0.6.9, version_command: ruff --version}
+  format: {run: ruff format --check ., tool: ruff, version: 0.6.9, version_command: ruff --version}
+
+security_scans:
+  secrets:
+    run: gitleaks detect --no-banner --report-format sarif --report-path build/secrets.sarif
+    tool: gitleaks
+    version: 8.21.2
+    version_command: gitleaks version
+    results: build/secrets.sarif
+  dependencies:
+    run: osv-scanner --format sarif --output build/dependencies.sarif -r .
+    tool: osv-scanner
+    version: 1.9.1
+    version_command: osv-scanner --version
+    results: build/dependencies.sarif
+decision_record: docs/decisions/0001-tech-stack.md

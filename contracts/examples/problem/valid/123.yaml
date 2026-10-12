@@ -1,0 +1,15 @@
+what: The account locks after three failed sign-ins instead of five.
+where: sign-in page, auth-service
+reproduce: |
+  1. Sign in with a wrong password three times.
+  2. Sign in with the right password.
+expected: The fourth attempt is accepted.
+actual: The account is locked.
+status: under-analysis
+cause: The failure counter counts each attempt twice.
+impact:
+  requirements: [REQ-0047]
+  components: [auth-service]
+severity: high
+affected_parties: [the customer's support desk]
+notified: 2026-10-12

@@ -1,0 +1,6 @@
+interface-without-external.md: {path: "", keyword: required}
+interface-without-protocol.md: {path: "", keyword: required}
+double-of-unknown-kind.md: {path: "implementations/double/kind", keyword: enum}
+implementations-without-double.md: {path: "implementations", keyword: required}
+external-without-templates.md: {path: "", keyword: required}
+unknown-template.md: {path: "security_templates/0", keyword: enum}

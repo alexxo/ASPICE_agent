@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Login",
+    "output": "login.html"
+  },
+  "participants": [
+    { "id": "web-app", "type": "frontend", "label": "Web app" },
+    { "id": "auth-service", "type": "backend", "label": "Auth service" }
+  ],
+  "messages": [
+    { "id": "submit-credentials", "from": "web-app", "to": "auth-service", "y": 160, "label": "submit email and password" },
+    { "id": "session-opened", "from": "auth-service", "to": "web-app", "y": 190, "label": "session opened", "variant": "return" }
+  ]
+}

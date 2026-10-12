@@ -1,0 +1,8 @@
+component-without-budget.md: {path: "", keyword: required}
+budget-without-unit.md: {path: "budget/0", keyword: required}
+external-with-budget.md: {path: "", keyword: not}
+derived-from-without-element.md: {path: "derived_from", keyword: pattern}
+component-without-size.md: {path: "", keyword: required}
+component-without-concurrency.md: {path: "", keyword: required}
+not-applicable-without-reason.md: {path: "modes", keyword: oneOf}
+external-with-composition-root.md: {path: "", keyword: not}

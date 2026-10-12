@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/env_variable_contract.v1.schema.json",
+  "title": "env_variable.v1",
+  "description": "One environment variable the product's code reads (principle #23), declared with the detailed design. Stored as a fenced ```yaml env_variable block in qf.yaml paths.env_variables_file; this schema validates one block. That a name is declared once is a rule of check_detailed_design_contract_gate; that every variable the code reads is declared, every declared one is read and every required one has a passing test naming it with @env are rules of check_env_config_gate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "description", "required", "example", "valid"],
+  "properties": {
+    "name": {
+      "description": "The variable's name, as the code reads it.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "description": { "description": "What it sets.", "type": "string", "minLength": 1 },
+    "required": {
+      "description": "true: the software stops at start-up when it is missing or invalid, and a unit test shows it.",
+      "type": "boolean"
+    },
+    "example": { "description": "A value that works, never a real secret.", "type": "string", "minLength": 1 },
+    "valid": {
+      "description": "The values it accepts, and what happens when it is unset if it is optional.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

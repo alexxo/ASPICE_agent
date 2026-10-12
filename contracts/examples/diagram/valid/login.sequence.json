@@ -1,0 +1,12 @@
+{
+  "diagram": "login",
+  "type": "sequence",
+  "source": "docs/diagrams/login.sequence.json",
+  "elements": [
+    { "id": "user", "kind": "node", "label": "User" },
+    { "id": "auth", "kind": "node", "label": "Auth service" },
+    { "id": "submit-credentials", "kind": "message", "label": "submit email and password", "from": "user", "to": "auth" },
+    { "id": "session-opened", "kind": "message", "label": "session opened", "from": "auth", "to": "user" },
+    { "id": "INV-1", "kind": "invariant", "label": "After five consecutive failed sign-ins the account is locked.", "source": "docs/diagrams/login.invariants.yaml", "line": 3 }
+  ]
+}

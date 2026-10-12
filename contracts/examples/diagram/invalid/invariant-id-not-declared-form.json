@@ -1,0 +1,4 @@
+{ "diagram": "auth-flow", "type": "sequence", "source": "docs/diagrams/auth-flow.architecture.json", "elements": [
+  { "id": "a", "kind": "node", "label": "A" },
+  { "id": "lockout", "kind": "invariant", "label": "five failures lock", "source": "docs/diagrams/auth-flow.invariants.yaml" }
+] }

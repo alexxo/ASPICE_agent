@@ -1,0 +1,3 @@
+value-as-text.json: {path: "measurements/0/value", keyword: type}
+no-requirement.json: {path: "measurements/0", keyword: required}
+empty.json: {path: "measurements", keyword: minItems}

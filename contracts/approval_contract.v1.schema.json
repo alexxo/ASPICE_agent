@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/approval_contract.v1.schema.json",
+  "title": "approval.v1",
+  "description": "The record of one human decision at a checkpoint, one YAML file in the approvals directory. The hashes bind the decision to the exact content reviewed: a changed file no longer matches its approval. 'Dated before the derived work' is checked by the verify_*-approval gates against git history, not here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "checkpoint",
+    "decision",
+    "approver",
+    "date",
+    "subject"
+  ],
+  "properties": {
+    "checkpoint": {
+      "description": "1 diagram (architect) · 2 requirements (architect) · 3 tech stack (architect) · 4 sampled pull request (reviewer) · 5 acceptance (customer).",
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "decision": {
+      "enum": [
+        "approved",
+        "changes-requested"
+      ]
+    },
+    "approver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "architect",
+            "reviewer",
+            "customer"
+          ]
+        }
+      }
+    },
+    "date": {
+      "description": "ISO 8601 date-time with offset.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2})?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "subject": {
+      "description": "Every file the decision covers, with the SHA-256 of its content at decision time.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "comment": {
+      "description": "Required when changes are requested: it becomes the findings for the plugin's next run.",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "checkpoint": {
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          }
+        },
+        "required": [
+          "checkpoint"
+        ]
+      },
+      "then": {
+        "properties": {
+          "approver": {
+            "properties": {
+              "role": {
+                "const": "architect"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "checkpoint": {
+            "const": 4
+          }
+        },
+        "required": [
+          "checkpoint"
+        ]
+      },
+      "then": {
+        "properties": {
+          "approver": {
+            "properties": {
+              "role": {
+                "const": "reviewer"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "checkpoint": {
+            "const": 5
+          }
+        },
+        "required": [
+          "checkpoint"
+        ]
+      },
+      "then": {
+        "properties": {
+          "approver": {
+            "properties": {
+              "role": {
+                "const": "customer"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision": {
+            "const": "changes-requested"
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "then": {
+        "required": [
+          "comment"
+        ]
+      }
+    }
+  ]
+}

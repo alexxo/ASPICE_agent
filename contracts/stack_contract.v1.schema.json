@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/stack_contract.v1.schema.json",
+  "title": "stack.v1",
+  "description": "The product's tech stack: the first decision of SWE.2 architecture, proposed by the agent and approved by the architect at checkpoint 3. Every plugin generates code for it. Requirements name verification suites; this file names the command that runs each one. That every suite a requirement names has a command here is a rule of check_stack_decision_gate (UNKNOWN_INSTRUMENT), not of this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "language",
+    "code_files",
+    "test_files",
+    "integration_test_files",
+    "software_test_files",
+    "env_read_patterns",
+    "suites",
+    "checks",
+    "security_scans",
+    "decision_record"
+  ],
+  "properties": {
+    "contract": { "const": "stack.v1" },
+    "language": { "$ref": "#/$defs/component" },
+    "runtime": { "$ref": "#/$defs/component" },
+    "frameworks": { "$ref": "#/$defs/components" },
+    "libraries": { "$ref": "#/$defs/components" },
+    "data_stores": { "$ref": "#/$defs/components" },
+    "code_files": {
+      "description": "Glob patterns, relative to qf.yaml paths.code_dir, of the code files (e.g. **/*.java). A file matching code_files and not test_files is code and names its unit with @unit.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "test_files": {
+      "description": "Glob patterns, relative to qf.yaml paths.code_dir, that tell a test file from code (e.g. **/*Test.java, **/test_*.py). The language decides them, so they are part of the stack.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "integration_test_files": {
+      "description": "Glob patterns, relative to qf.yaml paths.integration_tests_dir, of the component and integration test files (e.g. **/*IT.java, **/test_*.py). A component test names its component with @component, an integration test its flow with @flow.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "software_test_files": {
+      "description": "Glob patterns, relative to qf.yaml paths.software_tests_dir, of the software-level test files (e.g. **/*ST.java, **/test_*.py). Each names the requirement it verifies with @sdoc.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "validation_test_files": {
+      "description": "Glob patterns, relative to qf.yaml paths.validation_scenarios_dir, of the automated validation scenarios, run by the validation suite against the deployed release (e.g. **/*AT.java, **/test_*.py). A scenario matching none is run by a person. Absent when every scenario is run by hand.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "env_read_patterns": {
+      "description": "Regular expressions, each with one capture group for the variable's name, that find where the code reads an environment variable (e.g. os\\.environ\\[[\"']([A-Z0-9_]+)[\"']\\]). Empty when the code reads none.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "suites": {
+      "description": "One command per verification suite, keyed by the fixed suite vocabulary that requirements use as their instrument. unit is always present. Each suite writes its test results as JUnit XML to results; the unit suite also writes its code coverage as Cobertura XML to coverage; a suite that measures non-functional requirements writes measurements.v1 JSON to measurements. The validation suite runs the automated validation scenarios against the deployed release; no requirement names it.",
+      "type": "object",
+      "required": ["unit"],
+      "propertyNames": { "enum": ["unit", "integration", "software", "bench", "security", "e2e", "validation"] },
+      "properties": { "unit": { "$ref": "#/$defs/unit_suite" } },
+      "additionalProperties": { "$ref": "#/$defs/suite" }
+    },
+    "checks": {
+      "description": "The coding-principle tools (SWE.3 BP3): run by check_stack_commands_gate, each must pass with zero errors.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lint", "format"],
+      "properties": {
+        "lint": { "$ref": "#/$defs/command" },
+        "format": { "$ref": "#/$defs/command" },
+        "static-analysis": { "$ref": "#/$defs/command" }
+      }
+    },
+    "security_scans": {
+      "description": "The two scanners every pull request runs (principle #29): one for leaked secrets, one for vulnerable dependencies. Each writes its findings as SARIF to results; scan_security_gate blocks on any critical or high finding.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["secrets", "dependencies"],
+      "properties": {
+        "secrets": { "$ref": "#/$defs/scan" },
+        "dependencies": { "$ref": "#/$defs/scan" }
+      }
+    },
+    "decision_record": {
+      "description": "Repository-relative path of the decision record: the alternatives considered and why this stack fits the requirements and respects the constraint requirements.",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))\\S+\\.md$"
+    }
+  },
+  "$defs": {
+    "version": {
+      "description": "An exact version; ranges and 'latest' are not pinned.",
+      "type": "string",
+      "pattern": "^v?[0-9]+(\\.[0-9]+)*([-+][0-9A-Za-z.-]+)?$"
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/version" },
+        "purpose": { "type": "string", "minLength": 1 }
+      }
+    },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/component" }
+    },
+    "report": {
+      "description": "Repository-relative path or glob of a file a suite writes; a glob for tools that write one file per test class (e.g. target/surefire-reports/TEST-*.xml).",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))\\S+$"
+    },
+    "suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run", "tool", "version", "version_command", "results"],
+      "properties": {
+        "run": { "type": "string", "minLength": 1 },
+        "tool": { "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/version" },
+        "version_command": { "$ref": "#/$defs/version_command" },
+        "results": { "description": "Where the suite writes its test results, as JUnit XML.", "$ref": "#/$defs/report" },
+        "coverage": { "description": "Where the suite writes its code coverage, as Cobertura XML.", "$ref": "#/$defs/report" },
+        "measurements": { "description": "Where the suite writes the values it measures, as measurements.v1 JSON (SWE.6 BP3).", "$ref": "#/$defs/report" }
+      }
+    },
+    "unit_suite": {
+      "description": "The unit suite also measures coverage: SWE.4 BP2 compares it with the minimum of the verification plan.",
+      "allOf": [{ "$ref": "#/$defs/suite" }],
+      "required": ["coverage"]
+    },
+    "scan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run", "tool", "version", "version_command", "results"],
+      "properties": {
+        "run": { "type": "string", "minLength": 1 },
+        "tool": { "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/version" },
+        "version_command": { "$ref": "#/$defs/version_command" },
+        "results": { "description": "Where the scanner writes its findings, as SARIF 2.1.0 JSON.", "$ref": "#/$defs/report" }
+      }
+    },
+    "version_command": {
+      "description": "A command that prints the tool's version (e.g. ruff --version); its output must contain the pinned version.",
+      "type": "string",
+      "minLength": 1
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run", "tool", "version", "version_command"],
+      "properties": {
+        "run": { "type": "string", "minLength": 1 },
+        "tool": { "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/version" },
+        "version_command": { "$ref": "#/$defs/version_command" }
+      }
+    }
+  }
+}

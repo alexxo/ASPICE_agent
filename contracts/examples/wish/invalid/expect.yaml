@@ -1,0 +1,5 @@
+id-not-w-form.md: {path: "id", keyword: pattern}
+missing-source.md: {path: "", keyword: required}
+multiline-statement.md: {path: "statement", keyword: pattern}
+unknown-field.md: {path: "", keyword: additionalProperties}
+unknown-kind.md: {path: "kind", keyword: enum}

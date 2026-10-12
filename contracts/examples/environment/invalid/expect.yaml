@@ -1,0 +1,3 @@
+no-skill-dirs-listed.yaml: {path: "skill_dirs", keyword: minItems}
+plugin-path-not-a-skill-file.yaml: {path: "plugins/archify", keyword: pattern}
+unknown-field.yaml: {path: "", keyword: additionalProperties}

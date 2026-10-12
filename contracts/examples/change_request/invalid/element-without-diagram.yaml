@@ -1,0 +1,8 @@
+what: Lock an account after ten failed sign-ins.
+initiator: product owner
+reason: Too many lockouts.
+status: analysed
+affected:
+  wishes: [W-02]
+  elements: [INV-1]
+  requirements: [REQ-0047]

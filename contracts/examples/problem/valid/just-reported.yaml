@@ -1,0 +1,6 @@
+what: The lock message is shown in English to every user.
+where: sign-in page
+reproduce: Lock an account with the browser set to German.
+expected: The message is in German.
+actual: The message is in English.
+status: open

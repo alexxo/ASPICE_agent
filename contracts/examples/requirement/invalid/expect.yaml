@@ -1,0 +1,17 @@
+# file: the JSON path of the error (empty = the block itself) and the failing keyword
+missing-acceptance-criteria.md: {path: "", keyword: required}
+criterion-without-then.md: {path: "acceptance_criteria/0", keyword: required}
+size-outside-scale.md: {path: "size", keyword: enum}
+software-without-refines.md: {path: "", keyword: required}
+system-with-refines.md: {path: "", keyword: not}
+nfr-without-measurement.md: {path: "", keyword: required}
+functional-with-threshold.md: {path: "", keyword: not}
+environment-empty.md: {path: "environment", keyword: oneOf}
+derived-from-without-element.md: {path: "derived_from", keyword: oneOf}
+typed-uid.md: {path: "uid", keyword: pattern}
+unknown-field.md: {path: "", keyword: additionalProperties}
+observability-without-events.md: {path: "", keyword: required}
+threshold-without-number.md: {path: "threshold", keyword: pattern}
+instrument-not-a-suite.md: {path: "measurement_method/instrument", keyword: enum}
+functional-derived-from-wish.md: {path: "kind", keyword: const}
+criterion-without-case.md: {path: "acceptance_criteria/0", keyword: required}

@@ -1,0 +1,3 @@
+unknown-severity.yaml: {path: "severity", keyword: enum}
+missing-reproduce.yaml: {path: "", keyword: required}
+impact-by-name.yaml: {path: "impact/requirements/0", keyword: pattern}

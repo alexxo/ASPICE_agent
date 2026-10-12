@@ -1,0 +1,6 @@
+edge-without-endpoints.json: {path: "elements/1", keyword: required}
+unlabelled-edge.json: {path: "elements/1/label", keyword: minLength}
+node-with-endpoints.json: {path: "elements/1", keyword: not}
+unknown-type.json: {path: "type", keyword: enum}
+invariant-id-not-declared-form.json: {path: "elements/1/id", keyword: pattern}
+invariant-without-source.json: {path: "elements/1", keyword: required}

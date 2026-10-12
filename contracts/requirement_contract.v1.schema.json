@@ -1,0 +1,367 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/requirement_contract.v1.schema.json",
+  "title": "requirement.v1",
+  "description": "One requirement (SWE.1 BP1-BP4). Stored as a fenced ```yaml requirement block inside a Markdown file under the requirements directory; this schema validates one block. Rules across blocks (unique UID, Refines target exists, no cycle, every system requirement refined) are gate rules of check_requirements_contract_gate, not schema rules.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "uid",
+    "level",
+    "kind",
+    "criticality",
+    "statement",
+    "acceptance_criteria",
+    "feasibility",
+    "size",
+    "environment",
+    "derived_from"
+  ],
+  "properties": {
+    "uid": {
+      "description": "Unique identifier. Untyped: level and kind are fields, not part of the UID.",
+      "type": "string",
+      "pattern": "^REQ-[0-9]{4,}$"
+    },
+    "level": {
+      "description": "SWE.1 BP2. system: the product as seen from outside, derived from the architecture diagrams. software: refines a system requirement, derived from the feature's sequence diagram.",
+      "enum": [
+        "system",
+        "software"
+      ]
+    },
+    "kind": {
+      "description": "SWE.1 BP2. functional, constraint, interface, or a non-functional category.",
+      "enum": [
+        "functional",
+        "constraint",
+        "interface",
+        "performance",
+        "security",
+        "usability",
+        "reliability",
+        "maintainability",
+        "portability",
+        "compatibility",
+        "observability"
+      ]
+    },
+    "criticality": {
+      "description": "SWE.1 BP2. The impact if the requirement is not met.",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "statement": {
+      "description": "One sentence, on one line.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]+$"
+    },
+    "acceptance_criteria": {
+      "description": "SWE.1 BP1. At least one testable condition in Given / When / Then form; each becomes at least one test. Each states its case: happy (the intended behaviour), edge (a boundary or unusual input) or error (a failure and how it is handled).",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "case",
+          "given",
+          "when",
+          "then"
+        ],
+        "properties": {
+          "case": {
+            "enum": [
+              "happy",
+              "edge",
+              "error"
+            ]
+          },
+          "given": {
+            "$ref": "#/$defs/line"
+          },
+          "when": {
+            "$ref": "#/$defs/line"
+          },
+          "then": {
+            "$ref": "#/$defs/line"
+          }
+        }
+      }
+    },
+    "feasibility": {
+      "description": "SWE.1 BP3. Whether it can be implemented, and under what conditions.",
+      "type": "string",
+      "minLength": 1
+    },
+    "size": {
+      "description": "SWE.1 BP3. Relative size on the T-shirt scale, as input for project planning.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ]
+    },
+    "environment": {
+      "description": "SWE.1 BP4. The literal \"none\", or every element of the operating environment it touches with the impact on it.",
+      "oneOf": [
+        {
+          "const": "none"
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "element",
+              "impact"
+            ],
+            "properties": {
+              "element": {
+                "$ref": "#/$defs/line"
+              },
+              "impact": {
+                "$ref": "#/$defs/line"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "derived_from": {
+      "description": "SWE.1 BP1/BP5. Where this requirement comes from: a diagram element as <diagram>#<element-id> (see diagram.v1), or — for kind constraint only — the customer wish that imposes it, as W-<n>.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/element_ref"
+        },
+        {
+          "$ref": "#/$defs/wish_ref"
+        }
+      ]
+    },
+    "refines": {
+      "description": "SWE.1 BP2/BP5. The UID of the parent system-level requirement. Required for level software, forbidden for level system.",
+      "type": "string",
+      "pattern": "^REQ-[0-9]{4,}$"
+    },
+    "metric": {
+      "description": "Non-functional kinds only: what is measured.",
+      "$ref": "#/$defs/line"
+    },
+    "threshold": {
+      "description": "Non-functional kinds only: an operator, a number and its unit or counted noun (e.g. <= 200 ms, >= 99.9 %, == 0 findings).",
+      "type": "string",
+      "pattern": "^(<=|>=|<|>|==)\\s*-?[0-9]+(\\.[0-9]+)?(\\s*\\S.*)?$"
+    },
+    "measurement_method": {
+      "description": "Non-functional kinds only: how the metric is measured.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instrument",
+        "window",
+        "sample"
+      ],
+      "properties": {
+        "instrument": {
+          "description": "The verification suite that measures the metric, from the fixed vocabulary shared with stack.v1 — never a tool. The stack names the command that runs it.",
+          "enum": [
+            "unit",
+            "integration",
+            "software",
+            "bench",
+            "security",
+            "e2e"
+          ]
+        },
+        "window": {
+          "$ref": "#/$defs/line"
+        },
+        "sample": {
+          "$ref": "#/$defs/line"
+        }
+      }
+    },
+    "events": {
+      "description": "Kind observability only: the log events the feature emits.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+([._-][a-z0-9]+)*$"
+      }
+    },
+    "watched_by": {
+      "description": "Kind observability only: the alerts or health checks that watch the feature.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/line"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "level": {
+            "const": "software"
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "then": {
+        "required": [
+          "refines"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "level": {
+            "const": "system"
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "refines"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "performance",
+              "security",
+              "usability",
+              "reliability",
+              "maintainability",
+              "portability",
+              "compatibility",
+              "observability"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "metric",
+          "threshold",
+          "measurement_method"
+        ]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "metric"
+              ]
+            },
+            {
+              "required": [
+                "threshold"
+              ]
+            },
+            {
+              "required": [
+                "measurement_method"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "observability"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "events",
+          "watched_by"
+        ]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "events"
+              ]
+            },
+            {
+              "required": [
+                "watched_by"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "derived_from": {
+            "$ref": "#/$defs/wish_ref"
+          }
+        },
+        "required": [
+          "derived_from"
+        ]
+      },
+      "then": {
+        "properties": {
+          "kind": {
+            "const": "constraint"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "line": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]+$"
+    },
+    "element_ref": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*#[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "wish_ref": {
+      "type": "string",
+      "pattern": "^W-[0-9]+$"
+    }
+  }
+}

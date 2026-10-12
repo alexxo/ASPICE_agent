@@ -1,0 +1,6 @@
+# Where this machine keeps its skills (environment.v1). Never committed.
+skill_dirs:
+  - ~/.claude/skills
+  - /opt/company/agent-skills
+plugins:
+  archify: ~/tools/archify/SKILL.md

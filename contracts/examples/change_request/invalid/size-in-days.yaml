@@ -1,0 +1,5 @@
+what: Lock an account after ten failed sign-ins.
+initiator: product owner
+reason: Too many lockouts.
+status: analysed
+size: 3 days

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/release_contract.v1.schema.json",
+  "title": "release.v1",
+  "description": "One release record (SUP.8 BP5-BP7): the version, the configuration items changed since the previous release and the framework version, written by write_release_tool to <qf releases_dir>/<version>.yaml in the release pull request and tagged v<version> after its merge. That the version is the one the commits give, that the list is the one git gives and that the framework version is the pinned release are rules of verify_baseline_gate, not of this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "version", "changed", "framework"],
+  "properties": {
+    "contract": { "const": "release.v1" },
+    "version": {
+      "description": "The release's SemVer version, without a leading v (e.g. 1.4.0); the tag is v<version>.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "changed": {
+      "description": "The configuration items (as qf.yaml declares them) changed since the previous release tag; every item for the first release.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\s]+$"
+      }
+    },
+    "framework": {
+      "description": "The framework release the product's submodule is pinned at: its tag (e.g. v6.0.0).",
+      "type": "string",
+      "pattern": "^\\S+$"
+    }
+  }
+}

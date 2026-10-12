@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/component_contract.v1.schema.json",
+  "title": "component.v1",
+  "description": "One software component of the architecture (SWE.2 BP1–BP4). Stored as a fenced ```yaml component block in a Markdown file under qf.yaml paths.architecture_dir; this schema validates one block. That every node of the architecture diagram is a component, that every software requirement is met by one, that every decision named exists and that every transition names a mode of the component are gate rules of check_design_contract_gate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "derived_from",
+    "role",
+    "name",
+    "responsibility"
+  ],
+  "properties": {
+    "id": {
+      "description": "The component's ID — the ID of the diagram node it comes from.",
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "derived_from": {
+      "description": "The architecture-diagram node, as <diagram>#<node>.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*#[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "role": {
+      "description": "component: software the product builds. external: an actor or system outside it (a user, a third-party service) — no budget, no size, no modes, concurrency or composition root, meets no requirement.",
+      "enum": [
+        "component",
+        "external"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]+$"
+    },
+    "responsibility": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]+$",
+      "description": "What it is responsible for, in one sentence."
+    },
+    "budget": {
+      "description": "SWE.2 BP3: the resources it may use, each with a value and a unit.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "resource",
+          "value",
+          "unit"
+        ],
+        "properties": {
+          "resource": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\n]+$"
+          },
+          "value": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\n]+$"
+          }
+        }
+      }
+    },
+    "size": {
+      "description": "SWE.2 BP3: relative size on the T-shirt scale, as input for project planning, as for requirements.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ]
+    },
+    "meets": {
+      "description": "SWE.2 BP4: the software requirements this component meets.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^REQ-[0-9]{4,}$"
+      }
+    },
+    "decisions": {
+      "description": "Decision records that shaped it.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^ADR-[0-9]{4}$"
+      }
+    },
+    "modes": {
+      "description": "SWE.2 BP2: its software modes and the transitions between them (e.g. start-up → normal → degraded), or why it has none worth stating.",
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode",
+              "to"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "to": {
+                "description": "The modes it can move to; empty for a final mode.",
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*$"
+                }
+              }
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/not_applicable"
+        }
+      ]
+    },
+    "concurrency": {
+      "description": "SWE.2 BP2: what runs in parallel, which resources are shared and how access to them is coordinated, in one sentence — or why it does not apply.",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\n]+$"
+        },
+        {
+          "$ref": "#/$defs/not_applicable"
+        }
+      ]
+    },
+    "composition_root": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]+$",
+      "description": "Principle #15: the one place where this component's concrete implementations are chosen and wired, e.g. AuthServiceApp.main. Optional in the schema; that every component declares it is a rule of check_testability_gate."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "role": {
+            "const": "component"
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "then": {
+        "required": [
+          "budget",
+          "size",
+          "meets",
+          "modes",
+          "concurrency"
+        ]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "budget"
+              ]
+            },
+            {
+              "required": [
+                "size"
+              ]
+            },
+            {
+              "required": [
+                "meets"
+              ]
+            },
+            {
+              "required": [
+                "modes"
+              ]
+            },
+            {
+              "required": [
+                "concurrency"
+              ]
+            },
+            {
+              "required": [
+                "composition_root"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "not_applicable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "not_applicable"
+      ],
+      "properties": {
+        "not_applicable": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\n]+$",
+          "description": "Why it does not apply, e.g. a single-threaded script with one mode."
+        }
+      }
+    }
+  }
+}

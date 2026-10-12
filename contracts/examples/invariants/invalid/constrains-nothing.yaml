@@ -1,0 +1,5 @@
+diagram: login
+invariants:
+  - id: INV-1
+    statement: After five consecutive failed sign-ins the account is locked.
+    constrains: []

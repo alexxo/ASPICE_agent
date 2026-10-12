@@ -1,0 +1,4 @@
+only-one-option.md: {path: "options", keyword: minItems}
+option-without-cons.md: {path: "options/1", keyword: required}
+id-not-adr-form.md: {path: "id", keyword: pattern}
+unknown-status.md: {path: "status", keyword: enum}

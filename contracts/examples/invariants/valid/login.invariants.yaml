@@ -1,0 +1,8 @@
+diagram: login
+invariants:
+  - id: INV-1
+    statement: After five consecutive failed sign-ins the account is locked.
+    constrains: [submit-credentials, session-opened]
+  - id: INV-2
+    statement: No session is opened before the credentials are verified.
+    constrains: [submit-credentials, session-opened]

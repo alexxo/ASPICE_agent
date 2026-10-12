@@ -1,0 +1,6 @@
+contract: release.v1
+version: 1.4.0
+changed: [src]
+framework: v6.0.0
+plugins:
+  archify: 3.0.1

@@ -1,0 +1,6 @@
+# Which wishes each element of the auth-flow diagram realises (diagram_wishes.v1).
+diagram: auth-flow
+links:
+  web-app: [W-01]
+  auth-service: [W-01, W-02]
+  signin-request: [W-01]

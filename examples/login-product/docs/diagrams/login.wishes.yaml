@@ -1,0 +1,8 @@
+# Which wishes each element of the login diagram realises (diagram_wishes.v1).
+diagram: login
+links:
+  web-app: [W-01]
+  auth-service: [W-01]
+  submit-credentials: [W-01]
+  session-opened: [W-01]
+  INV-1: [W-02]

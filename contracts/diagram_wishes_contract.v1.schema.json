@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/diagram_wishes_contract.v1.schema.json",
+  "title": "diagram_wishes.v1",
+  "description": "Which wishes each element of one diagram realises. One YAML file next to the diagram, <diagram>.wishes.yaml, approved with it at checkpoint 1. That every element and wish named exists, and that every behaviour wish is covered by some diagram, are rules of verify_diagram_to_wishes_link_gate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "diagram",
+    "links"
+  ],
+  "properties": {
+    "diagram": {
+      "description": "The diagram these links belong to (same ID as in diagram.v1).",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "links": {
+      "description": "Element ID → the wishes it realises.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+      },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "pattern": "^W-[0-9]+$"
+        }
+      }
+    }
+  }
+}

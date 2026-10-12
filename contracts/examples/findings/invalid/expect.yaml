@@ -1,0 +1,6 @@
+pass-with-findings.json: {path: "findings", keyword: maxItems}
+fail-without-findings.json: {path: "findings", keyword: minItems}
+line-zero.json: {path: "findings/0/line", keyword: minimum}
+gate-name-not-action-what-kind.json: {path: "gate", keyword: pattern}
+finding-without-rule.json: {path: "findings/0", keyword: required}
+rule-not-upper-snake.json: {path: "findings/0/rule", keyword: pattern}

@@ -1,0 +1,11 @@
+missing-unit-section.md: {path: "", keyword: required}
+unit-without-coverage.md: {path: "unit", keyword: required}
+coverage-above-100.md: {path: "unit/coverage/minimum", keyword: maximum}
+unknown-coverage-metric.md: {path: "unit/coverage/metric", keyword: enum}
+no-technique.md: {path: "unit/techniques", keyword: minItems}
+integration-without-order.md: {path: "integration", keyword: required}
+step-without-selection.md: {path: "integration/order/0", keyword: required}
+software-without-order.md: {path: "software", keyword: required}
+software-order-outside-vocabulary.md: {path: "software/order/1", keyword: enum}
+scenario-without-criteria.md: {path: "validation/scenarios/1", keyword: required}
+validation-without-regression.md: {path: "validation", keyword: required}

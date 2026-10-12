@@ -1,0 +1,4 @@
+skill_dirs:
+  - ~/.claude/skills
+versions:
+  archify: 3.0.1

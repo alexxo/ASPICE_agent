@@ -1,0 +1,10 @@
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["schema", "consistency", "unit", "scenarios"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-ra"
+markers = [
+  "layer1: contract schema and example tests (deterministic)",
+  "layer2: framework consistency / drift meta-tests (deterministic)",
+]

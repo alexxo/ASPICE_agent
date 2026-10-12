@@ -1,0 +1,3 @@
+skipped-result.yaml: {path: "results/0/result", keyword: enum}
+branch-instead-of-commit.yaml: {path: "environment/commit", keyword: pattern}
+missing-environment.yaml: {path: "", keyword: required}

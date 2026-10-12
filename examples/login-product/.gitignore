@@ -1,0 +1,5 @@
+# The ASPICE Agent's attempt log (decision 7): local, never committed.
+.qf/
+# Plugins are tools on the machine, never part of the product.
+.agents/
+.claude/

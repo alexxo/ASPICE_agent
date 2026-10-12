@@ -1,0 +1,4 @@
+contract: release.v1
+version: v1.4.0
+changed: [src]
+framework: v6.0.0

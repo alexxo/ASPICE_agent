@@ -1,0 +1,9 @@
+contract: validation.v1
+version: 1.4.0
+environment:
+  name: staging
+  commit: 3f2c9a1b7e4d5c6a8b9f0e1d2c3b4a5f6e7d8c9b
+results:
+  - scenario: validation/scenarios/market-day-demo.md
+    technique: guided demo
+    result: skipped

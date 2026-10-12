@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/wish_contract.v1.schema.json",
+  "title": "wish.v1",
+  "description": "One customer wish. Stored as a fenced ```yaml wish block in the wishes file (qf.yaml paths.wishes_file); this schema validates one block. The diagram is drawn from the wishes, and a constraint requirement may derive from one (derived_from: W-<n>). A unique ID across the file is a gate rule. A wish of kind behaviour must be realised by a diagram (diagram_wishes.v1); a wish of kind constraint need not.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "statement",
+    "source"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^W-[0-9]+$"
+    },
+    "statement": {
+      "description": "The wish in the customer's words, one sentence, on one line.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]+$"
+    },
+    "source": {
+      "description": "Who asked for it (a role, e.g. product owner, operations).",
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "description": "behaviour (the default): realised by diagram elements, and each must be covered by a diagram's wishes file. constraint: a given such as a runtime or a database that no diagram can draw; it is exempt from diagram coverage and becomes a constraint requirement at SWE.1.",
+      "enum": [
+        "behaviour",
+        "constraint"
+      ]
+    }
+  }
+}

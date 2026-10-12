@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/qf_contract.v1.schema.json",
+  "title": "qf.v1",
+  "description": "The framework configuration of a product, qf.yaml: where the work products live and which skill fills each stage (slots). Human-owned and valid before the agent starts. Where plugins are installed is not here — it depends on the machine (environment.v1) — and plugin versions are not tracked: the gates prove the work product, whatever produced it. The product's tech stack is a work product of SWE.2 (stack.v1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "paths",
+    "slots",
+    "review",
+    "urgent_approvers",
+    "change_approvers",
+    "escalate_after_days",
+    "mirror"
+  ],
+  "properties": {
+    "contract": {
+      "description": "The contract version this file is written against.",
+      "const": "qf.v1"
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirements_dir",
+        "glossary_file",
+        "wishes_file",
+        "diagrams_dir",
+        "approvals_dir",
+        "architecture_dir",
+        "decisions_dir",
+        "stack_file",
+        "detailed_design_dir",
+        "code_dir",
+        "verification_plan_file",
+        "env_variables_file",
+        "integration_tests_dir",
+        "software_tests_dir",
+        "observability_dir",
+        "framework_dir",
+        "ci_file",
+        "framework_feedback_file",
+        "releases_dir",
+        "validation_scenarios_dir",
+        "validation_records_dir"
+      ],
+      "properties": {
+        "requirements_dir": {
+          "$ref": "#/$defs/path"
+        },
+        "glossary_file": {
+          "$ref": "#/$defs/path"
+        },
+        "wishes_file": {
+          "$ref": "#/$defs/path"
+        },
+        "diagrams_dir": {
+          "$ref": "#/$defs/path"
+        },
+        "approvals_dir": {
+          "$ref": "#/$defs/path"
+        },
+        "architecture_dir": {
+          "$ref": "#/$defs/path"
+        },
+        "decisions_dir": {
+          "$ref": "#/$defs/path"
+        },
+        "stack_file": {
+          "$ref": "#/$defs/path"
+        },
+        "detailed_design_dir": {
+          "$ref": "#/$defs/path"
+        },
+        "code_dir": {
+          "description": "Where the code and its tests are stored. The gates search it for @unit markers; every file with @unit[x] has x's component id as a segment of its path.",
+          "$ref": "#/$defs/path"
+        },
+        "verification_plan_file": {
+          "description": "The verification plan (verification_plan.v1), one Markdown file with a fenced ```yaml verification_plan block.",
+          "$ref": "#/$defs/path"
+        },
+        "env_variables_file": {
+          "description": "The environment variables the code reads (env_variable.v1), one Markdown file with a fenced ```yaml env_variable block per variable, written with the detailed design.",
+          "$ref": "#/$defs/path"
+        },
+        "integration_tests_dir": {
+          "description": "Where the component and integration tests are stored (SWE.5), apart from code_dir so the unit gates never read them; the stack's integration suite runs them.",
+          "$ref": "#/$defs/path"
+        },
+        "software_tests_dir": {
+          "description": "Where the software-level tests are stored (SWE.6), each naming the requirement it verifies with @sdoc; the stack's software suite runs the software-level ones, its e2e suite the system-level ones.",
+          "$ref": "#/$defs/path"
+        },
+        "observability_dir": {
+          "description": "Where the alert, dashboard and health-check definitions are stored (principle #37-#39), each naming the observability requirement it serves with @sdoc.",
+          "$ref": "#/$defs/path"
+        },
+        "framework_dir": {
+          "description": "Where the framework is checked out as a git submodule pinned to a released commit (SUP.1 BP1, BP2); the product's CI runs the gates from there.",
+          "$ref": "#/$defs/path"
+        },
+        "ci_file": {
+          "description": "The product's CI workflow that runs the gates (e.g. .github/workflows/quality_gates.yml); a code owner must approve every change to it (SUP.1 BP1).",
+          "$ref": "#/$defs/path"
+        },
+        "framework_feedback_file": {
+          "description": "The framework feedback log (principle #47): every framework weakness found while building, and every framework version bump accounted for.",
+          "$ref": "#/$defs/path"
+        },
+        "releases_dir": {
+          "description": "Where the release records are stored (release.v1), one <version>.yaml per release, added by the release pull request and tagged v<version> after its merge (SUP.8 BP5-BP7).",
+          "$ref": "#/$defs/path"
+        },
+        "validation_scenarios_dir": {
+          "description": "Where the validation scenarios live (VAL.1 BP1): each file naming a wish with @wish[W-<n>] is one, an automated test when it matches the stack's validation_test_files, written steps run by a person otherwise.",
+          "$ref": "#/$defs/path"
+        },
+        "validation_records_dir": {
+          "description": "Where the validation records are stored (validation.v1), one <version>.yaml per release, added by the release pull request after the deployment to staging (VAL.1 BP3). Evidence of a baseline, not a configuration item.",
+          "$ref": "#/$defs/path"
+        }
+      }
+    },
+    "slots": {
+      "description": "One entry per ASPICE Agent stage that a plugin fills: <plugin> or <plugin>/<skill>.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "create_diagram_plugin",
+        "create_requirements_plugin",
+        "create_architecture_plugin",
+        "create_detailed_design_plugin",
+        "create_unit_tests_plugin",
+        "create_unit_code_plugin",
+        "create_integration_tests_plugin",
+        "create_software_tests_plugin",
+        "review_pull_request_plugin",
+        "create_validation_scenarios_plugin"
+      ],
+      "properties": {
+        "create_diagram_plugin": {
+          "$ref": "#/$defs/slot"
+        },
+        "create_requirements_plugin": {
+          "$ref": "#/$defs/slot"
+        },
+        "create_architecture_plugin": {
+          "$ref": "#/$defs/slot"
+        },
+        "create_detailed_design_plugin": {
+          "$ref": "#/$defs/slot"
+        },
+        "create_unit_tests_plugin": {
+          "description": "Stage 5, first: writes the unit tests and one stub per unit without seeing the code.",
+          "$ref": "#/$defs/slot"
+        },
+        "create_unit_code_plugin": {
+          "description": "Stage 5, second: replaces the stubs with the real units until the tests pass, never editing a test.",
+          "$ref": "#/$defs/slot"
+        },
+        "create_integration_tests_plugin": {
+          "$ref": "#/$defs/slot"
+        },
+        "create_software_tests_plugin": {
+          "description": "Stage 8: writes the software section of the plan, the software-level tests, the measurements and the observability definitions; the coder follows.",
+          "$ref": "#/$defs/slot"
+        },
+        "review_pull_request_plugin": {
+          "description": "Stage 9: reviews the pull request from its own account with the review checklist; never the author's account.",
+          "$ref": "#/$defs/slot"
+        },
+        "create_validation_scenarios_plugin": {
+          "description": "Stage 11: writes the validation scenarios and the validation section of the plan from the wishes, the diagrams and the outside interfaces; never reads the requirements or the code.",
+          "$ref": "#/$defs/slot"
+        }
+      }
+    },
+    "review": {
+      "description": "Who reviews a pull request (SUP.1 BP1, SWE.3 BP5): a reviewer agent always, a person on every architecture pull request and on 1 in sample_every of the others, chosen by pull-request number.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agents",
+        "sample_every"
+      ],
+      "properties": {
+        "agents": {
+          "description": "The host accounts the reviewer agent posts from. An approver that is none of these, no bot and not the author counts as a person.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(\\[bot\\])?$"
+          }
+        },
+        "sample_every": {
+          "description": "N of '1 in N': a pull request whose number is a multiple of N needs a person's approval.",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "config_items": {
+      "description": "The product's own configuration items, added to the framework's list (every path above and qf.yaml); never a way to remove one (SUP.8 BP1).",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/path"
+      }
+    },
+    "urgent_approvers": {
+      "description": "The host accounts that may authorize the urgent fix of a critical problem (SUP.9 BP3), with /authorize-urgent-fix on its issue before the fix merges.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$"
+      }
+    },
+    "change_approvers": {
+      "description": "The host accounts that may approve a change request (SUP.10 BP3), with /approve-change on its issue before the first commit that names it — usually the architects.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$"
+      }
+    },
+    "escalate_after_days": {
+      "description": "How many days a non-conformance may stay open before it must be escalated: labelled escalated and assigned (SUP.1 BP7).",
+      "type": "integer",
+      "minimum": 1
+    },
+    "mirror": {
+      "description": "The URL of the second repository that mirrors this one (SUP.8 BP8); a release is complete only when its tag is there too.",
+      "type": "string",
+      "pattern": "^\\S+$"
+    }
+  },
+  "$defs": {
+    "path": {
+      "description": "Repository-relative, no leading slash, no parent traversal.",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\s]+$"
+    },
+    "slot": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)?$"
+    }
+  }
+}
