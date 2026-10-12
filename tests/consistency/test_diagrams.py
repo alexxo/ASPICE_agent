@@ -27,7 +27,7 @@ def _blocks(repo_root):
 
 
 def _flowchart(repo_root):
-    (block,) = [b for b in _blocks(repo_root) if b.startswith("flowchart") and "subgraph P1[" in b]
+    (block,) = (b for b in _blocks(repo_root) if b.startswith("flowchart") and "subgraph P1[" in b)
     parts = re.split(r"^\s*subgraph P(\d+)\[", block, flags=re.M)[1:]
     pairs = zip(parts[::2], parts[1::2], strict=True)
     return {int(n): body.split("\n  end\n")[0] for n, body in pairs}
@@ -88,13 +88,13 @@ def test_every_stage_names_its_plugins(repo_root):
             expected = {*([s.slot] if s.slot else []), *s.also_slots}
             named = _names(views[view][s.number], "plugin")
             shown = {p for p in named if p.startswith(("create_", "review_"))}
-            assert shown == expected, (
-                f"{view}, stage {s.number}: {sorted(shown)} != {sorted(expected)}"
-            )
+            assert (
+                shown == expected
+            ), f"{view}, stage {s.number}: {sorted(shown)} != {sorted(expected)}"
 
 
 def test_the_inside_names_every_agent_tool(repo_root):
-    (block,) = [b for b in _blocks(repo_root) if "run_aspice_agent<br/>" in b]
+    (block,) = (b for b in _blocks(repo_root) if "run_aspice_agent<br/>" in b)
     tools = {p.stem for p in (repo_root / "agent").glob("*_tool.py")}
     missing = tools - {name for _, name in PARTICIPANT.findall(block)}
     assert not missing, f"the agent's inside has no participant {sorted(missing)}"
