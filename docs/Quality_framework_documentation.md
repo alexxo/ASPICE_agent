@@ -1,10 +1,12 @@
 # Quality Framework
 
-> **Status:** working document of the refactor of `main` (9f0eb96), restructured
-> on 2026-10-01. Five parts: the principles; why ASPICE; the tale of the bridge;
-> every ASPICE base practice with its final version and gate checks; how it is
-> implemented. The decision history is in the appendix. The principles are the
-> source of truth: every practice they name has a gate.
+> **What this is:** the description of the Quality Framework — the ASPICE
+> Agent — as it is. Five parts: the principles; why ASPICE; the tale of the
+> bridge; every ASPICE base practice with its final version and gate checks;
+> how it is implemented. Appendix A records the forks: where the design chose
+> between real options, and why. Appendix B records where the practices came
+> from. The principles are the source of truth: every practice they name has a
+> gate.
 
 ---
 
@@ -16,73 +18,38 @@ derived from it, and **every requirement is tested**. The principles below say
 *why*; every practice in § 4 is the checkable form of one of them, and every
 practice has a gate.
 
-
-The Philosophy states its principles first; every practice in § 3.1 belongs to
-exactly one of them (the **Principle** column). Each practice is the concrete,
-checkable form of a principle.
-
-**Stated in the Philosophy** — quoted verbatim from
-`DOCUMENTATION_Quality-framework_Gentle.ai.md` § 1 on `main` (9f0eb96):
-
-- **Requirements-driven development** — think requirements through thoroughly before generating code _(Phase 1)_
-- **Inspectability** — full traceability from requirements to tests and code _(Phase 1)_
-- **Testability** — code structured so it can be verified in isolation _(Phase 1 → 4)_
+- **Requirements-driven development** — think requirements through thoroughly before generating code.
+- **Inspectability** — full traceability from requirements to tests and code.
+- **Testability** — code structured so it can be verified in isolation.
   - Write tests first (TDD)
   - Testing across environments and configurations
   - Reusable test suite across features
-- **Modularity** — separation of concerns and clear module boundaries _(Phase 2)_
-- **Security** — defensive posture baked into the pipeline _(Phase 2 → 4)_
+- **Modularity** — separation of concerns and clear module boundaries.
+- **Security** — defensive posture baked into the pipeline.
   - Reusable security test templates
   - Automated security scanning in CI
-- **Static analysis** — lint and format rules configured once, applied consistently _(Phase 3)_
-- **Documentation and code comments** — explain _why_, not _what_ _(Phase 3)_
-- **Version control discipline** — clean commits, meaningful messages, branching strategy _(Phase 3)_
-- **Logging** — structured logging derived from the requirement spec _(Phase 3)_
-- **Code review (four-eyes principle)** — human verification gate before merging _(Phase 4)_
-- **Performance testing** — measure response times, query counts, memory usage _(Phase 5)_
-- **Observability** — alerts for unusual patterns, failed authentication, unexpected errors _(Phase 6)_
-
-**Proposed by Claude, pending review** (2026-09-30) — practices already
-described in the Philosophy's body had no principle in its list. Wording is
-Claude's:
-
-- **Architecture governance** — the system-level frame changes only on its own track, with its own approvers, one change at a time. *Described in Philosophy § 0 (two-track model); practices 1–4.*
-- **Acceptance** — an increment ships only when it has been verified against a deployed system and accepted by the Product Owner. *Described in Philosophy § 3.5; practices 32, 33, 36.*
-- **Feedback loop** — what production and the team learn flows back into the next iteration as tracked work. *Described in Philosophy § 3.6 C; practices 40, 41, 54.*
-- **Framework improvement** — weaknesses found in the framework are recorded and fixed upstream, never worked around. *Not in the Philosophy today — from `AGENTS.md § Standing rules`; practice 47.*
-
-The phase numbers above are the Philosophy's original six phases; they become
-V stages during migration.
-
-The table in § 3.1 lists every practice that section names.
-
-**Added to the Philosophy on 2026-09-30** (they were enforced or planned but not
-stated as practices — rows 42–47): requirements are derived from the diagram;
-diagrams are approved by a human before requirements are derived; tests sit at
-the V level paired with the requirement type; the `REFINES` graph is valid; the
-requirements overview is generated and current; framework defects are logged,
-never worked around. Their rationale must be written into this section during
-migration.
-
-**Added on 2026-09-30 to reach ASPICE capability level 1** (rows 48–55): the
-minimum practices that close the level-1 gaps no existing row covered —
-operating-environment impact of requirements; agreed and baselined
-requirements; architecture resource budgets; design ↔ code consistency; one
-verification strategy for unit, integration and qualification testing; release
-baselines; problems tracked to closure; change requests with recorded analysis.
-
+- **Static analysis** — lint and format rules configured once, applied consistently.
+- **Documentation and code comments** — explain _why_, not _what_.
+- **Version control discipline** — clean commits, meaningful messages, branching strategy.
+- **Logging** — structured logging derived from the requirement spec.
+- **Code review (four-eyes principle)** — human verification gate before merging.
+- **Performance testing** — measure response times, query counts, memory usage.
+- **Observability** — alerts for unusual patterns, failed authentication, unexpected errors.
+- **Architecture governance** — the system-level frame changes only on its own track, with its own approvers, one change at a time.
+- **Acceptance** — an increment ships only when it has been verified against a deployed system and accepted by the customer.
+- **Feedback loop** — what production and the team learn flows back into the next iteration as tracked work.
+- **Framework improvement** — weaknesses found in the framework are recorded and fixed upstream, never worked around.
 
 ### What happens to a principle
-
 
 The rows have two levels of detail. This is not a fourth dimension — it is the
 *what* at two resolutions:
 
 ```
-PRINCIPLE (why, ~16)      →   PRACTICE (what, checkable, 56)    →   GATE (how)
-"Logging — structured         #22 start/end/error events +          `verify_log_events_gate`
- logging derived from          an integration test that
- the requirement spec"         asserts them
+PRINCIPLE (why)               →   PRACTICE (what, checkable)        →   GATE (how)
+"Logging — structured             start/end/error events +              verify_log_events_gate
+ logging derived from              an integration test that
+ the requirement spec"             asserts them
 ```
 
 - A **principle** is the quality property the framework is after. It is broad
@@ -93,15 +60,14 @@ PRINCIPLE (why, ~16)      →   PRACTICE (what, checkable, 56)    →   GATE (ho
   one gate.
 
 Everything else is an **attribute of a practice**, not another level: the V
-stage where it is authored and verified, the ASPICE process it serves, its
-source in the Philosophy, and its status on `main`.
+stage where it is authored and verified, and the ASPICE process it serves.
 
-| Level | What it answers | Count |
+| Level | What it answers | Where |
 |---|---|---|
-| Principle | Why | 12 stated + 4 proposed = 16 |
-| Practice | What, checkably | 56 |
-| Gate | How it is checked | ~7, grouped |
-| *Attributes of a practice* | When (stage), ASPICE process, source, status on `main` | — |
+| Principle | Why | § 1 — 16 principles |
+| Practice | What, checkably | § 4 — the final version of every base practice, and § 4.2 |
+| Gate | How it is checked | *gates/* — one file per gate |
+| *Attributes of a practice* | When (stage), ASPICE process | § 4 and *agent/stages.yaml* |
 
 
 ---
@@ -136,9 +102,8 @@ base practices as 4.0, with editorial changes only.
 assurance), SUP.8 (configuration management), SUP.9 (problem resolution) and
 SUP.10 (change requests) — 66 base practices.
 
-**Scope decision — SYS processes out of scope, system-level requirements
-verified in SWE.6 (2026-10-02).** The system-level processes SYS.1–SYS.5 are not
-adopted: products built with this framework are pure software, so there is no
+**SYS processes are out of scope; system-level requirements are verified in
+SWE.6.** The system-level processes SYS.1–SYS.5 are not adopted: products built with this framework are pure software, so there is no
 system architecture, no hardware and no system integration. The software *is*
 the whole product. Therefore:
 
@@ -173,7 +138,7 @@ lies outside the scope chosen in § 4.
 ASPICE is the floor, not the ceiling: it guarantees a well-run engineering
 process, but says nothing about specific product qualities (security, operations)
 or techniques (TDD, ports). The principles go further, which is why the
-Philosophy stays the source of truth and ASPICE a reference, not a limit. If the
+principles stay the source of truth and ASPICE a reference, not a limit. If the
 scope is extended later, part of this section maps onto ASPICE: security onto the
 cybersecurity model, #41 and #47 onto PIM.3.
 
@@ -188,21 +153,18 @@ processes:
 
 | Step | Logging (#22) | Observability (#37–39) | ASPICE process |
 |---|---|---|---|
-| Specified | Which events each feature emits, with which fields — the Philosophy says logging is *"derived from the requirement spec"* | Alerts, dashboards and health checks as non-functional requirements | SWE.1 (and system requirements) |
+| Specified | Which events each feature emits, with which fields — the Logging principle says it is *"derived from the requirement spec"* | Alerts, dashboards and health checks as non-functional requirements | SWE.1 (and system requirements) |
 | Designed | Logging is an architectural element: a port the modules write to | Telemetry, alerting and health endpoints in the architecture | SWE.2 |
 | Implemented | Start/end/error events in the code | Health endpoint in the code | SWE.3 |
 | Verified | An integration test asserts the events | Alerts tested in staging before production | SWE.5 (logging), SWE.6 (observability) |
 | Used in operation | Logs are the evidence when something fails | Alerts detect the failure | SUP.9 Problem resolution |
 
 **Consequence for the practices.** For this mapping to be real, logging and
-observability must exist **as requirements in the corpus**, not only as coding
-rules — otherwise SWE.1 has nothing to trace. Today practice 22 checks the code
-and its test; nothing requires a requirement that says *which* events or alerts
-a feature needs. **Decided 2026-09-30:** a dedicated
-requirement type `NFR-OBS` states which log events and which alerts or health
-checks a feature needs; its `MEASUREMENT_METHOD` points at the logging test or
-the alert file. That chains it end to end — requirement → test → alert — and
-gives SWE.1 something to trace. Recorded as practice 56.
+observability exist **as requirements in the corpus**, not only as coding rules
+— otherwise SWE.1 has nothing to trace. A requirement of kind
+**observability** states which log events (*events*) and which alerts,
+dashboards or health checks (*watched_by*) a feature needs. That chains it end
+to end — requirement → test → alert — and gives SWE.1 something to trace.
 
 
 ---
@@ -215,7 +177,7 @@ ASPICE Agent works, told as the building of a bridge. Every bridge text in this
 document — and every explanation the agent gives in bridge terms — uses exactly
 the words of the glossary below, one bridge word per framework term.
 
-### The glossary of the tale — decided 2026-10-10
+### The glossary of the tale
 
 **Roles — who does what**
 
@@ -379,8 +341,8 @@ and the **gates** are the inspectors.
 
 ### The bridge, part 2 — crews, standard forms and translators
 
-Added 2026-10-03, reworded to the glossary 2026-10-10. A plain-language view of
-plugins, contracts, adapters, gates and findings (§ 5).
+A plain-language view of plugins, contracts, adapters, gates and findings
+(§ 5).
 
 Every profession is played by a **crew**. The **foreman** (the ASPICE Agent) walks the
 **site schedule** and, at every step, hires the crew for that **job**: a
@@ -450,10 +412,8 @@ inspectors only ever read forms.
 
 ### The bridge, part 3 — the steps of the site schedule
 
-Added 2026-10-10. What each step of the site schedule does, in the words of the
-glossary: one description per step, kept current with the step's design. Whether
-a step is built yet is not part of its description — that lives in
-*agent/stages.yaml* (*implemented*) and the CHANGELOG. In each step, the first
+What each step of the site schedule does, in the words of the glossary: one
+description per step. In each step, the first
 mention of a bridge word carries the framework's name in parentheses, e.g.
 *drawing studio (plugin Archify)*; the inspectors' gate names and rule IDs are
 in square brackets, e.g. *[UNCOVERED_WISH]*.
@@ -764,7 +724,7 @@ belongs to another process group and is referenced, not repeated.
 |  | BP4: Analyze the impact on the operating environment | Every requirement states, in its **Environment** field, its impact on the operating environment:<br>• **Elements affected** — the hardware, operating system, network or neighbouring systems it touches.<br>• **Impact** — what changes for each one (e.g. *opens port 443 towards the payment gateway*, *needs 200 MB of extra memory*).<br>• **None** — if it touches nothing outside the software, the field says "none" explicitly, so it is clear it was analysed and not forgotten. | **Statement:** Environment impact stated<br>**Evidence:** The Environment field of every requirement<br>**Gate:** check_requirements_contract_gate<br>**What it verifies:** Every requirement has an Environment field naming affected elements and their impact, or none<br>────────────────<br>**Not checkable:** that the impact analysis is right — the architect reviews it at checkpoint 2 |
 |  | BP5: Ensure consistency and establish bidirectional traceability | Every software requirement is traceable in both directions:<br>• **To the system requirements** — through its **Refines** field. In the other direction, every system requirement is refined by at least one software requirement.<br>• **To the system architecture** — through its **Derived from** field, which names the diagram element it comes from. In the other direction, every diagram element is covered by at least one requirement.<br>• **Consistency** — no link points to a requirement or element that does not exist.<br><br>A report generated on every CI run shows these links for every requirement, together with the tests and code linked to it and their latest pass/fail. | **Statement:** Requirements ↔ architecture<br>**Evidence:** Derived from fields + the diagram elements<br>**Gate:** verify_requirements_to_diagram_link_gate<br>**What it verifies:** Every requirement names an existing element, and every element is covered by at least one requirement<br>────────────────<br>**Statement:** Software ↔ system requirements<br>**Evidence:** Refines fields<br>**Gate:** check_requirements_contract_gate<br>**What it verifies:** Every software requirement refines an existing system requirement, and every system requirement is refined by at least one software requirement<br>────────────────<br>**Statement:** Report generated<br>**Evidence:** The report of the CI run<br>**Gate:** check_verification_report_gate<br>**What it verifies:** The report exists for the run and shows every requirement's links, tests, code and latest pass/fail |
 |  | BP6: Communicate the agreed software requirements and the impact on the operating environment | Requirements are agreed and communicated through the repository:<br>• **Diagram approval** — the diagram is approved by a human before the requirements are derived from it, and that approval is recorded in the repository.<br>• **Approval of the derived requirements** — the architect approves the requirements the agent derived from the diagram, confirming they say what was meant, before any design or code starts. The approval is recorded in the repository.<br>• **Agreement** — a requirement reaches the main branch only through a pull request approved by a reviewer other than its author. Merged means agreed.<br>• **Communication** — the pull request notifies the reviewers, and the report generated on every CI run (BP5) shows anyone the agreed requirements and their **Environment** impact.<br>• **Baseline** — every release tag records which requirements were agreed at that moment. | **Statement:** Diagram approved before derivation<br>**Evidence:** The recorded diagram approval + the first commit of the derived requirements<br>**Gate:** verify_diagram_approval_gate<br>**What it verifies:** The approval exists and is dated before the requirements were derived<br>────────────────<br>**Statement:** Requirements approved before design<br>**Evidence:** The recorded requirements approval + the first design or code commit<br>**Gate:** verify_requirements_approval_gate<br>**What it verifies:** The architect's approval exists and is dated before any design or code commit<br>────────────────<br>**Statement:** Agreed through a reviewed pull request<br>**Evidence:** Branch protection + review records<br>**Gate:** verify_host_settings_gate<br>**What it verifies:** Requirements reach the main branch only through an approved pull request<br>────────────────<br>**Relies on:** SUP.8 BP5 for the release baseline (verify_baseline_gate) — no SWE gate of its own |
-| SWE.2 | BP1: Specify the static aspects of the software architecture | The architecture is built **from the approved architecture diagram** (flowchart), and documented in one document that follows the architecture model:<br>• **Components** — each node of the diagram is a software component, with its responsibility.<br>• **Interfaces** — each labelled edge is an interface between components; the edges that cross the system boundary are the external interfaces.<br>• **Relationships** — the edges show how the components depend on and connect to each other.<br>• **Link to the wishes** — every element of the diagram names the wish it comes from (e.g. *wish: W-03*), so every wish can be followed into the architecture and every element can be justified by a wish.<br>• **Diagram as source of truth** — the document never copies or redraws the approved diagram: every component and interface names the diagram element it comes from (e.g. *derived_from: auth-flow#auth-service*), and every node and edge of the diagram is one of them. If prose and diagram disagree, the diagram wins.<br><br>Every component is justified by the software requirements, functional and non-functional, that it serves (see BP4). | **Statement:** Architecture built from the approved diagram<br>**Evidence:** The architecture document + the approved diagram source<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every diagram node is a documented component with a responsibility, every labelled edge an interface, and the boundary-crossing edges are marked as external<br>────────────────<br>**Statement:** Diagram as source of truth<br>**Evidence:** The derived_from link of every component and interface + the approved diagram source<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every component and interface comes from an element of the approved diagram, and every node and edge is one of them<br>────────────────<br>**Not checkable:** that the prose agrees with the diagram — the reviewer checks it at the pull request<br>────────────────<br>**Statement:** Linked to the wishes<br>**Evidence:** The wish link of every diagram element + the wishes document<br>**Gate:** verify_diagram_to_wishes_link_gate (new)<br>**What it verifies:** Every diagram element names an existing wish<br>────────────────<br>**Statement:** Components justified by requirements<br>**Evidence:** Derived from fields<br>**Gate:** verify_requirements_to_diagram_link_gate<br>**What it verifies:** Every component serves at least one requirement |
+| SWE.2 | BP1: Specify the static aspects of the software architecture | The architecture is built **from the approved architecture diagram** (flowchart), and documented in one document that follows the architecture model:<br>• **Components** — each node of the diagram is a software component, with its responsibility.<br>• **Interfaces** — each labelled edge is an interface between components; the edges that cross the system boundary are the external interfaces.<br>• **Relationships** — the edges show how the components depend on and connect to each other.<br>• **Link to the wishes** — every element of the diagram names the wish it comes from (e.g. *wish: W-03*), so every wish can be followed into the architecture and every element can be justified by a wish.<br>• **Diagram as source of truth** — the document never copies or redraws the approved diagram: every component and interface names the diagram element it comes from (e.g. *derived_from: auth-flow#auth-service*), and every node and edge of the diagram is one of them. If prose and diagram disagree, the diagram wins.<br><br>Every component is justified by the software requirements, functional and non-functional, that it serves (see BP4). | **Statement:** Architecture built from the approved diagram<br>**Evidence:** The architecture document + the approved diagram source<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every diagram node is a documented component with a responsibility, every labelled edge an interface, and the boundary-crossing edges are marked as external<br>────────────────<br>**Statement:** Diagram as source of truth<br>**Evidence:** The derived_from link of every component and interface + the approved diagram source<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every component and interface comes from an element of the approved diagram, and every node and edge is one of them<br>────────────────<br>**Not checkable:** that the prose agrees with the diagram — the reviewer checks it at the pull request<br>────────────────<br>**Statement:** Linked to the wishes<br>**Evidence:** The wish link of every diagram element + the wishes document<br>**Gate:** verify_diagram_to_wishes_link_gate<br>**What it verifies:** Every diagram element names an existing wish<br>────────────────<br>**Statement:** Components justified by requirements<br>**Evidence:** Derived from fields<br>**Gate:** verify_requirements_to_diagram_link_gate<br>**What it verifies:** Every component serves at least one requirement |
 |  | BP2: Specify the dynamic aspects of the software architecture | The run-time behaviour is described **from the approved behaviour diagrams**:<br>• **Behaviour and interaction** — every relevant flow is an approved sequence diagram. Its participants are the components of the architecture diagram, and its messages show how they interact.<br>• **Software modes** — each component lists its modes and the transitions between them (e.g. *start-up → normal → degraded*).<br>• **Concurrency** — each component states what runs in parallel, which resources are shared and how access to them is coordinated (e.g. *sign-ins run in parallel; the failure counter is updated atomically*).<br><br>The document never copies or redraws the sequence diagrams. Modes and concurrency may be declared "not applicable" with a reason (e.g. *a single-threaded script with one mode*). | **Statement:** Behaviour from approved diagrams<br>**Evidence:** Sequence and state diagrams of the architecture<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every participant of every approved sequence diagram is a node of the architecture diagram, and so a component<br>────────────────<br>**Statement:** Modes and concurrency stated<br>**Evidence:** The modes and concurrency of every component<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every component states both, or declares each not applicable with a reason, and every transition goes to one of its own modes<br>────────────────<br>**Not checkable:** that the described behaviour is correct — the architect approves it at checkpoint 1 |
 |  | BP3: Analyze the software architecture | The architecture is analysed before it is agreed:<br>• **Diagram critique** — the architecture diagram is checked for missing trust boundaries, components with overlapping responsibilities, ambiguous or bidirectional flows, and missing cross-cutting concerns (observability, security).<br>• **Technical aspects** — each component states its **resource budget** (e.g. time, memory, throughput), with value and unit, inside the architecture document.<br>• **Design decisions** — every non-obvious decision is recorded in an ADR with its rationale and the alternatives rejected, and is referenced from the code it affects.<br>• **Tech stack** — the first design decision: language, runtime, frameworks, libraries and data stores with exact versions, one command per verification suite and check, and the scanners, chosen against the alternatives in a decision record and approved by the architect (checkpoint 3) before any component is designed.<br>• **Size** — each component carries a relative size (S, M, L or XL) as input for project planning, as requirements do in SWE.1 BP3. | **Statement:** Diagram critique (structural part)<br>**Evidence:** The diagram source, read through its adapter<br>**Gate:** check_diagram_contract_gate<br>**What it verifies:** No unlabelled edge, no dangling endpoint, no orphan node<br>────────────────<br>**Statement:** Budget and size per component<br>**Evidence:** The architecture document<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every component has a resource budget with value and unit, and a size from S, M, L, XL<br>────────────────<br>**Statement:** Decisions recorded<br>**Evidence:** ADR files + ADR markers in the code<br>**Gate:** verify_decision_records_gate<br>**What it verifies:** Every ADR marker resolves to an existing ADR file<br>────────────────<br>**Not checkable:** missing trust boundaries, overlapping responsibilities and missing cross-cutting concerns — the architect reviews them at checkpoint 1<br>────────────────<br>**Statement:** Tech stack decided<br>**Evidence:** The stack file + its decision record<br>**Gate:** check_stack_decision_gate<br>**What it verifies:** The stack follows *stack.v1* with exact versions, its decision record exists, and every suite a requirement names has a command<br>────────────────<br>**Statement:** Tech stack approved first<br>**Evidence:** The recorded approval of checkpoint 3 + the first component design<br>**Gate:** verify_stack_approval_gate<br>**What it verifies:** The architect approved the current stack before any component was designed |
 |  | BP4: Ensure consistency and establish bidirectional traceability | The architecture and the software requirements are traceable in both directions through the **Derived from** links described in SWE.1 BP5 (every requirement names the diagram element it comes from, every diagram element is covered by at least one requirement, and no link points to something that does not exist). In addition:<br>• **Acceptance criteria** — the architecture states which component meets each software requirement (*meets: [REQ-0011]*), and with it every acceptance criterion of that requirement; since a requirement holds one behaviour (SWE.1), the requirement is the right grain. It is approved before implementation. | **Statement:** Requirements ↔ architecture<br>**Evidence:** Derived from fields + the diagram elements<br>**Gate:** verify_requirements_to_diagram_link_gate<br>**What it verifies:** As in SWE.1 BP5: both directions, no dangling link<br>────────────────<br>**Statement:** Acceptance criteria assigned<br>**Evidence:** The meets list of every component + the software requirements<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every software requirement, with its acceptance criteria, is met by a component, and no component meets a requirement that does not exist<br>────────────────<br>**Statement:** Approved before implementation<br>**Evidence:** The recorded diagram approval + the first code commit<br>**Gate:** verify_diagram_approval_gate<br>**What it verifies:** The architecture approval is dated before any implementation commit |
@@ -774,7 +734,7 @@ belongs to another process group and is referenced, not repeated.
 |  | BP3: Develop the software units | Every software unit is developed consistently with its detailed design and according to the coding principles:<br>• **Link to the design** — every source file states, with a marker, the unit it implements (e.g. *@unit[parse-csv]*). Every unit in the detailed design is implemented by at least one source file.<br>• **Coding principles** — the lint, format and static-analysis tools the product declares, with pinned versions, pass with zero errors.<br>• **One folder per component** — every file with a unit marker lies, at any depth, in a folder named after the unit's component (e.g. *src/main/java/com/acme/auth_service/Login.java*), so the code's structure mirrors the architecture; the rest of the path follows the stack's own conventions. | **Statement:** Code ↔ design units<br>**Evidence:** Unit markers in the source files + the detailed designs<br>**Gate:** verify_code_to_design_link_gate<br>**What it verifies:** Every source file names an existing unit, and every unit is implemented by at least one source file<br>────────────────<br>**Statement:** Coding principles<br>**Evidence:** The lint, format and static-analysis commands declared with pinned versions<br>**Gate:** check_stack_commands_gate<br>**What it verifies:** Each declared command runs with its pinned version and passes with zero errors<br>────────────────<br>**Statement:** One folder per component<br>**Evidence:** The paths of the files with unit markers + the detailed designs<br>**Gate:** verify_code_to_design_link_gate<br>**What it verifies:** Every file with a unit marker has its unit's component id as a segment of its path |
 |  | BP4: Ensure consistency and establish bidirectional traceability | The detailed design, the code and the requirements are traceable to each other:<br>• **Detailed design ↔ architecture** — every detailed design belongs to a component in the architecture, and every component in the architecture has its detailed design.<br>• **Code ↔ detailed design** — the unit markers in the code (SWE.3 BP3: every source file names its unit, and every unit is implemented) link each unit to its code in both directions.<br>• **Code ↔ requirements** — every source file that implements a requirement carries that requirement's marker (e.g. *@sdoc[REQ-0047]*), and no marker names a requirement that does not exist.<br>• **Detailed design ↔ requirements** — there is no separate link. It comes from combining the other links (unit → code → requirement), which avoids the redundancy ASPICE warns against. | **Statement:** Detailed design ↔ architecture<br>**Evidence:** The detailed-design documents + the architecture components<br>**Gate:** check_detailed_design_contract_gate<br>**What it verifies:** Every detailed design belongs to an existing component, and every component has one<br>────────────────<br>**Statement:** Code ↔ units and requirements<br>**Evidence:** Unit and requirement markers in the source files<br>**Gate:** verify_code_to_design_link_gate<br>**What it verifies:** Every unit is linked to its code in both directions, every requirement-implementing file carries an existing requirement marker, and no marker is orphan |
 |  | BP5: Communicate the agreed software detailed design and the developed software units | The detailed design and the code are agreed and communicated through the repository:<br>• **Agreement** — every pull request that changes a detailed design or code is reviewed by a **reviewer agent** that is not its author, with the review checklist completed (correctness, style, traceability, logging). A **person** also approves a sample: every architecture pull request, plus a fixed share of feature pull requests chosen by pull-request number (e.g. *1 in 5*). Merged means agreed.<br>• **Communication** — the pull request notifies the reviewers, and the merged documents and code are the reference for everyone.<br>• **Baseline** — every release tag records which detailed design and which code were agreed at that moment. | **Statement:** Reviewed by an agent that is not the author<br>**Evidence:** The pull request's review record<br>**Gate:** verify_host_settings_gate<br>**What it verifies:** Every merged pull request has an approving review from a reviewer agent different from its author, with the checklist completed<br>────────────────<br>**Statement:** Human approval on the sample<br>**Evidence:** Pull-request numbers + human approvals<br>**Gate:** verify_host_settings_gate<br>**What it verifies:** Every architecture pull request and every sampled feature pull request has an approval from a person<br>────────────────<br>**Not checkable:** the quality of the review itself — that is what the human sample is for |
-| SWE.4 | BP1: Specify software unit verification measures | Every software unit has its verification measures specified before its code is written:<br>• **Verification plan** — one plan, with a section per level (unit, integration, software, validation). For unit verification it states the techniques, the pass/fail criteria, the entry and exit criteria, and the infrastructure needed (e.g. *test runner, mocks*).<br>• **From the acceptance criteria** — every unit's tests are derived from the acceptance criteria of the requirements it implements (SWE.1 BP1: each criterion is a Given/When/Then condition, derived from a message in the diagram).<br>• **Test first, by an independent tester** — the tester, who never sees the code, commits the unit tests of a batch together with one **stub** per unit (generated from the detailed design: signature and a default return) in one test-only commit, and every new test fails on that commit. The coder then replaces the stubs with the real units until the tests pass, and never edits a test. CI checks the order, the failure and that no test changes together with code. | **Statement:** Defined in the plan<br>**Evidence:** The unit section of the verification plan<br>**Gate:** check_verification_plan_gate<br>**What it verifies:** The section exists with techniques, pass/fail criteria, entry and exit criteria and infrastructure<br>────────────────<br>**Statement:** Test first<br>**Evidence:** The commit history of each pull request + the test results per commit<br>**Gate:** verify_test_first_gate (new)<br>**What it verifies:** Every unit has a stub and a test in a test-only commit; on that commit every new test fails or errors, never passes (red run); no test is committed after the first file of its unit; no test changes together with code; each test is judged at the last test-only commit that changed it<br>────────────────<br>**Not checkable:** that the tests are derived meaningfully from the acceptance criteria — left to the reviewer |
+| SWE.4 | BP1: Specify software unit verification measures | Every software unit has its verification measures specified before its code is written:<br>• **Verification plan** — one plan, with a section per level (unit, integration, software, validation). For unit verification it states the techniques, the pass/fail criteria, the entry and exit criteria, and the infrastructure needed (e.g. *test runner, mocks*).<br>• **From the acceptance criteria** — every unit's tests are derived from the acceptance criteria of the requirements it implements (SWE.1 BP1: each criterion is a Given/When/Then condition, derived from a message in the diagram).<br>• **Test first, by an independent tester** — the tester, who never sees the code, commits the unit tests of a batch together with one **stub** per unit (generated from the detailed design: signature and a default return) in one test-only commit, and every new test fails on that commit. The coder then replaces the stubs with the real units until the tests pass, and never edits a test. CI checks the order, the failure and that no test changes together with code. | **Statement:** Defined in the plan<br>**Evidence:** The unit section of the verification plan<br>**Gate:** check_verification_plan_gate<br>**What it verifies:** The section exists with techniques, pass/fail criteria, entry and exit criteria and infrastructure<br>────────────────<br>**Statement:** Test first<br>**Evidence:** The commit history of each pull request + the test results per commit<br>**Gate:** verify_test_first_gate<br>**What it verifies:** Every unit has a stub and a test in a test-only commit; on that commit every new test fails or errors, never passes (red run); no test is committed after the first file of its unit; no test changes together with code; each test is judged at the last test-only commit that changed it<br>────────────────<br>**Not checkable:** that the tests are derived meaningfully from the acceptance criteria — left to the reviewer |
 |  | BP2: Select software unit verification measures | The unit tests to run are chosen by documented rules:<br>• **Selection criteria** — the verification plan (SWE.4 BP1: one document in the product, with a section per level: unit, integration, software, validation) states which unit tests run and when (e.g. *every unit test on every pull request*).<br>• **Regression** — when code changes, the existing unit tests run again, so a change cannot silently break what already worked. The plan states which ones (e.g. *all of them*, or *those of the changed component*).<br>• **Coverage of the release** — every unit in the release has at least one selected test, and the tests reach the minimum code coverage the plan declares (e.g. *80 % of lines*). CI checks both. | **Statement:** Selection, regression and coverage defined<br>**Evidence:** The unit section of the verification plan<br>**Gate:** check_verification_plan_gate<br>**What it verifies:** The section states the selection, the regression rule and the minimum code coverage<br>────────────────<br>**Statement:** Every unit in the release has a test<br>**Evidence:** Unit markers in the tests + the units of the release<br>**Gate:** verify_tests_to_requirements_link_gate<br>**What it verifies:** Every unit in the release has at least one selected test<br>────────────────<br>**Statement:** Coverage reached<br>**Evidence:** The coverage result of the declared command<br>**Gate:** check_stack_commands_gate<br>**What it verifies:** The measured code coverage meets the minimum declared in the plan |
 |  | BP3: Verify the software units | Every unit test selected by the verification plan runs on every CI run, and its result is recorded:<br>• **Run** — CI runs the unit tests with the test command the product declares.<br>• **Pass** — every selected test passes, and a failing test blocks the merge. The unit's security tests run with them (e.g. *rejects malformed input*).<br>• **Recorded results** — every run stores a machine-readable result for each test (pass or fail, duration, and which test it belongs to; e.g. *a JUnit XML file*), kept for every release. | **Statement:** Unit tests pass and are recorded<br>**Evidence:** The run's result file<br>**Gate:** verify_tests_to_requirements_link_gate<br>**What it verifies:** The tests ran with the declared command, every selected unit test has a result, and it passed<br>────────────────<br>**Statement:** Results kept per release<br>**Evidence:** Artifacts of the release<br>**Gate:** verify_release_evidence_gate<br>**What it verifies:** Every release has its unit-test results stored |
 |  | BP4: Ensure consistency and establish bidirectional traceability | Unit tests, units and results are traceable to each other:<br>• **Tests ↔ units** — every unit test names, with a marker, the unit it verifies (e.g. *@unit[parse-csv]*), and every unit in the detailed design has at least one test.<br>• **Results ↔ tests** — every recorded result names the test that produced it (SWE.4 BP3: every run stores a pass/fail result per test), and every selected test has a result in every run.<br>• **Consistency** — no marker names a unit that does not exist. | **Statement:** Tests ↔ units<br>**Evidence:** Unit markers in the tests + the detailed designs<br>**Gate:** verify_code_to_design_link_gate<br>**What it verifies:** Every unit test names an existing unit, and every unit has at least one test<br>────────────────<br>**Statement:** Results ↔ tests<br>**Evidence:** The run's result file<br>**Gate:** verify_tests_to_requirements_link_gate<br>**What it verifies:** Every result belongs to an existing test, and every selected test has a result |
@@ -791,7 +751,7 @@ belongs to another process group and is referenced, not repeated.
 |  | BP3: Verify the integrated software | The software-level tests run, and their results are recorded **the same way as unit tests** (SWE.4 BP3: they run in CI, must pass, and every run stores a pass/fail result per test), applied to the integrated software:<br>• **Functional requirements** — the selected software-level tests run and must pass. A failing test blocks the release.<br>• **Non-functional requirements** — the measured value is recorded next to its threshold (e.g. *p95 latency 180 ms, threshold ≤ 200 ms*). The suite that measures writes the value to a measurements file (e.g. *{requirement: REQ-0047, value: 180, unit: ms}*); a value that does not meet the threshold blocks the release. | **Statement:** Software-level tests pass and are recorded<br>**Evidence:** The run's result file<br>**Gate:** verify_software_tests_to_requirements_link_gate<br>**What it verifies:** Every selected software-level test has a result, and it passed<br>────────────────<br>**Statement:** Thresholds met<br>**Evidence:** The measurements file of the instrument's suite + the threshold in the requirement<br>**Gate:** verify_nfr_thresholds_gate<br>**What it verifies:** Every requirement with a measurement method has a measured value from its instrument's suite, in the threshold's unit, and it meets its threshold |
 |  | BP4: Ensure consistency and establish bidirectional traceability | Software-level tests, requirements and results are traceable to each other **the same way as unit tests** (SWE.4 BP4: tests name what they verify with a marker, and results name their test), applied to requirements:<br>• **Tests ↔ requirements** — every software-level test names the requirement it verifies (e.g. *@sdoc[REQ-0047]*), and every requirement, system or software level, has at least one (SWE.6 BP1).<br>• **Results ↔ tests** — every recorded result names the test that produced it.<br>• **Consistency** — no marker names a requirement that does not exist. | **Statement:** Tests linked to requirements in both directions<br>**Evidence:** *@sdoc[...]* markers in the software-level tests + the requirements<br>**Gate:** verify_software_tests_to_requirements_link_gate<br>**What it verifies:** Every requirement has ≥ 1 software-level test, and no marker names a requirement that does not exist<br>────────────────<br>**Statement:** Results linked to tests<br>**Evidence:** The run's result file<br>**Gate:** verify_software_tests_to_requirements_link_gate<br>**What it verifies:** Every result belongs to an existing test, and every selected test has a result |
 |  | BP5: Summarize and communicate the results | The results of software verification are summarised and communicated **the same way as unit results** (SWE.4 BP5: a summary in the report generated on every CI run, shown in the pull request and kept for every release), extended to this level:<br>• **Summary** — the generated report includes, **per requirement** (system and software level), its software-level tests and their latest pass/fail, and for non-functional ones, the measured value next to its threshold.<br>• **Communication** — as in SWE.4 BP5, the summary appears in the CI run and is kept as an artifact for every release. | **Statement:** Summary generated<br>**Evidence:** The report of the CI run<br>**Gate:** check_verification_report_gate<br>**What it verifies:** The report exists for the run, with the per-requirement section and the measured values<br>────────────────<br>**Statement:** Kept for every release<br>**Evidence:** Artifacts of the release<br>**Gate:** verify_release_evidence_gate<br>**What it verifies:** Every release tag has its report stored |
-| VAL.1 | BP1: Specify validation measures for the product validation | Validation is specified in advance, from the customer's wishes:<br>• **From the wishes** — every wish in the wishes document (the stakeholder requirements) has at least one validation scenario showing, in the customer's terms, that the product serves its intended use. For example, wish *W-03 "cross with loaded carts"* → scenario *"a 1-tonne cart crosses on market day"*. A scenario is a file under the scenarios folder that names its wish with a marker (e.g. *@wish[W-03]*): an automated test, or the written steps of a guided demo or a trial use.<br>• **Written from the wishes only** — the scenarios are written by a crew that reads the wishes, the diagrams and the outside interfaces, never the requirements or the code, so validation does not repeat verification.<br>• **In the plan** — the validation section of the verification plan (SWE.4 BP1: one document with a section per level) states, for each scenario in the order they run, the technique (e.g. *guided demo, acceptance test, trial use*), the pass/fail criteria, the entry criteria and the environment: the product running in conditions close to the customer's (e.g. *staging with realistic data*). | **Statement:** Every wish has its validation scenario<br>**Evidence:** *@wish[...]* markers in the scenarios + the identifiers in the wishes document<br>**Gate:** verify_acceptance_to_wishes_link_gate (new)<br>**What it verifies:** On every pull request, every wish has ≥ 1 scenario, and no marker names a wish that does not exist<br>────────────────<br>**Statement:** Defined in the plan<br>**Evidence:** The validation section of the verification plan<br>**Gate:** check_verification_plan_gate<br>**What it verifies:** Once scenarios exist, the section exists, with technique, criteria, entry criteria and environment for every scenario, and names no scenario that does not exist<br>────────────────<br>**Not checkable:** whether the scenario truly reflects the customer's intended use — the customer decides that at acceptance (checkpoint 5) |
+| VAL.1 | BP1: Specify validation measures for the product validation | Validation is specified in advance, from the customer's wishes:<br>• **From the wishes** — every wish in the wishes document (the stakeholder requirements) has at least one validation scenario showing, in the customer's terms, that the product serves its intended use. For example, wish *W-03 "cross with loaded carts"* → scenario *"a 1-tonne cart crosses on market day"*. A scenario is a file under the scenarios folder that names its wish with a marker (e.g. *@wish[W-03]*): an automated test, or the written steps of a guided demo or a trial use.<br>• **Written from the wishes only** — the scenarios are written by a crew that reads the wishes, the diagrams and the outside interfaces, never the requirements or the code, so validation does not repeat verification.<br>• **In the plan** — the validation section of the verification plan (SWE.4 BP1: one document with a section per level) states, for each scenario in the order they run, the technique (e.g. *guided demo, acceptance test, trial use*), the pass/fail criteria, the entry criteria and the environment: the product running in conditions close to the customer's (e.g. *staging with realistic data*). | **Statement:** Every wish has its validation scenario<br>**Evidence:** *@wish[...]* markers in the scenarios + the identifiers in the wishes document<br>**Gate:** verify_acceptance_to_wishes_link_gate<br>**What it verifies:** On every pull request, every wish has ≥ 1 scenario, and no marker names a wish that does not exist<br>────────────────<br>**Statement:** Defined in the plan<br>**Evidence:** The validation section of the verification plan<br>**Gate:** check_verification_plan_gate<br>**What it verifies:** Once scenarios exist, the section exists, with technique, criteria, entry criteria and environment for every scenario, and names no scenario that does not exist<br>────────────────<br>**Not checkable:** whether the scenario truly reflects the customer's intended use — the customer decides that at acceptance (checkpoint 5) |
 |  | BP2: Select validation measures | The validation scenarios to run are chosen **the same way as unit tests** (SWE.4 BP2: selection criteria, regression and release coverage, documented in the verification plan), applied to validation:<br>• **Selection and regression** — the validation section of the verification plan states which scenarios run before each release, and which ones run again after a change. Every automated scenario runs at every release; the plan chooses among the scenarios run by hand (e.g. *every scenario of a wish touched by the release*).<br>• **Coverage of the release** — every wish affected by the release has at least one scenario with a result. A release that changes what the customer gets (the wishes, the diagrams, the requirements, the design, the stack, the configuration, the observability or the code) affects every wish; one that changes only the framework, the tests or the records affects none. | **Statement:** Selection and regression defined<br>**Evidence:** The validation section of the verification plan<br>**Gate:** check_verification_plan_gate<br>**What it verifies:** The section states the selection and the regression rule<br>────────────────<br>**Statement:** Coverage of the release<br>**Evidence:** *@wish[...]* markers + the wishes affected by the release + the validation record<br>**Gate:** verify_acceptance_to_wishes_link_gate<br>**What it verifies:** At release, every wish affected by the release has ≥ 1 scenario with a result<br>────────────────<br>**Not checkable:** whether the selection among the scenarios run by hand is good — left to the reviewer |
 |  | BP3: Perform the validation and evaluate the results | Before every release, the customer validates the product in conditions close to real use:<br>• **Deployment** — the release candidate, with its release record (SUP.8 BP5), is deployed to a staging environment that resembles the customer's (e.g. *realistic data, the same integrations*). The framework never deploys: the product's own pipeline does.<br>• **Run and record** — the selected validation scenarios (VAL.1 BP2) run against that deployment, and one validation record per release names the environment, the deployed commit and every result, pass or fail, with its scenario and technique. The automated results are filled in by a tool; the results of a guided demo or a trial use are entered by the person who ran it. After the deployed commit, nothing changes but the validation record and the decision, so what was validated is what is released.<br>• **Customer's decision** — the customer evaluates the results and records their decision, **accept** or **reject** with a reason (checkpoint 5), bound by hash to the release record and the validation record. A rejection closes the release pull request and goes back as a new or amended wish. | **Statement:** Deployed and run<br>**Evidence:** The validation record of the release<br>**Gate:** verify_release_evidence_gate<br>**What it verifies:** The record exists, its deployed commit is in the release's history with nothing but the record and the decision changed since, every automated scenario has a result and none failed<br>────────────────<br>**Statement:** Customer's decision recorded<br>**Evidence:** The checkpoint 5 approval of the release<br>**Gate:** verify_release_evidence_gate<br>**What it verifies:** The release has a current decision from a person in the customer role, and it is accept<br>────────────────<br>**Not checkable:** that the deployment was really made, and the hand results really observed — the customer's decision covers the record; the customer's judgement itself — that is what the decision is for |
 |  | BP4: Ensure consistency and establish bidirectional traceability | Validation scenarios, wishes and results are traceable to each other **the same way as unit tests** (SWE.4 BP4: what is verified is named with a marker, and results name their test), applied to the wishes:<br>• **Scenarios ↔ wishes** — every scenario names its wish (VAL.1 BP1: marker *@wish[W-03]*), and every wish has at least one scenario.<br>• **Results ↔ scenarios** — every recorded result names the scenario that produced it (VAL.1 BP3: results recorded next to their scenario).<br>• **Consistency** — no marker names a wish that does not exist, and no result names a scenario that does not exist. | **Statement:** Scenarios linked to wishes in both directions<br>**Evidence:** *@wish[...]* markers + the identifiers in the wishes document<br>**Gate:** verify_acceptance_to_wishes_link_gate<br>**What it verifies:** Every wish has ≥ 1 scenario, and no marker names a wish that does not exist<br>────────────────<br>**Statement:** Results linked to scenarios<br>**Evidence:** The validation record of the release<br>**Gate:** verify_release_evidence_gate<br>**What it verifies:** Every result belongs to an existing scenario, and every automated scenario has a result |
@@ -829,10 +789,9 @@ belongs to another process group and is referenced, not repeated.
 
 
 Practices that serve no ASPICE base practice in scope but are required by a
-principle (Appendix B.3). They are mandatory like every other
-practice. Their gates belong to their own group, *gates/principles/*,
-so they do not mix with SWE, VAL or SUP. Proposed 2026-10-01; wording is
-Claude's and pending review.
+principle (Appendix B.3). They are mandatory like every other practice. Their
+gates run at the stage that makes their work product, in that stage's gate
+group, and the stage table marks them *principle*.
 
 | Practice | Principle | Final version | How the gates check it |
 |---|---|---|---|
@@ -851,7 +810,7 @@ Claude's and pending review.
 
 ### Levels — what is what
 
-Decided 2026-10-02. The framework uses the ASPICE 4.1 names for the levels a
+The framework uses the ASPICE 4.1 names for the levels a
 product is built and verified at. From the lowest to the highest:
 
 | Level | What it is (ASPICE 4.1) | Built in | Verified in | Marker in tests |
@@ -864,7 +823,7 @@ product is built and verified at. From the lowest to the highest:
 
 **Software is the highest level the framework builds.** System-level
 requirements are verified in SWE.6, because the software is the whole product;
-the SYS processes are out of scope (§ 2, *Scope decision*).
+the SYS processes are out of scope (§ 2, *Scope*).
 
 **The requirement classification keeps both levels.** A requirement's **Level**
 (SWE.1 BP2: system or software) says what it describes, not which process
@@ -878,16 +837,16 @@ verifies it:
 
 ### The ASPICE Agent — the flow
 
-Decided 2026-10-02. The framework is not only a set of rules: it acts as an
+The framework is not only a set of rules: it acts as an
 agent, the **ASPICE Agent**, that moves the product through the V. At every stage it triggers the
 right skill or tool, runs the gates on what that skill produced, and calls a
 person in at the five human checkpoints. A failing gate sends the work back to
 the skill that produced it. There is one stage per ASPICE process; SWE.2 appears
 twice because the diagram is drawn before the requirements (diagram first), and
-stages 4 and 5 interleave under TDD — the failing unit test (SWE.4) comes before
-the unit is constructed (SWE.3).
+SWE.3 and SWE.4 are split around the test under TDD — the detailed design
+(stage 4), the failing unit tests (stage 5), then the units (stage 6).
 
-**Retry policy — decided 2026-10-02.** When a gate fails, the ASPICE Agent sends
+**Retry policy.** When a gate fails, the ASPICE Agent sends
 the findings back to the skill that produced the work and runs it again, **up to
 3 retries**. If the gates still fail after the third retry, the agent stops the
 stage and **escalates to the architect** with the findings of every attempt. The
@@ -931,7 +890,7 @@ flowchart TD
     h3 -. "changes requested" .-> t1
     h3 -- approved --> a1
     a1["Agent triggers create_architecture_plugin<br/>software components and their interfaces,<br/>refining the diagram"]:::agent
-    g3{"check_design_contract_gate<br/>verify_decision_records_gate · check_track_rule_gate"}:::gate
+    g3{"check_design_contract_gate<br/>verify_decision_records_gate · check_testability_gate"}:::gate
     a1 --> g3
     g3 -. fail .-> a1
   end
@@ -1039,21 +998,21 @@ flowchart TD
 |---|---|---|---|
 | 1 Diagram (SWE.2 Software architecture, drawn first) | create_diagram_plugin drafts the diagram from the wishes | check_diagram_contract_gate, verify_diagram_to_wishes_link_gate, verify_diagram_approval_gate | Architect corrects and approves — iterate until approved |
 | 2 Requirements (SWE.1 Software requirements) | create_requirements_plugin derives the system- and software-level requirements from the diagram | check_requirements_contract_gate, verify_requirements_to_diagram_link_gate, check_glossary_gate, verify_requirements_approval_gate | Architect approves the requirements |
-| 3 Architecture (SWE.2 Software architecture) | create_architecture_plugin first proposes the tech stack, then refines the diagram into software components and their interfaces | check_stack_decision_gate, verify_stack_approval_gate, check_design_contract_gate, verify_decision_records_gate, check_track_rule_gate; principle: check_testability_gate, verify_architecture_tests_gate | Architect approves the tech stack |
+| 3 Architecture (SWE.2 Software architecture) | create_architecture_plugin first proposes the tech stack, then refines the diagram into software components and their interfaces | check_stack_decision_gate, verify_decision_records_gate; after checkpoint 3: verify_stack_approval_gate, check_design_contract_gate; principle: check_testability_gate | Architect approves the tech stack |
 | 4 Detailed design (SWE.3 Software detailed design and unit construction — BP1, BP2) | create_detailed_design_plugin writes the detailed design of the software units per component | check_detailed_design_contract_gate | — |
 | 5 Unit tests first (SWE.4 Software unit verification — BP1) | create_unit_tests_plugin writes, without seeing the code, the unit section of the verification plan, the unit tests (security tests of trust-boundary components included) and one stub per unit, in one test-only commit per component | verify_test_first_gate (red run: every new test fails; every unit has a stub and a test), check_verification_plan_gate | — |
 | 6 Unit construction (SWE.3 BP3 + SWE.4 BP2–BP5) | create_unit_code_plugin replaces the stubs with the units until the tests pass, never editing a test | verify_test_first_gate (again: tests unchanged, none after its unit's code), verify_tests_to_requirements_link_gate, verify_code_to_design_link_gate, check_stack_commands_gate; principle: verify_security_tests_gate, check_env_config_gate | — |
 | 7 Component + integration verification (SWE.5 Software component verification and integration verification) | create_integration_tests_plugin writes the integration section of the verification plan, the component tests and the integration tests along the approved flows, in a test-only commit; then create_unit_code_plugin changes the code until they pass, never editing a test | check_verification_plan_gate, verify_test_first_gate (no integration test changed with code), verify_tests_to_components_link_gate, verify_tests_to_flows_link_gate, verify_log_events_gate | — |
 | 8 Software verification (SWE.6 Software verification) | create_software_tests_plugin writes the software section of the verification plan, a software-level test per requirement (system-level ones end-to-end), the measurements of the measured ones and the observability definitions, in a test-only commit; then create_unit_code_plugin changes the code until they pass, never editing a test | check_verification_plan_gate, verify_test_first_gate, verify_software_tests_to_requirements_link_gate, verify_nfr_thresholds_gate, check_verification_report_gate; principle: check_observability_gate | — |
 | 9 Quality assurance (SUP.1 Quality assurance) | Opens the PR; CI re-runs every gate; review_pull_request_plugin reviews from its own account with the checklist | verify_framework_integrity_gate, verify_required_checks_gate, verify_host_settings_gate; principle: scan_security_gate, check_framework_feedback_gate (check_nonconformances_gate, check_escalations_gate, report_quality_trends_gate, check_retro_actions_gate run at release, step 11) | A person, on every architecture PR and 1 in N others |
-| 10 Configuration management (SUP.8 Configuration management) | Merges to the main branch; for a release, opens the release pull request with the release record (write_release_tool), and CI tags the merge | check_commit_conventions_gate, verify_branch_protection_gate, check_config_items_gate, check_track_rule_gate, verify_architecture_tests_gate; at release: verify_baseline_gate, verify_backup_gate | — |
+| 10 Configuration management (SUP.8 Configuration management) | Merges to the main branch; for a release, opens the release pull request with the release record (write_release_tool), and CI tags the merge | check_commit_conventions_gate, verify_branch_protection_gate, check_config_items_gate, check_track_rule_gate; principle: verify_architecture_tests_gate; at release: verify_baseline_gate, verify_backup_gate | — |
 | 11 Validation (VAL.1 Validation) | create_validation_scenarios_plugin writes, from the wishes only, the validation scenarios and the validation section of the verification plan; for a release, after the deployment to staging, write_validation_record_tool records the deployed commit and the results, and the customer decides | verify_acceptance_to_wishes_link_gate, verify_release_evidence_gate; at release, for SUP.1: check_nonconformances_gate, check_escalations_gate, report_quality_trends_gate, check_retro_actions_gate | Customer accepts or rejects the release |
 | 12 Problem resolution (SUP.9 Problem resolution management) | On a defect: records and analyses the problem as an issue; create_unit_tests_plugin reproduces it with a failing test marked *@problem[n]*, then create_unit_code_plugin fixes it; its gates run on every pull request once the flow is done | check_problem_record_gate, check_urgent_fix_gate, verify_problem_closure_gate; at release: report_problem_trends_gate | — |
 | 13 Change request (SUP.10 Change request management) | On a changed wish: records and analyses the change request as an issue; once the architect approves it, the change re-enters the flow at stage 1, and every pull request that builds it names it; its gates run on every pull request once the flow is done | check_change_record_gate, verify_change_approval_gate, verify_change_trace_gate; at release: verify_change_closure_gate | Architect approves the change (*/approve-change*) |
 
 *Principle* gates come from practices the principles require beyond ASPICE (§ 4.2).
 
-### The tech stack — decided 2026-10-04
+### The tech stack
 
 Before any code is written, the product's tech stack — language, frameworks,
 runtime, key libraries, data stores, and the tools that verify the code — is
@@ -1098,24 +1057,22 @@ change whichever stack wins.
 
 | Gate | What it verifies |
 |---|---|
-| check_stack_decision_gate | The stack follows *stack.v1* with exact versions; a decision record with alternatives exists; every suite named by a requirement has a command (rule UNKNOWN_INSTRUMENT, moved here from SWE.1) |
+| check_stack_decision_gate | The stack follows *stack.v1* with exact versions; a decision record with alternatives exists; every suite named by a requirement has a command (UNKNOWN_INSTRUMENT) |
 | verify_stack_approval_gate | Checkpoint 3 is recorded, on the current stack content, before the first component design |
 
 **Not checkable:** that the stack really respects every constraint requirement
 and fits the non-functional requirements — the architect confirms it at
 checkpoint 3.
 
-**Applied to what is built — 2026-10-04.** *qf.v1* has no *stack* section; the
-new contract *stack.v1* holds language, runtime, frameworks, libraries, data
+**What *stack.v1* holds.** Language, runtime, frameworks, libraries, data
 stores, one command per suite (*unit* always), the coding-principle checks
-(*lint*, *format*, optional *static-analysis*) and the path of the decision
-record, every version exact; *approval.v1* has five checkpoints; in
-*requirement.v1* and *specify_nfr_measurement_skill* the instrument is a suite
-from the fixed vocabulary, and UNKNOWN_INSTRUMENT belongs to
-check_stack_decision_gate. A framework test keeps the suite vocabulary of
-*requirement.v1* and *stack.v1* identical.
+(*lint*, *format*, optional *static-analysis*), the security scanners, the file
+patterns of code and tests, and the path of the decision record — every version
+exact. A requirement's instrument is a suite from the fixed vocabulary; a
+framework test keeps the vocabulary of *requirement.v1* and *stack.v1* the same
+(the stack alone adds *validation*, which no requirement names).
 
-**Constraints derive from wishes — decided 2026-10-04.** A constraint given by
+**Constraints derive from wishes.** A constraint given by
 the customer (*must run on Java 21*) comes from a wish, not from a diagram
 element. Its *derived_from* names that wish as *W-&lt;n&gt;* — the wish IDs the
 diagram is already linked to. Only kind *constraint* may do so (enforced by
@@ -1123,8 +1080,6 @@ diagram is already linked to. Only kind *constraint* may do so (enforced by
 coverage check stays intact. *verify_requirements_to_diagram_link_gate* also
 checks that the wish exists (UNKNOWN_WISH). The bare *W-&lt;n&gt;* form, not
 *wish#W-&lt;n&gt;*, cannot be mistaken for a reference into a diagram named *wish*.
-Chosen over attaching every constraint to a diagram element, which gives
-product-wide constraints an artificial home and hides where they came from.
 
 #### Sequence — who calls whom
 
@@ -1265,8 +1220,9 @@ sequenceDiagram
 
 The same sequence in detail: every plugin and framework skill the ASPICE Agent
 calls at each stage. Plugins produce the work; framework skills are the rules
-the agent loads alongside them. Archify and Gentle-AI are example plugins: each
-stage names its plugin in the slot table, so either can be swapped.
+the agent loads alongside them. Archify and the methods shipped with the
+framework fill the slots here; each stage names its plugin in the slot table, so
+any of them can be swapped.
 
 ```mermaid
 sequenceDiagram
@@ -1279,13 +1235,13 @@ sequenceDiagram
   participant AG as ASPICE Agent
   box rgb(219,231,243) Plugins
     participant ARC as create_diagram_plugin<br/>(archify)
-    participant SPEC as create_requirements_plugin<br/>(gentle-ai/sdd-spec)
-    participant ARCH as create_architecture_plugin<br/>(gentle-ai/sdd-design)
-    participant DDS as create_detailed_design_plugin<br/>(gentle-ai/sdd-design)
-    participant TST as create_unit_tests_plugin<br/>(gentle-ai/sdd-apply)
-    participant APP as create_unit_code_plugin<br/>(gentle-ai/sdd-apply)
-    participant INT as create_integration_tests_plugin<br/>(gentle-ai/sdd-verify)
-    participant SWT as create_software_tests_plugin<br/>(gentle-ai/sdd-verify)
+    participant SPEC as create_requirements_plugin<br/>(derive_requirements_plugin)
+    participant ARCH as create_architecture_plugin<br/>(derive_architecture_plugin)
+    participant DDS as create_detailed_design_plugin<br/>(derive_detailed_design_plugin)
+    participant TST as create_unit_tests_plugin<br/>(derive_unit_tests_plugin)
+    participant APP as create_unit_code_plugin<br/>(derive_unit_code_plugin)
+    participant INT as create_integration_tests_plugin<br/>(derive_integration_tests_plugin)
+    participant SWT as create_software_tests_plugin<br/>(derive_software_tests_plugin)
   end
   box rgb(232,236,242) Framework skills — the rules loaded alongside
     participant RQA as write_requirements_skill
@@ -1301,7 +1257,7 @@ sequenceDiagram
     participant VSE as run_verification_suites_skill
     participant OBS as configure_observability_skill
     participant CRV as review_code_skill
-    participant SAG as prepare_acceptance_skill
+    participant SAG as validate_release_skill
     participant FF as report_framework_feedback_skill
   end
   box rgb(226,239,224) Checks
@@ -1515,82 +1471,62 @@ sequenceDiagram
 
 ### Slots and plugins — one configuration for every plugin
 
-Decided 2026-10-02. Every stage of the ASPICE Agent is a **slot**, and every
-external skill set — the diagram plugin (e.g. *Archify*) and the method provider
-(e.g. *Gentle-AI*) alike — is a **plugin** that fills one or more slots. There
-is no special case: a diagram plugin fills one slot, a method provider usually
-fills several. Two questions, two places, the same for every plugin:
+Every stage of the ASPICE Agent that a plugin works is a **slot**, and every
+skill set that does the work — the diagram tool (*Archify*), a method shipped
+with the framework, or a team's own — is a **plugin** that fills it. Two
+questions, two places, the same for every plugin:
 
 | Question | Where | Example |
 |---|---|---|
-| Which skill fills which stage? | The **slot table** in *qf.yaml* | *create_requirements_plugin: gentle-ai/sdd-spec* |
+| Which skill fills which stage? | The **slot table** in *qf.yaml* | *create_requirements_plugin: quality-framework/derive_requirements_plugin* |
 | Where is it installed? | On the machine: the conventional skill folders, or an *environment.yaml* that is never committed | *~/.claude/skills/archify/SKILL.md* |
 
-Example slot table, one entry per ASPICE stage:
+The slot table, one entry per slot:
 
 ```yaml
 slots:
-  create_diagram_plugin:               archify               # 1 · SWE.2, drawn first
-  create_requirements_plugin:          gentle-ai/sdd-spec    # 2 · SWE.1
-  create_architecture_plugin:          gentle-ai/sdd-design  # 3 · SWE.2
-  create_detailed_design_plugin:       gentle-ai/sdd-design  # 4 · SWE.3
-  create_unit_tests_plugin:            gentle-ai/sdd-apply   # 5 · SWE.4, tests and stubs first
-  create_unit_code_plugin:             gentle-ai/sdd-apply   # 6 · SWE.3 BP3, then the units
-  create_integration_tests_plugin:     gentle-ai/sdd-verify  # 7 · SWE.5
-  create_software_tests_plugin:        gentle-ai/sdd-verify  # 8 · SWE.6
+  create_diagram_plugin:               archify                                              # 1 · SWE.2, drawn first
+  create_requirements_plugin:          quality-framework/derive_requirements_plugin          # 2 · SWE.1
+  create_architecture_plugin:          quality-framework/derive_architecture_plugin          # 3 · SWE.2
+  create_detailed_design_plugin:       quality-framework/derive_detailed_design_plugin       # 4 · SWE.3
+  create_unit_tests_plugin:            quality-framework/derive_unit_tests_plugin            # 5 · SWE.4, tests and stubs first
+  create_unit_code_plugin:             quality-framework/derive_unit_code_plugin             # 6 · SWE.3 BP3, then the units
+  create_integration_tests_plugin:     quality-framework/derive_integration_tests_plugin     # 7 · SWE.5
+  create_software_tests_plugin:        quality-framework/derive_software_tests_plugin        # 8 · SWE.6
+  review_pull_request_plugin:          quality-framework/derive_review_plugin                # 9 · SUP.1
+  create_validation_scenarios_plugin:  quality-framework/derive_validation_scenarios_plugin  # 11 · VAL.1
 ```
 
-Rules:
+Stages 10 and 13 have no slot: the agent works them itself with their
+rulebook. Stage 12 uses the slots of stages 5 and 6.
 
-- **One table, read by the skill loader.** The ASPICE Agent finds the skill for
-  every stage in the same table.
-- **Every slot can be run.** A slot names a method shipped with the framework,
-  or a skill the agent finds on the machine; versions are not tracked.
-
-**Checked against the real tools — 2026-10-04.**
-
-- **Plugin versions are not tracked — decided 2026-10-05.** Only the work product
-  counts: the gates prove it correct, whatever tool or version produced it. A
-  first design pinned plugins in *skills-lock.json* (the lockfile of vercel-labs'
-  *npx skills*), then in *qf.yaml* with commits and hashes; both were dropped as
-  machinery that proves nothing the gates do not already prove.
-- **Plugins are tools on the person's machine — decided 2026-10-05.** They may be
-  installed for one project, one user or system-wide, or wherever an agent host
-  keeps its skills, and never belong to the product. The person installs them;
-  the framework never does. The agent needs only to know where each one is, to
-  load and run it: an *environment.yaml* (contract *environment.v1*, never
-  committed) declares skill folders and individual plugin paths —
-  *&lt;product&gt;/.qf/environment.yaml* for a project-scoped setup, else
-  *~/.config/quality-framework/environment.yaml* for a per-user one; without it,
-  the conventional folders (*.agents/skills*, *.claude/skills*, under the product
+- **Plugin versions are not tracked.** Only the work product counts: the gates
+  prove it correct, whatever tool or version produced it.
+- **Plugins are tools on the person's machine.** They may be installed for one
+  project, one user or system-wide, and never belong to the product. The person
+  installs them; the framework never does. An *environment.yaml* (contract
+  *environment.v1*, never committed) declares skill folders and individual
+  plugin paths — *&lt;product&gt;/.qf/environment.yaml* for a project, else
+  *~/.config/quality-framework/environment.yaml* for a user; without it, the
+  conventional folders (*.agents/skills*, *.claude/skills*, under the product
   and under *~*) are searched. A skill found nowhere is PLUGIN_NOT_INSTALLED,
   naming where it was looked for; an invalid file is INVALID_ENVIRONMENT. The
   gates use no plugin, so CI needs none.
-- **Gentle-AI has retired SDD.** Its main branch ships ODD (Organic-Driven
-  Development) as its only workflow; *sdd-spec*, *sdd-design*, *sdd-apply* and
-  *sdd-verify* no longer exist. The *gentle-ai/sdd-…* slots in this document
-  illustrate the slot model and are not current skills. The framework writes its
-  own methods instead (§ *Method skills — the schema*); the example's
-  requirements slot uses *quality-framework/derive_requirements_plugin*, and a
-  stand-in plugin (*examples/example-method*) fills the stages whose method is
-  not written yet.
+- **Methods shipped with the framework need no installing.** A slot names one
+  as *quality-framework/&lt;method&gt;* (§ *Method skills — the schema*).
 - **The framework's own rules are not slots.** The framework skills (e.g.
-  *write_requirements_skill*, *enforce_test_first_skill*) are loaded alongside the
+  *write_requirements_skill*, *enforce_test_first_skill*) are loaded next to the
   plugin at their stage; they belong to the framework and are not swapped.
-- **The table is checked before anything runs.** A pipeline precondition (not a
-  gate) verifies that every stage names a skill, that every named plugin is
-  pinned, and that each skill exists in the installed plugin.
-- **sdd-method.yaml is retired.** Main's separate method-provider contract is
-  folded into the slot table; its check, *check-sdd-chain.sh*, becomes the
-  precondition above.
+- **The table is checked before anything runs.** A precondition (not a gate)
+  verifies that every slot names a skill and that each skill is found.
 
 ### How plugins and framework skills work together
 
-Decided 2026-10-03. A plugin and the framework skills of a stage are **loaded
-together** into the ASPICE Agent's context; both are instructions to the same
-agent, which then does the work. They do not hand work to each other.
+A plugin and the framework skills of a stage are **loaded together** into the
+ASPICE Agent's context; both are instructions to the same agent, which then does
+the work. They do not hand work to each other.
 
-| | Plugin (e.g. *create_requirements_plugin: gentle-ai/sdd-spec*) | Framework skill (e.g. *write_requirements_skill*) |
+| | Plugin (e.g. *quality-framework/derive_requirements_plugin*) | Framework skill (e.g. *write_requirements_skill*) |
 |---|---|---|
 | Brings | The **method** — how to work the stage out (what to explore, what to ask, in which order) | The **contract** — what the work product must look like and which rules it follows |
 | Example | *Explore the scope, list the scenarios, clarify open questions* | *Every requirement has a UID, Level, Kind, Criticality, Size, Derived from, and acceptance criteria in Given / When / Then* |
@@ -1598,9 +1534,9 @@ agent, which then does the work. They do not hand work to each other.
 
 **One stage, step by step** (SWE.1 as the example):
 
-1. The skill loader reads the slot table: *create_requirements_plugin:
-   gentle-ai/sdd-spec*, plus the framework skills of the stage —
-   *write_requirements_skill*, *define_glossary_terms_skill*,
+1. The skill loader reads the slot table — *create_requirements_plugin:
+   quality-framework/derive_requirements_plugin* — and the framework skills of
+   the stage: *write_requirements_skill*, *define_glossary_terms_skill*,
    *specify_nfr_measurement_skill*.
 2. The agent loads all of them, with the approved diagram as input.
 3. It follows the plugin's method and writes the result **in the framework's
@@ -1610,97 +1546,91 @@ agent, which then does the work. They do not hand work to each other.
 5. On findings: up to 3 retries, then the architect. On pass: checkpoint 2.
 
 **When they disagree, the framework wins.** If a plugin has its own format (e.g.
-its own specification layout), the gates accept only the framework's contract, so
-the plugin's format never reaches the main branch.
+its own specification layout), the gates accept only the framework's contract,
+so the plugin's format never reaches the main branch.
 
-**Why this way.** Only the work product on disk counts. The gates check the
-result, so they never need to prove that a plugin was invoked — the weak point of
-main, where the provider skill ran first, wrote nothing to disk, and
-*requirements-authoring* ran afterwards as a separate step no gate could see.
-
-**Consequence.** The framework skills are rewritten from step-by-step procedures
-("do this, then this") into contracts and rules ("a requirement looks like
-this"), so they can be loaded next to any plugin.
+**Only the work product on disk counts.** The gates check the result, so they
+never need to prove that a plugin was invoked. That is why the framework skills
+are contracts and rules ("a requirement looks like this"), not procedures, so
+they can be loaded next to any plugin.
 
 ### Operating model — humans, agents and gates
 
-Decided 2026-10-01. People write the wishes, draw the diagrams and accept the
-result; agents with skills do the engineering in between; gates — deterministic
-scripts, never agents — check that the rules were followed. The architect cannot
-read every detail, so the gates are the architect's eyes: they do not prove the
-product is right, they close the doors through which hidden defects get in.
+People write the wishes, approve the diagrams and accept the result; agents
+with skills do the engineering in between; gates — deterministic scripts, never
+agents — check that the rules were followed. The architect cannot read every
+detail, so the gates are the architect's eyes: they do not prove the product is
+right, they close the doors through which hidden defects get in.
 
 | Role | ASPICE | Who | Produces |
 |---|---|---|---|
-| Customer — writes the wishes | before SWE.1 | Person | Unstructured wishes; they say nothing about the solution |
-| Diagram drafter — proposes a draft diagram from the wishes | input to SWE.2 | Agent + create_diagram_plugin (e.g. archify) | A draft diagram for the architect to correct |
+| Customer — writes the wishes | before SWE.1 | Person | Wishes; they say nothing about the solution |
+| Diagram drafter — proposes a draft diagram from the wishes | input to SWE.2 | Agent + create_diagram_plugin (Archify) | A draft diagram for the architect to correct |
 | Architect — corrects and approves the diagrams | SWE.2, input to SWE.1 | Person | The approved diagrams |
-| Scribe — derives the requirements | SWE.1 | Agent + skill | Requirements derived from the diagrams |
-| Craftsmen — detailed design and code | SWE.3 | Agent + skill | Detailed design and code |
-| Piece tester | SWE.4 | Agent + skill | Unit tests, written first |
-| Assembler | SWE.5 | Agent + skill | Component and integration tests |
-| Bridge inspector | SWE.6 | Agent + skill | Software-level tests |
+| Scribe — derives the requirements | SWE.1 | Agent + plugin | Requirements derived from the diagrams |
+| Craftsmen — architecture, detailed design and code | SWE.2, SWE.3 | Agent + plugins | Architecture, detailed design and code |
+| Piece tester | SWE.4 | Agent + plugin | Unit tests and stubs, written first |
+| Assembler | SWE.5 | Agent + plugin | Component and integration tests |
+| Bridge tester | SWE.6 | Agent + plugin | Software-level tests and measurements |
 | Quality inspector | SUP.1 | Gates | Pass or fail on every rule |
-| Reviewer | SWE.3 BP5, SUP.1 | Reviewer agent on every pull request + a person on a sample | Review record |
-| Customer — accepts the result | VAL.1 | Person | Accept or reject |
+| Reviewer | SWE.3 BP5, SUP.1 | Reviewer agent on every pull request + a person on a sample | Review on the host |
+| Village crew — writes the validation scenarios | VAL.1 | Agent + plugin | Scenarios from the wishes |
+| Customer — accepts the release | VAL.1 | Person | Accept or reject |
 
-**Review (four-eyes) — decided 2026-10-01, option C.** A reviewer agent, different
-from the author, reviews every pull request with its own skill and checklist. A
-person reviews a sample: every architecture pull request, plus a fixed share of
-feature pull requests declared by the product (e.g. *1 in 5*). The sample is
-chosen deterministically (e.g. by pull-request number) so a gate can verify that
-every sampled pull request has a human approval. Reason: an agent reviewing
-another agent is not independent; the human sample keeps the independence
-ASPICE SUP.1 BP1 asks for.
+**Review (four-eyes).** A reviewer agent, different from the author, reviews
+every pull request with its own skill and checklist. A person reviews a sample:
+every architecture pull request, plus a fixed share of the others declared by
+the product (e.g. *1 in 5*), chosen by pull-request number so a gate can verify
+that every sampled pull request has a person's approval. An agent reviewing
+another agent is not independent; the person's sample keeps the independence
+SUP.1 BP1 asks for.
 
-**From wishes to diagram — decided 2026-10-01, option B.** An agent reads the
-customer's wishes and proposes a draft diagram with the diagram plugin; the
-architect corrects it, iterates, and approves it (checkpoint 1). The wishes are
-kept in the repository as the source document of the diagram (e.g.
-*docs/architecture/intent/<slug>.md*), so the chain starts at the customer and not
-in mid-air. This settles the direction of the open item `intent-to-diagram` in
-`OPEN_ACTIONS.md`.
+**From wishes to diagram.** An agent reads the customer's wishes and proposes a
+draft diagram with the diagram plugin; the architect corrects it, iterates, and
+approves it (checkpoint 1). The wishes stay in the repository (*qf.yaml
+paths.wishes_file*) as the source of the diagram, so the chain starts at the
+customer.
 
-**The wishes document is the stakeholder requirements — decided 2026-10-01.**
-ASPICE validates the product against the *stakeholder requirements* (VAL.1). The
-customer's wishes document plays that role: every wish in it carries an
-identifier, so validation can trace back to it.
+**The wishes are the stakeholder requirements.** ASPICE validates the product
+against the *stakeholder requirements* (VAL.1); the wishes play that role. Every
+wish carries an identifier, so diagrams, constraint requirements and
+validation scenarios trace back to it.
 
-**Wish link — decided 2026-10-01.** Every diagram element names the wish (or
-wishes) it comes from (e.g. *wish: W-03*). This closes the chain end to end —
-wish → diagram → requirement → test → code — so a gate can tell which wishes a
-release affects, and every wish is either served by the diagram or visibly not.
+**Every diagram element names its wishes** (*&lt;diagram&gt;.wishes.yaml*). That
+closes the chain end to end — wish → diagram → requirement → test → code — and
+every wish is either served by the diagram or visibly not.
 
 **The full flow.**
 
 ```
 Customer: wishes ──► Agent: draft diagram ──► Architect: corrects + approves (1)
    ──► Agent: derives requirements ──► Architect: approves requirements (2)
-   ──► Agents: design, code, tests (SWE.3–SWE.6) ──► Gates check every rule
-   ──► Reviewer agent on every PR + person on the sample (3)
-   ──► Customer: acceptance (4)
+   ──► Agent: proposes the tech stack ──► Architect: approves the stack (3)
+   ──► Agents: architecture, design, tests, code (SWE.2–SWE.6) ──► Gates check every rule
+   ──► Reviewer agent on every PR + a person on the sample (4)
+   ──► Release on staging ──► Customer: acceptance (5)
 ```
 
-**Human checkpoints — decided 2026-10-01.** Four points where a person decides,
-each recorded on disk so a gate can verify it happened:
+**Human checkpoints.** Five points where a person decides, each recorded so a
+gate can verify it happened:
 
-| # | Checkpoint | Who | What they decide |
-|---|---|---|---|
-| 1 | Diagram approval | Architect | "This is the shape I want" — before any requirement is derived |
-| 2 | Approval of the derived requirements | Architect | "These requirements say what I meant" — before any design or code; the last point where the architect can still read everything, because requirements are plain text |
-| 3 | Human review on the sample | A person | Whether the design and the tests make sense |
-| 4 | Acceptance | Customer | "This is what I needed" (VAL.1) |
-
+| # | Checkpoint | Who | What they decide | Recorded as |
+|---|---|---|---|---|
+| 1 | Diagram approval | Architect | "This is the shape I want" — before any requirement is derived | An approval file |
+| 2 | Approval of the derived requirements | Architect | "These requirements say what I meant" — the last point where the architect can still read everything, because requirements are plain text | An approval file |
+| 3 | Approval of the tech stack | Architect | "This stack fits the requirements and the constraints" — before any component is designed | An approval file |
+| 4 | Review on the sample | A person | Whether the design and the tests make sense | A review on the host |
+| 5 | Acceptance of the release | Customer | "This is what I needed" (VAL.1) | An approval file on the release pull request |
 
 ### Keeping concerns separate
 
-Decided 2026-10-01. The implementation keeps three separations visible:
+The implementation keeps three separations visible:
 
 1. **SWE, VAL and SUP never mix.** Every gate belongs to exactly one process
-   group, and its name and location say which: e.g. *gates/swe/*,
-   *gates/val/*, *gates/sup/*. A SUP gate may read the results
-   other gates produced, but never repeats their checks. Shared code lives in
-   *lib/*, which belongs to no group.
+   group, and its location says which: *gates/swe/*, *gates/val/*,
+   *gates/sup/*. A SUP gate may read the results other gates produced, but
+   never repeats their checks. Shared code lives in *tools/*, which belongs to
+   no group.
 2. **Framework tests and product gates never mix.** Framework tests check that
    the framework is correct (the rulebook is complete, every gate does what it
    claims); they run in the framework's CI. Product gates check that the product
@@ -1708,53 +1638,47 @@ Decided 2026-10-01. The implementation keeps three separations visible:
 3. **No extra machinery.** Everything runs on a pull request or a release, which
    already exist — no scheduled jobs and no daily exports.
 
-**SUP.1, pragmatic approach (agreed 2026-10-01).** SUP.1 defines only what makes
-quality assurance trustworthy, and references the rest: gate integrity
-(framework pinned and unmodified; every gate a required check; human approval on
-changes to the CI file), the rulebook's completeness (a framework test),
-trends in the release report (from the fault issues opened and closed since the
-previous release), and escalation checked at release (an open fault older than
-the declared limit must be escalated). BP3 and BP4 are references to the SWE and
-VAL gates.
+**SUP.1 defines only what makes quality assurance trustworthy**, and references
+the rest: gate integrity (the framework pinned and unmodified; every gate a
+required check; a person's approval on changes to the CI file), the rulebook's
+completeness (a framework test), trends in the release report, and escalation
+checked at release. BP3 and BP4 are references to the SWE and VAL gates.
 
-**SUP gates (own, decided 2026-10-01):** verify_framework_integrity_gate,
-verify_required_checks_gate, report_quality_trends_gate, check_nonconformances_gate, check_escalations_gate —
-plus one framework test (rulebook completeness) — for SUP.1; check_config_items_gate,
-verify_branch_protection_gate, verify_baseline_gate, verify_backup_gate for SUP.8; check_problem_record_gate,
-check_urgent_fix_gate, verify_problem_closure_gate, report_problem_trends_gate for SUP.9; check_change_record_gate,
-verify_change_approval_gate, verify_change_trace_gate, verify_change_closure_gate for SUP.10. SUP no longer uses any SWE or VAL
-gate.
+**The SUP gates:** verify_framework_integrity_gate, verify_required_checks_gate,
+verify_host_settings_gate, scan_security_gate, check_framework_feedback_gate,
+check_nonconformances_gate, check_escalations_gate, report_quality_trends_gate,
+check_retro_actions_gate — plus one framework test (rulebook completeness) — for
+SUP.1; check_commit_conventions_gate, verify_branch_protection_gate,
+check_config_items_gate, check_track_rule_gate, verify_architecture_tests_gate,
+verify_baseline_gate, verify_backup_gate for SUP.8; check_problem_record_gate,
+check_urgent_fix_gate, verify_problem_closure_gate, report_problem_trends_gate
+for SUP.9; check_change_record_gate, verify_change_approval_gate,
+verify_change_trace_gate, verify_change_closure_gate for SUP.10.
 
-**Gates that still serve more than one group** — to split when the gates are
-implemented: check_verification_report_gate (SWE.4–SWE.6, VAL.1), verify_release_evidence_gate
-(SWE.5–SWE.6, VAL.1).
-
+**Two gates serve more than one process.** *check_verification_report_gate*
+(SWE.4–SWE.6 BP5, VAL.1 BP5) and *verify_release_evidence_gate* (VAL.1
+BP3–BP5) read evidence the other processes produce.
 
 ### The rule that holds it together
 
 > **Every row must have its "who checks it" column filled.**
 
-This turns "the philosophy is the source of truth" into something a script can
+This turns "the principles are the source of truth" into something a script can
 verify:
 
-- The table lives in `gates/practices.yaml` — one entry per practice, pointing
-  at its stages, contract, plugin and gate.
-- A framework test fails if any practice has no gate, or names a gate that does
-  not exist.
-- This document renders the same table: the Philosophy explains each row, Under
-  the hood explains the columns.
+- The practice tables of § 4 are the rulebook: every practice names the gate
+  that checks it (**Gate:** …).
+- A framework test (*tests/consistency/test_rulebook.py*) fails if a gate script
+  belongs to no practice, or a practice names a gate that is neither built nor
+  planned for a stage.
 
-A gap between philosophy and enforcement is closed by **adding the check**, never
+A gap between principle and enforcement is closed by **adding the check**, never
 by weakening the practice.
 
-**No advisory level — decided 2026-10-01.** Every practice is mandatory: its
-gate blocks. A `mandatory` / `advisory` attribute was considered (to state
-desired principles such as a screaming architecture without failing a gate) and
-rejected: the risk of practices eroding into warnings outweighed the benefit. A
-desired property that cannot be a hard gate may still be encouraged by
-**defaults** — what the scaffold and the default plugins produce — but it is not
-a practice and the framework claims nothing about it.
-
+**No advisory level.** Every practice is mandatory: its gate blocks. A desired
+property that cannot be a hard gate may still be encouraged by **defaults** —
+what the scaffold and the shipped methods produce — but it is not a practice and
+the framework claims nothing about it.
 
 ### What a practice is
 
@@ -1794,10 +1718,6 @@ product leaves all of them uncovered.
 
 ### Naming convention — skills, plugins, gates
 
-Decided 2026-10-03; replaces the gate naming of 2026-10-01. **Updated 2026-10-04:**
-only underscores, no hyphens, so a name is also a valid Python module name and is
-spelled the same in the document, the file name, the findings and the code.
-
 Every agent, plugin, skill, gate, adapter and tool is named **action_what_kind**,
 words separated by underscores. The name is read by position: the **first word is
 the action** — always one verb —, the **last word is the kind**, and everything in
@@ -1830,409 +1750,214 @@ Examples: *create_diagram_plugin*, *write_requirements_skill*,
 - **report** and **scan** — produce evidence (e.g. *report_quality_trends_gate*,
   *scan_security_gate*).
 
-**Framework skills** (main's names → new names): requirements-authoring →
-write_requirements_skill · domain-glossary → define_glossary_terms_skill ·
-nfr-measurability → specify_nfr_measurement_skill · design-artifacts →
-write_design_skill · testability-discipline → ensure_testability_skill ·
-security-test-templates → create_security_tests_skill · adr-discipline →
-record_decisions_skill · tdd-cycle-enforcement → enforce_test_first_skill ·
-(new, 2026-10-10) construct_units_skill ·
-structured-logging → emit_log_events_skill · env-config-awareness →
-validate_env_config_skill · verification-suite-execution →
-run_verification_suites_skill · production-observability →
-configure_observability_skill · code-review-gate → review_code_skill ·
-system-acceptance-gate → prepare_acceptance_skill · framework-feedback →
-report_framework_feedback_skill.
-
-**Gates** (old names → new names, for the gates of § 4):
-
-| Old gate name (2026-10-01) | New name | Old gate name (2026-10-01) | New name |
-|---|---|---|---|
-| diagram_contract-gate | check_diagram_contract_gate | diagram_wish_link-gate | verify_diagram_to_wishes_link_gate |
-| diagram_approval-gate | verify_diagram_approval_gate | requirement_contract-gate | check_requirements_contract_gate |
-| diagram_req_link-gate | verify_requirements_to_diagram_link_gate | glossary-gate | check_glossary_gate |
-| requirement_approval-gate | verify_requirements_approval_gate | design_contract-gate | check_design_contract_gate |
-| adr-gate | verify_decision_records_gate | track_rule-gate | check_track_rule_gate |
-| testability-gate | check_testability_gate | architecture_only-gate | verify_architecture_tests_gate |
-| code_link-gate | verify_code_to_design_link_gate | env_config-gate | check_env_config_gate |
-| test_first-gate | verify_test_first_gate | req_test_link-gate | verify_tests_to_requirements_link_gate |
-| plan_contract-gate | check_verification_plan_gate | security_tests-gate | verify_security_tests_gate |
-| component_test_link-gate | verify_tests_to_components_link_gate | flow_test_link-gate | verify_tests_to_flows_link_gate |
-| logging-gate | verify_log_events_gate | nfr_thresholds-gate | verify_nfr_thresholds_gate |
-| report-gate | check_verification_report_gate | release_evidence-gate | verify_release_evidence_gate |
-| observability-gate | check_observability_gate | host_settings-gate | verify_host_settings_gate |
-| stack_commands-gate | check_stack_commands_gate | issue_workflow-gate | verify_issue_workflow_gate |
-| required_checks-gate | verify_required_checks_gate | nonconformance-gate | check_nonconformances_gate |
-| escalation-gate | check_escalations_gate | quality_trends-gate | report_quality_trends_gate |
-| framework_integrity-gate | verify_framework_integrity_gate | security_scan-gate | scan_security_gate |
-| retro_actions-gate | check_retro_actions_gate | framework_feedback-gate | check_framework_feedback_gate |
-| baseline-gate | verify_baseline_gate | commit_conventions-gate | check_commit_conventions_gate |
-| branch_protection-gate | verify_branch_protection_gate | config_items-gate | check_config_items_gate |
-| backup-gate | verify_backup_gate | wish_validation_link-gate | verify_acceptance_to_wishes_link_gate |
-| problem_record-gate | check_problem_record_gate | problem_closure-gate | verify_problem_closure_gate |
-| urgent_fix-gate | check_urgent_fix_gate | problem_trends-gate | report_problem_trends_gate |
-| change_record-gate | check_change_record_gate | change_approval-gate | verify_change_approval_gate |
-| change_trace-gate | verify_change_trace_gate | change_closure-gate | verify_change_closure_gate |
-
-Known inconsistency: *check_design_contract_gate* is used for two work products
-(the architecture model and the detailed design). **Resolved 2026-10-09:** the
-detailed design has its own gate, *check_detailed_design_contract_gate*, run at
-stage 4 (*Detailed design stage — decisions*, item 7). The gate counts below
-date from 2026-10-01 and are not recounted.
+**Only underscores.** A name is also a valid Python module name, spelled the
+same in the document, the file name, the findings and the code.
 
 ### How the other pieces fit
 
 | Piece | Role in the table |
 |---|---|
-| Gates | The "who checks it" column. As many as the rows need; small, sharing `lib/` |
+| Gates | The "who checks it" column. As many as the rows need; small, sharing *tools/* |
 | Slots and plugins | The "who writes it" column. One plugin may fill several rows |
 | Contracts | The "artifact" column — the schema the gate checks against |
 | Manifest | Orders the gates by each row's V stage |
 
 
-### Implementation big picture — decided 2026-10-01
+### Base practices and gates
 
-**How base practices relate to gates.** Many-to-many: 66 base practices in scope
-are checked by 41 gates (40 product gates + 1 framework test); a few gates do
-most of the work (verify_tests_to_requirements_link_gate serves 10 base practices, check_verification_plan_gate
-9, check_design_contract_gate 7). Three base practices have no gate of their own because
-they only reference others (SUP.1 BP3, SUP.1 BP4, SUP.8 BP2).
+Many-to-many: the 66 base practices in scope are checked by 53 gates — 27 in
+*gates/swe/*, 24 in *gates/sup/*, 2 in *gates/val/* — plus one framework test
+(rulebook completeness). A few gates serve many base practices (e.g.
+*check_verification_plan_gate*, *verify_test_first_gate*); three base practices
+have no gate of their own because they only reference others (SUP.1 BP3,
+SUP.1 BP4, SUP.8 BP2).
 
-**How many gates.**
-
-| Source | Gates | Reused from main | New |
-|---|---|---|---|
-| ASPICE — SWE, VAL, SUP (§ 4.1) | 41 | 15 | 26 |
-| Splitting the gates still shared by SWE and VAL (plan_contract, release_evidence, report) | +3 | — | +3 |
-| Principle-only practices (§ 4.2) | +8 | 2 | 6 |
-| Commit conventions (SUP.8 BP4) | +1 | 1 | — |
-| **Total** | **≈ 53** | **≈ 18** | **≈ 35** |
-
-**Gate is not script.** Gates that read the same source share one script, with
-one function per gate — e.g. every SUP.9 and SUP.10 gate reads the issue tracker.
-The expected implementation is about 12–15 scripts, grouped by data source
-(requirement corpus, diagrams, git history, issue tracker, test results), each in
-the folder of its process group.
-
-**Reused from main.** check_requirements_contract_gate (check-uid-uniqueness,
-check-nfr-fields, check-relations, lib/corpus.sh); verify_code_to_design_link_gate,
-verify_tests_to_requirements_link_gate, verify_log_events_gate, check_verification_report_gate (parts of check-traceability);
-check_design_contract_gate and verify_decision_records_gate (check-design-review); check_diagram_contract_gate
-(check-mermaid / check-diagram); check_glossary_gate (check-glossary, extended to detect
-undefined terms); verify_host_settings_gate, verify_branch_protection_gate,
-verify_required_checks_gate (check-branch-protection); check_track_rule_gate and
-verify_architecture_tests_gate (the wrapper's no-implementation assertion);
-check_config_items_gate (the pattern of check-docs-layout); check_commit_conventions_gate
-(check-commit-message, check-commit-range, check-branch-name);
-check_framework_feedback_gate (check-framework-feedback); the rulebook framework test
-(the pattern of test_scripts_index).
-
-**Scripts on main — fate decided.**
-
-| Script | Fate |
-|---|---|
-| check-commit-message, check-commit-range, check-branch-name | Kept — one gate, check_commit_conventions_gate (SUP.8 BP4) |
-| check-framework-feedback | Kept — check_framework_feedback_gate (principle-only) |
-| check-sdd-chain | Reshaped into a **pipeline precondition**: every plugin declared in the product configuration exists and targets the right contract version |
-| check-integration-consistency | Reshaped into a **pipeline precondition**: the product configuration is valid and complete; deprecations.yaml is dropped |
-| check-module-structure | Dropped 2026-10-01 with practice 19; revived 2026-10-10 as a flexible rule of verify_code_to_design_link_gate (UNIT_OUTSIDE_COMPONENT): only the component segment of the path is fixed |
-| check-architecture-exists | Dropped — a feature cannot pass verify_requirements_to_diagram_link_gate or check_design_contract_gate without an architecture to link to |
+**One file per gate.** Every gate is visible by name in the tree,
+*gates/&lt;group&gt;/&lt;gate&gt;.py*, and the code gates share lives in *tools/*.
 
 **Pipeline preconditions are not gates.** They check that the framework can run
 (plugins and configuration), not that the product follows a practice; they run
 first, and if they fail nothing else runs.
 
-### Work packages — decided 2026-10-03
-
-Four work packages. The contracts come first because they are the interface
-between the other three: built without them, the agent, the skills and the gates
-would each invent their own version and drift apart.
-
-| WP | What | Content | Nature | Done when |
-|---|---|---|---|---|
-| **WP0 — Contracts** | The shared interface | The requirement, diagram, design (architecture and detailed design) and verification-plan contracts; the markers; the test-result file; *qf.yaml* (paths + slot table); the approval record of a checkpoint; the **gate findings format** (gate, rule, file, line, message), which the retry loop feeds back to the plugin | Schemas + valid and invalid examples | Every contract has a schema and examples, and a framework test validates them |
-| **WP1 — ASPICE Agent** | The agent itself | **Scripts:** config reader with the pipeline preconditions, stage resolver, skill loader, gate runner, retry counter, checkpoint recorder. **LLM:** the orchestrator — a framework command that calls these scripts, runs the plugin and reacts to findings | Deterministic scripts + one command | Every script has framework tests; the stage resolver returns the right stage on example repositories |
-| **WP2 — Framework skills** | The rules loaded with the plugins | The framework skills rewritten from step-by-step procedures into contracts and rules, under their new names (e.g. *write_requirements_skill*); the skills of main that are dropped are removed | Text | Every skill names its contract and the gates that enforce it; a sample run on an example product passes its gates |
-| **WP3 — Framework gates** | The architect's eyes | About 53 gates (about 18 reused from main) in about 12–15 scripts grouped by data source, under *gates/swe*, *val*, *sup* and *principles*; the CI workflow that runs them | Deterministic scripts | Every gate has a passing and a failing example in the framework tests; shellcheck is clean |
+### What is deterministic
 
 **The agent is not one big prompt.** Everything that must give the same answer
 every time — which stage the product is in, which skill fills it, whether a gate
-passed, how many retries are left, whether an approval is recorded — is a script.
-Only the orchestration (running the plugin, reacting to findings) is done by the
-LLM. Otherwise the part deciding where the product stands could guess, which is
-exactly what the gates exist to prevent.
+passed, how many retries are left, whether an approval is recorded — is a
+script. Only the orchestration (running the plugin, reacting to findings) is
+done by the LLM. Otherwise the part deciding where the product stands could
+guess, which is exactly what the gates exist to prevent.
 
 **The gates are useful without the agent.** They run in CI on every pull request
 and protect the main branch no matter who wrote the change — a person, the
-ASPICE Agent or any other AI. They are the safest part to deliver first.
+ASPICE Agent or any other AI.
 
-### Implementation strategy — decided 2026-10-03
+### Repository layout
 
-1. **Contracts first (WP0).** Nothing else starts until the contracts the first
-   slice needs are fixed.
-2. **One stage end to end — SWE.1.** Before multiplying anything by 12 stages,
-   prove the whole loop on one: the requirement contract;
-   *write_requirements_skill*, *define_glossary_terms_skill* and
-   *specify_nfr_measurement_skill*; their gates
-   (*check_requirements_contract_gate*,
-   *verify_requirements_to_diagram_link_gate*, *check_glossary_gate*); and a
-   minimal ASPICE Agent that runs only this stage — config reader, stage
-   resolver, skill loader, gate runner, 3 retries then the architect, and the
-   record of checkpoint 2. The input is an approved diagram from an example
-   product. Done when a plugin produces requirements that pass the gates, a
-   broken requirement is caught and fixed by a retry, and a stuck one reaches
-   the architect.
-3. **Then stage by stage, following the V.** SWE.2 (diagram, drawn first), SWE.2
-   (architecture), SWE.3 + SWE.4, SWE.5, SWE.6, then SUP.1, SUP.8, VAL.1, SUP.9,
-   SUP.10. Each stage adds its piece of every work package: the contract, the
-   skills, the gates and the agent's entry for that stage.
-4. **Gates go live as they land.** Each gate is added to CI as soon as it is
-   ready, without waiting for the agent.
-5. **In parallel after the slice.** Once SWE.1 works end to end, WP1, WP2 and WP3
-   can progress in parallel, stage by stage, because the contracts hold them
-   together.
-6. **The framework's own bar.** Framework tests (pytest), shellcheck and the
-   changelog, as today. The result ships as the next major version; main's
-   scripts are retired as their replacements land (*Scripts on main — fate
-   decided*, above).
+| Folder | Holds |
+|---|---|
+| *agent/* | The orchestrator (*run_aspice_agent.md*), the stage manifest (*stages.yaml*) and the agent's tools: config reader, stage resolver, skill loader, gate runner, retry counter, checkpoint recorder |
+| *gates/swe/*, *gates/sup/*, *gates/val/* | One file per gate |
+| *tools/* | The code gates and agent share: readers, the run tool, the report and record writers |
+| *adapters/* | One adapter per diagram tool |
+| *contracts/* | One JSON Schema per contract, with valid and invalid examples |
+| *skills/* | The rulebooks, by process group |
+| *plugins/* | The methods shipped with the framework |
+| *templates/* | What a product copies: the CI workflows, the framework feedback log |
+| *examples/* | The example product and a stand-in method |
+| *tests/* | The framework's own tests: schema, consistency, unit, scenarios |
+| *docs/* | This document and the changelog |
 
-### Where the refactoring is built — decided 2026-10-03, updated 2026-10-04
+Every path is relative to the repository root. *.github/workflows/framework-ci.yml*
+runs the framework's tests and ruff on every push and pull request.
 
-The next major version is built as a **self-contained tree** under *Refactoring/*
-in main's repository. At the cutover, everything outside *Refactoring/* is deleted
-and its content moves to the repository root.
-
-- **Nothing inside depends on anything outside.** The tree has its own
-  documentation (this document) and changelog under *docs/*, its tests and test
-  dependencies under *tests/*, and its CI workflow. Every path written inside it is relative to its own root — e.g.
-  *contracts/requirement_contract.v1.schema.json*, never *Refactoring/contracts/…* — so
-  nothing needs rewriting at the cutover.
-- **Proven, not assumed.** CI copies *Refactoring/* alone into an empty directory
-  and runs its suite there; any file that reaches outside the tree fails.
-- **Two transitional pieces live outside**, because a host only reads them at the
-  repository root: the CI workflow that runs the tree's suite
-  (*.github/workflows/refactoring-ci.yml*), deleted at the cutover; the tree's own
-  workflow (*.github/workflows/framework-ci.yml* inside it) takes over.
-- **Main keeps working until then**, with its own changelog at the root. The
-  tree's changelog started as a copy of main's, so the history survives the
-  cutover; an entry that changes main before then is added to both.
-
-### Implementation language — decided 2026-10-04
+### Implementation language
 
 The gates, the diagram adapters and the ASPICE Agent's scripts are written in
 **Python 3**. The contracts are YAML and JSON Schema, which Python reads and
-validates natively (*PyYAML*, *jsonschema*). Python runs where the gates run — the
-product's CI and the machine running the agent — not in the product: nothing
-Python ships with it. It adds no requirement over main, whose bash gates already
-called *python3* and *yq*; it drops *yq*. The framework's own bar for this code
-is pytest and ruff (lint and format) in place of shellcheck. Main's gates are ported as
-logic, not reused as code.
+validates natively (*PyYAML*, *jsonschema*). Python runs where the gates run —
+the product's CI and the machine running the agent — not in the product:
+nothing Python ships with it. The framework's own bar is pytest and ruff (lint
+and format).
 
-### The SWE.1 slice — files — planned 2026-10-04
+### Where everything lives
 
-| File | Work package | Does |
-|---|---|---|
-| *tools/read_yaml_blocks_tool.py* | WP3 | Reads the fenced YAML blocks of requirement and glossary files, with their line numbers |
-| *tools/validate_contract_tool.py* | WP3 | Loads a contract and validates a record against it |
-| *tools/emit_findings_tool.py* | WP3 | Builds and prints a gate result in *findings.v1* |
-| *adapters/read_archify_diagram_adapter.py* | WP3 | Archify JSON + invariants file → element list in *diagram.v1* |
-| *gates/swe/check_requirements_contract_gate.py* | WP3 | The requirement contract across all requirement files |
-| *gates/swe/check_glossary_gate.py* | WP3 | Terms defined once, marked, used, no alias |
-| *gates/swe/verify_requirements_to_diagram_link_gate.py* | WP3 | Requirements ↔ diagram elements and wishes |
-| *agent/stages.yaml* | WP1 | The stage manifest: per stage the process, slot, skills, gates (built, after the checkpoint, and planned), checkpoint and what it approves |
-| *agent/read_stages_tool.py* | WP1 | Reads the manifest for the other agent tools |
-| *agent/read_config_tool.py* | WP1 | Reads *qf.yaml* and the machine's *environment.yaml*; runs the pipeline preconditions — every slot's skill found |
-| *agent/resolve_stage_tool.py* | WP1 | The first stage not done — implemented gates passing and checkpoint approval matching the files; planned gates listed as not run |
-| *agent/load_skills_tool.py* | WP1 | The slot's plugin plus the stage's framework skills |
-| *agent/run_gates_tool.py* | WP1 | Runs the stage's gates and collects their findings |
-| *agent/count_retries_tool.py* | WP1 | Counts attempts: 3 retries, then the architect |
-| *agent/record_checkpoint_tool.py* | WP1 | Writes the checkpoint decision as *approval.v1* |
-| *agent/run_aspice_agent.md* | WP1 | The orchestrator: the only LLM part; holds ODD's common steps — Authorize, Classify, Track before write, Close |
-| *examples/login-product/* | All | The example product: an approved diagram, wishes, glossary, configuration |
-| *tests/unit/test_&lt;name&gt;.py*, *tests/scenarios/test_swe1_slice.py* | All | One test file per gate, adapter and tool; the slice's three outcomes — pass, fixed by a retry, escalated |
-| *templates/github/quality_gates.yml* | WP3 | The product's CI: the gates of every stage reached, the framework from the product's pinned submodule, run again on every review, the host read with *QF_HOST_TOKEN*; no plugin needed |
-| *contracts/diagram_wishes_contract.v1.schema.json* | WP0 | Diagram stage: which wishes each diagram element realises |
-| *skills/swe/draw_diagram_skill/SKILL.md* | WP2 | Diagram stage: the rules a diagram follows, each naming its gate rule or checkpoint 1 |
-| *tools/read_approvals_tool.py* | WP3 | Which files an approval covers and whether the latest decision still counts — shared by gates and agent |
-| *gates/swe/check_diagram_contract_gate.py* | WP3 | Diagram stage: every diagram read faithfully, connected, no orphan node, invariants on existing elements |
-| *gates/swe/verify_diagram_to_wishes_link_gate.py* | WP3 | Diagram stage: every behaviour wish realised; links name existing elements and wishes |
-| *gates/swe/verify_diagram_approval_gate.py* | WP3 | Diagram stage: once requirements exist, a current checkpoint-1 approval dated before them |
-| *gates/swe/verify_requirements_approval_gate.py* | WP3 | Requirements stage: once the stack or architecture exists, a current checkpoint-2 approval dated before them |
-| *contracts/component_…*, *interface_…*, *decision_contract.v1.schema.json* | WP0 | Architecture stage: components, interfaces, decision records |
-| *skills/swe/choose_stack_skill*, *write_design_skill*, *record_decisions_skill* | WP2 | Architecture stage: the rules of the stack, the design and the decision records |
-| *plugins/swe/derive_architecture_plugin/SKILL.md* | WP2 | Architecture stage: the method — stack first, checkpoint 3, then the design |
-| *tools/check_approval_order_tool.py* | WP3 | Approved before derived, from git history — shared by the approval gates |
-| *gates/swe/check_stack_decision_gate.py* | WP3 | Architecture stage: the stack follows stack.v1, has its decision record and a command for every suite named |
-| *gates/swe/verify_decision_records_gate.py* | WP3 | Architecture stage: decision records well-formed, named after their ID, the choice among the options |
-| *gates/swe/verify_stack_approval_gate.py* | WP3 | Architecture stage, after checkpoint 3: the stack approved before the first architecture file |
-| *gates/swe/check_design_contract_gate.py* | WP3 | Architecture stage, after checkpoint 3: one component per node, one interface per edge, every software requirement met |
-| *tests/scenarios/test_swe2_architecture.py* | All | The architecture stage on the example product, through checkpoint 3 |
-| *contracts/unit_contract.v1.schema.json* | WP0 | Detailed design stage: one unit, its inputs and outputs with range and unit of measure |
-| *gates/swe/check_testability_gate.py* | WP3 | Architecture stage, after checkpoint 3: a composition root per component, a real implementation and a test double per interface |
-| *skills/swe/ensure_testability_skill* | WP2 | Architecture stage: a composition root per component, a real implementation and a test double per interface |
-| *skills/swe/write_detailed_design_skill* | WP2 | Detailed design stage: units from the component's design diagram, calls inside the component, calls and interactions that agree |
-| *plugins/swe/derive_detailed_design_plugin/SKILL.md* | WP2 | Detailed design stage: the method — units, inputs and outputs, calls, then the diagrams from the diagram plugin |
-| *skills/swe/enforce_test_first_skill* | WP2 | Unit tests stage, again at unit construction: the verification plan, a stub and tests per unit in one test-only commit, the red run, no test changed later |
-| *skills/swe/construct_units_skill* | WP2 | Unit construction stage: unit markers both ways, the component folder, requirement markers |
-| *skills/swe/run_verification_suites_skill* | WP2 | Unit construction stage: the declared checks and suites with pinned tools, JUnit XML results, Cobertura XML coverage |
-| *plugins/swe/derive_unit_tests_plugin/SKILL.md* | WP2 | Unit tests stage: the method — without the code, the test list per unit, stubs, tests, the red run, one commit per component |
-| *plugins/swe/derive_unit_code_plugin/SKILL.md* | WP2 | Unit construction stage: the method — replace each stub in place until its tests pass, refactor, run the checks; never edit a test |
-| *tools/read_commit_range_tool.py* | WP3 | The pull request's commits (base..HEAD, decision 9) and the files each changes |
-| *tools/read_unit_markers_tool.py* | WP3 | Code and test files under *code_dir* (decision 14), their *@unit* and *@sdoc* markers, the detailed design's units |
-| *tools/read_test_results_tool.py* | WP3 | JUnit XML results, each tied to its test file (decision 11) |
-| *tools/read_coverage_tool.py* | WP3 | Cobertura XML coverage, the report's root rates (decision 16) |
-| *tools/run_stack_commands_tool.py* | WP3 | The stack's checks and suites, each after its *version_command*, once per tree under *.qf/runs/* (decision 13) |
-| *gates/swe/check_verification_plan_gate.py* | WP3 | Unit tests stage: one verification plan block, complete |
-| *gates/swe/verify_test_first_gate.py* | WP3 | Unit tests stage, again at unit construction: a stub and a test per unit, test-only commits, the red run, no code before its test, no test changed with code |
-| *gates/swe/verify_code_to_design_link_gate.py* | WP3 | Unit construction stage: unit markers both ways, the component folder, requirement markers |
-| *gates/swe/check_stack_commands_gate.py* | WP3 | Unit construction stage: pinned tool versions, clean checks, unit results and coverage against the plan |
-| *gates/swe/verify_tests_to_requirements_link_gate.py* | WP3 | Unit construction stage: every result tied to a test file, every test passing, every unit tested |
-| *contracts/env_variable_contract.v1.schema.json* | WP0 | One environment variable the code reads: description, required, example, valid values (principle #23) |
-| *skills/swe/validate_env_config_skill* | WP2 | Detailed design, unit tests and unit construction stages: variables declared with the design, read only as declared, each required one tested first |
-| *gates/swe/check_env_config_gate.py* | WP3 | Unit construction stage: every variable read is declared and every declared one read, every required one named by a passing test |
-| *skills/swe/create_security_tests_skill* | WP2 | Architecture, unit tests and unit construction stages: the catalog of five security test templates, named on external interfaces, tested first on the boundary component (principle #16) |
-| *gates/swe/verify_security_tests_gate.py* | WP3 | Unit construction stage: every template an external interface names has a passing test of the component behind it; every marker names a catalog template |
-| *skills/swe/verify_integration_skill* | WP2 | Integration verification stage: the plan's integration section, *@component* and *@flow* tests, interfaces crossed by tested flows, every step tested, tests never changed with code |
-| *skills/swe/emit_log_events_skill* | WP2 | Unit construction and integration verification stages: the observability requirement's events emitted with event, requirement and correlation_id, and named by a passing integration test |
-| *plugins/swe/derive_integration_tests_plugin/SKILL.md* | WP2 | Integration verification stage: the method — the plan's integration section, component tests, integration tests per flow, one test-only commit; the coder follows |
-| *tools/read_integration_tool.py* | WP3 | The architecture's components and interfaces, the approved flows, and one run of the integration suite |
-| *gates/swe/verify_tests_to_components_link_gate.py* | WP3 | Integration verification stage: a passing component test per component, every step of the order tested |
-| *gates/swe/verify_tests_to_flows_link_gate.py* | WP3 | Integration verification stage: a passing integration test per approved flow, every interface crossed, no failing result |
-| *gates/swe/verify_log_events_gate.py* | WP3 | Integration verification stage: every event of every observability requirement named by a passing integration test with its *@sdoc* |
-| *contracts/measurements_contract.v1.schema.json* | WP0 | The values a suite measured for non-functional requirements: requirement, value, unit (SWE.6 BP3) |
-| *skills/swe/verify_software_skill* | WP2 | Software verification stage: the plan's software section, a passing *@sdoc* test per requirement in the right suite, measured values against thresholds, tests never changed with code, the report |
-| *skills/swe/configure_observability_skill* | WP2 | Software verification stage: every observability requirement watched by an alert, dashboard or health-check definition naming it |
-| *plugins/swe/derive_software_tests_plugin/SKILL.md* | WP2 | Software verification stage: the method — the plan's software section, software-level and end-to-end tests, measurements, observability definitions, one test-only commit; the coder follows |
-| *tools/read_software_tool.py* | WP3 | What proves each requirement (seal, measurement, *e2e* or *software* test), thresholds, the measurements of a run |
-| *tools/write_verification_report_tool.py* | WP3 | The verification report of the current tree: unit, component, flow, integration-step and requirement results, with a digest of every suite run |
-| *gates/swe/verify_software_tests_to_requirements_link_gate.py* | WP3 | Software verification stage: a passing *@sdoc* test per requirement in its suite, no unknown marker, no failing software-level test |
-| *gates/swe/verify_nfr_thresholds_gate.py* | WP3 | Software verification stage: a measured value per non-functional requirement, in its unit, meeting its threshold |
-| *gates/swe/check_observability_gate.py* | WP3 | Software verification stage: every observability requirement named by an alert, dashboard or health-check definition |
-| *gates/swe/check_verification_report_gate.py* | WP3 | Software verification stage: the report exists for the current tree, written from its suite runs |
-| *tests/scenarios/test_swe6_software_verification.py* | All | Stage 8 on the Python product: tests, measurements, definitions and the report to stage 9; a missed threshold, a loosened end-to-end test, a missing software section and a missing report caught |
-| *skills/sup/review_code_skill* | WP2 | Quality assurance stage: every delivery a pull request, a reviewer agent's approval of the head with the checklist, a person on the sample, faults left unfixed as non-conformance issues |
-| *skills/sup/report_framework_feedback_skill* | WP2 | Quality assurance stage: every framework weakness a complete entry, every framework bump accounted for (principle #47) |
-| *plugins/sup/derive_review_plugin/SKILL.md* | WP2 | Quality assurance stage: the reviewer agent's method — read, judge the checklist, post from its own account |
-| *templates/FRAMEWORK_FEEDBACK.md* | WP2 | The framework feedback log a product copies: the entry template, severities and classes |
-| *tools/read_host_tool.py* | WP3 | The code host: pull requests and their reviews, branch protection, release tags; the delivery of the current branch; a recorded host for tests |
-| *tools/post_review_tool.py* | WP3 | The reviewer agent's review of the current head, with the checklist in its fixed form |
-| *gates/sup/verify_framework_integrity_gate.py* | WP3 | Quality assurance stage: the framework a pinned submodule, unchanged, at a released commit |
-| *gates/sup/verify_required_checks_gate.py* | WP3 | Quality assurance stage: the default branch protected, the gates a required check, code owners for the CI file, the framework pin and the architecture |
-| *gates/sup/scan_security_gate.py* | WP3 | Quality assurance stage: both scanners ran, no critical or high finding (principle #29) |
-| *gates/sup/check_framework_feedback_gate.py* | WP3 | Quality assurance stage: complete feedback entries, every framework bump named (principle #47) |
-| *gates/sup/verify_host_settings_gate.py* | WP3 | Quality assurance stage: a pull request, the reviewer agent's approval of its head with the checklist, a person's on the sample |
-| *tests/consistency/test_rulebook.py* | All | The rulebook is complete (SUP.1 BP2): every gate script belongs to a practice, every gate a practice names is built or planned |
-| *tests/scenarios/test_sup1_quality_assurance.py* | All | Stage 9 on the Python product with a recorded host: no pull request, the reviewer agent's approval, a sampled pull request waiting for a person, a push after the approvals |
-| *contracts/release_contract.v1.schema.json* | WP0 | Configuration management stage: one release record — version, configuration items changed since the previous release, framework version (SUP.8 BP5–BP7) |
-| *skills/sup/record_baseline_skill* | WP2 | Configuration management stage: commit and branch conventions, the main branch's history kept, every configuration item under git, the two tracks apart, a release proposed as a pull request with a computed version, tagged and mirrored |
-| *tools/write_release_tool.py* | WP3 | The next release's record: the version computed from the commits since the last release tag, the configuration items changed, the pinned framework release; the records not yet tagged |
-| *templates/github/release.yml* | WP3 | The product's release workflow: after the release pull request's merge, tag the merge commit and check the baseline and the mirror |
-| *gates/sup/check_commit_conventions_gate.py* | WP3 | Configuration management stage: every commit a Conventional Commit naming a requirement or issue, the branch named by convention |
-| *gates/sup/verify_branch_protection_gate.py* | WP3 | Configuration management stage: no force-push, no deletion on the main branch |
-| *gates/sup/check_config_items_gate.py* | WP3 | Configuration management stage: every configuration item exists and is tracked by git |
-| *gates/sup/check_track_rule_gate.py* | WP3 | Configuration management stage: an architecture pull request changes no feature-track work product and comes from an *arch/* branch |
-| *gates/sup/verify_architecture_tests_gate.py* | WP3 | Configuration management stage: an architecture pull request contains no code (principle #4) |
-| *gates/sup/verify_baseline_gate.py* | WP3 | Configuration management stage: every release record complete with its computed version; every release tag annotated, on main, holding its record and every item |
-| *gates/sup/verify_backup_gate.py* | WP3 | Configuration management stage: every release tag in the mirror |
-| *tests/scenarios/test_sup8_configuration_management.py* | All | Stage 10 on the Python product with a recorded host and a local mirror: a delivery by convention, a commit off it, a release proposed, tagged after its merge and mirrored |
-| *contracts/validation_contract.v1.schema.json* | WP0 | Validation stage: one validation record — the environment, the deployed commit, every scenario's technique and result (VAL.1 BP3, BP4) |
-| *skills/val/validate_release_skill* | WP2 | Validation stage: every wish a scenario listed in the plan; a release validated on a staging deployment of exactly what is released, every automated scenario and affected wish with a result, none failed, accepted by the customer before its merge |
-| *plugins/val/derive_validation_scenarios_plugin/SKILL.md* | WP2 | Validation stage: the village crew's method — scenarios from the wishes, the diagrams and the outside interfaces only, and the plan's validation section |
-| *tools/write_validation_record_tool.py* | WP3 | The proposed release's validation record: the deployed commit and the automated results of the validation suite, keeping the results entered by hand; the scenarios and the wishes a release affects |
-| *gates/val/verify_acceptance_to_wishes_link_gate.py* | WP3 | Validation stage: every wish a scenario, every marker a real wish; at release, every affected wish a scenario with a result |
-| *gates/val/verify_release_evidence_gate.py* | WP3 | Validation stage: every release tag its validation record; the proposed release validated on exactly what is released, every automated scenario run, none failed, accepted by the customer |
-| *tests/scenarios/test_val1_validation.py* | All | Stage 11 on the Python product with a recorded host: a wish without a scenario, a release validated on staging waiting for the customer with CI red, accepted and tagged with its record, rejected, and changed after its deployment |
-| *contracts/problem_contract.v1.schema.json* | WP0 | Problem resolution stage: one problem — the template, its analysis, its alert and its change request (SUP.9 BP1, BP2, BP4, BP5) |
-| *contracts/nonconformance_contract.v1.schema.json* | WP0 | Quality assurance at release: one fault left open — where it was found, what fixed it (SUP.1 BP6) |
-| *contracts/retro_action_contract.v1.schema.json* | WP0 | Quality assurance at release: one retrospective action — owner and due date (principle #41) |
-| *skills/sup/resolve_problems_skill* | WP2 | Problem resolution stage: a problem recorded, analysed before its fix, announced, authorized when critical, reproduced first, closed with its test and its reporter's word |
-| *skills/sup/track_nonconformances_skill* | WP2 | Quality assurance: every fault left open an issue closed only with its fix, escalated in time, counted per release; every lesson card followed up |
-| *gates/sup/check_problem_record_gate.py* | WP3 | Problem resolution stage: every problem a test names recorded and analysed before its fix; at release every problem, and the alert of a bad one |
-| *gates/sup/check_urgent_fix_gate.py* | WP3 | Problem resolution stage: a critical fix authorized by an urgent approver before it reaches the main branch |
-| *gates/sup/verify_problem_closure_gate.py* | WP3 | Problem resolution stage: every marker a problem; at release, fixed with a test on the main branch or a change request, and confirmed by the reporter |
-| *gates/sup/report_problem_trends_gate.py* | WP3 | Problem resolution stage: the release report counts the problems by severity and component |
-| *gates/sup/check_nonconformances_gate.py* | WP3 | Quality assurance at release: every closed fault note names the merged fix |
-| *gates/sup/check_escalations_gate.py* | WP3 | Quality assurance at release: every old open fault note escalated and assigned |
-| *gates/sup/report_quality_trends_gate.py* | WP3 | Quality assurance at release: the release report counts the fault notes |
-| *gates/sup/check_retro_actions_gate.py* | WP3 | Quality assurance at release: no lesson card past its due date |
-| *tests/scenarios/test_sup9_problem_resolution.py* | All | Stage 12 on the Python product with a recorded host: a crack nobody analysed, an analysed crack reproduced first and fixed, a critical one waiting for its authorization, a bench naming no problem |
-| *contracts/change_request_contract.v1.schema.json* | WP0 | Change request stage: one change request — what, initiator, reason, status, then its analysis and its problem (SUP.10 BP1, BP2, BP4) |
-| *skills/sup/manage_changes_skill* | WP2 | Change request stage: a change recorded, analysed, signed before it is built, traced, and closed with its initiator's word |
-| *gates/sup/check_change_record_gate.py* | WP3 | Change request stage: every change its commits name recorded and analysed; at release every change, and its dependencies |
-| *gates/sup/verify_change_approval_gate.py* | WP3 | Change request stage: every change a commit builds signed by an approver before that commit |
-| *gates/sup/verify_change_trace_gate.py* | WP3 | Change request stage: every affected item exists; a change and its problem name each other |
-| *gates/sup/verify_change_closure_gate.py* | WP3 | Change request stage: at release, every closed change built on the main branch and confirmed by its initiator; the report lists the changes |
-| *tests/scenarios/test_sup10_change_request.py* | All | Stage 13 on the Python product with a recorded host: a change built unsigned, signed before it was built, and naming an unknown requirement |
-| *gates/swe/check_detailed_design_contract_gate.py* | WP3 | Detailed design stage: per component its units, design diagrams, calls and interactions, all consistent |
-| *tests/scenarios/test_swe3_detailed_design.py* | All | The detailed design stage on the example product, from a passing architecture to stage 5 |
-| *tests/scenarios/test_swe4_unit_verification.py* | All | Stages 5 and 6 on a small Python product (decision 3): tests first, then the units, to stage 7; a test green on its stub fixed by a retry; wrong code escalated; a loosened test caught |
-
-**Slice result — 2026-10-04.** The three outcomes the strategy asks for are
-shown by *tests/scenarios/test_swe1_slice.py* on a copy of the example product:
-requirements that pass the gates move on after checkpoint 2; a broken
-requirement is caught and fixed by a retry; a stuck one reaches the architect
-after the first run and 3 retries, with the findings of every attempt. What the
-slice does not yet prove: the LLM itself (the scenario scripts the plugin's
-output), the stage-1 gates and verify_requirements_approval_gate (reported as not
-run), and a real method plugin (a stand-in fills the method slots).
-
-**Diagram stage — implemented 2026-10-05.** Stage 1 runs its three gates;
-*tests/scenarios/test_swe1_slice.py* also shows that changing an approved diagram
-sends the product back to stage 1. *verify_requirements_approval_gate* stays
-planned: until a design stage exists, it could only pass without checking.
-
-**Architecture stage — implemented 2026-10-05.** Stage 3 runs its four gates,
-two of them only after checkpoint 3. *tests/scenarios/test_swe2_architecture.py*
-continues from approved requirements on a copy of the example product: the
-stack is written and waits for checkpoint 3; once approved, a design that
-passes the gates moves the product to stage 4 (not built yet); a broken design
-is fixed by a retry; changes requested at checkpoint 3 keep the product waiting
-with no component; and a stack changed after its approval withdraws it. The
-example product itself stays at the start of SWE.1 — its requirements and its
-architecture are what the scenarios' scripted plugin outputs
-(*tests/scenarios/plugin_outputs/requirements/*, *…/architecture/*) produce, and
-its architecture slot names the framework plugin *derive_architecture_plugin*. Not yet
-proven: the LLM itself, threat tables (not gated), and check_track_rule_gate
-(planned; needs pull-request data).
-
-**Requirements approval gate — implemented 2026-10-05.** With a design stage in
-place, *verify_requirements_approval_gate* checks BP6's "requirements approved
-before design": once the stack or an architecture file exists, the latest
-checkpoint-2 decision approves the current requirements and glossary, dated
-before the first of those files appeared (*tools/check_approval_order_tool.py*,
-as for checkpoints 1 and 3). It runs with stage 2's gates, so a requirement
-edited after the design started sends the product back to stage 2. Code is not
-yet among the derived files: it joins them when stage 4 exists. No SWE stage up to 3 has a planned gate left except check_track_rule_gate and
-verify_architecture_tests_gate, which both need pull-request data (SUP.8).
-
-**Testability gate — implemented 2026-10-09.** *check_testability_gate* runs at
-stage 3 after checkpoint 3, next to check_design_contract_gate: every component
-declares its composition root and every interface its real implementation and
-test double (architecture stage, item 9). On an empty architecture both gates
-fail closed, so the stage reports NO_ARCHITECTURE once per gate.
-
-**Detailed design stage — implemented 2026-10-09.** Stage 4 runs
-*check_detailed_design_contract_gate*; the agent loads
-*derive_detailed_design_plugin* with *write_detailed_design_skill*, and the
-diagram plugin through *also_slots*. It has no checkpoint: the design is agreed
-at the pull request. *tests/scenarios/test_swe3_detailed_design.py* continues
-from a passing architecture on a copy of the example product: both plugins are
-loaded; a passing design moves the product to stage 5 (not built yet); a broken
-one (a range upside down, a call missing from the sequence diagram) is fixed by
-a retry; one that stays broken reaches the architect after the first run and 3
-retries. The example product's detailed design slot names the framework plugin;
-the product itself still stays at the start of SWE.1. Detailed-design files
-count among the files *verify_requirements_approval_gate* checks. Not yet proven:
-the LLM itself, and the diagram plugin drawing real design diagrams (the
-scenario scripts them).
-
-**One file per gate — decided 2026-10-04.** Replaces the 2026-10-01 grouping of
-gates into 12–15 scripts by data source: every gate is visible by name in the
-tree, and the code gates share lives in *tools/*.
-
-Not in the slice: verify_requirements_approval_gate (the stage table lists it; the
-slice only records checkpoint 2), and the wishes contract, which the link gate
-needs for UNKNOWN_WISH.
+| File | Does |
+|---|---|
+| *tools/read_yaml_blocks_tool.py* | Reads the fenced YAML blocks of requirement and glossary files, with their line numbers |
+| *tools/validate_contract_tool.py* | Loads a contract and validates a record against it |
+| *tools/emit_findings_tool.py* | Builds and prints a gate result in *findings.v1* |
+| *adapters/read_archify_diagram_adapter.py* | Archify JSON + invariants file → element list in *diagram.v1* |
+| *gates/swe/check_requirements_contract_gate.py* | The requirement contract across all requirement files |
+| *gates/swe/check_glossary_gate.py* | Terms defined once, marked, used, no alias |
+| *gates/swe/verify_requirements_to_diagram_link_gate.py* | Requirements ↔ diagram elements and wishes |
+| *agent/stages.yaml* | The stage manifest: per stage the process, slot, skills, gates (built, after the checkpoint, and planned), checkpoint and what it approves |
+| *agent/read_stages_tool.py* | Reads the manifest for the other agent tools |
+| *agent/read_config_tool.py* | Reads *qf.yaml* and the machine's *environment.yaml*; runs the pipeline preconditions — every slot's skill found |
+| *agent/resolve_stage_tool.py* | The first stage not done — implemented gates passing and checkpoint approval matching the files; planned gates listed as not run |
+| *agent/load_skills_tool.py* | The slot's plugin plus the stage's framework skills |
+| *agent/run_gates_tool.py* | Runs the stage's gates and collects their findings |
+| *agent/count_retries_tool.py* | Counts attempts: 3 retries, then the architect |
+| *agent/record_checkpoint_tool.py* | Writes the checkpoint decision as *approval.v1* |
+| *agent/run_aspice_agent.md* | The orchestrator: the only LLM part; holds ODD's common steps — Authorize, Classify, Track before write, Close |
+| *examples/login-product/* | The example product: an approved diagram, wishes, glossary, configuration |
+| *tests/unit/test_&lt;name&gt;.py*, *tests/scenarios/test_swe1_slice.py* | One test file per gate, adapter and tool; the slice's three outcomes — pass, fixed by a retry, escalated |
+| *templates/github/quality_gates.yml* | The product's CI: the gates of every stage reached, the framework from the product's pinned submodule, run again on every review, the host read with *QF_HOST_TOKEN*; no plugin needed |
+| *contracts/diagram_wishes_contract.v1.schema.json* | Diagram stage: which wishes each diagram element realises |
+| *skills/swe/draw_diagram_skill/SKILL.md* | Diagram stage: the rules a diagram follows, each naming its gate rule or checkpoint 1 |
+| *tools/read_approvals_tool.py* | Which files an approval covers and whether the latest decision still counts — shared by gates and agent |
+| *gates/swe/check_diagram_contract_gate.py* | Diagram stage: every diagram read faithfully, connected, no orphan node, invariants on existing elements |
+| *gates/swe/verify_diagram_to_wishes_link_gate.py* | Diagram stage: every behaviour wish realised; links name existing elements and wishes |
+| *gates/swe/verify_diagram_approval_gate.py* | Diagram stage: once requirements exist, a current checkpoint-1 approval dated before them |
+| *gates/swe/verify_requirements_approval_gate.py* | Requirements stage: once the stack or architecture exists, a current checkpoint-2 approval dated before them |
+| *contracts/component_…*, *interface_…*, *decision_contract.v1.schema.json* | Architecture stage: components, interfaces, decision records |
+| *skills/swe/choose_stack_skill*, *write_design_skill*, *record_decisions_skill* | Architecture stage: the rules of the stack, the design and the decision records |
+| *plugins/swe/derive_architecture_plugin/SKILL.md* | Architecture stage: the method — stack first, checkpoint 3, then the design |
+| *tools/check_approval_order_tool.py* | Approved before derived, from git history — shared by the approval gates |
+| *gates/swe/check_stack_decision_gate.py* | Architecture stage: the stack follows stack.v1, has its decision record and a command for every suite named |
+| *gates/swe/verify_decision_records_gate.py* | Architecture stage: decision records well-formed, named after their ID, the choice among the options |
+| *gates/swe/verify_stack_approval_gate.py* | Architecture stage, after checkpoint 3: the stack approved before the first architecture file |
+| *gates/swe/check_design_contract_gate.py* | Architecture stage, after checkpoint 3: one component per node, one interface per edge, every software requirement met |
+| *tests/scenarios/test_swe2_architecture.py* | The architecture stage on the example product, through checkpoint 3 |
+| *contracts/unit_contract.v1.schema.json* | Detailed design stage: one unit, its inputs and outputs with range and unit of measure |
+| *gates/swe/check_testability_gate.py* | Architecture stage, after checkpoint 3: a composition root per component, a real implementation and a test double per interface |
+| *skills/swe/ensure_testability_skill* | Architecture stage: a composition root per component, a real implementation and a test double per interface |
+| *skills/swe/write_detailed_design_skill* | Detailed design stage: units from the component's design diagram, calls inside the component, calls and interactions that agree |
+| *plugins/swe/derive_detailed_design_plugin/SKILL.md* | Detailed design stage: the method — units, inputs and outputs, calls, then the diagrams from the diagram plugin |
+| *skills/swe/enforce_test_first_skill* | Unit tests stage, again at unit construction: the verification plan, a stub and tests per unit in one test-only commit, the red run, no test changed later |
+| *skills/swe/construct_units_skill* | Unit construction stage: unit markers both ways, the component folder, requirement markers |
+| *skills/swe/run_verification_suites_skill* | Unit construction stage: the declared checks and suites with pinned tools, JUnit XML results, Cobertura XML coverage |
+| *plugins/swe/derive_unit_tests_plugin/SKILL.md* | Unit tests stage: the method — without the code, the test list per unit, stubs, tests, the red run, one commit per component |
+| *plugins/swe/derive_unit_code_plugin/SKILL.md* | Unit construction stage: the method — replace each stub in place until its tests pass, refactor, run the checks; never edit a test |
+| *tools/read_commit_range_tool.py* | The pull request's commits (base..HEAD, decision 9) and the files each changes |
+| *tools/read_unit_markers_tool.py* | Code and test files under *code_dir* (decision 14), their *@unit* and *@sdoc* markers, the detailed design's units |
+| *tools/read_test_results_tool.py* | JUnit XML results, each tied to its test file (decision 11) |
+| *tools/read_coverage_tool.py* | Cobertura XML coverage, the report's root rates (decision 16) |
+| *tools/run_stack_commands_tool.py* | The stack's checks and suites, each after its *version_command*, once per tree under *.qf/runs/* (decision 13) |
+| *gates/swe/check_verification_plan_gate.py* | Unit tests stage: one verification plan block, complete |
+| *gates/swe/verify_test_first_gate.py* | Unit tests stage, again at unit construction: a stub and a test per unit, test-only commits, the red run, no code before its test, no test changed with code |
+| *gates/swe/verify_code_to_design_link_gate.py* | Unit construction stage: unit markers both ways, the component folder, requirement markers |
+| *gates/swe/check_stack_commands_gate.py* | Unit construction stage: pinned tool versions, clean checks, unit results and coverage against the plan |
+| *gates/swe/verify_tests_to_requirements_link_gate.py* | Unit construction stage: every result tied to a test file, every test passing, every unit tested |
+| *contracts/env_variable_contract.v1.schema.json* | One environment variable the code reads: description, required, example, valid values (principle #23) |
+| *skills/swe/validate_env_config_skill* | Detailed design, unit tests and unit construction stages: variables declared with the design, read only as declared, each required one tested first |
+| *gates/swe/check_env_config_gate.py* | Unit construction stage: every variable read is declared and every declared one read, every required one named by a passing test |
+| *skills/swe/create_security_tests_skill* | Architecture, unit tests and unit construction stages: the catalog of five security test templates, named on external interfaces, tested first on the boundary component (principle #16) |
+| *gates/swe/verify_security_tests_gate.py* | Unit construction stage: every template an external interface names has a passing test of the component behind it; every marker names a catalog template |
+| *skills/swe/verify_integration_skill* | Integration verification stage: the plan's integration section, *@component* and *@flow* tests, interfaces crossed by tested flows, every step tested, tests never changed with code |
+| *skills/swe/emit_log_events_skill* | Unit construction and integration verification stages: the observability requirement's events emitted with event, requirement and correlation_id, and named by a passing integration test |
+| *plugins/swe/derive_integration_tests_plugin/SKILL.md* | Integration verification stage: the method — the plan's integration section, component tests, integration tests per flow, one test-only commit; the coder follows |
+| *tools/read_integration_tool.py* | The architecture's components and interfaces, the approved flows, and one run of the integration suite |
+| *gates/swe/verify_tests_to_components_link_gate.py* | Integration verification stage: a passing component test per component, every step of the order tested |
+| *gates/swe/verify_tests_to_flows_link_gate.py* | Integration verification stage: a passing integration test per approved flow, every interface crossed, no failing result |
+| *gates/swe/verify_log_events_gate.py* | Integration verification stage: every event of every observability requirement named by a passing integration test with its *@sdoc* |
+| *contracts/measurements_contract.v1.schema.json* | The values a suite measured for non-functional requirements: requirement, value, unit (SWE.6 BP3) |
+| *skills/swe/verify_software_skill* | Software verification stage: the plan's software section, a passing *@sdoc* test per requirement in the right suite, measured values against thresholds, tests never changed with code, the report |
+| *skills/swe/configure_observability_skill* | Software verification stage: every observability requirement watched by an alert, dashboard or health-check definition naming it |
+| *plugins/swe/derive_software_tests_plugin/SKILL.md* | Software verification stage: the method — the plan's software section, software-level and end-to-end tests, measurements, observability definitions, one test-only commit; the coder follows |
+| *tools/read_software_tool.py* | What proves each requirement (seal, measurement, *e2e* or *software* test), thresholds, the measurements of a run |
+| *tools/write_verification_report_tool.py* | The verification report of the current tree: unit, component, flow, integration-step and requirement results, with a digest of every suite run |
+| *gates/swe/verify_software_tests_to_requirements_link_gate.py* | Software verification stage: a passing *@sdoc* test per requirement in its suite, no unknown marker, no failing software-level test |
+| *gates/swe/verify_nfr_thresholds_gate.py* | Software verification stage: a measured value per non-functional requirement, in its unit, meeting its threshold |
+| *gates/swe/check_observability_gate.py* | Software verification stage: every observability requirement named by an alert, dashboard or health-check definition |
+| *gates/swe/check_verification_report_gate.py* | Software verification stage: the report exists for the current tree, written from its suite runs |
+| *tests/scenarios/test_swe6_software_verification.py* | Stage 8 on the Python product: tests, measurements, definitions and the report to stage 9; a missed threshold, a loosened end-to-end test, a missing software section and a missing report caught |
+| *skills/sup/review_code_skill* | Quality assurance stage: every delivery a pull request, a reviewer agent's approval of the head with the checklist, a person on the sample, faults left unfixed as non-conformance issues |
+| *skills/sup/report_framework_feedback_skill* | Quality assurance stage: every framework weakness a complete entry, every framework bump accounted for (principle #47) |
+| *plugins/sup/derive_review_plugin/SKILL.md* | Quality assurance stage: the reviewer agent's method — read, judge the checklist, post from its own account |
+| *templates/FRAMEWORK_FEEDBACK.md* | The framework feedback log a product copies: the entry template, severities and classes |
+| *tools/read_host_tool.py* | The code host: pull requests and their reviews, branch protection, release tags; the delivery of the current branch; a recorded host for tests |
+| *tools/post_review_tool.py* | The reviewer agent's review of the current head, with the checklist in its fixed form |
+| *gates/sup/verify_framework_integrity_gate.py* | Quality assurance stage: the framework a pinned submodule, unchanged, at a released commit |
+| *gates/sup/verify_required_checks_gate.py* | Quality assurance stage: the default branch protected, the gates a required check, code owners for the CI file, the framework pin and the architecture |
+| *gates/sup/scan_security_gate.py* | Quality assurance stage: both scanners ran, no critical or high finding (principle #29) |
+| *gates/sup/check_framework_feedback_gate.py* | Quality assurance stage: complete feedback entries, every framework bump named (principle #47) |
+| *gates/sup/verify_host_settings_gate.py* | Quality assurance stage: a pull request, the reviewer agent's approval of its head with the checklist, a person's on the sample |
+| *tests/consistency/test_rulebook.py* | The rulebook is complete (SUP.1 BP2): every gate script belongs to a practice, every gate a practice names is built or planned |
+| *tests/scenarios/test_sup1_quality_assurance.py* | Stage 9 on the Python product with a recorded host: no pull request, the reviewer agent's approval, a sampled pull request waiting for a person, a push after the approvals |
+| *contracts/release_contract.v1.schema.json* | Configuration management stage: one release record — version, configuration items changed since the previous release, framework version (SUP.8 BP5–BP7) |
+| *skills/sup/record_baseline_skill* | Configuration management stage: commit and branch conventions, the main branch's history kept, every configuration item under git, the two tracks apart, a release proposed as a pull request with a computed version, tagged and mirrored |
+| *tools/write_release_tool.py* | The next release's record: the version computed from the commits since the last release tag, the configuration items changed, the pinned framework release; the records not yet tagged |
+| *templates/github/release.yml* | The product's release workflow: after the release pull request's merge, tag the merge commit and check the baseline and the mirror |
+| *gates/sup/check_commit_conventions_gate.py* | Configuration management stage: every commit a Conventional Commit naming a requirement or issue, the branch named by convention |
+| *gates/sup/verify_branch_protection_gate.py* | Configuration management stage: no force-push, no deletion on the main branch |
+| *gates/sup/check_config_items_gate.py* | Configuration management stage: every configuration item exists and is tracked by git |
+| *gates/sup/check_track_rule_gate.py* | Configuration management stage: an architecture pull request changes no feature-track work product and comes from an *arch/* branch |
+| *gates/sup/verify_architecture_tests_gate.py* | Configuration management stage: an architecture pull request contains no code (principle #4) |
+| *gates/sup/verify_baseline_gate.py* | Configuration management stage: every release record complete with its computed version; every release tag annotated, on main, holding its record and every item |
+| *gates/sup/verify_backup_gate.py* | Configuration management stage: every release tag in the mirror |
+| *tests/scenarios/test_sup8_configuration_management.py* | Stage 10 on the Python product with a recorded host and a local mirror: a delivery by convention, a commit off it, a release proposed, tagged after its merge and mirrored |
+| *contracts/validation_contract.v1.schema.json* | Validation stage: one validation record — the environment, the deployed commit, every scenario's technique and result (VAL.1 BP3, BP4) |
+| *skills/val/validate_release_skill* | Validation stage: every wish a scenario listed in the plan; a release validated on a staging deployment of exactly what is released, every automated scenario and affected wish with a result, none failed, accepted by the customer before its merge |
+| *plugins/val/derive_validation_scenarios_plugin/SKILL.md* | Validation stage: the village crew's method — scenarios from the wishes, the diagrams and the outside interfaces only, and the plan's validation section |
+| *tools/write_validation_record_tool.py* | The proposed release's validation record: the deployed commit and the automated results of the validation suite, keeping the results entered by hand; the scenarios and the wishes a release affects |
+| *gates/val/verify_acceptance_to_wishes_link_gate.py* | Validation stage: every wish a scenario, every marker a real wish; at release, every affected wish a scenario with a result |
+| *gates/val/verify_release_evidence_gate.py* | Validation stage: every release tag its validation record; the proposed release validated on exactly what is released, every automated scenario run, none failed, accepted by the customer |
+| *tests/scenarios/test_val1_validation.py* | Stage 11 on the Python product with a recorded host: a wish without a scenario, a release validated on staging waiting for the customer with CI red, accepted and tagged with its record, rejected, and changed after its deployment |
+| *contracts/problem_contract.v1.schema.json* | Problem resolution stage: one problem — the template, its analysis, its alert and its change request (SUP.9 BP1, BP2, BP4, BP5) |
+| *contracts/nonconformance_contract.v1.schema.json* | Quality assurance at release: one fault left open — where it was found, what fixed it (SUP.1 BP6) |
+| *contracts/retro_action_contract.v1.schema.json* | Quality assurance at release: one retrospective action — owner and due date (principle #41) |
+| *skills/sup/resolve_problems_skill* | Problem resolution stage: a problem recorded, analysed before its fix, announced, authorized when critical, reproduced first, closed with its test and its reporter's word |
+| *skills/sup/track_nonconformances_skill* | Quality assurance: every fault left open an issue closed only with its fix, escalated in time, counted per release; every lesson card followed up |
+| *gates/sup/check_problem_record_gate.py* | Problem resolution stage: every problem a test names recorded and analysed before its fix; at release every problem, and the alert of a bad one |
+| *gates/sup/check_urgent_fix_gate.py* | Problem resolution stage: a critical fix authorized by an urgent approver before it reaches the main branch |
+| *gates/sup/verify_problem_closure_gate.py* | Problem resolution stage: every marker a problem; at release, fixed with a test on the main branch or a change request, and confirmed by the reporter |
+| *gates/sup/report_problem_trends_gate.py* | Problem resolution stage: the release report counts the problems by severity and component |
+| *gates/sup/check_nonconformances_gate.py* | Quality assurance at release: every closed fault note names the merged fix |
+| *gates/sup/check_escalations_gate.py* | Quality assurance at release: every old open fault note escalated and assigned |
+| *gates/sup/report_quality_trends_gate.py* | Quality assurance at release: the release report counts the fault notes |
+| *gates/sup/check_retro_actions_gate.py* | Quality assurance at release: no lesson card past its due date |
+| *tests/scenarios/test_sup9_problem_resolution.py* | Stage 12 on the Python product with a recorded host: a crack nobody analysed, an analysed crack reproduced first and fixed, a critical one waiting for its authorization, a bench naming no problem |
+| *contracts/change_request_contract.v1.schema.json* | Change request stage: one change request — what, initiator, reason, status, then its analysis and its problem (SUP.10 BP1, BP2, BP4) |
+| *skills/sup/manage_changes_skill* | Change request stage: a change recorded, analysed, signed before it is built, traced, and closed with its initiator's word |
+| *gates/sup/check_change_record_gate.py* | Change request stage: every change its commits name recorded and analysed; at release every change, and its dependencies |
+| *gates/sup/verify_change_approval_gate.py* | Change request stage: every change a commit builds signed by an approver before that commit |
+| *gates/sup/verify_change_trace_gate.py* | Change request stage: every affected item exists; a change and its problem name each other |
+| *gates/sup/verify_change_closure_gate.py* | Change request stage: at release, every closed change built on the main branch and confirmed by its initiator; the report lists the changes |
+| *tests/scenarios/test_sup10_change_request.py* | Stage 13 on the Python product with a recorded host: a change built unsigned, signed before it was built, and naming an unknown requirement |
+| *gates/swe/check_detailed_design_contract_gate.py* | Detailed design stage: per component its units, design diagrams, calls and interactions, all consistent |
+| *tests/scenarios/test_swe3_detailed_design.py* | The detailed design stage on the example product, from a passing architecture to stage 5 |
+| *tests/scenarios/test_swe4_unit_verification.py* | Stages 5 and 6 on a small Python product (decision 3): tests first, then the units, to stage 7; a test green on its stub fixed by a retry; wrong code escalated; a loosened test caught |
 
 ### Contracts
 
@@ -3307,6 +3032,9 @@ label together.
 - **Python for the framework** (2026-10-04). *Chosen:* Python 3 for the gates,
   adapters and agent scripts; YAML and JSON Schema read natively. *Not taken:*
   bash, which already called *python3* and *yq* for anything structured.
+- **One file per gate** (2026-10-04). *Chosen:* every gate its own file,
+  sharing code in *tools/*. *Not taken:* grouping the gates into 12–15 scripts
+  by data source, which hides gates behind script names.
 - **Names: action_what_kind with underscores** (2026-10-03, 2026-10-04).
   *Chosen:* the first word is the action, the last the kind, underscores only,
   so a name is also a valid Python module name. *Not taken:* hyphenated names,
@@ -4061,3 +3789,30 @@ rows are added, so rows 42–47 appear inside the stage they belong to.
 | 40 | Feedback loop *(proposed)* | Production feedback becomes backlog items labelled `origin:prod`, linked to the incident | O → 1 | issues | — | `check_production_feedback_gate` *(new)* | ❌ | Philosophy § 3.6.C #1: "Production-derived issues labeled `origin:prod` and linked to incident ID or log reference." |
 | 41 | Feedback loop *(proposed)* | Retrospective action items have an owner and a due date and are tracked to closure | O → 1 | issues | — | `check_retro_actions_gate` *(new)* | ❌ | Philosophy § 3.6.C #2: "Each action item has owner and due date; items tracked to closure via linked GitHub Issues." |
 | 54 | Feedback loop *(proposed)* | Every problem is tracked to closure: its issue links the affected requirement, the fixing pull request and the test that proves the fix, and is closed only then *(ASPICE SUP.9)* | O → 1 | issues | — | `check_problem_tracking_gate` *(new)* | ❌ | **Proposed by Claude, pending review** — 2026-09-30, to close an ASPICE SUP.9 level-1 gap (base practices quoted from memory). Wording is Claude's, not Alex's |
+
+### B.5 What became of the earlier framework's skills and scripts
+
+**Framework skills** (earlier names → current names): requirements-authoring →
+write_requirements_skill · domain-glossary → define_glossary_terms_skill ·
+nfr-measurability → specify_nfr_measurement_skill · design-artifacts →
+write_design_skill · testability-discipline → ensure_testability_skill ·
+security-test-templates → create_security_tests_skill · adr-discipline →
+record_decisions_skill · tdd-cycle-enforcement → enforce_test_first_skill ·
+(new, 2026-10-10) construct_units_skill ·
+structured-logging → emit_log_events_skill · env-config-awareness →
+validate_env_config_skill · verification-suite-execution →
+run_verification_suites_skill · production-observability →
+configure_observability_skill · code-review-gate → review_code_skill ·
+system-acceptance-gate → prepare_acceptance_skill · framework-feedback →
+report_framework_feedback_skill.
+
+**Scripts of the earlier framework.**
+
+| Script | Fate |
+|---|---|
+| check-commit-message, check-commit-range, check-branch-name | Kept — one gate, check_commit_conventions_gate (SUP.8 BP4) |
+| check-framework-feedback | Kept — check_framework_feedback_gate (principle-only) |
+| check-sdd-chain | Reshaped into a **pipeline precondition**: every plugin declared in the product configuration exists and targets the right contract version |
+| check-integration-consistency | Reshaped into a **pipeline precondition**: the product configuration is valid and complete; deprecations.yaml is dropped |
+| check-module-structure | Dropped 2026-10-01 with practice 19; revived 2026-10-10 as a flexible rule of verify_code_to_design_link_gate (UNIT_OUTSIDE_COMPONENT): only the component segment of the path is fixed |
+| check-architecture-exists | Dropped — a feature cannot pass verify_requirements_to_diagram_link_gate or check_design_contract_gate without an architecture to link to |
