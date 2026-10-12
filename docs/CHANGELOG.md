@@ -2,13 +2,13 @@
 
 All notable changes to this Quality Framework are recorded here. Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-The **top entry** is the current framework version. When a project detaches this template (see `USER_MANUAL.md` § 4), the top version at detach time is the project's **baseline framework version**.
+The **top entry** is the current framework version. A product runs one version: its framework submodule is pinned at that version's release tag.
 
 ## Provenance convention
 
 Every entry that originates outside the maintainer carries an **Origin** line, so a change can be traced back to what caused it years later:
 
-- `Origin: FB-nnn (<product>)` — a product's `FRAMEWORK_FEEDBACK.md` entry. The reporting channel is `skills/framework-feedback/SKILL.md`.
+- `Origin: FB-nnn (<product>)` — a product's `FRAMEWORK_FEEDBACK.md` entry. The reporting channel is `skills/sup/report_framework_feedback_skill/SKILL.md`.
 - `Origin: found verifying FB-nnn` — surfaced while confirming another report, not itself reported. Historically the highest-yield category: the framework's own blind spots cluster around the ones a product happened to notice.
 - `Origin: internal` — found by the framework's own suite or maintainer.
 
@@ -34,6 +34,16 @@ checking whether it is still current.
 ---
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-10-12
+
+The first release: all 13 stages of the ASPICE Agent built.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| None — first release | — | — |
 
 ### Added
 
