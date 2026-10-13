@@ -35,6 +35,10 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-13
+
+Starting a product: the construction site setup and the start rulebook.
+
 ### Migration
 
 | Edit | Where | Required |

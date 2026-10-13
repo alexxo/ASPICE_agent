@@ -42,7 +42,7 @@ construction site setup from it with the values only a person can give (the
 framework's runtime needs `PyYAML` and `jsonschema`, see `requirements.txt`):
 
 ```sh
-git clone --branch v1.0.0 git@github.com:alexxo/ASPICE_agent.git my-product/.framework
+git clone --branch v1.1.0 git@github.com:alexxo/ASPICE_agent.git my-product/.framework
 cd my-product
 python .framework/tools/create_product_tool.py --root . \
   --reviewer-agent qf-reviewer-bot --urgent-approver <login> --change-approver <login> \
