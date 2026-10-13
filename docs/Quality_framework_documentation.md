@@ -211,6 +211,7 @@ the words of the glossary below, one bridge word per framework term.
 |---|---|
 | Stage | step of the site schedule |
 | *agent/stages.yaml* | site schedule |
+| Starting a product (*tools/create_product_tool.py*) | construction site setup |
 | Plugin (fills a slot) | crew |
 | Framework plugin (*derive_…_plugin*, shipped with the framework) | village crew |
 | External plugin (e.g. Archify, installed on the machine) | outside crew |
@@ -1790,7 +1791,7 @@ by weakening the practice.
 
 **No advisory level.** Every practice is mandatory: its gate blocks. A desired
 property that cannot be a hard gate may still be encouraged by **defaults** —
-what the scaffold and the shipped methods produce — but it is not a practice and
+what *create_product_tool* and the shipped methods produce — but it is not a practice and
 the framework claims nothing about it.
 
 ### What a practice is
@@ -1909,7 +1910,7 @@ ASPICE Agent or any other AI.
 
 | Folder | Holds |
 |---|---|
-| *agent/* | The orchestrator (*run_aspice_agent.md*), the stage manifest (*stages.yaml*) and the agent's tools: config reader, stage resolver, skill loader, gate runner, retry counter, checkpoint recorder |
+| *agent/* | The orchestrator (*run_aspice_agent.md*), the start rulebook (*start_product.md*), the stage manifest (*stages.yaml*) and the agent's tools: config reader, stage resolver, skill loader, gate runner, retry counter, checkpoint recorder |
 | *gates/swe/*, *gates/sup/*, *gates/val/* | One file per gate |
 | *tools/* | The code gates and agent share: readers, the run tool, the report and record writers |
 | *adapters/* | One adapter per diagram tool |
@@ -1939,6 +1940,7 @@ and format).
 |---|---|
 | *tools/read_yaml_blocks_tool.py* | Reads the fenced YAML blocks of requirement and glossary files, with their line numbers |
 | *tools/validate_contract_tool.py* | Loads a contract and validates a record against it |
+| *tools/create_product_tool.py* | The construction site setup, run from the framework cloned into the product: the git repository, the clone adopted as the submodule, *qf.yaml*, the CI workflows, *CODEOWNERS*, the feedback log, and the submodule's release pin staged (starting a product) |
 | *tools/emit_findings_tool.py* | Builds and prints a gate result in *findings.v1* |
 | *adapters/read_archify_diagram_adapter.py* | Archify JSON + invariants file → element list in *diagram.v1* |
 | *gates/swe/check_requirements_contract_gate.py* | The requirement contract across all requirement files |
@@ -1953,6 +1955,7 @@ and format).
 | *agent/count_retries_tool.py* | Counts attempts: 3 retries, then the architect |
 | *agent/record_checkpoint_tool.py* | Writes the checkpoint decision as *approval.v1* |
 | *agent/run_aspice_agent.md* | The orchestrator: the only LLM part; holds ODD's common steps — Authorize, Classify, Track before write, Close |
+| *agent/start_product.md* | The start rulebook: asks the person the setup's values, runs the construction site setup, relays the host steps, then hands over to the orchestrator (starting a product) |
 | *examples/login-product/* | The example product: an approved diagram, wishes, glossary, configuration |
 | *tests/unit/test_&lt;name&gt;.py*, *tests/scenarios/test_swe1_slice.py* | One test file per gate, adapter and tool; the slice's three outcomes — pass, fixed by a retry, escalated |
 | *templates/github/quality_gates.yml* | The product's CI: the gates of every stage reached, the framework from the product's pinned submodule, run again on every review, the host read with *QF_HOST_TOKEN*; no plugin needed |
@@ -2245,6 +2248,50 @@ what each gate emits in its findings. For example, the requirements stage:
 and sections, that the contract exists, that every rule names a declared gate
 with a valid rule ID or a checkpoint, and that every example in a skill
 validates against its contract — so a skill cannot drift from its schema.
+
+### Starting a product
+
+A product starts with the construction site setup, *tools/create_product_tool.py*.
+Its rules, numbered as the code cites them (*decision N of starting a product*):
+
+1. **The product is the root, the framework its submodule.** The person clones
+   the framework at a release tag into the product folder, at *.framework*, and
+   runs the setup from that clone —
+   *python .framework/tools/create_product_tool.py --root .* — once, before
+   stage 1; or opens the agent in the product folder and tells it to follow
+   *.framework/agent/start_product.md*, which asks the values, runs the same
+   command, relays the host steps, commits with the person's approval and
+   hands over to the orchestrator. The setup makes the folder a git repository if it is none and
+   adopts the clone in place as the submodule at *.framework*, with the
+   clone's *origin* as its URL; a product that already declares that submodule
+   keeps it. The framework exists once, inside the product: the setup refuses
+   to run from a copy outside it, or from a clone without an *origin*.
+2. **A person's values are required, never invented.** The reviewer agent's
+   account, the urgent and change approvers, the code owners and the mirror are
+   required arguments; the agent asks the person and passes the answers. The
+   tool writes no placeholder, so *qf.yaml* is true from its first commit.
+3. **The framework is pinned at a release.** The submodule's checkout must be
+   at a release tag (*v&lt;major&gt;.&lt;minor&gt;.&lt;patch&gt;*); the setup stages
+   that pin and *.gitmodules* — the pin *verify_framework_integrity_gate*
+   requires.
+4. **What it writes.** *qf.yaml* (the layout of *examples/login-product*;
+   Archify fills the diagram slot, the framework plugins the others; one person
+   in five sampled, escalation after 30 days), the two CI workflows and the
+   framework feedback log copied from *templates/*, a *CODEOWNERS* naming the
+   code owners for the CI file, *.gitmodules* and the architecture folder, and
+   the *.gitignore* lines for *.qf/*, *.agents/* and *.claude/*. No work
+   product — wishes, diagrams and requirements are the stages' work — and no
+   empty folder.
+5. **Nothing is overwritten.** It refuses when *qf.yaml* or any file it would
+   write already exists, when the framework is not at a release tag, or when a
+   value would make *qf.yaml* invalid — and it checks all of these before it
+   changes anything, the git repository included.
+6. **The person finishes the setup.** The tool commits nothing and never
+   changes the code host. It prints what the agent's preconditions still miss
+   (e.g. Archify not installed), the stage the product is at, and the host
+   steps the gates will check: the *QF_HOST_TOKEN* secret, the protected main
+   branch with the job *gates* as a required check, code-owner review enforced
+   for admins, and the mirror.
 
 ### How each stage works
 
@@ -3427,6 +3474,30 @@ label together.
   by hash and cannot say which change they approved.
 
 ---
+
+### A.13 Starting a product
+
+- **A person's values** (2026-10-12, D65 option A). *Chosen:* required
+  arguments, which the agent asks the person for. *Not taken:* B —
+  placeholders in *qf.yaml* for the person to edit, which look like real
+  approvers until someone notices.
+- **The code host's settings** (2026-10-12, D66 option A). *Chosen:* the tool
+  prints the steps and the person takes them; the gates check the result.
+  *Not taken:* B — the tool sets them through the host's API, which needs an
+  administrator's token and acts on the host on the person's behalf.
+- **Where the setup runs** (2026-10-12, Alex). *Chosen:* from the product's own
+  framework submodule; the framework exists once. *Not taken:* a framework
+  clone outside the product that adds the submodule — two copies of the
+  framework; deleting the outside clone at the end was also rejected, since the
+  tool could delete a clone holding someone's work.
+- **How the person starts** (2026-10-13, Alex). *Chosen:* P1 and P2 together —
+  the person clones the framework into the product folder, then runs the setup
+  command (P1) or tells the agent to follow *agent/start_product.md* (P2),
+  which runs the same command; the setup runs *git init* and adopts the clone
+  as the submodule. *Not taken:* the person
+  running *git init* and *git submodule add* first — three more commands
+  before the agent can lead; P3, a script fetched with *curl | sh* — no clone,
+  and the person must trust a piped script.
 
 ## Appendix B — Origin of the practices
 

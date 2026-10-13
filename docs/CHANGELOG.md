@@ -35,6 +35,16 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| None | — | — |
+
+### Added
+
+- **The construction site setup.** The product is the repository's root and the framework its git submodule at `.framework`, checked out at a release tag. The person clones the framework at a release into the product folder; `tools/create_product_tool.py`, run from that clone, makes the folder a git repository if it is none, adopts the clone in place as the submodule with its `origin` as the URL, writes the product's `qf.yaml`, copies the CI workflows and the framework feedback log from `templates/`, writes a `CODEOWNERS` for the CI file, `.gitmodules` and the architecture folder, adds the agent's `.gitignore` lines and stages the submodule's release pin. It refuses to run from a framework copy outside the product, so the framework exists once. Every value only a person knows — reviewer agent, urgent and change approvers, code owners, mirror — is a required argument, never a placeholder. It checks everything before changing anything, never overwrites a file, commits nothing and never changes the code host: it prints the host steps the gates check. Or the person tells the agent to follow `agent/start_product.md`: it asks the values, runs the same command, relays the host steps, commits with the person's approval and hands over to `run_aspice_agent.md`; `tests/consistency/test_start_product.py` keeps its questions in step with the tool's required flags. Design document § 5 *Starting a product*, Appendix A.13. `tests/unit/test_create_product_tool.py`. Origin: internal.
+
 ## [1.0.0] - 2026-10-12
 
 The first release: all 13 stages of the ASPICE Agent built.
