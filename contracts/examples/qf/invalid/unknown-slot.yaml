@@ -25,13 +25,13 @@ paths:
 
 slots:
   create_diagram_plugin: archify
-  create_requirements_plugin: gentle-ai/sdd-spec
-  create_architecture_plugin: gentle-ai/sdd-design
-  create_detailed_design_plugin: gentle-ai/sdd-design
-  create_unit_tests_plugin: gentle-ai/sdd-apply
-  create_unit_code_plugin: gentle-ai/sdd-apply
-  create_integration_tests_plugin: gentle-ai/sdd-verify
-  create_software_tests_plugin: gentle-ai/sdd-verify
+  create_requirements_plugin: quality-framework/derive_requirements_plugin
+  create_architecture_plugin: quality-framework/derive_architecture_plugin
+  create_detailed_design_plugin: quality-framework/derive_detailed_design_plugin
+  create_unit_tests_plugin: quality-framework/derive_unit_tests_plugin
+  create_unit_code_plugin: quality-framework/derive_unit_code_plugin
+  create_integration_tests_plugin: quality-framework/derive_integration_tests_plugin
+  create_software_tests_plugin: quality-framework/derive_software_tests_plugin
   review_pull_request_plugin: quality-framework/derive_review_plugin
   create_validation_scenarios_plugin: quality-framework/derive_validation_scenarios_plugin
   create_release_notes_plugin: someone/notes

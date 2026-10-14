@@ -57,7 +57,8 @@ def test_the_configuration_items_and_the_mirror_are_available(product):
 
 
 def test_slots_are_available(product):
-    assert read_product_config(product).slots["create_requirements_plugin"] == "gentle-ai/sdd-spec"
+    slots = read_product_config(product).slots
+    assert slots["create_requirements_plugin"] == "quality-framework/derive_requirements_plugin"
 
 
 def test_relative_gives_the_repository_path(product):

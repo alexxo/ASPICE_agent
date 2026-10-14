@@ -35,6 +35,10 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+### Changed
+
+- **The contract examples name the framework's own methods.** The method slots in `contracts/examples/qf/valid/qf.yaml` and the twelve invalid samples named Gentle-AI's retired SDD skills (`gentle-ai/sdd-spec`, `sdd-design`, `sdd-apply`, `sdd-verify`); they now name `quality-framework/derive_*_plugin`, as `examples/login-product/qf.yaml` does. `tests/unit/test_read_product_config_tool.py` reads the new value. Origin: internal.
+
 ## [1.1.0] - 2026-10-13
 
 Starting a product: the construction site setup and the start rulebook.
