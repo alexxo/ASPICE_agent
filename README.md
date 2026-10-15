@@ -42,19 +42,18 @@ construction site setup from it with the values only a person can give (the
 framework's runtime needs `PyYAML` and `jsonschema`, see `requirements.txt`):
 
 ```sh
-git clone --branch v1.2.0 git@github.com:alexxo/ASPICE_agent.git my-product/.framework
+git clone --branch v1.3.0 git@github.com:alexxo/ASPICE_agent.git my-product/.framework
 cd my-product
 python .framework/tools/create_product_tool.py --root . \
   --reviewer-agent qf-reviewer-bot --urgent-approver <login> --change-approver <login> \
-  --code-owner @<login> --mirror <url of the mirror repository>
+  --code-owner @<login>
 ```
 
 It makes the folder a git repository, adopts the clone as the submodule, writes
 `qf.yaml`, the CI workflows, `CODEOWNERS` and the feedback log, and stages the
 framework's pin at the release. It
-commits nothing and never changes the code host: it prints the host steps the
-gates will check (the `QF_HOST_TOKEN` secret, the protected main branch with
-`gates` as a required check, the mirror). Install the diagram plugin
+commits nothing and never changes the code host, and nothing needs configuring
+there: CI reads the host with its own token. Install the diagram plugin
 [Archify](https://github.com/tt-a1i/archify) where your agent finds skills, then
 start the agent with `.framework/agent/run_aspice_agent.md` — stage 1 begins
 with the customer's wishes.
