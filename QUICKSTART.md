@@ -74,25 +74,27 @@ virtual environment if they prefer one).
 
 ### Step 3 — People and accounts
 
-Explain the three roles. Ask the person who plays each one, and keep the
-answers for step 5:
+Explain the three roles. Ask the person which GitHub account plays each one,
+and keep the answers for step 5. This file calls them *reviewer*, *developer*
+and *reviewer-bot*:
 
-- **The reviewing person**: approves the pull requests the framework samples
-  (every architecture change, every change to the CI file, `.gitmodules` or
-  `qf.yaml`, and one in five of the others), the checkpoints, urgent fixes and
-  change requests. Their GitHub account is the **code owner**, the **urgent
-  approver** and the **change approver**. There can be several of each.
-- **The developers**: work with the agent and open the pull requests.
-- **The reviewer agent's account**: its own GitHub account, which posts the
+- **reviewer**: the person who reviews. Approves the pull requests the
+  framework samples (every architecture change, every change to the CI file,
+  `.gitmodules` or `qf.yaml`, and one in five of the others), the checkpoints,
+  urgent fixes and change requests. Their account is the **code owner**, the
+  **urgent approver** and the **change approver**. There can be several.
+- **developer**: works with the agent and opens the pull requests. There can be
+  several.
+- **reviewer-bot**: the reviewer agent's own GitHub account, which posts the
   agent's reviews. Its approvals never count as a person's.
 
 Then the person does, on GitHub:
 
-1. Create the reviewer agent's account, if it does not exist.
+1. Create the reviewer-bot account, if it does not exist.
 2. Create an **empty** repository for the product: no README, no licence, no
    `.gitignore`.
-3. Add the developers and the reviewer agent's account as collaborators with
-   **write** access. A review counts only from an account that can write.
+3. Add every developer and the reviewer-bot as collaborators with **write**
+   access. A review counts only from an account that can write.
 
 Nothing else is configured on GitHub. There is no secret, no branch protection,
 no mirror and no paid plan. CI reads GitHub with its own token, and every push
@@ -200,12 +202,13 @@ skill. Then they say:
 From here the ASPICE Agent leads, stage by stage, starting with the customer's
 wishes. Tell the person how the work runs from now on:
 
-- **The developer** opens the agent in the product folder and asks it to
-  follow `run_aspice_agent.md`.
-- **The reviewer agent** posts its reviews from its own account, with that
-  account's token in its session: `export QF_HOST_TOKEN=<its token>`.
-- **The reviewing person** approves the sampled pull requests on GitHub, and
-  gives the checkpoint decisions the agent asks for.
+- **developer** opens the agent in the product folder and asks it to follow
+  `run_aspice_agent.md`.
+- **reviewer-bot**: the reviewer agent posts its reviews from this account,
+  with its token in the agent's session: `export QF_HOST_TOKEN=<reviewer-bot's
+  token>`.
+- **reviewer** approves the sampled pull requests on GitHub, and gives the
+  checkpoint decisions the agent asks for.
 - **Everyone**: every change reaches `main` through a reviewed pull request
   with passing gates. Never push to `main` directly and never rewrite it (no
   force-push, no reset). CI flags a direct push and blocks the next release
