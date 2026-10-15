@@ -1,7 +1,7 @@
 """Scenario — stage 10 end to end: the librarian and the official baseline.
 
 The product starts where stage 9 ends, every commit of its feature branch a
-Conventional Commit naming its requirement, its mirror a repository next to it.
+Conventional Commit naming its requirement.
 The host is a recorded one (QF_HOST_FILE), as in the gates' tests (decisions 1–5
 of the configuration management stage).
 
@@ -9,7 +9,7 @@ of the configuration management stage).
 - a delivery by convention, every wish with its scenario, passes stages 10 and 11;
 - a commit off the convention holds it at stage 10;
 - a release is a pull request: the tool writes its record, the gates accept it;
-- after the merge the release workflow tags it, and the backup is checked.
+- after the merge the release workflow tags it, and the baseline is checked.
 """
 
 import shutil
@@ -42,7 +42,7 @@ from product_builder import (
 from agent.load_skills_tool import load_skills
 from agent.record_checkpoint_tool import record_checkpoint
 from agent.resolve_stage_tool import resolve_stage
-from gates.sup import verify_backup_gate, verify_baseline_gate
+from gates.sup import verify_baseline_gate
 from tools.read_product_config_tool import read_product_config
 from tools.write_release_tool import main as write_release
 from tools.write_verification_report_tool import write_report
@@ -71,9 +71,6 @@ def built(tmp_path_factory):
     """Where stage 9 begins, every commit by convention; copied for each test."""
     work = tmp_path_factory.mktemp("built")
     root = build_python_product(work / "product", branch=FEATURE)
-    qf = yaml.safe_load((root / "qf.yaml").read_text())
-    qf["mirror"] = "../mirror.git"  # next to each copy of the product
-    (root / "qf.yaml").write_text(yaml.safe_dump(qf, sort_keys=False))
     install_plugins(root)
     for checkpoint in (1, 2, 3):
         record_checkpoint(
@@ -98,7 +95,6 @@ def built(tmp_path_factory):
 def product(built, tmp_path, monkeypatch):
     root = tmp_path / "product"
     shutil.copytree(built, root, symlinks=True)
-    subprocess.run(["git", "init", "-q", "--bare", str(tmp_path / "mirror.git")], check=True)
     write_report(read_product_config(root))
     monkeypatch.setenv("QF_HOST_FILE", str(open_delivery(root, tmp_path, reviewers=(AGENT,))))
     return root
@@ -121,7 +117,9 @@ def _propose(root, tmp_path, monkeypatch, merged, message):
     commit_all(root, message)
     write_report(read_product_config(root))
     head = git_head(root)
-    delivery = pull_request(1, merged, branch=FEATURE, merged=True, commits=[merged])
+    delivery = pull_request(
+        1, merged, branch=FEATURE, merged=True, commits=[merged], reviews=[review(AGENT, merged)]
+    )
     release = pull_request(
         2,
         head,
@@ -165,7 +163,7 @@ def test_a_commit_off_the_convention_holds_the_product_at_stage_10(product, tmp_
     )
 
 
-def test_a_release_is_proposed_tagged_after_its_merge_and_mirrored(product, tmp_path, monkeypatch):
+def test_a_release_is_proposed_and_tagged_after_its_merge(product, tmp_path, monkeypatch):
     merged = _merge(product, FEATURE, 1)
 
     # The release pull request: the tool writes the record, nobody chooses the number.
@@ -192,9 +190,6 @@ def test_a_release_is_proposed_tagged_after_its_merge_and_mirrored(product, tmp_
     assert git(product, "rev-parse", "v1.0.0^{commit}").strip() == git_head(product)
     config = read_product_config(product)
     assert verify_baseline_gate.check(config) == []
-    assert [f.rule for f in verify_backup_gate.check(config)] == ["TAG_NOT_IN_MIRROR"]
-    git(product, "push", "-q", "../mirror.git", "v1.0.0")  # the host's mirroring
-    assert verify_backup_gate.check(config) == []
 
     # A merge without a new record tags nothing.
     again = _tag_script(product)

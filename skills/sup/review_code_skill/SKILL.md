@@ -8,7 +8,7 @@ description: "Rules for reviewing a pull request (SUP.1 BP1, SWE.3 BP5): a revie
 **Stage:** 9 · SUP.1 Quality assurance
 **Loaded with:** review_pull_request_plugin
 **Contract:** contracts/qf_contract.v1.schema.json
-**Gates:** verify_host_settings_gate
+**Gates:** verify_delivery_reviewed_gate
 **Replaces:** code-review-gate (main)
 
 ## What it governs
@@ -56,15 +56,16 @@ carries the checklist, as *post_review_tool* writes it:
 
 | # | Rule | Checked by |
 |---|---|---|
-| R1 | Every delivery is a pull request; nothing reaches main without one | verify_host_settings_gate · NO_PULL_REQUEST, MERGED_WITHOUT_PULL_REQUEST |
-| R2 | A declared reviewer agent, never the author, approves the current head | verify_host_settings_gate · MISSING_AGENT_REVIEW |
-| R3 | The agent's approval carries the checklist with every item checked | verify_host_settings_gate · INCOMPLETE_CHECKLIST |
-| R4 | A person approves the current head of every architecture pull request and of every pull request whose number is a multiple of N | verify_host_settings_gate · MISSING_PERSON_APPROVAL |
-| R5 | **Correctness** — the change does what its requirements, design and decision records say, error cases included | Checkpoint 4 |
-| R6 | **Style** — names follow the glossary and the stack's conventions; no dead code, no commented-out code | Checkpoint 4 |
-| R7 | **Traceability** — every marker names the requirement, unit, component or flow the file really serves, not just one that exists | Checkpoint 4 |
-| R8 | **Logging** — the events the observability requirements list are emitted where the sequence diagrams say | Checkpoint 4 |
-| R9 | A finding is fixed in the same pull request, or recorded as an issue labelled *non-conformance* that links the pull request; a remark fixed before merge stays in the review | Checkpoint 4 |
+| R1 | Every delivery is a pull request; every commit a push adds to the main branch came from a merged one | verify_delivery_reviewed_gate · NO_PULL_REQUEST, MERGED_WITHOUT_PULL_REQUEST |
+| R2 | A declared reviewer agent, never the author, approves the current head | verify_delivery_reviewed_gate · MISSING_AGENT_REVIEW |
+| R3 | The agent's approval carries the checklist with every item checked | verify_delivery_reviewed_gate · INCOMPLETE_CHECKLIST |
+| R4 | A person approves the current head of every pull request that changes the architecture or the gates' own files (the CI file, the framework pin, qf.yaml), and of every one whose number is a multiple of N | verify_delivery_reviewed_gate · MISSING_PERSON_APPROVAL |
+| R5 | A merged pull request's final head passed the gates check; while a release is proposed, every commit since the last release meets R1–R4 and this rule | verify_delivery_reviewed_gate · GATES_NOT_PASSED |
+| R6 | **Correctness** — the change does what its requirements, design and decision records say, error cases included | Checkpoint 4 |
+| R7 | **Style** — names follow the glossary and the stack's conventions; no dead code, no commented-out code | Checkpoint 4 |
+| R8 | **Traceability** — every marker names the requirement, unit, component or flow the file really serves, not just one that exists | Checkpoint 4 |
+| R9 | **Logging** — the events the observability requirements list are emitted where the sequence diagrams say | Checkpoint 4 |
+| R10 | A finding is fixed in the same pull request, or recorded as an issue labelled *non-conformance* that links the pull request; a remark fixed before merge stays in the review | Checkpoint 4 |
 
 ## Not checkable
 
@@ -115,6 +116,4 @@ review:
 urgent_approvers: [lead-bob]
 change_approvers: [lead-bob]
 escalate_after_days: 30
-
-mirror: https://gitlab.com/acme/login.git
 ```

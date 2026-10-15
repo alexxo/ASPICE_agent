@@ -35,10 +35,37 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-15
+
+Nothing to configure on the code host: no admin token, no paid plan, no mirror. What happened is checked instead of how the host is set up, from two risk analyses.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Delete the `mirror:` line | `qf.yaml` | required — `qf.v1` no longer has the field, so the configuration is invalid until it is gone |
+| Delete the step *Check the backup* | `.github/workflows/release.yml`, as in `templates/github/release.yml` | required — `verify_backup_gate` no longer exists |
+| Add the `permissions:` block (`contents`, `pull-requests`, `checks`, `issues`: read) and set `QF_HOST_TOKEN: ${{ github.token }}` | `.github/workflows/quality_gates.yml`, as in `templates/github/quality_gates.yml` | optional — until then the old `QF_HOST_TOKEN` secret keeps working |
+| Delete the repository secret `QF_HOST_TOKEN`, the branch protection rule and the mirror | The code host | optional — nothing reads them any more |
+
+### Added
+
+- **Every push to the main branch is checked after the fact.** `verify_delivery_reviewed_gate` (was `verify_host_settings_gate`) checks every commit a push adds: it came from a merged pull request (MERGED_WITHOUT_PULL_REQUEST) whose final head had its reviews and passed the gates check (GATES_NOT_PASSED, new); while a release is proposed, every commit since the last release. A pull request that changes the CI file, the framework pin or `qf.yaml` needs a person's approval. The commit that started the product is exempt. Design document § 5 quality assurance stage rules 2, 6 and 7. Origin: FB-4, FB-5, FB-7 (wp_publisher).
+- **History, reasons and release tags checked with git.** `verify_history_kept_gate` (was `verify_branch_protection_gate`) requires every push to the main branch to keep the previous main branch in its history (MAIN_REWRITTEN, new); `check_commit_conventions_gate` checks the commits a push to the main branch adds; `verify_baseline_gate` requires every release tag to point to the commit where its record first appeared on the main branch (TAG_MOVED, new); the rulebooks forbid the agent to rewrite the main branch. Design document § 5 configuration management stage rules 7–10. Origin: FB-5 (wp_publisher).
+- **`read_host_tool` reads the checks that passed on a commit** (`passed_checks`), with the token every CI run has. Origin: FB-4 (wp_publisher).
+
 ### Changed
 
+- **`verify_required_checks_gate` reads no host.** It requires the CI job that runs the gates (MISSING_GATES_JOB, was CHECK_NOT_REQUIRED). Origin: FB-4, FB-5, FB-7 (wp_publisher).
+- **The setup asks no mirror and prints no host steps.** `tools/create_product_tool.py` has no `--mirror`; it says nothing needs configuring on the host and that every developer keeps a clone with the framework submodule fetched. `agent/start_product.md`, the README and `Migration_Path.md` follow. Origin: FB-6, FB-7 (wp_publisher).
+- **Two gates renamed for what they check.** `verify_branch_protection_gate` is `verify_history_kept_gate`; `verify_host_settings_gate` is `verify_delivery_reviewed_gate`. Origin: internal.
 - **The risk analysis behind quality assurance.** Appendix A.8 records the stage's purpose — every released change reviewed and through every gate, every bypass detected on the main branch — its scenarios rated like configuration management's, and the decision: no paid plan, so the host's settings are not read; CI checks on every push to the main branch that each new commit came through a merged pull request whose final head passed the gates and had the approvals it needed, with a person's approval for a change to the CI file, the framework pin or *qf.yaml*; a finding blocks the release. D47 is superseded. Origin: FB-4, FB-5, FB-7 (wp_publisher).
 - **The risk analysis behind configuration management.** Appendix A.9 of `docs/ASPICE_agent_documentation.md` records the stage's two purposes — code integrity with a backup, and traceability with the ability to revert — every scenario that endangers them rated 1–10 for occurrence, severity and detectability, and the decisions: a git check of the release tags (S3), of every commit on the main branch (S8) and of every push to it, which must keep the previous main in its history, with the rulebooks forbidding agents to rewrite it (S1); the loss of the repository (S4) or of the framework repository (S10) accepted, the developers' clones being the copy; configuration outside git, rebuilding old releases and compromised accounts out of scope. Origin: FB-4 to FB-7 (wp_publisher).
+
+### Removed
+
+- **The mirror.** `verify_backup_gate`, the `qf.v1` field `mirror`, the setup's `--mirror` and the mirror step of `release.yml`: losing the repository or the framework repository is an accepted risk, the developers' clones being the copy (Appendix A.9). Origin: FB-6 (wp_publisher).
+- **Reading the host's settings.** The rule IDs BRANCH_NOT_PROTECTED, PROTECTION_BYPASSABLE, UNOWNED_PATH, FORCE_PUSH_ALLOWED, DELETION_ALLOWED and TAG_NOT_IN_MIRROR, and the branch-protection read of `read_host_tool`. Origin: FB-4, FB-5 (wp_publisher).
 
 ## [1.2.0] - 2026-10-15
 

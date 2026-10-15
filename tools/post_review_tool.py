@@ -2,7 +2,7 @@
 
 The reviewer agent posts from its own account — its token in QF_HOST_TOKEN for
 its session — never the author's: GitHub forbids approving one's own pull
-request, and verify_host_settings_gate counts only approvals from the accounts in
+request, and verify_delivery_reviewed_gate counts only approvals from the accounts in
 qf.yaml review.agents. The review is given on the pull request's current head.
 An approval needs every checklist item checked; a request for changes names the
 items that fail (--failing) and the findings (--findings, a text file).

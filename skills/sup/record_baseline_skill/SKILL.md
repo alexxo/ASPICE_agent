@@ -1,6 +1,6 @@
 ---
 name: record_baseline_skill
-description: "Rules for configuration management (SUP.8): commits and branches named by convention, the main branch's history protected, every configuration item under git, the two tracks kept apart, and a release proposed as a pull request with a computed version, then tagged and mirrored."
+description: "Rules for configuration management (SUP.8): commits and branches named by convention, the main branch's history never rewritten, every configuration item under git, the two tracks kept apart, and a release proposed as a pull request with a computed version, then tagged."
 ---
 
 # skill: record_baseline_skill
@@ -8,7 +8,7 @@ description: "Rules for configuration management (SUP.8): commits and branches n
 **Stage:** 10 · SUP.8 Configuration management — the commit and branch rules apply at every stage
 **Loaded with:** the ASPICE Agent itself; stage 10 has no plugin
 **Contract:** contracts/release_contract.v1.schema.json
-**Gates:** check_commit_conventions_gate, verify_branch_protection_gate, check_config_items_gate, check_track_rule_gate, verify_architecture_tests_gate, verify_baseline_gate, verify_backup_gate
+**Gates:** check_commit_conventions_gate, verify_history_kept_gate, check_config_items_gate, check_track_rule_gate, verify_architecture_tests_gate, verify_baseline_gate
 **Replaces:** check-commit-message, check-commit-range, check-branch-name (main)
 
 ## What it governs
@@ -24,7 +24,7 @@ configuration management stage).
 ## Inputs
 
 - **qf.yaml** — every path (each one is a configuration item, with qf.yaml
-  itself), *config_items* (the product's own), *releases_dir* and *mirror*.
+  itself), *config_items* (the product's own) and *releases_dir*.
 - **The commits since the last release tag**, for the version and the list of
   changed items; *tools/write_release_tool.py* works out both.
 - **The framework's pin** at *paths.framework_dir* and its release tag.
@@ -55,23 +55,25 @@ on a *release/v&lt;version&gt;* branch to write the record, and commit it as
 
 | # | Rule | Checked by |
 |---|---|---|
-| R1 | Every non-merge commit of the pull request is a Conventional Commit | check_commit_conventions_gate · NOT_CONVENTIONAL |
-| R2 | Every non-merge commit names the requirement or issue it serves | check_commit_conventions_gate · MISSING_REQUIREMENT_TOKEN |
+| R1 | Every non-merge commit of the pull request, and of every push to the main branch, is a Conventional Commit | check_commit_conventions_gate · NOT_CONVENTIONAL |
+| R2 | Every such commit names the requirement or issue it serves, so every change on the main branch has a traceable reason | check_commit_conventions_gate · MISSING_REQUIREMENT_TOKEN |
 | R3 | The branch is named feature/ or bugfix/ after its requirement, arch/ on the architecture track, or release/v&lt;version&gt; | check_commit_conventions_gate · BAD_BRANCH_NAME |
-| R4 | The main branch cannot be force-pushed or deleted, so every past state stays recoverable | verify_branch_protection_gate · FORCE_PUSH_ALLOWED, DELETION_ALLOWED |
+| R4 | A push to the main branch keeps the previous main branch in its history; a rewrite is caught on the push, and the lost commits come back from any clone | verify_history_kept_gate · MAIN_REWRITTEN |
 | R5 | Every configuration item exists and is tracked by git — not missing, untracked or ignored | check_config_items_gate · MISSING_CONFIG_ITEM, UNTRACKED_CONFIG_ITEM |
 | R6 | A pull request that changes the architecture changes no feature-track work product, and comes from an arch/ branch | check_track_rule_gate · MIXED_TRACKS, ARCHITECTURE_OFF_BRANCH |
 | R7 | A pull request that changes the architecture contains no code | verify_architecture_tests_gate · CODE_IN_ARCHITECTURE_PR |
 | R8 | A release record follows release.v1, is named after its version, lists exactly the items changed since the previous release, and names the pinned framework release | verify_baseline_gate · INCOMPLETE_RELEASE_RECORD |
 | R9 | A release's version is the one its commits give | verify_baseline_gate · WRONG_VERSION |
 | R10 | Every release tag is annotated, on the main branch, and contains its record and every configuration item | verify_baseline_gate · TAG_NOT_ANNOTATED, TAG_NOT_ON_MAIN, INCOMPLETE_RELEASE_RECORD, MISSING_CONFIG_ITEM |
-| R11 | Every release tag is in the mirror | verify_backup_gate · TAG_NOT_IN_MIRROR |
+| R11 | A release tag never moves: it points to the commit of the main branch where its record first appeared | verify_baseline_gate · TAG_MOVED |
 | R12 | A release is merged only after the village accepts it on its pull request | Checkpoint 5 |
+| R13 | Never rewrite the main branch: no force-push, no reset of it — the agent brings a refused push up to date with a merge or a rebase of its own branch | Checkpoint 4 |
 
 ## Not checkable
 
-- A full restore of the host from the mirror — left to the organisation's
-  recovery procedure.
+- That every developer keeps a clone with the framework submodule fetched — the
+  copy if the repository or the framework repository is lost (an accepted risk,
+  Appendix A.9 of the design document).
 - That a commit names the right requirement — the gate checks one is named;
   the reviewer judges which.
 

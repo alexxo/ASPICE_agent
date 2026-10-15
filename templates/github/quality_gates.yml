@@ -1,8 +1,11 @@
 # quality_gates.yml — the Quality Framework's gates in a product's CI.
 #
-# Copy to .github/workflows/quality_gates.yml in the product and make it a
-# required check on the main branch, so no change reaches main without passing
-# the gates — whoever wrote it, a person or an agent.
+# Copy to .github/workflows/quality_gates.yml in the product. Nothing needs
+# configuring on the code host: every pull request runs the gates, and every
+# push to the main branch checks that each change it adds came through a merged
+# pull request that passed the gates and had its reviews — whoever wrote it, a
+# person or an agent — and that the push rewrote no history. A finding there
+# blocks the next release until the change is reverted or reviewed.
 #
 # The framework is the product's git submodule at qf.yaml paths.framework_dir
 # (.framework here), pinned to a released commit: the version the gates run at
@@ -10,14 +13,12 @@
 # verify_framework_integrity_gate checks the pin. If the framework repository is
 # private, give the checkout a token that can read it.
 #
-# From the quality assurance stage on, the gates read the code host: set the
-# repository secret QF_HOST_TOKEN to a read-only token that can read pull
-# requests and branch protection (administration: read). A submitted or
-# dismissed review runs the gates again, so a sampled pull request turns green
-# once a person approves it (seal 4). From the configuration management stage
-# on, the gates also read the main branch's force-push and deletion settings,
-# and every release tag in the mirror (qf.yaml mirror), which CI must be able
-# to read; release.yml tags an accepted release after its merge.
+# From the quality assurance stage on, the gates read the code host — pull
+# requests, their reviews and checks, issues — with the token every run has
+# (QF_HOST_TOKEN is github.token, with the read permissions below); no secret
+# and no host setting is needed. A submitted or dismissed review runs the gates
+# again, so a sampled pull request turns green once a person approves it
+# (seal 4). release.yml tags an accepted release after its merge.
 #
 # CI needs no plugin: plugins are tools the agent uses on the person's machine to
 # produce work; the gates check the work and use none. The gates run for every
@@ -48,6 +49,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  issues: read
 
 jobs:
   gates:
@@ -86,7 +93,7 @@ jobs:
 
       - name: Quality gates of every stage reached
         env:
-          QF_HOST_TOKEN: ${{ secrets.QF_HOST_TOKEN }}
+          QF_HOST_TOKEN: ${{ github.token }}
         run: python .framework/agent/resolve_stage_tool.py --root . --check
 
       - name: Show the verification report

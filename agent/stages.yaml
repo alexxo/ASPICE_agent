@@ -189,7 +189,7 @@ stages:
       - verify_required_checks_gate
       - scan_security_gate
       - check_framework_feedback_gate
-      - verify_host_settings_gate
+      - verify_delivery_reviewed_gate
     planned_gates: []
     checkpoint: 4
     approves: pull_request
@@ -204,12 +204,11 @@ stages:
       - record_baseline_skill
     gates:
       - check_commit_conventions_gate
-      - verify_branch_protection_gate
+      - verify_history_kept_gate
       - check_config_items_gate
       - check_track_rule_gate
       - verify_architecture_tests_gate
       - verify_baseline_gate
-      - verify_backup_gate
     planned_gates: []
     implemented: true
     trigger: flow

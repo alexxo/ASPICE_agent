@@ -6,7 +6,7 @@ import subprocess
 import pytest
 import yaml
 
-from gates.sup.verify_required_checks_gate import codeowners, gates_job, owned
+from gates.sup.verify_required_checks_gate import gates_job
 from tools import create_product_tool
 from tools.validate_contract_tool import validate
 
@@ -76,8 +76,6 @@ def args(root):
     return [
         "--root",
         str(root),
-        "--mirror",
-        "https://gitlab.com/acme/shop.git",
         "--reviewer-agent",
         "qf-reviewer-bot",
         "--urgent-approver",
@@ -101,7 +99,7 @@ def test_a_new_product_gets_a_valid_configuration(product):
     assert qf["review"]["agents"] == ["qf-reviewer-bot"]
     assert qf["urgent_approvers"] == ["lead-ana"]
     assert qf["change_approvers"] == ["lead-ana", "lead-ben"]
-    assert qf["mirror"] == "https://gitlab.com/acme/shop.git"
+    assert "mirror" not in qf
     assert qf["slots"]["create_diagram_plugin"] == "archify"
     assert qf["paths"]["framework_dir"] == ".framework"
 
@@ -156,11 +154,17 @@ def test_the_ci_files_are_the_templates(product, repo_root):
 def test_code_owners_guard_the_ci_file_the_pin_and_the_architecture(product):
     create_product_tool.main(args(product))
 
-    rules, file = codeowners(product)
-    assert file == ".github/CODEOWNERS"
-    for path in (".github/workflows/quality_gates.yml", ".gitmodules", "docs/architecture/"):
-        assert owned(rules, path), path
-    assert all(names == ["@lead-ana", "@acme/architects"] for _, names in rules)
+    lines = [
+        line.split()
+        for line in (product / ".github/CODEOWNERS").read_text().splitlines()
+        if line and not line.startswith("#")
+    ]
+    owners = ["@lead-ana", "@acme/architects"]
+    assert lines == [
+        ["/.github/workflows/quality_gates.yml", *owners],
+        ["/.gitmodules", *owners],
+        ["/docs/architecture/", *owners],
+    ]
 
 
 def test_the_agent_files_stay_out_of_git(product):
@@ -191,7 +195,7 @@ def test_the_product_starts_at_the_first_stage(product, capsys):
 
     out = capsys.readouterr().out
     assert "v1.0.0" in out and "stage 1" in out
-    assert "QF_HOST_TOKEN" in out and "required check" in out
+    assert "Nothing needs configuring on the code host" in out and "clone" in out
     assert "archify" in out
 
 
@@ -249,7 +253,7 @@ def test_a_code_owner_must_be_a_person_or_team(product, capsys):
 
 @pytest.mark.parametrize(
     "flag",
-    ["--mirror", "--reviewer-agent", "--urgent-approver", "--change-approver", "--code-owner"],
+    ["--reviewer-agent", "--urgent-approver", "--change-approver", "--code-owner"],
 )
 def test_every_person_value_is_required(product, flag):
     argv = args(product)

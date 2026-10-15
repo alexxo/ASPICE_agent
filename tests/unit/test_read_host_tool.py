@@ -1,4 +1,4 @@
-"""tools/read_host_tool.py — pull requests, reviews, protection and tags from the host."""
+"""tools/read_host_tool.py — pull requests, reviews, checks and tags from the host."""
 
 import json
 import subprocess
@@ -133,33 +133,29 @@ def test_on_main_the_delivery_is_the_merged_pull_request_of_the_head(repo, tmp_p
     assert (found.pull_request.number, found.on_main) == (9, True)
 
 
-def test_github_protection_is_read_from_the_api(monkeypatch):
+def test_github_passed_checks_are_read_from_the_api(monkeypatch):
+    sha = "a" * 40
     answers = {
-        "/repos/acme/login/branches/main/protection": {
-            "required_status_checks": {"contexts": ["gates"], "checks": [{"context": "lint"}]},
-            "required_pull_request_reviews": {
-                "required_approving_review_count": 1,
-                "require_code_owner_reviews": True,
-            },
-            "enforce_admins": {"enabled": True},
-            "allow_force_pushes": {"enabled": False},
-            "allow_deletions": {"enabled": True},
+        f"/repos/acme/login/commits/{sha}/check-runs?per_page=100": {
+            "check_runs": [
+                {"name": "gates", "conclusion": "failure"},
+                {"name": "gates", "conclusion": "success"},  # a re-run that passed
+                {"name": "lint", "conclusion": None, "status": "in_progress"},
+            ]
         }
     }
     host = GitHubHost("token")
     monkeypatch.setattr(host, "_get", lambda path: answers.get(path))
-    protection = host.protection(HOST_REPO, "main")
-    assert protection.required_checks == {"gates", "lint"}
-    assert protection.reviews_required and protection.code_owner_reviews
-    assert protection.enforce_admins
-    assert (protection.allow_force_pushes, protection.allow_deletions) == (False, True)
-    assert host.protection(HOST_REPO, "develop") is None
+    assert host.passed_checks(HOST_REPO, sha) == {"gates"}
+    assert host.passed_checks(HOST_REPO, "b" * 40) == frozenset()
 
 
-def test_a_recorded_protection_without_history_settings_allows_rewriting(tmp_path):
-    host = FileHost(write_host(tmp_path / "host.json", protection={"reviews_required": True}))
-    protection = host.protection(HOST_REPO, "main")
-    assert (protection.allow_force_pushes, protection.allow_deletions) == (True, True)
+def test_recorded_checks_pass_every_head_unless_given(tmp_path):
+    pulls = [pull_request(1, "c" * 40)]
+    host = FileHost(write_host(tmp_path / "host.json", pulls=pulls))
+    assert host.passed_checks(HOST_REPO, "c" * 40) == {"gates"}
+    red = FileHost(write_host(tmp_path / "red.json", pulls=pulls, checks={}))
+    assert red.passed_checks(HOST_REPO, "c" * 40) == frozenset()
 
 
 def test_github_release_tags_name_their_commits(monkeypatch):

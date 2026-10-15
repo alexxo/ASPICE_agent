@@ -43,7 +43,7 @@ from tools.read_product_config_tool import ConfigError, read_product_config  # n
 
 __all__ = ["CUSTOMER_DECISION", "HOST_APPROVAL", "resolve_stage"]
 
-HOST_APPROVAL = "MISSING_PERSON_APPROVAL"  # verify_host_settings_gate: seal 4 not given yet
+HOST_APPROVAL = "MISSING_PERSON_APPROVAL"  # verify_delivery_reviewed_gate: seal 4 not given yet
 CUSTOMER_DECISION = "MISSING_CUSTOMER_DECISION"  # verify_release_evidence_gate: seal 5 not yet
 
 

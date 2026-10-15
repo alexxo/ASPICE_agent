@@ -8,9 +8,12 @@ tagged — the release being proposed — has the version the Conventional Commi
 since the last release tag give (WRONG_VERSION), lists exactly the
 configuration items changed since that tag, and names the framework release
 the submodule is pinned at (INCOMPLETE_RELEASE_RECORD). Every release tag is
-annotated (TAG_NOT_ANNOTATED), on the main branch (TAG_NOT_ON_MAIN), and
-contains its record (INCOMPLETE_RELEASE_RECORD) and every configuration item
-(MISSING_CONFIG_ITEM). Without a release there is nothing to check.
+annotated (TAG_NOT_ANNOTATED), on the main branch (TAG_NOT_ON_MAIN), contains
+its record (INCOMPLETE_RELEASE_RECORD) and every configuration item
+(MISSING_CONFIG_ITEM), and still points to the commit of the main branch where
+its record first appeared — the merge of the release pull request — so a moved
+tag is caught on every run (TAG_MOVED, decision 9 of the configuration
+management stage). Without a release there is nothing to check.
 
     python gates/sup/verify_baseline_gate.py [--root PRODUCT]
 """
@@ -159,6 +162,21 @@ def _tag(config: ProductConfig, tag: str) -> list[Finding]:
             )
         )
     record = f"{config.relative(config.releases_dir).rstrip('/')}/{tag[1:]}.yaml"
+    released = _git(
+        root, "log", "--first-parent", "--diff-filter=A", "--format=%H", main, "--", record
+    ).stdout.split()
+    tagged = _git(root, "rev-parse", f"{tag}^{{commit}}").stdout.strip()
+    if released and tagged != released[-1]:
+        findings.append(
+            Finding(
+                "TAG_MOVED",
+                record,
+                None,
+                f"Release tag {tag} points to {tagged[:7]}, but the release was merged as "
+                f"{released[-1][:7]}, where {record} first appeared on {main}; a release tag "
+                "never moves.",
+            )
+        )
     if not in_tree(root, tag, record):
         findings.append(
             Finding(INCOMPLETE, record, None, f"Release tag {tag} does not contain its record.")

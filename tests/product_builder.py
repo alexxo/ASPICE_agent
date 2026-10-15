@@ -59,7 +59,6 @@ QF = {
     "urgent_approvers": ["lead-bob"],
     "change_approvers": ["lead-bob"],
     "escalate_after_days": 30,
-    "mirror": "https://gitlab.com/acme/login.git",
 }
 
 ARCHITECTURE = {
@@ -1172,14 +1171,6 @@ FRAMEWORK_REPO = "acme/quality-framework"
 AUTHOR = "dev-alice"
 AGENT = "qf-reviewer-bot"
 PERSON = "lead-bob"
-PROTECTION = {
-    "reviews_required": True,
-    "required_checks": ["gates"],
-    "code_owner_reviews": True,
-    "enforce_admins": True,
-    "allow_force_pushes": False,
-    "allow_deletions": False,
-}
 CODEOWNERS = (
     "# Every gate, the framework pin and the architecture need a person's approval.\n"
     "/.github/workflows/ @lead-bob\n"
@@ -1237,17 +1228,19 @@ def write_host(
     path: Path,
     *,
     pulls=(),
-    protection: dict | None = PROTECTION,
+    checks: dict | None = None,
     tags: dict | None = None,
     default_branch: str = "main",
     issues=(),
 ) -> Path:
-    """A recorded host for QF_HOST_FILE: the product's repository and the framework's."""
+    """A recorded host for QF_HOST_FILE: the product's repository and the framework's.
+    Every pull request's head passed the gates check unless checks says otherwise."""
+    pulls = list(pulls)
     data = {
         "repositories": {
             HOST_REPO: {
                 "default_branch": default_branch,
-                "protection": protection,
+                "checks": checks if checks is not None else {p["head"]: ["gates"] for p in pulls},
                 "pull_requests": list(pulls),
                 "issues": list(issues),
             },

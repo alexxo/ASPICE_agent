@@ -1,7 +1,7 @@
 """check_track_rule_gate — SWE.2 BP5, SUP.8 BP3: the architecture travels on its own track.
 
 A pull request that changes qf.yaml paths.architecture_dir is an architecture
-pull request (as for the person's sample, verify_host_settings_gate). It changes
+pull request (as for the person's sample, verify_delivery_reviewed_gate). It changes
 no feature-track work product — the detailed design, the verification plan, the
 environment variables, the integration and software tests, the observability
 definitions (MIXED_TRACKS) — and comes from an arch/<slug> branch

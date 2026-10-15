@@ -50,10 +50,9 @@ def test_the_issue_rules_are_available(product):
     assert config.change_approvers == ("lead-bob",)
 
 
-def test_the_configuration_items_and_the_mirror_are_available(product):
+def test_the_configuration_items_are_available(product):
     config = read_product_config(product)
     assert config.config_items == ("docs/runbooks",)
-    assert config.mirror == "https://gitlab.com/acme/login.git"
 
 
 def test_slots_are_available(product):

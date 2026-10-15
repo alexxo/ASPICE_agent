@@ -80,9 +80,6 @@ def built(tmp_path_factory):
     """Where stage 10 ends, every wish with its scenario; copied for each test."""
     work = tmp_path_factory.mktemp("built")
     root = build_python_product(work / "product", branch=FEATURE)
-    qf = yaml.safe_load((root / "qf.yaml").read_text())
-    qf["mirror"] = "../mirror.git"  # next to each copy of the product
-    (root / "qf.yaml").write_text(yaml.safe_dump(qf, sort_keys=False))
     install_plugins(root)
     for checkpoint in (1, 2, 3):
         record_checkpoint(
@@ -107,7 +104,6 @@ def built(tmp_path_factory):
 def product(built, tmp_path, monkeypatch):
     root = tmp_path / "product"
     shutil.copytree(built, root, symlinks=True)
-    subprocess.run(["git", "init", "-q", "--bare", str(tmp_path / "mirror.git")], check=True)
     write_report(read_product_config(root))
     monkeypatch.setenv("QF_HOST_FILE", str(open_delivery(root, tmp_path, reviewers=(AGENT,))))
     return root
@@ -130,7 +126,9 @@ def _push(root, tmp_path, monkeypatch, merged, message):
     commit_all(root, message)
     write_report(read_product_config(root))
     head = git_head(root)
-    delivery = pull_request(1, merged, branch=FEATURE, merged=True, commits=[merged])
+    delivery = pull_request(
+        1, merged, branch=FEATURE, merged=True, commits=[merged], reviews=[review(AGENT, merged)]
+    )
     release = pull_request(
         2, head, branch=RELEASE, files=["releases/1.0.0.yaml"], reviews=[review(AGENT, head)]
     )

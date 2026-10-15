@@ -5,10 +5,10 @@ at .framework, checked out at a release tag. The person clones the framework at 
 release into the product folder and runs the setup from that clone, so the
 framework exists once (decisions 1 and 3 of starting a product):
 
-    git clone --branch v1.2.0 <framework repository> my-product/.framework
+    git clone --branch v1.3.0 <framework repository> my-product/.framework
     python my-product/.framework/tools/create_product_tool.py --root my-product \\
         --reviewer-agent LOGIN --urgent-approver LOGIN --change-approver LOGIN \\
-        --code-owner @LOGIN-OR-@ORG/TEAM --mirror URL
+        --code-owner @LOGIN-OR-@ORG/TEAM
 
 The setup makes the folder a git repository if it is none, and adopts the clone
 as the submodule at .framework with the clone's origin as its URL.
@@ -111,12 +111,10 @@ _OWNER = re.compile(
 )
 
 HOST_STEPS = """\
-Next, on the code host (the gates check each of these from the quality assurance stage on):
-  1. Add the repository secret QF_HOST_TOKEN: a read-only token that can read pull
-     requests and branch protection (administration: read).
-  2. Protect the main branch: pull requests with a review, code-owner review,
-     enforced for admins, and the job 'gates' of quality_gates.yml as a required check.
-  3. Mirror the repository to {mirror}.
+Nothing needs configuring on the code host: CI reads it with its own token, and every
+push to the main branch checks that each change came through a reviewed pull request
+with passing gates. Keep a clone of the product, with the framework submodule fetched,
+on every developer's machine: the clones are the copy if the repository is lost.
 On this machine: install the diagram plugin Archify (github.com/tt-a1i/archify) where
 your agent finds skills, or name its folder in .qf/environment.yaml.
 Then review the new files, commit them, and start the agent with
@@ -133,7 +131,6 @@ def product_config(args: argparse.Namespace) -> dict:
         "urgent_approvers": args.urgent_approver,
         "change_approvers": args.change_approver,
         "escalate_after_days": ESCALATE_AFTER_DAYS,
-        "mirror": args.mirror,
     }
 
 
@@ -257,7 +254,8 @@ def create_product(root: Path, args: argparse.Namespace, framework: Path) -> lis
     owners = " ".join(args.code_owner)
     (root / CODEOWNERS).write_text(
         "# A change to the gates, the framework pin or the architecture needs a person's\n"
-        "# approval (SUP.1 BP1; verify_required_checks_gate).\n"
+        "# approval (SUP.1 BP1; verify_delivery_reviewed_gate); where the host supports\n"
+        "# code owners, it asks them to review.\n"
         f"/{PATHS['ci_file']} {owners}\n"
         f"/.gitmodules {owners}\n"
         f"/{PATHS['architecture_dir']}/ {owners}\n"
@@ -280,7 +278,6 @@ def create_product(root: Path, args: argparse.Namespace, framework: Path) -> lis
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", type=Path, default=Path.cwd())
-    parser.add_argument("--mirror", required=True, help="the URL of the second repository")
     for flag, what in (
         ("--reviewer-agent", "a host account the reviewer agent posts from"),
         ("--urgent-approver", "a host account that may authorize an urgent fix"),
@@ -305,7 +302,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {finding.rule}: {finding.message}")
     state = resolve_stage(root)
     print(f"The product is at stage {state.get('number')}, {state['stage']}: {state['status']}.")
-    print(HOST_STEPS.format(mirror=args.mirror, framework=FRAMEWORK_DIR))
+    print(HOST_STEPS.format(framework=FRAMEWORK_DIR))
     return 0
 
 

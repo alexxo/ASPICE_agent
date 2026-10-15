@@ -128,7 +128,8 @@ release, branch `release/v<version>` from main, run
 the version and writes the record; never choose or edit either — commit it as
 `chore(release): <version>` naming the release's issue, and open its pull
 request. The village accepts it there (seal 5, stage 11); after the merge CI
-tags it and checks the mirror. Never tag a release yourself.
+tags it. Never tag a release yourself, and never rewrite the main branch: no
+force-push, no reset of it — CI catches a rewrite on the push itself.
 
 **Stage 11, the village crosses.** For a delivery, the work is the
 scenarios: when a wish has none (MISSING_SCENARIO), the stage's plugin — the

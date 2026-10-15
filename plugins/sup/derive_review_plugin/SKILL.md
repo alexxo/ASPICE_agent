@@ -83,7 +83,7 @@ finding fixed since the last review is not repeated; one still open is.
 
 ## Done
 
-*verify_host_settings_gate* finds your approval of the current head with the
+*verify_delivery_reviewed_gate* finds your approval of the current head with the
 checklist complete; on a sampled pull request it then waits for the person.
 
 Size budgets: at most 3 questions per round; one finding per problem.

@@ -18,8 +18,8 @@ checkpoint 2.
 - Python 3.12 or later, and Archify installed where your agent finds skills
   (github.com/tt-a1i/archify).
 - The values only a person knows, asked by the setup in step 3: the reviewer
-  agent's host account, the urgent approvers, the change approvers, the code
-  owners and the mirror URL.
+  agent's host account, the urgent approvers, the change approvers and the code
+  owners.
 
 ## Why the order matters
 
@@ -87,11 +87,11 @@ Leave `docs/glossary.md` where it is: it is converted in step 6.
 Follow the README's *Start a product*, with the framework at the release tag:
 
 ```sh
-git clone --branch v1.2.0 git@github.com:alexxo/ASPICE_agent.git .framework
+git clone --branch v1.3.0 git@github.com:alexxo/ASPICE_agent.git .framework
 python3 -m venv .qf/venv && .qf/venv/bin/pip install -r .framework/requirements.txt
 .qf/venv/bin/python .framework/tools/create_product_tool.py --root . \
     --reviewer-agent LOGIN --urgent-approver LOGIN --change-approver LOGIN \
-    --code-owner @LOGIN-OR-@ORG/TEAM --mirror URL
+    --code-owner @LOGIN-OR-@ORG/TEAM
 ```
 
 The tool writes `qf.yaml`, the CI workflows, `CODEOWNERS`, the framework
@@ -99,12 +99,12 @@ feedback log and the `.gitignore` lines, and stages the submodule. If it stops,
 it names every file in the way and changes nothing; move that file to
 `docs/legacy/` and run it again.
 
-Do the steps it prints on the code host (the `QF_HOST_TOKEN` secret, branch
-protection, the mirror). Copy any open entries from
+Nothing needs configuring on the code host: CI reads it with its own token.
+Copy any open entries from
 `docs/legacy/FRAMEWORK_FEEDBACK.md` into the new log, then commit:
 
 ```sh
-git commit -m "chore: set up the ASPICE Agent framework v1.2.0"
+git commit -m "chore: set up the ASPICE Agent framework v1.3.0"
 ```
 
 ## Step 4 — Stage 1 inputs: wishes and diagrams

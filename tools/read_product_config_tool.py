@@ -65,7 +65,6 @@ class ProductConfig:
     urgent_approvers: tuple[str, ...] = ()
     change_approvers: tuple[str, ...] = ()
     escalate_after_days: int = 30
-    mirror: str = ""
     plugins: dict[str, dict] = field(default_factory=dict)  # external plugins, pinned
 
     def relative(self, path: Path) -> str:
@@ -124,6 +123,5 @@ def read_product_config(root: Path) -> ProductConfig:
         urgent_approvers=tuple(data["urgent_approvers"]),
         change_approvers=tuple(data["change_approvers"]),
         escalate_after_days=data["escalate_after_days"],
-        mirror=data["mirror"],
         plugins=dict(data.get("plugins") or {}),
     )

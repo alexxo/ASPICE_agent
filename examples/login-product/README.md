@@ -52,4 +52,4 @@ pull request: the product's own pipeline deploys it to staging,
 `tools/write_validation_record_tool.py` records the deployed commit and the
 results of the scenarios under `validation/scenarios/` in `validation/records/`,
 and the customer accepts it (checkpoint 5) before it can merge. After the merge,
-`templates/github/release.yml` tags it and checks the mirror named in `qf.yaml`.
+`templates/github/release.yml` tags it.

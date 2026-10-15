@@ -1,5 +1,6 @@
 """gates/sup/check_commit_conventions_gate.py — commits and branches named by convention."""
 
+import json
 import subprocess
 
 import pytest
@@ -123,3 +124,34 @@ def test_ci_names_the_pull_requests_branch(product, monkeypatch):
 def test_a_product_without_git_is_caught(tmp_path):
     root = build_product(tmp_path / "plain", git=False)
     assert rules(root) == ["NOT_A_GIT_REPOSITORY"]
+
+
+def _push_to_main(tmp_path, monkeypatch, before):
+    event = tmp_path / "event.json"
+    event.write_text(
+        json.dumps(
+            {
+                "ref": "refs/heads/main",
+                "before": before,
+                "after": "",
+                "repository": {"default_branch": "main"},
+            }
+        )
+    )
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event))
+
+
+def test_a_commit_pushed_to_main_must_name_its_reason(product, tmp_path, monkeypatch):
+    git(product, "checkout", "-q", "main")
+    before = subprocess.run(
+        ["git", "-C", str(product), "rev-parse", "HEAD"], capture_output=True, text=True
+    ).stdout.strip()
+    commit(product, "fix: a quick change straight on main")
+    _push_to_main(tmp_path, monkeypatch, before)
+    assert rules(product) == ["MISSING_REQUIREMENT_TOKEN"]
+
+
+def test_on_main_outside_a_push_nothing_is_checked(product):
+    git(product, "checkout", "-q", "main")
+    commit(product, "fix: a quick change straight on main")
+    assert rules(product) == []

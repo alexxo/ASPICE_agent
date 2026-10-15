@@ -34,10 +34,8 @@ Ask the person, one question at a time, and wait for each answer:
 4. **The code owners** — who must approve a change to the gates, the framework
    pin and the architecture: `@login`, `@org/team` or an e-mail
    (`--code-owner`).
-5. **The mirror** — the URL of the second repository the product is mirrored to
-   (`--mirror`).
 
-Each of the first four may name several; repeat the flag once per name.
+Each may name several; repeat the flag once per name.
 **Never invent a value, and never fill in a placeholder**: a value the person
 did not give is a question you ask again.
 
@@ -45,7 +43,7 @@ did not give is a question you ask again.
 
 Show the person the command with their answers, then run it:
 
-`python <framework>/tools/create_product_tool.py --root <product> --reviewer-agent <login> --urgent-approver <login> --change-approver <login> --code-owner <owner> --mirror <url>`
+`python <framework>/tools/create_product_tool.py --root <product> --reviewer-agent <login> --urgent-approver <login> --change-approver <login> --code-owner <owner>`
 
 - **Exit 0** — go to step 4.
 - **Exit 2** — nothing was changed. Report every problem it printed, word for
@@ -71,9 +69,10 @@ Show the person the command with their answers, then run it:
 
 Relay what the setup printed, and change none of it yourself:
 
-- **The code host's steps** — the `QF_HOST_TOKEN` secret, the protected main
-  branch with `gates` as a required check, and the mirror. Only the person
-  changes the code host; the gates check the result later.
+- **The code host** — nothing to configure there: CI reads it with its own
+  token. Tell the person that every developer keeps a clone of the product with
+  the framework submodule fetched: the clones are the copy if the repository
+  is lost.
 - **Plugins** — never install, update or remove a plugin yourself. When the
   setup reports a missing plugin, such as Archify, tell the person which one and
   where it was looked for, and wait.

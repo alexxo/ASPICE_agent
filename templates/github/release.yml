@@ -8,12 +8,8 @@
 # (tools/write_validation_record_tool.py writes the validation record), and the
 # village accepts it there (seal 5); until then CI stays red on it. Only after
 # its merge does this workflow stamp the baseline: it tags
-# the merge commit v<version> with an annotated tag, then checks the tag and
-# the mirror. A merge with no new release record does nothing.
-#
-# The mirror (qf.yaml mirror) must be readable from CI. Keep it in sync with
-# the host's mirroring, or add a step here that pushes the tag to it; until the
-# tag is there the backup check stays red, and re-running the job checks again.
+# the merge commit v<version> with an annotated tag, then checks the tag. A
+# merge with no new release record does nothing.
 name: release
 
 on:
@@ -48,8 +44,6 @@ jobs:
         run: pip install -r .framework/requirements.txt
 
       - name: Check the release before stamping it
-        env:
-          QF_HOST_TOKEN: ${{ secrets.QF_HOST_TOKEN }}
         run: python .framework/gates/sup/verify_baseline_gate.py --root .
 
       - name: Tag the accepted release
@@ -69,9 +63,4 @@ jobs:
           git push origin "v$versions"
 
       - name: Check the official baseline
-        env:
-          QF_HOST_TOKEN: ${{ secrets.QF_HOST_TOKEN }}
         run: python .framework/gates/sup/verify_baseline_gate.py --root .
-
-      - name: Check the backup
-        run: python .framework/gates/sup/verify_backup_gate.py --root .

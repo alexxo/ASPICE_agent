@@ -1,9 +1,10 @@
-"""Read the code host: pull requests, their reviews, branch protection, release tags, issues.
+"""Read the code host: pull requests, their reviews and checks, release tags, issues.
 
 The framework is GitHub-native (decided 2026-07-30), so one tool reads the host,
-through the GitHub REST API with the read-only token in QF_HOST_TOKEN — a
-repository secret in CI; on a person's machine, e.g.
-export QF_HOST_TOKEN=$(gh auth token). With QF_HOST_FILE set, the host is read
+through the GitHub REST API with the read-only token in QF_HOST_TOKEN — in CI
+the token every run has (github.token, with read permissions); on a person's
+machine, e.g. export QF_HOST_TOKEN=$(gh auth token). No host setting is read, so
+no administrator's token is needed. With QF_HOST_FILE set, the host is read
 from that JSON file instead: the tests' fake host, and a recorded host checked
 offline. A host that cannot be read raises HostError, which crashes the gate:
 the runner fails closed (GATE_CRASHED), never open.
@@ -22,7 +23,7 @@ import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
@@ -39,7 +40,6 @@ __all__ = [
     "Host",
     "HostError",
     "Issue",
-    "Protection",
     "PullRequest",
     "Review",
     "delivery",
@@ -128,19 +128,9 @@ class Issue:
         ]
 
 
-@dataclass(frozen=True)
-class Protection:
-    reviews_required: bool
-    required_checks: frozenset[str] = field(default_factory=frozenset)
-    code_owner_reviews: bool = False
-    enforce_admins: bool = False
-    allow_force_pushes: bool = True
-    allow_deletions: bool = True
-
-
 class Host(Protocol):
     def default_branch(self, repo: str) -> str: ...
-    def protection(self, repo: str, branch: str) -> Protection | None: ...
+    def passed_checks(self, repo: str, sha: str) -> frozenset[str]: ...
     def pull_request(self, repo: str, number: int) -> PullRequest | None: ...
     def pull_requests_for_branch(self, repo: str, branch: str) -> list[int]: ...
     def pull_requests_for_commit(self, repo: str, sha: str) -> list[int]: ...
@@ -188,23 +178,11 @@ class GitHubHost:
             raise HostError(f"No repository {repo} on GitHub, or the token cannot read it.")
         return data["default_branch"]
 
-    def protection(self, repo: str, branch: str) -> Protection | None:
-        data = self._get(f"/repos/{repo}/branches/{branch}/protection")
-        if data is None:
-            return None
-        reviews = data.get("required_pull_request_reviews") or {}
-        status = data.get("required_status_checks") or {}
-        checks = set(status.get("contexts") or ())
-        checks |= {c["context"] for c in status.get("checks") or ()}
-        return Protection(
-            reviews_required=bool(reviews)
-            and reviews.get("required_approving_review_count", 0) >= 1,
-            required_checks=frozenset(checks),
-            code_owner_reviews=bool(reviews.get("require_code_owner_reviews")),
-            enforce_admins=bool((data.get("enforce_admins") or {}).get("enabled")),
-            allow_force_pushes=bool((data.get("allow_force_pushes") or {}).get("enabled")),
-            allow_deletions=bool((data.get("allow_deletions") or {}).get("enabled")),
-        )
+    def passed_checks(self, repo: str, sha: str) -> frozenset[str]:
+        """The names of the checks that passed on the commit (a re-run that passed counts)."""
+        data = self._get(f"/repos/{repo}/commits/{sha}/check-runs?per_page=100") or {}
+        runs = data.get("check_runs") or ()
+        return frozenset(r["name"] for r in runs if r.get("conclusion") == "success")
 
     def pull_request(self, repo: str, number: int) -> PullRequest | None:
         data = self._get(f"/repos/{repo}/pulls/{number}")
@@ -292,18 +270,8 @@ class FileHost:
     def default_branch(self, repo: str) -> str:
         return self._repo(repo).get("default_branch", "main")
 
-    def protection(self, repo: str, branch: str) -> Protection | None:
-        data = self._repo(repo).get("protection")
-        if data is None:
-            return None
-        return Protection(
-            reviews_required=data.get("reviews_required", False),
-            required_checks=frozenset(data.get("required_checks", ())),
-            code_owner_reviews=data.get("code_owner_reviews", False),
-            enforce_admins=data.get("enforce_admins", False),
-            allow_force_pushes=data.get("allow_force_pushes", True),
-            allow_deletions=data.get("allow_deletions", True),
-        )
+    def passed_checks(self, repo: str, sha: str) -> frozenset[str]:
+        return frozenset(self._repo(repo).get("checks", {}).get(sha, ()))
 
     def pull_request(self, repo: str, number: int) -> PullRequest | None:
         for p in self._pulls(repo):

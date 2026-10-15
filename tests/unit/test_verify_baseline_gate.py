@@ -166,3 +166,23 @@ def test_a_tag_without_its_record_or_an_item_is_caught(product):
 def test_a_product_without_git_is_caught(tmp_path):
     root = build_product(tmp_path / "plain", git=False)
     assert [f.rule for f in check(read_product_config(root))] == ["NOT_A_GIT_REPOSITORY"]
+
+
+def test_a_moved_release_tag_is_caught(product):
+    propose(product)
+    merge_and_tag(product)
+    commit_all(product, "fix: a later change #2")
+    git(
+        product,
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@e.org",
+        "tag",
+        "-f",
+        "-a",
+        "v1.0.0",
+        "-m",
+        "moved",
+    )
+    assert rules(product) == [("TAG_MOVED", RECORD)]

@@ -9,6 +9,7 @@ local main or master. When none of these exists the whole history is read.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
@@ -20,12 +21,16 @@ __all__ = [
     "GITMODULES",
     "Change",
     "Commit",
+    "Push",
     "branch",
     "commits",
     "file_at",
     "files_at",
     "gitlink",
+    "first_parents",
+    "is_ancestor",
     "issue_mentions",
+    "main_push",
     "main_ref",
     "reached_main",
     "resolve_base",
@@ -115,6 +120,44 @@ def resolve_base(root: Path, base: str | None = None) -> str | None:
         return _merge_base(root, wanted)
     ref = main_ref(root)
     return _merge_base(root, ref) if ref else None
+
+
+@dataclass(frozen=True)
+class Push:
+    """A push to the main branch, as CI's event names it."""
+
+    before: str | None  # the main branch before the push; None for its first push
+    after: str
+
+
+def main_push() -> Push | None:
+    """The push to the default branch this CI run is for, or None (a pull request,
+    another branch, or no CI event)."""
+    path = os.environ.get("GITHUB_EVENT_PATH")
+    if not path or not os.path.isfile(path):
+        return None
+    try:
+        event = json.loads(Path(path).read_text(encoding="utf-8"))
+    except ValueError:
+        return None
+    default = (event.get("repository") or {}).get("default_branch")
+    if not default or event.get("ref") != f"refs/heads/{default}":
+        return None
+    before = event.get("before") or ""
+    return Push(None if set(before) <= {"0"} else before, event.get("after") or "")
+
+
+def is_ancestor(root: Path, older: str, newer: str) -> bool:
+    """Whether older is in newer's history (False when older is not in the clone)."""
+    return _git(root, "merge-base", "--is-ancestor", older, newer).returncode == 0
+
+
+def first_parents(root: Path, base: str | None, tip: str = "HEAD") -> list[str]:
+    """The commits of the main line from base (excluded) to tip, oldest first:
+    a merge commit stands for the pull request it merged."""
+    span = f"{base}..{tip}" if base else tip
+    run = _git(root, "rev-list", "--first-parent", "--reverse", span)
+    return run.stdout.split() if run.returncode == 0 else []
 
 
 def branch(root: Path) -> str | None:

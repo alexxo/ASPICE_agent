@@ -52,10 +52,15 @@ def test_a_review_runs_the_gates_again(repo_root):
     assert "pull_request_review" in triggers
 
 
-def test_the_gates_can_read_the_host(repo_root):
-    steps = yaml.safe_load((repo_root / TEMPLATE).read_text())["jobs"]["gates"]["steps"]
+def test_the_gates_read_the_host_with_the_runs_own_token(repo_root):
+    """No secret and no administrator's token: the token every run has, with read
+    permissions only (decision 6 of the quality assurance stage)."""
+    workflow = yaml.safe_load((repo_root / TEMPLATE).read_text())
+    steps = workflow["jobs"]["gates"]["steps"]
     (gates,) = (s for s in steps if "resolve_stage_tool.py --root . --check" in s.get("run", ""))
-    assert gates["env"]["QF_HOST_TOKEN"] == "${{ secrets.QF_HOST_TOKEN }}"
+    assert gates["env"]["QF_HOST_TOKEN"] == "${{ github.token }}"
+    assert set(workflow["permissions"].values()) == {"read"}
+    assert {"pull-requests", "checks"} <= set(workflow["permissions"])
 
 
 def _release_steps(repo_root):
@@ -78,6 +83,5 @@ def test_the_release_is_checked_before_and_after_its_tag(repo_root):
     runs = [s.get("run", "") for s in steps]
     (tag,) = (i for i, r in enumerate(runs) if 'git tag -a "v$versions"' in r)
     baseline = [i for i, r in enumerate(runs) if "verify_baseline_gate.py" in r]
-    backup = [i for i, r in enumerate(runs) if "verify_backup_gate.py" in r]
-    assert baseline[0] < tag < baseline[1] and backup[0] > tag
+    assert baseline[0] < tag < baseline[1]
     assert "--pending" in runs[tag] and "git push origin" in runs[tag]

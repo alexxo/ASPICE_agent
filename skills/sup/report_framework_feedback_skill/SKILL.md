@@ -98,6 +98,4 @@ review:
 urgent_approvers: [lead-bob]
 change_approvers: [lead-bob]
 escalate_after_days: 30
-
-mirror: https://gitlab.com/acme/login.git
 ```

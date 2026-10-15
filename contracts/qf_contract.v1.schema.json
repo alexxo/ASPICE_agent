@@ -12,8 +12,7 @@
     "review",
     "urgent_approvers",
     "change_approvers",
-    "escalate_after_days",
-    "mirror"
+    "escalate_after_days"
   ],
   "properties": {
     "contract": {
@@ -236,11 +235,6 @@
       "description": "How many days a non-conformance may stay open before it must be escalated: labelled escalated and assigned (SUP.1 BP7).",
       "type": "integer",
       "minimum": 1
-    },
-    "mirror": {
-      "description": "The URL of the second repository that mirrors this one (SUP.8 BP8); a release is complete only when its tag is there too.",
-      "type": "string",
-      "pattern": "^\\S+$"
     }
   },
   "$defs": {
