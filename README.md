@@ -36,6 +36,11 @@ tests/.venv/bin/ruff check . && tests/.venv/bin/ruff format --check .
 
 ## Start a product
 
+**New team?** Create an empty folder, open your coding agent in it and tell it
+to follow [QUICKSTART.md](QUICKSTART.md): it walks you through the setup step by
+step and hands over to the ASPICE Agent. The rest of this section is the same
+setup by hand.
+
 The product is the repository's root; the framework lives in it once, as a git
 submodule at `.framework` checked out at a release. Clone it there, then run the
 construction site setup from it with the values only a person can give (the
