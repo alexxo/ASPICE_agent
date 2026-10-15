@@ -74,19 +74,35 @@ virtual environment if they prefer one).
 
 ### Step 3 — People and accounts
 
-Explain the three roles. Ask the person which GitHub account plays each one,
-and keep the answers for step 5. This file calls them *reviewer*, *developer*
-and *reviewer-bot*:
+Explain the roles. Ask the person which GitHub account plays each one, and
+keep the answers for step 5. This file calls them *reviewer*, *developer* and
+*reviewer-bot*:
 
 - **reviewer**: the person who reviews. Approves the pull requests the
   framework samples (every architecture change, every change to the CI file,
   `.gitmodules` or `qf.yaml`, and one in five of the others), the checkpoints,
-  urgent fixes and change requests. Their account is the **code owner**, the
-  **urgent approver** and the **change approver**. There can be several.
-- **developer**: works with the agent and opens the pull requests. There can be
-  several.
+  urgent fixes and change requests.
+- **developer**: works with the agent and opens the pull requests.
 - **reviewer-bot**: the reviewer agent's own GitHub account, which posts the
   agent's reviews. Its approvals never count as a person's.
+
+**Three accounts are enough.** The setup in step 5 asks for four values, but
+one account can fill several of them:
+
+| The setup asks for | Filled by |
+|---|---|
+| reviewer agent | the **reviewer-bot** account |
+| code owner | the **reviewer** account |
+| urgent approver | the **reviewer** account |
+| change approver | the **reviewer** account |
+
+So the minimum is three GitHub accounts: one reviewer, one developer and one
+reviewer-bot. The three must be different accounts. GitHub never lets the
+author of a pull request approve it, so the person who approves the
+developer's pull requests needs an account of their own, and the reviewer
+agent posts from its own account so its reviews never count as a person's.
+A larger team may name several accounts for any role, and may give the code
+owner, urgent approver and change approver roles to different people.
 
 Then the person does, on GitHub:
 
