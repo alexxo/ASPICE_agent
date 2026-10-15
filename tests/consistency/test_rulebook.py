@@ -1,6 +1,6 @@
 """Layer 2 — the rulebook is complete (SUP.1 BP2): a framework test, not a product gate.
 
-The rulebook is the practice table of docs/Quality_framework_documentation.md:
+The rulebook is the practice table of docs/ASPICE_agent_documentation.md:
 every practice names the gate that checks it (**Gate:** …). Asserts: every gate
 script belongs to a practice, and every gate a practice names is a script or a
 planned gate of a stage in agent/stages.yaml — so no practice points at a gate
@@ -16,7 +16,7 @@ from agent.read_stages_tool import read_stages
 
 pytestmark = pytest.mark.layer2
 
-DOC = "docs/Quality_framework_documentation.md"
+DOC = "docs/ASPICE_agent_documentation.md"
 
 
 def _named(repo_root):

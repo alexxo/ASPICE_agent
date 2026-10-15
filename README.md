@@ -6,7 +6,7 @@ a plugin and the framework's rules, checks the result with deterministic gates,
 retries on findings and calls a person in at the checkpoints.
 
 The design and every decision are in
-`docs/Quality_framework_documentation.md`.
+`docs/ASPICE_agent_documentation.md`.
 
 | Directory | Work package | Holds |
 |---|---|---|

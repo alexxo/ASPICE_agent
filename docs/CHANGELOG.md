@@ -35,6 +35,10 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+### Changed
+
+- **The design document is `docs/ASPICE_agent_documentation.md`.** It was `docs/Quality_framework_documentation.md`; its content is unchanged. The README, `plugins/README.md` and the consistency tests name the new file. Origin: internal.
+
 ## [1.1.1] - 2026-10-15
 
 The construction site setup tells the truth when it stops, keeps a feedback log, and says what to do with a folder git does not trust.

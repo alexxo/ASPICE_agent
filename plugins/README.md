@@ -6,7 +6,7 @@ stage's rules skills (`skills/`) say what a correct one looks like, and the gate
 (`gates/`) check it. A team may fill a slot with its own method instead.
 
 Every method skill follows the standard in
-`docs/Quality_framework_documentation.md` § *Method skills — the schema*, enforced
+`docs/ASPICE_agent_documentation.md` § *Method skills — the schema*, enforced
 by `tests/consistency/test_plugins.py`. It follows ODD: Explore, Ask, Steps and
 Done carry ODD's steps 2, 3, 6 and 7; the orchestrator does steps 1, 4 and 5
 (Authorize, Classify, Track before write) once for every stage.

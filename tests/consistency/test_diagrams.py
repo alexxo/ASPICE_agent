@@ -1,6 +1,6 @@
 """Layer 2 — the diagrams show the flow as it is: a framework test, not a product gate.
 
-The flowchart and the two sequence diagrams of docs/Quality_framework_documentation.md
+The flowchart and the two sequence diagrams of docs/ASPICE_agent_documentation.md
 walk every stage. Asserts, stage by stage, that each names exactly the gates and
 the framework skills agent/stages.yaml declares, and that the flowchart and the
 detailed sequence name exactly its plugins. The diagram of the agent's inside
@@ -16,7 +16,7 @@ from agent.read_stages_tool import read_stages
 
 pytestmark = pytest.mark.layer2
 
-DOC = "docs/Quality_framework_documentation.md"
+DOC = "docs/ASPICE_agent_documentation.md"
 NAME = re.compile(r"\b[a-z][a-z_]*_(gate|skill|plugin)\b")
 PARTICIPANT = re.compile(r"^\s*(?:participant|actor) (\w+) as ([a-z_]+)", re.M)
 ARROW = re.compile(r"^\s*(\w+)-{1,2}>>(\w+):", re.M)

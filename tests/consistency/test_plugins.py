@@ -1,6 +1,6 @@
 """Layer 2 — every method skill under plugins/ follows the method standard.
 
-The standard is in docs/Quality_framework_documentation.md § Method skills — the
+The standard is in docs/ASPICE_agent_documentation.md § Method skills — the
 schema, with the skeleton in plugins/README.md. The checker below is applied to
 every real method skill, and checks itself on a valid and on invalid samples, so
 the standard is enforced even before the first method exists.
