@@ -35,10 +35,30 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-15
+
+The construction site setup tells the truth when it stops, keeps a feedback log, and says what to do with a folder git does not trust.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| None | — | — |
+
+### Added
+
+- **The migration path.** `Migration_Path.md` takes a product from the previous framework to this one when its Archify diagrams exist and its requirements are started: remove the old submodule, keep the old work in `docs/legacy/`, set up with `tools/create_product_tool.py`, add the wishes, invariants and wish links, approve the diagrams at checkpoint 1, then convert the requirements and the glossary to their contracts under new file names, so `verify_diagram_approval_gate` does not find the approval late. Origin: internal.
+
 ### Changed
 
 - **The framework's CI runs once per change, and only what the change needs.** `.github/workflows/framework-ci.yml` runs on a push to main and on pull requests, no longer again for a release tag; a new push to a pull request cancels the run it replaces. A change only to `docs/` or to root Markdown files runs the consistency tests, the only ones that read them; any other change runs the full suite, and `gh workflow run framework-ci` starts a full run by hand before a release is tagged. Origin: internal.
 - **The contract examples name the framework's own methods.** The method slots in `contracts/examples/qf/valid/qf.yaml` and the twelve invalid samples named Gentle-AI's retired SDD skills (`gentle-ai/sdd-spec`, `sdd-design`, `sdd-apply`, `sdd-verify`); they now name `quality-framework/derive_*_plugin`, as `examples/login-product/qf.yaml` does. `tests/unit/test_read_product_config_tool.py` reads the new value. Origin: internal.
+
+### Fixed
+
+- **A refused setup leaves nothing behind.** `tools/create_product_tool.py` exited 2 — "nothing was changed" — after its `git init` had run, when a later git step failed, leaving a partial `.git/`. A failing git step now removes the repository the run created; a repository the person made is left as it was. `tests/unit/test_create_product_tool.py`. Origin: FB-1 (wp_publisher).
+- **The setup keeps an existing feedback log.** It refused to run while `FRAMEWORK_FEEDBACK.md` existed, so a weakness met during the setup could not be recorded and the setup run again. It now keeps the log and its entries, and says so; `agent/start_product.md` records such a weakness before going on. Origin: FB-2 (wp_publisher).
+- **A folder another account owns is caught before any change.** git refuses such a folder ("dubious ownership") unless its `safe.directory` names it. The setup now checks the owner first and names both accounts and the two ways on — run it as the owner, or the `git config --global --add safe.directory` command the person runs; `agent/start_product.md` relays them. Design document § 5 *Starting a product* rule 5, Appendix A.13. Origin: FB-3 (wp_publisher).
 
 ## [1.1.0] - 2026-10-13
 
