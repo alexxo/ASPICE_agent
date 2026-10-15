@@ -37,6 +37,7 @@ checking whether it is still current.
 
 ### Changed
 
+- **The design describes regression by traceability.** On a change, only the tests traced to it run — the tests carrying the changed file's `@unit`, `@component`, `@flow` or `@sdoc` markers, every test when a change traces to nothing — and a full run on the release commit backs every selection. `docs/ASPICE_agent_documentation.md` § 4.1 SWE.4 BP2, SWE.5 BP3, SWE.6 BP2; § 5 unit stages rules 30–33, stage 7 rule 14, stage 8 rule 11; Appendix A.5 records the decision and when a heavier model pays off. Origin: internal.
 - **The design document is `docs/ASPICE_agent_documentation.md`.** It was `docs/Quality_framework_documentation.md`; its content is unchanged. The README, `plugins/README.md` and the consistency tests name the new file. Origin: internal.
 
 ## [1.1.1] - 2026-10-15
