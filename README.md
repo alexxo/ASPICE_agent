@@ -30,9 +30,6 @@ a person in at the checkpoints that need one.
 - **Improve upstream.** A weakness a product team finds is recorded in its
   framework feedback log and fixed in the framework, never worked around.
 
-**Start a new product:** open your coding agent in an empty folder and tell it
-to follow [QUICKSTART.md](QUICKSTART.md).
-
 The design and every decision are in
 `docs/ASPICE_agent_documentation.md`.
 
@@ -64,35 +61,14 @@ tests/.venv/bin/ruff check . && tests/.venv/bin/ruff format --check .
 
 ## Start a product
 
-The quick start above does all of this with your agent. By hand:
+Create an empty folder for the product, open your coding agent in it, and tell
+it:
 
-The product is the repository's root; the framework lives in it once, as a git
-submodule at `.framework` checked out at a release. Clone it there, then run the
-construction site setup from it with the values only a person can give (the
-framework's runtime needs `PyYAML` and `jsonschema`, see `requirements.txt`):
+> Follow the quick start at
+> https://raw.githubusercontent.com/alexxo/ASPICE_agent/main/QUICKSTART.md
 
-```sh
-git clone --branch v1.3.1 git@github.com:alexxo/ASPICE_agent.git my-product/.framework
-cd my-product
-python .framework/tools/create_product_tool.py --root . \
-  --reviewer-agent qf-reviewer-bot --urgent-approver <login> --change-approver <login> \
-  --code-owner @<login>
-```
-
-It makes the folder a git repository, adopts the clone as the submodule, writes
-`qf.yaml`, the CI workflows, `CODEOWNERS` and the feedback log, and stages the
-framework's pin at the release. It
-commits nothing and never changes the code host, and nothing needs configuring
-there: CI reads the host with its own token. Install the diagram plugin
-[Archify](https://github.com/tt-a1i/archify) where your agent finds skills, then
-start the agent with `.framework/agent/run_aspice_agent.md` — stage 1 begins
-with the customer's wishes.
-
-Or let the agent lead right after the clone: open your agent host in
-`my-product` and tell it to follow `.framework/agent/start_product.md`. It asks
-you the values, runs the same command, walks you through the host steps,
-commits with your approval and goes on into stage 1. The rules are in the
-design document, § 5 *Starting a product*.
+The agent walks you through the setup and hands over to the ASPICE Agent
+([QUICKSTART.md](QUICKSTART.md)).
 
 ## Try it
 
