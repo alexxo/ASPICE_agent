@@ -35,6 +35,16 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-15
+
+A quick start for new teams, free branch names, and stages named by number.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Add the line `.archify/` | `.gitignore` | optional — keeps Archify's working folders out of git; a developer who excluded it in `.git/info/exclude` may drop that line |
+
 ### Added
 
 - **The quick start.** `QUICKSTART.md` takes a new team from an empty folder to the ASPICE Agent's first stage: the person opens a coding agent in the folder and tells it to follow the file, and the agent checks the machine, explains the roles and the GitHub accounts, fetches the framework at its latest release, runs `agent/start_product.md`, has the first commit pushed and the diagram plugin Archify installed by the person, and hands over to `agent/run_aspice_agent.md`. Built from the pilot product's quick start. Origin: wp_publisher.
@@ -42,6 +52,12 @@ checking whether it is still current.
 ### Changed
 
 - **The name is ASPICE Agent.** The README's title and the design document's title say ASPICE Agent, and the README opens with the agent's goal and philosophy. Origin: internal.
+
+### Fixed
+
+- **Any branch name but two is free.** `check_commit_conventions_gate` checks only the branch names that carry meaning — *arch/<slug>* for the architecture track and *release/v<version>* for a release (BAD_BRANCH_NAME); any other name is free, since every commit names its *REQ-<n>* or *#<n>*. Work that serves no requirement — tooling, documentation, a framework bump — now has a valid branch. Design document Appendix A.9. Origin: FB-10 (wp_publisher).
+- **The setup ignores Archify's working folders.** `tools/create_product_tool.py` adds *.archify/* to `.gitignore`, next to *.qf/*, *.agents/* and *.claude/*; `QUICKSTART.md` no longer asks each developer to exclude it locally. Origin: FB-10 (wp_publisher).
+- **A stage is named by its id or its number.** `load_skills_tool`, `run_gates_tool` and `count_retries_tool` take `--stage diagram` or `--stage 1`, one retry counter per stage either way; an unknown stage gets a one-line message listing the stages and exit 2, not a traceback. `agent/run_aspice_agent.md` says what `<stage>` is. Origin: FB-11 (wp_publisher).
 
 ### Removed
 
