@@ -262,6 +262,7 @@ def test_every_person_value_is_required(product, flag):
 
 
 def test_a_folder_of_another_account_is_refused_before_any_change(cloned, capsys, monkeypatch):
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")  # a CI machine may trust every folder there
     monkeypatch.setattr(create_product_tool.os, "getuid", lambda: cloned.stat().st_uid + 1)
 
     assert create_product_tool.main(args(cloned)) == 2
