@@ -37,6 +37,7 @@ checking whether it is still current.
 
 ### Changed
 
+- **The framework's CI runs once per change, and only what the change needs.** `.github/workflows/framework-ci.yml` runs on a push to main and on pull requests, no longer again for a release tag; a new push to a pull request cancels the run it replaces. A change only to `docs/` or to root Markdown files runs the consistency tests, the only ones that read them; any other change runs the full suite, and `gh workflow run framework-ci` starts a full run by hand before a release is tagged. Origin: internal.
 - **The contract examples name the framework's own methods.** The method slots in `contracts/examples/qf/valid/qf.yaml` and the twelve invalid samples named Gentle-AI's retired SDD skills (`gentle-ai/sdd-spec`, `sdd-design`, `sdd-apply`, `sdd-verify`); they now name `quality-framework/derive_*_plugin`, as `examples/login-product/qf.yaml` does. `tests/unit/test_read_product_config_tool.py` reads the new value. Origin: internal.
 
 ## [1.1.0] - 2026-10-13
