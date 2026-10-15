@@ -39,6 +39,10 @@ checking whether it is still current.
 
 - **The quick start.** `QUICKSTART.md` takes a new team from an empty folder to the ASPICE Agent's first stage: the person opens a coding agent in the folder and tells it to follow the file, and the agent checks the machine, explains the roles and the GitHub accounts, fetches the framework at its latest release, runs `agent/start_product.md`, has the first commit pushed and the diagram plugin Archify installed by the person, and hands over to `agent/run_aspice_agent.md`. Built from the pilot product's quick start. Origin: wp_publisher.
 
+### Changed
+
+- **The name is ASPICE Agent.** The README's title and the design document's title say ASPICE Agent, and the README opens with the agent's goal and philosophy. Origin: internal.
+
 ### Removed
 
 - **The migration path.** `Migration_Path.md` is gone: a team starts a new product with `QUICKSTART.md` instead of converting a product of the previous framework. Origin: internal.

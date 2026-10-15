@@ -1,7 +1,6 @@
-# Quality Framework
+# ASPICE Agent
 
-> **What this is:** the description of the Quality Framework — the ASPICE
-> Agent — as it is. Five parts: the principles; why ASPICE; the tale of the
+> **What this is:** the description of the ASPICE Agent as it is. Five parts: the principles; why ASPICE; the tale of the
 > bridge; every ASPICE base practice with its final version and gate checks;
 > how it is implemented. Appendix A records the forks: where the design chose
 > between real options, and why. Appendix B records where the practices came

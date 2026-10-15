@@ -1,9 +1,37 @@
-# Quality Framework — next major version
+# ASPICE Agent
 
-A quality layer over any specification-driven method, organised by the ASPICE
-4.1 processes. The framework acts as the **ASPICE Agent**: at each stage it loads
-a plugin and the framework's rules, checks the result with deterministic gates,
-retries on findings and calls a person in at the checkpoints.
+**Goal.** Build software products with AI agents that an ASPICE 4.1 assessment
+would accept: every feature starts as a diagram, its requirements are derived
+from the diagram, every requirement is tested, and every step leaves the evidence
+an auditor needs — without a person writing that evidence by hand.
+
+**How.** The ASPICE Agent walks a product through the V, one stage at a time:
+diagram, requirements, architecture, detailed design, unit tests and code,
+integration and software verification, review, baseline and release. At each
+stage it loads the stage's method and the framework's rules, does the work,
+checks the result with deterministic gates, retries on what they find, and calls
+a person in at the checkpoints that need one.
+
+**Philosophy.**
+
+- **Principles first.** Sixteen principles — requirements-driven development,
+  traceability, test first, security, logging, review, acceptance and more — are
+  the source of truth. Every principle becomes a checkable practice, and every
+  practice has a gate. Nothing is declared that is not checked.
+- **Gates, not opinions.** Whether a stage is done is decided by scripts that no
+  agent can influence, never by the agent's own judgement. Agents do the work;
+  gates judge it; people decide at the checkpoints.
+- **Tool-agnostic.** The framework fixes *what* must be true, not *how* to get
+  there: the method of each stage is a plugin, the language a stack the product
+  chooses, and all state lives in the product's own repository.
+- **The right size.** Every measure answers a risk that was rated and found
+  high; the rest is a documented, accepted risk. No paid plan, no host settings
+  to maintain, no machinery a team does not need.
+- **Improve upstream.** A weakness a product team finds is recorded in its
+  framework feedback log and fixed in the framework, never worked around.
+
+**Start a new product:** open your coding agent in an empty folder and tell it
+to follow [QUICKSTART.md](QUICKSTART.md).
 
 The design and every decision are in
 `docs/ASPICE_agent_documentation.md`.
@@ -36,10 +64,7 @@ tests/.venv/bin/ruff check . && tests/.venv/bin/ruff format --check .
 
 ## Start a product
 
-**New team?** Create an empty folder, open your coding agent in it and tell it
-to follow [QUICKSTART.md](QUICKSTART.md): it walks you through the setup step by
-step and hands over to the ASPICE Agent. The rest of this section is the same
-setup by hand.
+The quick start above does all of this with your agent. By hand:
 
 The product is the repository's root; the framework lives in it once, as a git
 submodule at `.framework` checked out at a release. Clone it there, then run the
