@@ -52,6 +52,17 @@ Show the person the command with their answers, then run it:
   word, and what the person can do about it; ask again for a value it rejected,
   and run it again. Never delete, move or overwrite a file to get past a
   problem: that is the person's decision.
+- **The folder belongs to another account** — git refuses it, and the setup
+  says so before changing anything, naming both accounts. Give the person the
+  two choices it printed: run the setup as the folder's owner, or let git trust
+  the folder for the running account with the `git config --global` command it
+  printed. That changes a global git setting, so the person runs it; never run
+  it yourself. Then run the setup again.
+- **A framework weakness met on the way** — record it before going on, in
+  `<product>/FRAMEWORK_FEEDBACK.md`, started from
+  `<framework>/templates/FRAMEWORK_FEEDBACK.md` if the product has none
+  (`<framework>/skills/sup/report_framework_feedback_skill/SKILL.md`). The setup
+  keeps an existing log and its entries.
 - **The framework's Python packages are missing** (PyYAML, jsonschema) — tell
   the person to install them with
   `python -m pip install -r <framework>/requirements.txt`, and wait.

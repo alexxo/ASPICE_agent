@@ -259,3 +259,56 @@ def test_every_person_value_is_required(product, flag):
     with pytest.raises(SystemExit) as exit_:
         create_product_tool.main(argv)
     assert exit_.value.code == 2
+
+
+def test_a_folder_of_another_account_is_refused_before_any_change(cloned, capsys, monkeypatch):
+    monkeypatch.setattr(create_product_tool.os, "getuid", lambda: cloned.stat().st_uid + 1)
+
+    assert create_product_tool.main(args(cloned)) == 2
+    assert not (cloned / ".git").exists()
+    assert not (cloned / "qf.yaml").exists()
+    err = capsys.readouterr().err
+    assert f"git config --global --add safe.directory {cloned.resolve()}" in err
+
+
+def test_a_folder_git_trusts_is_set_up_for_another_account(cloned, monkeypatch):
+    git(cloned, "config", "--global", "--add", "safe.directory", str(cloned.resolve()))
+    monkeypatch.setattr(create_product_tool.os, "getuid", lambda: cloned.stat().st_uid + 1)
+
+    assert create_product_tool.main(args(cloned)) == 0
+
+
+def _failing_submodule(monkeypatch):
+    real = create_product_tool._git
+
+    def fake(*command, cwd=None):
+        if command[0] == "submodule":
+            return subprocess.CompletedProcess(command, 128, "", "fatal: refused")
+        return real(*command, cwd=cwd)
+
+    monkeypatch.setattr(create_product_tool, "_git", fake)
+
+
+def test_a_failed_git_step_removes_the_repository_it_created(cloned, capsys, monkeypatch):
+    _failing_submodule(monkeypatch)
+
+    assert create_product_tool.main(args(cloned)) == 2
+    assert not (cloned / ".git").exists()
+    assert (cloned / ".framework/.git").exists()
+    assert "The git repository this run created was removed." in capsys.readouterr().err
+
+
+def test_a_failed_git_step_keeps_the_persons_repository(cloned, monkeypatch):
+    git(cloned, "init", "-q")
+    _failing_submodule(monkeypatch)
+
+    assert create_product_tool.main(args(cloned)) == 2
+    assert (cloned / ".git").exists()
+
+
+def test_an_existing_feedback_log_is_kept(product, capsys):
+    (product / "FRAMEWORK_FEEDBACK.md").write_text("# Framework feedback\n\n### FB-1 — mine\n")
+
+    assert create_product_tool.main(args(product)) == 0
+    assert "FB-1 — mine" in (product / "FRAMEWORK_FEEDBACK.md").read_text()
+    assert "Kept the existing FRAMEWORK_FEEDBACK.md" in capsys.readouterr().out

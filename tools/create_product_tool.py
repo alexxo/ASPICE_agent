@@ -5,7 +5,7 @@ at .framework, checked out at a release tag. The person clones the framework at 
 release into the product folder and runs the setup from that clone, so the
 framework exists once (decisions 1 and 3 of starting a product):
 
-    git clone --branch v1.1.0 <framework repository> my-product/.framework
+    git clone --branch v1.1.1 <framework repository> my-product/.framework
     python my-product/.framework/tools/create_product_tool.py --root my-product \\
         --reviewer-agent LOGIN --urgent-approver LOGIN --change-approver LOGIN \\
         --code-owner @LOGIN-OR-@ORG/TEAM --mirror URL
@@ -18,15 +18,20 @@ agent asks the person and passes the answers (decision 2). The tool stages the
 submodule's pin and writes qf.yaml, the CI workflows copied from
 templates/github, the CODEOWNERS file, the framework feedback log and the
 agent's .gitignore lines — no work product and no empty folder (decision 4). It
-refuses to replace qf.yaml or overwrite any file, and checks everything before
-it changes anything (decision 5). It commits nothing, and it never changes the
-code host: the steps there are printed for the person (decision 6).
+refuses to replace qf.yaml or overwrite any file, keeps a feedback log the
+product already has, and checks everything before it changes anything, git's
+trust in the folder included; a git step that still fails undoes the repository
+the run created (decision 5). It commits nothing, and it never changes the code
+host: the steps there are printed for the person (decision 6).
 """
 
 from __future__ import annotations
 
 import argparse
+import getpass
+import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -46,6 +51,7 @@ FRAMEWORK = Path(__file__).resolve().parent.parent
 FRAMEWORK_DIR = ".framework"
 CODEOWNERS = ".github/CODEOWNERS"
 IGNORED = (".qf/", ".agents/", ".claude/")
+FEEDBACK = "FRAMEWORK_FEEDBACK.md"
 
 PATHS = {
     "requirements_dir": "docs/requirements",
@@ -65,7 +71,7 @@ PATHS = {
     "observability_dir": "observability",
     "framework_dir": FRAMEWORK_DIR,
     "ci_file": ".github/workflows/quality_gates.yml",
-    "framework_feedback_file": "FRAMEWORK_FEEDBACK.md",
+    "framework_feedback_file": FEEDBACK,
     "releases_dir": "releases",
     "validation_scenarios_dir": "validation/scenarios",
     "validation_records_dir": "validation/records",
@@ -157,10 +163,42 @@ def _adopted(root: Path) -> bool:
     return (root / ".git").exists() and FRAMEWORK_DIR in _submodule_paths(root)
 
 
+def _account(uid: int) -> str:
+    try:
+        import pwd
+
+        return pwd.getpwuid(uid).pw_name
+    except (ImportError, KeyError):
+        return str(uid)
+
+
+def _untrusted(root: Path) -> str | None:
+    """Why git would refuse the folder, if it would: it belongs to another account
+    and git's safe.directory does not name it."""
+    if not hasattr(os, "getuid"):  # the ownership rule is git's on POSIX systems
+        return None
+    owner = root.stat().st_uid
+    if owner == os.getuid():
+        return None
+    trusted = _git("config", "--get-all", "safe.directory").stdout.splitlines()
+    if "*" in trusted or any(Path(t).expanduser() == root for t in trusted if t):
+        return None
+    return (
+        f"{root} belongs to the account '{_account(owner)}', and git runs as "
+        f"'{getpass.getuser()}': git refuses a folder another account owns. Run the "
+        f"setup as '{_account(owner)}', or let git trust the folder for "
+        f"'{getpass.getuser()}' — a global git setting — and run it again:\n"
+        f"  git config --global --add safe.directory {root}"
+    )
+
+
 def _problems(root: Path, framework: Path, args: argparse.Namespace, config: dict) -> list[str]:
     """Everything that stops the setup, found before anything is changed."""
     if (root / "qf.yaml").exists():
         return ["qf.yaml already exists: this product is set up; nothing was changed."]
+    untrusted = _untrusted(root)
+    if untrusted:
+        return [untrusted]
     if framework.resolve() != (root / FRAMEWORK_DIR).resolve():
         return [f"This framework is not the product's submodule at {FRAMEWORK_DIR}.\n{SETUP}"]
     problems = []
@@ -174,7 +212,7 @@ def _problems(root: Path, framework: Path, args: argparse.Namespace, config: dic
             f"check one out: git -C {FRAMEWORK_DIR} checkout v<version>"
         )
     for path in [*COPIED.values(), CODEOWNERS]:
-        if (root / path).exists():
+        if path != FEEDBACK and (root / path).exists():
             problems.append(f"{path} already exists; the setup never overwrites a file.")
     for v in validate(config, "qf"):
         problems.append(f"qf.yaml would be invalid at {v.path or '/'}: {v.message}")
@@ -192,7 +230,8 @@ def create_product(root: Path, args: argparse.Namespace, framework: Path) -> lis
     if problems:
         return problems
     steps = []
-    if not (root / ".git").exists():
+    created = not (root / ".git").exists()
+    if created:
         steps.append(("init", "-q"))
     if not _adopted(root):  # git adopts the clone in place: the framework stays one copy
         steps.append(("submodule", "add", "-q", _origin(framework), FRAMEWORK_DIR))
@@ -200,13 +239,19 @@ def create_product(root: Path, args: argparse.Namespace, framework: Path) -> lis
     for step in steps:
         done = _git(*step, cwd=root)
         if done.returncode != 0:
-            return [f"git {' '.join(step)} failed: {done.stderr.strip()}"]
+            failed = f"git {' '.join(step)} failed: {done.stderr.strip()}"
+            if created:  # undo the repository this run made, so nothing was changed
+                shutil.rmtree(root / ".git")
+                return [failed, "The git repository this run created was removed."]
+            return [failed]
 
     (root / "qf.yaml").write_text(
         "# Framework configuration of this product (qf.v1), written by create_product_tool.\n"
         + yaml.safe_dump(config, sort_keys=False)
     )
     for template, target in COPIED.items():
+        if target == FEEDBACK and (root / target).exists():
+            continue  # the product's log already holds its findings: keep them
         (root / target).parent.mkdir(parents=True, exist_ok=True)
         (root / target).write_text((framework / template).read_text())
     owners = " ".join(args.code_owner)
@@ -245,6 +290,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.add_argument(flag, action="append", required=True, help=f"{what}; repeatable")
     args = parser.parse_args(argv)
     root = args.root.resolve()
+    kept = (root / FEEDBACK).exists()
 
     problems = create_product(root, args, FRAMEWORK)
     if problems:
@@ -252,6 +298,8 @@ def main(argv: list[str] | None = None) -> int:
             print(problem, file=sys.stderr)
         return 2
     print(f"Set up {root} with the framework {release_tag(FRAMEWORK)} at {FRAMEWORK_DIR}.")
+    if kept:
+        print(f"Kept the existing {FEEDBACK} and its entries.")
     _, missing = read_config(root)
     for finding in missing:
         print(f"  {finding.rule}: {finding.message}")

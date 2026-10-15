@@ -2283,9 +2283,16 @@ Its rules, numbered as the code cites them (*decision N of starting a product*):
    product — wishes, diagrams and requirements are the stages' work — and no
    empty folder.
 5. **Nothing is overwritten.** It refuses when *qf.yaml* or any file it would
-   write already exists, when the framework is not at a release tag, or when a
-   value would make *qf.yaml* invalid — and it checks all of these before it
-   changes anything, the git repository included.
+   write already exists, when the framework is not at a release tag, when a
+   value would make *qf.yaml* invalid, or when git would refuse the folder
+   because another account owns it and git's *safe.directory* does not name it
+   — and it checks all of these before it changes anything, the git repository
+   included. For a folder of another account it names both accounts and the two
+   ways on: run the setup as the owner, or let git trust the folder, a global
+   git setting the person changes. A git step that still fails removes the
+   repository the run created, so a refusal never leaves a change behind. A
+   framework feedback log the product already has is kept with its entries, so
+   a weakness met during the setup can be recorded before it is run again.
 6. **The person finishes the setup.** The tool commits nothing and never
    changes the code host. It prints what the agent's preconditions still miss
    (e.g. Archify not installed), the stage the product is at, and the host
@@ -3490,6 +3497,11 @@ label together.
   clone outside the product that adds the submodule — two copies of the
   framework; deleting the outside clone at the end was also rejected, since the
   tool could delete a clone holding someone's work.
+- **A folder git does not trust** (FB-3 of wp_publisher). *Chosen:* the setup
+  checks the folder's owner before any change and prints the two ways on; the
+  person runs the *git config --global* command. *Not taken:* the tool adding
+  the *safe.directory* exception itself after the person's approval — it would
+  change the person's global git configuration, outside the product.
 - **How the person starts** (2026-10-13, Alex). *Chosen:* P1 and P2 together —
   the person clones the framework into the product folder, then runs the setup
   command (P1) or tells the agent to follow *agent/start_product.md* (P2),
