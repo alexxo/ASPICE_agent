@@ -35,6 +35,10 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+### Changed
+
+- **The risk analysis behind configuration management.** Appendix A.9 of `docs/ASPICE_agent_documentation.md` records the stage's two purposes — code integrity with a backup, and traceability with the ability to revert — every scenario that endangers them rated 1–10 for occurrence, severity and detectability, and the decisions: a git check of the release tags (S3), of every commit on the main branch (S8) and of every push to it, which must keep the previous main in its history, with the rulebooks forbidding agents to rewrite it (S1); the loss of the repository (S4) or of the framework repository (S10) accepted, the developers' clones being the copy; configuration outside git, rebuilding old releases and compromised accounts out of scope. Origin: FB-4 to FB-7 (wp_publisher).
+
 ## [1.2.0] - 2026-10-15
 
 Regression by traceability: on a change, only the tests traced to it run, and a full run on the release commit backs every selection.

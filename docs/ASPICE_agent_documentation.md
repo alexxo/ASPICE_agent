@@ -3493,6 +3493,45 @@ label together.
   the Conventional Commits. *Not taken:* B — chosen by a person, which lets a
   breaking change ship as a patch unnoticed.
 
+- **The risk analysis behind the stage** (2026-10-15, Alex). The stage serves
+  two purposes: **code integrity with a backup**, and **traceability** — when,
+  by whom and why a change happened, and the ability to revert it. That every
+  change is reviewed and passed the gates is quality assurance (stage 9), not
+  this stage. Every scenario that endangers the two purposes is rated 1–10 for
+  occurrence (O: 1 practically never … 9 weekly), severity (S: 1 no effect … 9 a
+  release or its history lost for good, an audit failed) and detectability in
+  time to recover (D: 1 noticed by itself at once … 9 practically never before
+  it is needed). Risk = O × S × D; high from 200, or with S ≥ 9 whatever the
+  product; medium from 100; low below. The ratings start from plain git and the
+  host's defaults, without the framework's measures. Only a high risk gets a
+  measure.
+
+  | # | Scenario | O | S | D | Risk | Decision | Residual |
+  |---|---|---|---|---|---|---|---|
+  | S3 | A release tag is moved or deleted | 3 | 9 | 9 | 243 | A git check on every CI run: each tag *v&lt;x&gt;* points to the commit of the main branch where *releases/&lt;x&gt;.yaml* first appeared | 3·9·2 = 54 |
+  | S8 | A change reaches the main branch with no traceable reason | 5 | 6 | 7 | 210 | Every commit that reached the main branch names its reason, *REQ-&lt;n&gt;* or *#&lt;n&gt;*, as every commit of a pull request already does | 1·6·2 = 12 |
+  | S1 | Someone force-pushes the main branch — agents push all day, and one whose push is refused may force it | 5 | 7 | 7 | 245 | A CI check on every push to the main branch: the previous main is still in the new history (*git merge-base --is-ancestor*), or the run fails and names the lost commit, which any clone pushes back; and the rulebooks forbid rewriting the main branch, so the agent never force-pushes or resets it | 5·7·2 = 70 |
+  | S10 | The framework repository is rewritten or deleted: the pinned framework commit is gone | 3 | 9 | 9 | 243 | Accepted: every developer's clone with the submodule fetched holds the pinned framework commit | 2·7·7 = 98 |
+  | S4 | The repository or the account is lost, with no copy | 2 | 10 | 9 | 180 | Accepted: every developer keeps a full clone, the host stores repositories redundantly and restores a deleted one for 90 days; no mirror | 2·7·7 = 98 |
+  | S7 | A squash or rebase merge removes intermediate commits | 9 | 3 | 5 | 135 | Medium: no measure | — |
+  | S2 | The main branch is deleted | 2 | 7 | 1 | 14 | Low | — |
+  | S5 | The host is down for hours or days | 5 | 3 | 1 | 15 | Low | — |
+  | S6 | Work never pushed is lost with a laptop | 5 | 3 | 5 | 75 | Low | — |
+
+  *Out of scope:* configuration outside git (S9), rebuilding an old release
+  whose dependencies disappeared (S11), and a compromised account pushing
+  malicious code (S12). *Not taken for S4:* a mirror in another organisation or
+  at another host, written by CI at every release (residual 20) — its setup
+  costs every product a second repository, a deploy key and a secret; a mirror
+  in the same organisation, which covers only a deleted repository. *Not taken
+  for S3:* tag protection on the host, which needs an administrator and a paid
+  plan for a private repository; signed tags, which need key management. *Not
+  taken for S10:* the organisation's own copy of the framework (residual 54).
+  *Not taken for S1:* the host blocking force-pushes (residual 49) — an
+  administrator's setting, a paid plan for a private repository, and an
+  administrator's token to check it; a pre-push hook, which each person can
+  skip.
+
 ### A.10 Validation stage — stage 11
 
 - **Seal 5** (2026-10-12, D53 option A). *Chosen:* an approval file. *Not
