@@ -6,6 +6,8 @@ exist (decisions 4 and 6 of the integration stage). Every interface between
 two components of role component is crossed, in either direction, by a message
 of a tested flow (decision 5). The integration suite writes its results, and
 every component and integration test in them passes (decision 12).
+On a selected run only the flows and interfaces it covers need a passing test
+(decision 32 of the unit stages).
 
     python gates/swe/verify_tests_to_flows_link_gate.py [--root PRODUCT]
 """
@@ -73,7 +75,7 @@ def check(config: ProductConfig) -> list[Finding]:
                     )
                 )
     tested = {f for t in tests if t.path in run.passing for f in t.flows if f in flows}
-    for flow in sorted(set(flows) - tested):
+    for flow in sorted(f for f in set(flows) - tested if run.covers("flows", f)):
         findings.append(
             Finding(
                 "MISSING_FLOW_TEST",
@@ -84,7 +86,10 @@ def check(config: ProductConfig) -> list[Finding]:
         )
     crossed = set().union(*(flows[f][1] for f in tested)) if tested else set()
     for interface in read_architecture(config).internal_interfaces():
-        if frozenset((interface["from"], interface["to"])) not in crossed:
+        ends = (interface["from"], interface["to"])
+        if not all(run.covers("components", end) for end in ends):
+            continue  # a selected run that covers neither end
+        if frozenset(ends) not in crossed:
             findings.append(
                 Finding(
                     "UNTESTED_INTERFACE",

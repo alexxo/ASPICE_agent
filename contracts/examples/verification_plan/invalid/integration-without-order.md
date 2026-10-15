@@ -17,6 +17,7 @@ unit:
     - Mockito for test doubles
   selection: every unit test on every pull request
   regression: all unit tests run again on every change
+  on_change: selected
   coverage: {metric: lines, minimum: 80}
 integration:
   techniques:
@@ -31,4 +32,5 @@ integration:
     - PostgreSQL 16 in a container
     - a stub for the e-mail service
   regression: every test of a changed component and of its neighbours runs again
+  on_change: selected
 ```

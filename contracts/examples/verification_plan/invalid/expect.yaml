@@ -9,3 +9,5 @@ software-without-order.md: {path: "software", keyword: required}
 software-order-outside-vocabulary.md: {path: "software/order/1", keyword: enum}
 scenario-without-criteria.md: {path: "validation/scenarios/1", keyword: required}
 validation-without-regression.md: {path: "validation", keyword: required}
+unit-without-on-change.md: {path: "unit", keyword: required}
+unknown-on-change.md: {path: "unit/on_change", keyword: enum}

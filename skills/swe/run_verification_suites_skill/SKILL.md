@@ -22,8 +22,8 @@ them while working; the gates run them again on every CI run.
 - The **tech stack** in *qf.yaml paths.stack_file* — the *checks* (lint,
   format, static analysis), the *suites* with their *run*, *tool*, *version*,
   *results* and *coverage*, and *test_files*.
-- The **verification plan** — the unit section's selection, regression and
-  minimum coverage.
+- The **verification plan** — the unit section's selection, regression,
+  *on_change* and minimum coverage.
 - The **detailed design** — the units every passing test must cover.
 - On a retry: the **findings** of the previous attempt.
 
@@ -42,6 +42,15 @@ pytest (default *xunit2*) need nothing more. Other runners are configured to
 write one of the two — e.g. *jest-junit* with *addFileAttribute: true*. A
 result that matches no test file is a finding.
 
+On a change, a suite whose stack entry declares *run_selected* and whose plan
+section says *on_change: selected* runs only the tests traced to the change:
+*select_tests_tool* follows the changed files' *@unit*, *@component*, *@flow*
+and *@sdoc* markers, fills *{tests}* with the selected test files (*paths*) or
+their names (*names*), and every selected test keeps its reason for the
+verification report. A change that traces to nothing, *QF_RUN=full* and a
+proposed release run every test. While working, the coder runs the same
+selection: `python .framework/tools/select_tests_tool.py --root .` lists it.
+
 Each command runs once per state of the working tree; the framework keeps what
 it produced under *.qf/runs/*. Git must ignore *.qf/* and every path a command
 writes — results, coverage, build output — or each run changes the tree and
@@ -57,7 +66,9 @@ the next gate runs the command again.
 | R4 | The measured coverage reaches the minimum of the verification plan, in its metric | check_stack_commands_gate · COVERAGE_BELOW_MINIMUM |
 | R5 | Every result belongs to a test file, and every test in the results passes | verify_tests_to_requirements_link_gate · UNMAPPED_RESULT, FAILED_TEST |
 | R6 | Every unit of the detailed design has at least one passing unit test in the results | verify_tests_to_requirements_link_gate · UNTESTED_UNIT |
-| R7 | The commands run the tests the plan selects, and regression runs what the plan says | Checkpoint 4 |
+| R7 | The coverage minimum is judged on a full run only; a selected run covers part of the code | check_stack_commands_gate · COVERAGE_BELOW_MINIMUM |
+| R8 | On a selected run, every unit it covers — the units traced to the change — has a passing unit test; on a full run, every unit | verify_tests_to_requirements_link_gate · UNTESTED_UNIT |
+| R9 | The commands run the tests the plan selects, and *run_selected* runs exactly the tests given in *{tests}* | Checkpoint 4 |
 
 ## Not checkable
 

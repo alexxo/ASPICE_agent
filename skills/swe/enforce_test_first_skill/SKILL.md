@@ -37,8 +37,9 @@ first test.
 
 The verification plan: one ```yaml verification_plan block (*verification_plan.v1*)
 in *paths.verification_plan_file*, with the unit section — techniques,
-pass/fail, entry and exit criteria, infrastructure, selection, regression and
-minimum coverage.
+pass/fail, entry and exit criteria, infrastructure, selection, regression,
+*on_change* (*selected* — the unit tests traced to a change; *all* — every unit
+test) and minimum coverage.
 
 The tests and stubs follow the stack, not a schema:
 
@@ -96,6 +97,7 @@ unit:
     - Mockito for test doubles
   selection: every unit test on every pull request
   regression: all unit tests run again on every change
+  on_change: selected
   coverage: {metric: lines, minimum: 80}
 ```
 

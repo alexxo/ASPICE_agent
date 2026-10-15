@@ -97,6 +97,15 @@ def suite_digest(run: CommandRun) -> str:
     return digest.hexdigest()
 
 
+def _selection(run: CommandRun) -> dict:
+    """What the suite ran and why (decision 30 of the unit stages): every test, with
+    the reason, or the tests traced to the change, each with its reasons."""
+    if run.full:
+        why = run.selection["full"] if run.selection else "every test runs"
+        return {"full": why}
+    return {"full": None, "tests": run.selection["tests"]}
+
+
 def verification_suites(stack: dict) -> dict[str, dict]:
     """The suites the report runs: every one but validation, which runs against
     the release's deployment."""
@@ -123,6 +132,7 @@ def build_report(config: ProductConfig, stack: dict) -> dict:
         "contract": "verification_report",
         "tree": tree_key(config.root),
         "inputs": {name: suite_digest(run) for name, run in runs.items()},
+        "selection": {name: _selection(run) for name, run in runs.items()},
     }
 
     unit_tests = [s for s in scan_sources(config, stack) if s.kind == "test"]
@@ -306,6 +316,15 @@ def _validation(config: ProductConfig, stack: dict, versions: list[str]) -> list
 
 def render(report: dict) -> str:
     lines = [f"# Verification report — tree {report['tree']}", ""]
+    lines += ["## What ran", "", "| Suite | Tests | Why |", "|---|---|---|"]
+    for suite, chosen in report.get("selection", {}).items():
+        if chosen["full"] is not None:
+            lines.append(f"| {suite} | every test | {chosen['full']} |")
+        elif not chosen["tests"]:
+            lines.append(f"| {suite} | none | no test is traced to the change |")
+        for test, reasons in (chosen.get("tests") or {}).items():
+            lines.append(f"| {suite} | {test} | {'; '.join(reasons)} |")
+    lines.append("")
     lines += ["## Unit tests", "", "| Test file | Passed | Failed |", "|---|---|---|"]
     lines += [f"| {u['file']} | {u['passed']} | {u['failed']} |" for u in report["unit"]]
     integ = report["integration"]

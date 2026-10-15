@@ -27,6 +27,7 @@ unit:
     - Mockito for test doubles
   selection: every unit test on every pull request
   regression: all unit tests run again on every change
+  on_change: selected
   coverage: {metric: lines, minimum: 80}
 integration:
   techniques:
@@ -41,6 +42,7 @@ integration:
     - PostgreSQL 16 in a container
     - a stub for the e-mail service
   regression: every test of a changed component and of its neighbours runs again
+  on_change: selected
   order:
     - step: storage first
       components: [auth-service]
@@ -63,6 +65,7 @@ software:
     - the product deployed in a test environment with sample data
   selection: every software-level test before every release
   regression: all software-level tests run again before every release
+  on_change: selected
   order: [software, bench, e2e]
 validation:
   selection: every automated scenario before every release; the market-day demo when a wish about loaded carts changes

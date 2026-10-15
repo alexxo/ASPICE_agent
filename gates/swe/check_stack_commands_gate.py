@@ -8,6 +8,8 @@ the stack says; a failing test is verify_tests_to_requirements_link_gate's to
 report. The coverage over the whole report reaches the verification plan's
 minimum, in its metric (decision 16). The other suites run with their stages.
 Each command runs once per tree (decision 13).
+A selected run that selected no test runs nothing and is not short of results,
+and coverage is judged on full runs only (decision 32).
 
     python gates/swe/check_stack_commands_gate.py [--root PRODUCT]
 """
@@ -52,6 +54,8 @@ def check(config: ProductConfig) -> list[Finding]:
     entry = stack["suites"]["unit"]
     run = run_command(config, "suites", "unit", entry)
     findings += _version(shown, "suites.unit", entry, run)
+    if run.ran_nothing:
+        return findings  # no unit test is traced to the change, so none ran
     if not run.results:
         if run.exit_code != 0:
             findings.append(
@@ -70,7 +74,8 @@ def check(config: ProductConfig) -> list[Finding]:
                 f"suites.unit wrote no JUnit XML at {entry['results']}.",
             )
         )
-    findings += _coverage(config, shown, entry, run)
+    if run.full:  # coverage is measured on a full run only (decision 32)
+        findings += _coverage(config, shown, entry, run)
     return findings
 
 

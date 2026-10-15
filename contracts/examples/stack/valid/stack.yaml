@@ -17,7 +17,8 @@ env_read_patterns: ['os\.getenv\("([A-Z0-9_]+)"\)']
 
 suites:
   unit:        {run: pytest tests/unit --junitxml=build/unit.xml --cov --cov-report=xml:build/unit-coverage.xml, tool: pytest, version: 8.3.3, version_command: pytest --version,
-                results: build/unit.xml, coverage: build/unit-coverage.xml}
+                results: build/unit.xml, coverage: build/unit-coverage.xml,
+                run_selected: "pytest {tests} --junitxml=build/unit.xml --cov --cov-report=xml:build/unit-coverage.xml", selected_form: paths}
   integration: {run: pytest tests/integration --junitxml=build/integration.xml, tool: pytest, version: 8.3.3, version_command: pytest --version,
                 results: build/integration.xml}
   bench:       {run: pytest --benchmark-only --junitxml=build/bench.xml, tool: pytest-benchmark, version: 4.0.0, version_command: pip show pytest-benchmark,

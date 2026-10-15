@@ -25,6 +25,7 @@
         "infrastructure",
         "selection",
         "regression",
+        "on_change",
         "coverage"
       ],
       "properties": {
@@ -55,6 +56,10 @@
         "regression": {
           "description": "Which existing unit tests run again when code changes (SWE.4 BP2).",
           "$ref": "#/$defs/text"
+        },
+        "on_change": {
+          "description": "Which unit tests run on a change (decision 33 of the unit stages): selected — the tests traced to the changed files, every test when a change traces to nothing; all — every test. Either way every test runs on the release commit.",
+          "enum": ["selected", "all"]
         },
         "coverage": {
           "description": "The minimum code coverage the unit tests must reach (SWE.4 BP2).",
@@ -92,6 +97,7 @@
         "exit_criteria",
         "infrastructure",
         "regression",
+        "on_change",
         "order"
       ],
       "properties": {
@@ -115,6 +121,10 @@
         "regression": {
           "description": "Which component and integration tests run again when a component changes (SWE.5 BP3).",
           "$ref": "#/$defs/text"
+        },
+        "on_change": {
+          "description": "Which component and integration tests run on a change (decision 33 of the unit stages): selected — the tests traced to the changed files, every test when a change traces to nothing; all — every test. Either way every test runs on the release commit.",
+          "enum": ["selected", "all"]
         },
         "order": {
           "description": "The integration order (SWE.5 BP1): the steps in which the components are integrated.",
@@ -162,6 +172,7 @@
         "infrastructure",
         "selection",
         "regression",
+        "on_change",
         "order"
       ],
       "properties": {
@@ -189,6 +200,10 @@
         "regression": {
           "description": "Which software-level tests run again after a change (SWE.6 BP2).",
           "$ref": "#/$defs/text"
+        },
+        "on_change": {
+          "description": "Which software-level tests run on a change (decision 33 of the unit stages): selected — the tests traced to the changed files, every test when a change traces to nothing; all — every test. Either way every test runs on the release commit.",
+          "enum": ["selected", "all"]
         },
         "order": {
           "description": "The order in which the suites run (SWE.6 BP1), from the suite vocabulary.",

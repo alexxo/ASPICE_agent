@@ -5,6 +5,8 @@ appears literally in a component or integration test that carries the
 requirement's @sdoc[<REQ-UID>] marker and has at least one passed result in the
 integration suite (decision 9 of the integration stage). That the test really
 captures the emitted events, with their three fields, is the reviewer's.
+On a selected run only the requirements it covers are checked (decision 32 of
+the unit stages).
 
     python gates/swe/verify_log_events_gate.py [--root PRODUCT]
 """
@@ -41,10 +43,13 @@ def check(config: ProductConfig) -> list[Finding]:
     if not observed:
         return []
     tests = scan_integration_tests(config, stack)
-    passing = run_integration(config, stack, tests).passing
+    run = run_integration(config, stack, tests)
+    passing = run.passing
     findings: list[Finding] = []
     for req in observed:
         uid = req.data["uid"]
+        if not run.covers("requirements", uid):
+            continue  # a selected run that does not cover this requirement
         asserting = [t for t in tests if t.path in passing and uid in t.requirements]
         for event in req.data["events"]:
             if not any(event in t.text for t in asserting):

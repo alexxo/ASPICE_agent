@@ -30,7 +30,10 @@ One YAML file following *stack.v1*: language, runtime, frameworks, libraries and
 data stores, each with an exact version; the patterns that tell a test file
 from code (*test_files*); one command per verification suite (*unit* always),
 with where it writes its test results as JUnit XML (*results*) and, for the unit
-suite, its code coverage as Cobertura XML (*coverage*); the lint and format
+suite, its code coverage as Cobertura XML (*coverage*), and for the unit,
+integration and software suites the command that runs only given tests
+(*run_selected*, with *{tests}*, and *selected_form*: *paths* or *names*); the
+lint and format
 checks; the secrets and dependencies scanners every pull request runs, each
 writing its findings as SARIF (*security_scans*); and the path of the decision
 record that compares the alternatives.
@@ -71,6 +74,8 @@ suites:
     version_command: mvn -v
     results: target/surefire-reports/TEST-*.xml
     coverage: target/site/cobertura/coverage.xml
+    run_selected: mvn -q test -Dtest={tests}
+    selected_form: names
   integration:
     run: mvn -q verify -Pintegration
     tool: maven

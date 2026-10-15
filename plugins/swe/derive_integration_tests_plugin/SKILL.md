@@ -70,7 +70,8 @@ When in doubt, full.
 ## Steps
 
 1. **Plan** — the first time, the integration section of the verification
-   plan: techniques, criteria, infrastructure, regression, and the order of
+   plan: techniques, criteria, infrastructure, regression, *on_change*
+   (*selected* unless the architect asks for *all*), and the order of
    steps, each with its components, preconditions and selection.
 2. **Component tests** — per component, tests through its own interfaces with
    the test doubles the architecture declares, marked

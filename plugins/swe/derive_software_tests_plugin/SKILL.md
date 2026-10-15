@@ -69,7 +69,8 @@ When in doubt, full.
 ## Steps
 
 1. **Plan** — the first time, the software section of the verification plan:
-   techniques, criteria, environment, selection, regression and the order of
+   techniques, criteria, environment, selection, regression, *on_change*
+   (*selected* unless the architect asks for *all*) and the order of
    suites.
 2. **Software-level tests** — per software-level requirement that is neither a
    constraint nor measured, tests of its acceptance criteria marked

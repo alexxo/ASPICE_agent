@@ -5,6 +5,7 @@ their test files (decision 11): a result that matches no test file is
 reported; every test passes; and every unit of the detailed design has at least
 one passing test in a test file that names it with @unit. Through the units,
 the tests reach the requirements their components meet.
+On a selected run only the units it covers need a passing test (decision 32).
 
     python gates/swe/verify_tests_to_requirements_link_gate.py [--root PRODUCT]
 """
@@ -60,7 +61,7 @@ def check(config: ProductConfig) -> list[Finding]:
         elif result.outcome == "passed":
             tested.update(tests[file].units)
     for unit, (component, design) in sorted(units.items()):
-        if unit not in tested:
+        if unit not in tested and run.covers("units", unit):
             findings.append(
                 Finding(
                     "UNTESTED_UNIT",

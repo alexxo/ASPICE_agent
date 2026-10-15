@@ -13,3 +13,5 @@ suite-without-version-command.yaml: {path: "suites/integration", keyword: requir
 missing-env-read-patterns.yaml: {path: "", keyword: required}
 missing-security-scans.yaml: {path: "", keyword: required}
 scan-without-results.yaml: {path: "security_scans/secrets", keyword: required}
+selected-run-without-tests.yaml: {path: "suites/unit/run_selected", keyword: pattern}
+selected-form-without-command.yaml: {path: "suites/integration", keyword: dependentRequired}

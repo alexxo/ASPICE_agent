@@ -17,7 +17,7 @@ from tools.read_product_config_tool import ProductConfig
 from tools.read_test_results_tool import ResultsError, TestResult, map_to_file, read_results
 from tools.read_unit_markers_tool import SourceFile
 from tools.read_yaml_blocks_tool import read_yaml_blocks
-from tools.run_stack_commands_tool import run_command
+from tools.run_stack_commands_tool import CommandRun, run_command
 from tools.validate_contract_tool import validate
 
 __all__ = [
@@ -34,6 +34,7 @@ __all__ = [
 @dataclass(frozen=True)
 class Architecture:
     roles: dict[str, str] = field(default_factory=dict)  # component ID → role
+    meets: dict[str, list[str]] = field(default_factory=dict)  # component ID → its REQ-UIDs
     places: dict[str, tuple[str, int]] = field(default_factory=dict)  # ID → (file, line)
     interfaces: list[dict] = field(default_factory=list)  # each with its file and line
 
@@ -55,6 +56,7 @@ def read_architecture(config: ProductConfig) -> Architecture:
         for block in read_yaml_blocks(path, "component"):
             if isinstance(block.data, dict) and not validate(block.data, "component"):
                 arch.roles.setdefault(block.data["id"], block.data["role"])
+                arch.meets.setdefault(block.data["id"], list(block.data.get("meets", [])))
                 arch.places.setdefault(block.data["id"], (shown, block.line))
         for block in read_yaml_blocks(path, "interface"):
             if isinstance(block.data, dict) and not validate(block.data, "interface"):
@@ -82,6 +84,12 @@ class SuiteRun:
     results: list[TestResult] | None  # None when the suite wrote no readable results
     by_file: dict[str, list[TestResult]]  # test file → its results
     measurements: list[str] = field(default_factory=list)  # measurements files kept
+    run: CommandRun | None = None  # None when nothing ran
+
+    def covers(self, kind: str, ident: str) -> bool:
+        """Whether this run had to cover the unit, component, flow or requirement
+        (decision 32 of the unit stages): always, unless it ran a selection."""
+        return self.run is None or self.run.covers(kind, ident)
 
     @property
     def passing(self) -> set[str]:
@@ -98,13 +106,15 @@ def run_suite(config: ProductConfig, stack: dict, name: str, tests: list[SourceF
         results = read_results(run.result_paths) if run.results else None
     except ResultsError:
         results = None
+    if results is None and run.ran_nothing:
+        results = []  # no test was traced to the change, so none ran
     by_file: dict[str, list[TestResult]] = {}
     files = [t.path for t in tests]
     for result in results or []:
         file = map_to_file(result, files)
         if file is not None:
             by_file.setdefault(file, []).append(result)
-    return SuiteRun(results, by_file, list(run.measurements))
+    return SuiteRun(results, by_file, list(run.measurements), run)
 
 
 def run_integration(config: ProductConfig, stack: dict, tests: list[SourceFile]) -> SuiteRun:

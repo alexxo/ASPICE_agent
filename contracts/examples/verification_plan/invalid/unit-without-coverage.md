@@ -10,4 +10,5 @@ unit:
   infrastructure: [pytest]
   selection: every unit test on every pull request
   regression: all unit tests run again
+  on_change: selected
 ```

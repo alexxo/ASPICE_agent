@@ -8,6 +8,8 @@ e2e suite for level system, in the software suite for level software
 requirement that does not exist; a suite that is needed writes its results, and
 every software-level test in them passes. Measured requirements are
 verify_nfr_thresholds_gate's.
+On a selected run only the requirements it covers need a passing test (decision
+32 of the unit stages).
 
     python gates/swe/verify_software_tests_to_requirements_link_gate.py [--root PRODUCT]
 """
@@ -54,6 +56,7 @@ def check(config: ProductConfig) -> list[Finding]:
     needed = [(r, proof(r.data)) for r in valid_requirements(config)]
     needed = [(r, suite) for r, suite in needed if suite in LEVEL]
     passing: dict[str, set[str]] = {}
+    runs = {}
     failed: set[tuple[str, str]] = set()
     for suite in sorted({suite for _, suite in needed}):
         if not tests:
@@ -71,6 +74,7 @@ def check(config: ProductConfig) -> list[Finding]:
             )
             continue
         passing[suite] = run.passing
+        runs[suite] = run
         for file, results in sorted(run.by_file.items()):
             for result in results:
                 if result.outcome in ("failed", "error") and (file, result.label) not in failed:
@@ -86,6 +90,8 @@ def check(config: ProductConfig) -> list[Finding]:
                     )
     for req, suite in needed:
         uid = req.data["uid"]
+        if suite in runs and not runs[suite].covers("requirements", uid):
+            continue  # a selected run that does not cover this requirement
         if not any(t.path in passing.get(suite, ()) and uid in t.requirements for t in tests):
             findings.append(
                 Finding(

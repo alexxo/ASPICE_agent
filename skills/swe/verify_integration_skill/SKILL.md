@@ -33,7 +33,7 @@ changes the code until they pass and never touches a test.
 
 The *integration* section of the ```yaml verification_plan block
 (*verification_plan.v1*): techniques, pass/fail criteria, entry and exit
-criteria, infrastructure, regression and the *order* — the steps in which the
+criteria, infrastructure, regression, *on_change* (*selected* or *all*) and the *order* — the steps in which the
 components are integrated, each with its *components*, its *preconditions*
 and its *selection*: the flows and components whose tests run after it.
 
@@ -75,6 +75,7 @@ unit:
   infrastructure: [JUnit 5]
   selection: every unit test on every pull request
   regression: all unit tests run again
+  on_change: selected
   coverage: {metric: lines, minimum: 80}
 integration:
   techniques:
@@ -85,6 +86,7 @@ integration:
   exit_criteria: [every component, flow and step has a passing test]
   infrastructure: [PostgreSQL 16 in a container]
   regression: every test of a changed component and of its neighbours
+  on_change: selected
   order:
     - step: the auth service alone
       components: [auth-service]

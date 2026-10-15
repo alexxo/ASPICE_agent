@@ -8,6 +8,8 @@ test of the component — a test file with an @unit marker of one of its units �
 names the template as @security[<template>] and has a passing result in the unit
 suite (decisions 27 and 28). Every @security marker names a catalog template.
 Whether the tests really show what the template asks is the reviewer's.
+On a selected run only the components it covers need their security tests
+(decision 32).
 
     python gates/swe/verify_security_tests_gate.py [--root PRODUCT]
 """
@@ -27,7 +29,7 @@ from tools.read_test_results_tool import ResultsError, map_to_file, read_results
 from tools.read_unit_markers_tool import design_units, scan_sources  # noqa: E402
 from tools.read_yaml_blocks_tool import read_yaml_blocks  # noqa: E402
 from tools.run_gate_command_tool import run_gate_command  # noqa: E402
-from tools.run_stack_commands_tool import read_stack, run_command  # noqa: E402
+from tools.run_stack_commands_tool import CommandRun, read_stack, run_command  # noqa: E402
 from tools.validate_contract_tool import contract_path, validate  # noqa: E402
 
 GATE = "verify_security_tests_gate"
@@ -61,8 +63,10 @@ def check(config: ProductConfig) -> list[Finding]:
     required = _boundaries(config)
     if not required:
         return findings
-    covered = _covered(config, stack, tests)
+    covered, run = _covered(config, stack, tests)
     for (component, template), (path, line, interface) in sorted(required.items()):
+        if not run.covers("components", component):
+            continue  # a selected run that does not cover this component
         if template not in covered.get(component, set()):
             findings.append(
                 Finding(
@@ -104,13 +108,16 @@ def _boundaries(config: ProductConfig) -> dict[tuple[str, str], tuple[str, int |
     return required
 
 
-def _covered(config: ProductConfig, stack: dict, tests: dict) -> dict[str, set[str]]:
-    """component → the templates named by its test files with a passing result."""
+def _covered(
+    config: ProductConfig, stack: dict, tests: dict
+) -> tuple[dict[str, set[str]], CommandRun]:
+    """component → the templates named by its test files with a passing result,
+    and the unit-suite run they come from."""
     run = run_command(config, "suites", "unit", stack["suites"]["unit"])
     try:
         results = read_results(run.result_paths)
     except ResultsError:
-        return {}
+        return {}, run
     passing = {
         file
         for result in results
@@ -123,7 +130,7 @@ def _covered(config: ProductConfig, stack: dict, tests: dict) -> dict[str, set[s
         for unit in source.units:
             if unit in owner:
                 covered.setdefault(owner[unit], set()).update(source.security)
-    return covered
+    return covered, run
 
 
 if __name__ == "__main__":

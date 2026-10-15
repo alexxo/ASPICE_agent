@@ -6,6 +6,8 @@ least one passed result in the integration suite (decisions 2, 4 and 12 of the
 integration stage); no @component names a component that does not exist. Every
 step of the plan's integration order has a passing test among its selection —
 a component tested by @component or a flow by @flow (decision 8).
+On a selected run only the components and steps it covers need a passing test
+(decision 32 of the unit stages).
 
     python gates/swe/verify_tests_to_components_link_gate.py [--root PRODUCT]
 """
@@ -51,10 +53,11 @@ def check(config: ProductConfig) -> list[Finding]:
                         f"@component[{component}] names no component of the architecture.",
                     )
                 )
-    passing = run_integration(config, stack, tests).passing
+    run = run_integration(config, stack, tests)
+    passing = run.passing
     tested = {c for t in tests if t.path in passing for c in t.components}
     flows = {f for t in tests if t.path in passing for f in t.flows}
-    for component in sorted(built - tested):
+    for component in sorted(c for c in built - tested if run.covers("components", c)):
         file, line = arch.places[component]
         findings.append(
             Finding(
@@ -66,6 +69,8 @@ def check(config: ProductConfig) -> list[Finding]:
             )
         )
     for step, line in integration_steps(config):
+        if not any(run.covers("components", c) for c in step["components"]):
+            continue  # a selected run that covers none of the step's components
         if not set(step["selection"]) & (tested | flows):
             findings.append(
                 Finding(

@@ -65,7 +65,8 @@ When in doubt, full.
 
 ## Steps
 
-The first time, write the unit section of the verification plan. Then one
+The first time, write the unit section of the verification plan, with
+*on_change: selected* unless the architect asks for *all*. Then one
 component at a time, every component of role component:
 
 1. **Test list** — for every unit, the acceptance criteria it serves and the

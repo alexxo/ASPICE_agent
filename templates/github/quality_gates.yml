@@ -32,6 +32,13 @@
 # and installs the product's toolchain before the gates run. The verification
 # report of the tree is written first — every suite runs once and the gates
 # reuse the runs — shown as the run's summary and kept as an artifact.
+#
+# A suite whose stack entry declares run_selected, at a level whose plan section
+# says on_change: selected, runs only the tests traced to the pull request's
+# change since its base branch (QF_BASE; decisions 30–32 of the unit stages).
+# Every test runs on main after a merge, while a release is proposed, and on a
+# run started by hand (QF_RUN=full):
+#   gh workflow run quality-gates
 name: quality-gates
 
 on:
@@ -40,10 +47,14 @@ on:
     types: [submitted, dismissed]
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   gates:
     runs-on: ubuntu-latest
+    env:
+      QF_BASE: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
+      QF_RUN: ${{ github.event_name == 'workflow_dispatch' && 'full' || '' }}
     steps:
       - name: Check out the product and its pinned framework, with its history
         uses: actions/checkout@v4
@@ -75,7 +86,6 @@ jobs:
 
       - name: Quality gates of every stage reached
         env:
-          QF_BASE: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
           QF_HOST_TOKEN: ${{ secrets.QF_HOST_TOKEN }}
         run: python .framework/agent/resolve_stage_tool.py --root . --check
 

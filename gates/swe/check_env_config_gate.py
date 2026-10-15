@@ -7,6 +7,8 @@ variable is named with @env[<NAME>] by at least one unit test that passes in the
 unit suite's results (decision 21): the test shows the software stops at
 start-up when the variable is missing or invalid. A read whose name is computed
 at run time matches no pattern; the reviewer checks it.
+Every required variable having its test is judged on full runs only (decision
+32).
 
     python gates/swe/check_env_config_gate.py [--root PRODUCT]
 """
@@ -78,7 +80,7 @@ def check(config: ProductConfig) -> list[Finding]:
     required = sorted(name for name, needed in declared.items() if needed)
     if required:
         validated = _validated(config, stack, tests)
-        for name in required:
+        for name in required if validated is not None else []:
             if name not in validated:
                 findings.append(
                     Finding(
@@ -128,9 +130,12 @@ def _declared(config: ProductConfig) -> dict[str, bool]:
     return declared
 
 
-def _validated(config: ProductConfig, stack: dict, tests: dict) -> set[str]:
-    """The variables named by a test file with at least one passing result."""
+def _validated(config: ProductConfig, stack: dict, tests: dict) -> set[str] | None:
+    """The variables named by a test file with at least one passing result; None
+    on a selected run, which leaves the check to the full run (decision 32)."""
     run = run_command(config, "suites", "unit", stack["suites"]["unit"])
+    if not run.full:
+        return None
     try:
         results = read_results(run.result_paths)
     except ResultsError:

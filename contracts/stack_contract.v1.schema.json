@@ -132,8 +132,11 @@
         "version_command": { "$ref": "#/$defs/version_command" },
         "results": { "description": "Where the suite writes its test results, as JUnit XML.", "$ref": "#/$defs/report" },
         "coverage": { "description": "Where the suite writes its code coverage, as Cobertura XML.", "$ref": "#/$defs/report" },
-        "measurements": { "description": "Where the suite writes the values it measures, as measurements.v1 JSON (SWE.6 BP3).", "$ref": "#/$defs/report" }
-      }
+        "measurements": { "description": "Where the suite writes the values it measures, as measurements.v1 JSON (SWE.6 BP3).", "$ref": "#/$defs/report" },
+        "run_selected": { "description": "The command that runs only the given tests (decision 31 of the unit stages): run with {tests} in place of the selected tests, written as selected_form says. A suite without it runs in full on every change.", "type": "string", "minLength": 1, "pattern": "\\{tests\\}" },
+        "selected_form": { "description": "How {tests} lists the selected tests: paths — their files, relative to the product root, separated by spaces; names — their file names without extension, separated by commas (e.g. LoginTest,LockoutTest).", "enum": ["paths", "names"] }
+      },
+      "dependentRequired": { "run_selected": ["selected_form"], "selected_form": ["run_selected"] }
     },
     "unit_suite": {
       "description": "The unit suite also measures coverage: SWE.4 BP2 compares it with the minimum of the verification plan.",

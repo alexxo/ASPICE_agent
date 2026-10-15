@@ -6,6 +6,8 @@ entry (measurements.v1) and in the unit its threshold writes (MISSING_MEASUREMEN
 every such value meets the threshold (THRESHOLD_NOT_MET). A measurements file
 that is not measurements.v1 is reported (decision 6 of the software
 verification stage).
+On a selected run only the requirements it covers need a measured value
+(decision 32 of the unit stages).
 
     python gates/swe/verify_nfr_thresholds_gate.py [--root PRODUCT]
 """
@@ -43,12 +45,14 @@ def check(config: ProductConfig) -> list[Finding]:
     shown = config.relative(config.stack_file)
     findings: list[Finding] = []
     values: dict[str, list[Measurement]] = {}
+    runs = {}
     for suite in sorted({r.data["measurement_method"]["instrument"] for r in measured}):
         entry = stack["suites"].get(suite)
         if entry is None or "measurements" not in entry:
             values[suite] = []  # every requirement it measures is reported below
             continue
         run = run_command(config, "suites", suite, entry)
+        runs[suite] = run
         values[suite], problems = read_measurements(run.measurement_paths)
         for name, problem in problems:
             findings.append(
@@ -59,6 +63,8 @@ def check(config: ProductConfig) -> list[Finding]:
         suite = req.data["measurement_method"]["instrument"]
         threshold = read_threshold(req.data["threshold"])
         mine = [m for m in values[suite] if m.requirement == uid and m.unit == threshold.unit]
+        if not mine and suite in runs and not runs[suite].covers("requirements", uid):
+            continue  # a selected run that does not cover this requirement
         if not mine:
             unit = f" in '{threshold.unit}'" if threshold.unit else ""
             findings.append(

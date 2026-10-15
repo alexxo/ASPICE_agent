@@ -43,7 +43,8 @@ What proves each requirement:
 The *software* section of the ```yaml verification_plan block
 (*verification_plan.v1*): techniques, pass/fail criteria, entry and exit
 criteria, infrastructure (the environment the software runs in), selection,
-regression and the *order* in which the suites run.
+regression, *on_change* (*selected* or *all*) and the *order* in which the
+suites run.
 
 A measuring test writes a *measurements.v1* JSON file to the path its suite's
 stack entry names as *measurements* — per requirement its *value* and, when
@@ -90,6 +91,7 @@ unit:
   infrastructure: [JUnit 5]
   selection: every unit test on every pull request
   regression: all unit tests run again
+  on_change: selected
   coverage: {metric: lines, minimum: 80}
 software:
   techniques:
@@ -101,5 +103,6 @@ software:
   infrastructure: [the product deployed in a test environment with sample data]
   selection: every software-level test before every release
   regression: all software-level tests run again before every release
+  on_change: selected
   order: [software, bench, e2e]
 ```

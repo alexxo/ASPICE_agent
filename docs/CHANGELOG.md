@@ -35,7 +35,26 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-15
+
+Regression by traceability: on a change, only the tests traced to it run, and a full run on the release commit backs every selection.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Add `on_change: selected` (or `all`) to the unit, integration and software sections | The verification plan (`paths.verification_plan_file`) | required — `check_verification_plan_gate` fails until it is there |
+| Add `run_selected` (with `{tests}`) and `selected_form` (`paths` or `names`) to the unit, integration and software suites | The stack (`paths.stack_file`), approved again at checkpoint 3 | optional — without them every test runs, as before |
+| Move `QF_BASE` to the job's `env`, and add the `workflow_dispatch` trigger with `QF_RUN` | `.github/workflows/quality_gates.yml`, from `templates/github/quality_gates.yml` | optional — the selection then uses the same base in the report step and the gates |
+
+### Added
+
+- **Regression by traceability.** `tools/select_tests_tool.py` follows each changed file — the commits since `QF_BASE` and the uncommitted ones — through its `@unit`, `@component`, `@flow` and `@sdoc` markers, grows the scope along the architecture (a unit's component, the components joined to it by an interface, the requirements they meet, the flows they take part in) and selects the unit, integration and software-level tests in that scope, each with its reasons. A change that traces to nothing, nothing changed since the base, a proposed release and `QF_RUN=full` run every test. `tools/run_stack_commands_tool.py` runs a suite's `run_selected` with `{tests}` filled in, or nothing when no test is traced; the verification report lists what ran and why. Design document § 5 unit stages rules 30–33, stage 7 rule 14, stage 8 rule 11. `tests/unit/test_select_tests_tool.py`. Origin: internal.
+
 ### Changed
+
+- **The gates judge a selected run by what it covers.** On a selected run a test that was not selected is not missing, and every selected test must pass. `check_stack_commands_gate` judges coverage, and `check_env_config_gate` the tests of required variables, on full runs only; `verify_tests_to_requirements_link_gate`, `verify_security_tests_gate`, `verify_nfr_thresholds_gate`, `verify_tests_to_components_link_gate`, `verify_tests_to_flows_link_gate`, `verify_log_events_gate` and `verify_software_tests_to_requirements_link_gate` check the units, components, flows, interfaces and requirements the run covers. Origin: internal.
+- **The contracts hold the selection.** `stack.v1` suites may declare `run_selected` and `selected_form`; `verification_plan.v1` requires `on_change` in the unit, integration and software sections. The rulebooks `run_verification_suites_skill`, `choose_stack_skill`, `enforce_test_first_skill`, `verify_integration_skill` and `verify_software_skill`, the methods that write the plan, and `templates/github/quality_gates.yml` follow. Origin: internal.
 
 - **The design describes regression by traceability.** On a change, only the tests traced to it run — the tests carrying the changed file's `@unit`, `@component`, `@flow` or `@sdoc` markers, every test when a change traces to nothing — and a full run on the release commit backs every selection. `docs/ASPICE_agent_documentation.md` § 4.1 SWE.4 BP2, SWE.5 BP3, SWE.6 BP2; § 5 unit stages rules 30–33, stage 7 rule 14, stage 8 rule 11; Appendix A.5 records the decision and when a heavier model pays off. Origin: internal.
 - **The design document is `docs/ASPICE_agent_documentation.md`.** It was `docs/Quality_framework_documentation.md`; its content is unchanged. The README, `plugins/README.md` and the consistency tests name the new file. Origin: internal.
