@@ -37,6 +37,7 @@ checking whether it is still current.
 
 ### Changed
 
+- **The risk analysis behind quality assurance.** Appendix A.8 records the stage's purpose — every released change reviewed and through every gate, every bypass detected on the main branch — its scenarios rated like configuration management's, and the decision: no paid plan, so the host's settings are not read; CI checks on every push to the main branch that each new commit came through a merged pull request whose final head passed the gates and had the approvals it needed, with a person's approval for a change to the CI file, the framework pin or *qf.yaml*; a finding blocks the release. D47 is superseded. Origin: FB-4, FB-5, FB-7 (wp_publisher).
 - **The risk analysis behind configuration management.** Appendix A.9 of `docs/ASPICE_agent_documentation.md` records the stage's two purposes — code integrity with a backup, and traceability with the ability to revert — every scenario that endangers them rated 1–10 for occurrence, severity and detectability, and the decisions: a git check of the release tags (S3), of every commit on the main branch (S8) and of every push to it, which must keep the previous main in its history, with the rulebooks forbidding agents to rewrite it (S1); the loss of the repository (S4) or of the framework repository (S10) accepted, the developers' clones being the copy; configuration outside git, rebuilding old releases and compromised accounts out of scope. Origin: FB-4 to FB-7 (wp_publisher).
 
 ## [1.2.0] - 2026-10-15

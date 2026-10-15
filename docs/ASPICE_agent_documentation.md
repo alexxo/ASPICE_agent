@@ -3478,10 +3478,45 @@ label together.
   key and a cost per pull request, and breaks *CI needs no plugin*.
 - **The sampled person's approval** (2026-10-11, D47 option A). *Chosen:* it
   blocks the merge. *Not taken:* B — checked after the merge, letting
-  unreviewed work reach main.
+  unreviewed work reach main. *Superseded* by the risk analysis below
+  (2026-10-15): a missing approval turns the pull request red, but nothing on
+  a free plan blocks the merge; a merge without it is detected on main and
+  blocks the release.
 - **What becomes a non-conformance** (2026-10-11, D48 option B). *Chosen:*
   only faults left unfixed. *Not taken:* A — an issue per remark, which buries
   the trends in noise.
+
+- **The risk analysis behind the stage** (2026-10-15, Alex). The stage serves
+  one purpose: **every change that is released has been reviewed — by the
+  reviewer agent and, where required, by a person — and passed every gate, and
+  every change that reaches the main branch without it is detected there.**
+  The scales and the rule are those of configuration management (A.9); the
+  ratings start from plain git and the host's defaults. The host offers no
+  prevention on a free plan for a private repository, and a paid plan is not
+  an option, so the measures detect: on every push to the main branch, CI
+  checks what happened, with the token every CI run has, and a finding blocks
+  the release until the change is reverted or reviewed.
+
+  | # | Scenario | O | S | D | Risk | Decision | Residual |
+  |---|---|---|---|---|---|---|---|
+  | Q1 | A change reaches the main branch without a pull request | 5 | 8 | 7 | 280 | Every commit new on the main branch belongs to a merged pull request | 5·8·2 = 80 |
+  | Q2 | A pull request is merged while its gates are red, or before CI finished | 5 | 8 | 5 | 200 | The merged pull request's head had a passing gates check | 5·8·2 = 80 |
+  | Q3 | A pull request is merged without the review it needs | 5 | 7 | 7 | 245 | The merged pull request had the approvals it needed — the reviewer agent's, and a person's on an architecture or sampled one | 5·7·2 = 70 |
+  | Q6 | New commits arrive after the approval, and the old approval still counts | 7 | 6 | 7 | 294 | The approvals of Q3 must be of the head that was merged | 7·6·2 = 84 |
+  | Q5 | The gates are weakened inside the pull request: the CI file, the framework pin or *qf.yaml* changed | 3 | 9 | 7 | 189 | A pull request that changed the CI file, the framework pin or *qf.yaml* had a person's approval, and the pin is a framework release | 3·9·3 = 81 |
+  | Q4 | The review is not independent: the reviewer agent runs with the coder's session or token | 3 | 7 | 8 | 168 | Medium: no measure | — |
+  | Q9 | CI is broken or down, and someone merges anyway | 3 | 7 | 5 | 105 | Medium: no measure | — |
+  | Q8 | Pull requests green alone leave the main branch red together | 5 | 5 | 3 | 75 | Low | — |
+
+  *Out of scope:* a test weakened or deleted so the gates pass (Q7) and a
+  review approved without reading (Q10) — the quality of the work, not of the
+  process. *Not taken:* the host's settings preventing each scenario — a
+  branch rule requiring pull requests, the gates check and reviews, dismissing
+  old approvals, enforcing code owners (residuals 40–63) — which need a paid
+  plan for a private repository, an administrator's setting, an
+  administrator's token for the framework to read them, and read classic
+  rules and rulesets differently; both prevention and detection, for the same
+  reasons.
 
 ### A.9 Configuration management stage — stage 10
 
