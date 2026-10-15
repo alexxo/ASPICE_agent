@@ -87,7 +87,7 @@ Leave `docs/glossary.md` where it is: it is converted in step 6.
 Follow the README's *Start a product*, with the framework at the release tag:
 
 ```sh
-git clone --branch v1.1.1 git@github.com:alexxo/ASPICE_agent.git .framework
+git clone --branch v1.2.0 git@github.com:alexxo/ASPICE_agent.git .framework
 python3 -m venv .qf/venv && .qf/venv/bin/pip install -r .framework/requirements.txt
 .qf/venv/bin/python .framework/tools/create_product_tool.py --root . \
     --reviewer-agent LOGIN --urgent-approver LOGIN --change-approver LOGIN \
@@ -104,7 +104,7 @@ protection, the mirror). Copy any open entries from
 `docs/legacy/FRAMEWORK_FEEDBACK.md` into the new log, then commit:
 
 ```sh
-git commit -m "chore: set up the ASPICE Agent framework v1.1.1"
+git commit -m "chore: set up the ASPICE Agent framework v1.2.0"
 ```
 
 ## Step 4 — Stage 1 inputs: wishes and diagrams
