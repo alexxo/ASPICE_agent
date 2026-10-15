@@ -174,7 +174,7 @@ def test_the_agent_files_stay_out_of_git(product):
     lines = (product / ".gitignore").read_text().splitlines()
     assert lines[:2] == ["node_modules/", ".qf/"]
     assert lines.count(".qf/") == 1
-    assert {".agents/", ".claude/"} <= set(lines)
+    assert {".agents/", ".claude/", ".archify/"} <= set(lines)
 
 
 def test_no_work_product_and_no_empty_folder_is_created(product):

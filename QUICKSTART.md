@@ -153,7 +153,7 @@ It is a complete tool: its `archify/` folder holds the agent's instructions
 (`SKILL.md`) and the command-line tool that renders and checks the diagrams. It
 needs Node 18 or later and no npm packages. The person installs it in their own
 clone, for this product only. `.gitignore` excludes `.claude/`, so it is never
-committed.
+committed, and `.archify/`, its working folders (drafts, previews).
 
 Show the person these commands. They pick an Archify release tag, e.g.
 `v3.1.0`:
@@ -164,7 +164,6 @@ git clone --depth 1 --branch <archify release> https://github.com/tt-a1i/archify
 mkdir -p .claude/skills
 cp -R "$TMP/archify/archify" .claude/skills/archify
 rm -rf "$TMP"
-echo '.archify/' >> .git/info/exclude    # Archify's working folders stay local
 ```
 
 Then check, yourself:

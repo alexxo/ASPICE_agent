@@ -62,6 +62,9 @@ Run `python <framework>/agent/resolve_stage_tool.py --root <product>` and act on
 Always report `not_run`: the planned gates of the stages so far, which nothing
 has checked yet.
 
+`<stage>` below is the `stage` the tool returns, its id (e.g. `diagram`); its
+`number` (e.g. `1`) works too.
+
 ## 4. Classify
 
 Decide how big the job is before touching anything:

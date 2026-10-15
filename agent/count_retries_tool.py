@@ -19,6 +19,11 @@ import shutil
 import sys
 from pathlib import Path
 
+if __package__ in (None, ""):  # run as a script: make the framework's packages importable
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from agent.read_stages_tool import UnknownStage, stage  # noqa: E402
+
 __all__ = ["ATTEMPTS_DIR", "MAX_RETRIES", "decide", "record_attempt", "reset"]
 
 MAX_RETRIES = 3
@@ -91,6 +96,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--stage", required=True)
     parser.add_argument("--root", type=Path, default=Path.cwd())
     args = parser.parse_args(argv)
+    try:
+        args.stage = stage(args.stage).id  # one counter per stage, named by id or number
+    except UnknownStage as err:
+        print(str(err), file=sys.stderr)
+        return 2
     if args.action == "record":
         doc = json.load(sys.stdin)
         record_attempt(args.root, args.stage, doc.get("gates", doc))

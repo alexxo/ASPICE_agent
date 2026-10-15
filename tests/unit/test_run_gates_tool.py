@@ -93,3 +93,16 @@ def test_gates_after_a_checkpoint_run_only_once_it_is_approved(tmp_path):
     assert reached_gates(root, architecture) == architecture.gates
     record_checkpoint(root, 3, "approved", "Alex", "architect")
     assert reached_gates(root, architecture) == architecture.built_gates
+
+
+def test_a_stage_is_named_by_its_id_or_its_number():
+    assert stage("1") == stage("diagram")
+    assert stage("10").id == "configuration_management"
+
+
+def test_an_unknown_stage_gets_a_message_not_a_traceback(tmp_path, capsys):
+    from agent.run_gates_tool import main
+
+    assert main(["--root", str(tmp_path), "--stage", "nine"]) == 2
+    err = capsys.readouterr().err
+    assert "No stage 'nine'" in err and "1 diagram" in err

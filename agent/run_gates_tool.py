@@ -20,7 +20,7 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from agent.read_stages_tool import Stage, read_stages, stage  # noqa: E402
+from agent.read_stages_tool import Stage, UnknownStage, read_stages, stage  # noqa: E402
 from agent.record_checkpoint_tool import current_approval  # noqa: E402
 from tools.emit_findings_tool import Finding, result  # noqa: E402
 from tools.read_product_config_tool import ConfigError, read_product_config  # noqa: E402
@@ -99,7 +99,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.all:
         gates = [g for s in read_stages() if s.implemented for g in s.built_gates]
     else:
-        gates = list(reached_gates(args.root, stage(args.stage)))
+        try:
+            chosen = stage(args.stage)
+        except UnknownStage as err:
+            print(str(err), file=sys.stderr)
+            return 2
+        gates = list(reached_gates(args.root, chosen))
     results = run_gates(args.root, gates)
     print(json.dumps({"result": "pass" if passed(results) else "fail", "gates": results}, indent=2))
     return 0 if passed(results) else 1

@@ -3,12 +3,14 @@
 Every non-merge commit of the pull request (base..HEAD) is a Conventional
 Commit, type(scope)?!?: subject (NOT_CONVENTIONAL), and names the requirement
 or issue it serves — REQ-<n> or #<n> — in its header or body
-(MISSING_REQUIREMENT_TOKEN); a revert git wrote (Revert "...") is exempt. The
-branch is feature/ or bugfix/REQ-<n>-<slug>, arch/<slug> on the architecture
-track, or release/v<version> (BAD_BRANCH_NAME); the main branch is exempt. On a push to
-the main branch the commits it adds are checked the same way, so a commit that
-reached it without a pull request still names its reason (decision 8 of the
-configuration management stage).
+(MISSING_REQUIREMENT_TOKEN); a revert git wrote (Revert "...") is exempt. Only
+the branch names that carry meaning are checked: arch/<slug> on the
+architecture track and release/v<version> for a release (BAD_BRANCH_NAME); any
+other name is free, since every commit names its reason (decision 3 of the
+configuration management stage). On a push to the main branch the commits it
+adds are checked the same way, so a commit that reached it without a pull
+request still names its reason (decision 8 of the configuration management
+stage).
 Main's check-commit-message, check-commit-range and check-branch-name, as one
 gate.
 
@@ -27,7 +29,7 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
 
 from tools.check_approval_order_tool import in_git  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
-from tools.read_commit_range_tool import branch, main_push, main_ref, resolve_base  # noqa: E402
+from tools.read_commit_range_tool import branch, main_push, resolve_base  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
 from tools.run_gate_command_tool import run_gate_command  # noqa: E402
 
@@ -48,10 +50,14 @@ TYPES = (
 CONVENTIONAL = re.compile(rf"^({'|'.join(TYPES)})(\([^)\s]+\))?!?: \S")
 TOKEN = re.compile(r"\bREQ-[0-9]{4,}\b|(?<![\w&])#[0-9]+\b")
 _SLUG = r"[a-z0-9]+(-[a-z0-9]+)*"
-BRANCH = re.compile(
-    rf"^((feature|bugfix)/REQ-[0-9]{{4,}}-{_SLUG}|arch/{_SLUG}|release/v[0-9]+\.[0-9]+\.[0-9]+)$"
-)
-EXEMPT_BRANCHES = ("main", "master")
+# The branch names that carry meaning: prefix → (the form it must have, shown).
+BRANCHES = {
+    "arch/": (re.compile(rf"^arch/{_SLUG}$"), "arch/<slug>, e.g. arch/session-store"),
+    "release/": (
+        re.compile(r"^release/v[0-9]+\.[0-9]+\.[0-9]+$"),
+        "release/v<version>, e.g. release/v1.4.0",
+    ),
+}
 
 
 def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
@@ -66,18 +72,17 @@ def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
             )
         ]
     findings = []
-    name = branch(root)
-    main = (main_ref(root) or "").rpartition("/")[2]
-    if name and name not in (*EXEMPT_BRANCHES, main) and not BRANCH.match(name):
-        findings.append(
-            Finding(
-                "BAD_BRANCH_NAME",
-                ".",
-                None,
-                f"Branch '{name}' is not feature/REQ-<n>-<slug>, bugfix/REQ-<n>-<slug>, "
-                "arch/<slug> or release/v<version> (e.g. feature/REQ-0047-lockout).",
+    name = branch(root) or ""
+    for prefix, (form, shown) in BRANCHES.items():
+        if name.startswith(prefix) and not form.match(name):
+            findings.append(
+                Finding(
+                    "BAD_BRANCH_NAME",
+                    ".",
+                    None,
+                    f"Branch '{name}' starts with {prefix}, so it must be {shown}.",
+                )
             )
-        )
     push = main_push() if base is None else None
     start = push.before if push and push.before else resolve_base(root, base)
     span = f"{start}..HEAD" if start else "HEAD"

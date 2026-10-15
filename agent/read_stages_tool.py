@@ -12,7 +12,7 @@ from pathlib import Path
 
 from tools.read_yaml_blocks_tool import read_yaml_file
 
-__all__ = ["MANIFEST", "Stage", "flow_stages", "read_stages", "stage"]
+__all__ = ["MANIFEST", "Stage", "UnknownStage", "flow_stages", "read_stages", "stage"]
 
 MANIFEST = Path(__file__).resolve().parent / "stages.yaml"
 
@@ -69,8 +69,14 @@ def flow_stages() -> tuple[Stage, ...]:
     return tuple(s for s in read_stages() if s.trigger == "flow")
 
 
+class UnknownStage(ValueError):
+    """A --stage that names no stage of the manifest."""
+
+
 def stage(stage_id: str) -> Stage:
+    """The stage named by its id (e.g. diagram) or its number (e.g. 1)."""
     for s in read_stages():
-        if s.id == stage_id:
+        if stage_id in (s.id, str(s.number)):
             return s
-    raise KeyError(f"no stage '{stage_id}' in {MANIFEST.name}")
+    known = ", ".join(f"{s.number} {s.id}" for s in read_stages())
+    raise UnknownStage(f"No stage '{stage_id}'; name one by its id or number: {known}.")

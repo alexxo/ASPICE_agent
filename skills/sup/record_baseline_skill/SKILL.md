@@ -34,9 +34,10 @@ configuration management stage).
 A commit message is a Conventional Commit, *type(scope)?!?: subject*, with type
 one of feat, fix, docs, style, refactor, perf, test, build, ci, chore or revert,
 and names the requirement or issue it serves (*REQ-0047*, *#12*) in its header
-or body. A branch is *feature/REQ-&lt;n&gt;-&lt;slug&gt;* or
-*bugfix/REQ-&lt;n&gt;-&lt;slug&gt;*, *arch/&lt;slug&gt;* on the architecture
-track, or *release/v&lt;version&gt;* for a release.
+or body. Two branch names carry meaning: *arch/&lt;slug&gt;* on the
+architecture track and *release/v&lt;version&gt;* for a release. Any other
+name is free (e.g. *feature/REQ-0047-lockout*, *chore/ignore-archify*): every
+commit already names its reason.
 
 A release record (release.v1) is *&lt;releases_dir&gt;/&lt;version&gt;.yaml*:
 *version* (SemVer, no leading v), *changed* (the configuration items changed
@@ -57,7 +58,7 @@ on a *release/v&lt;version&gt;* branch to write the record, and commit it as
 |---|---|---|
 | R1 | Every non-merge commit of the pull request, and of every push to the main branch, is a Conventional Commit | check_commit_conventions_gate · NOT_CONVENTIONAL |
 | R2 | Every such commit names the requirement or issue it serves, so every change on the main branch has a traceable reason | check_commit_conventions_gate · MISSING_REQUIREMENT_TOKEN |
-| R3 | The branch is named feature/ or bugfix/ after its requirement, arch/ on the architecture track, or release/v&lt;version&gt; | check_commit_conventions_gate · BAD_BRANCH_NAME |
+| R3 | A branch named *arch/* or *release/* has its form: *arch/&lt;slug&gt;* or *release/v&lt;version&gt;*; any other name is free | check_commit_conventions_gate · BAD_BRANCH_NAME |
 | R4 | A push to the main branch keeps the previous main branch in its history; a rewrite is caught on the push, and the lost commits come back from any clone | verify_history_kept_gate · MAIN_REWRITTEN |
 | R5 | Every configuration item exists and is tracked by git — not missing, untracked or ignored | check_config_items_gate · MISSING_CONFIG_ITEM, UNTRACKED_CONFIG_ITEM |
 | R6 | A pull request that changes the architecture changes no feature-track work product, and comes from an arch/ branch | check_track_rule_gate · MIXED_TRACKS, ARCHITECTURE_OFF_BRANCH |

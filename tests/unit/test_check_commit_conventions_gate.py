@@ -95,17 +95,19 @@ def test_the_given_base_bounds_the_range(product, monkeypatch):
         "bugfix/REQ-0048-double-count",
         "arch/session-store",
         "release/v1.4.0",
+        "chore/ignore-archify",  # work that serves no requirement: any name is free
+        "wip",
     ],
 )
-def test_a_branch_named_by_convention_passes(product, name):
+def test_a_branch_without_a_meaningful_prefix_or_with_its_form_passes(product, name):
     git(product, "checkout", "-q", "-B", name)
     assert rules(product) == []
 
 
 @pytest.mark.parametrize(
-    "name", ["feature/lockout", "feature/REQ-0047_Lockout", "arch/REQ-0047", "release/1.4.0", "wip"]
+    "name", ["arch/REQ-0047", "arch/Session_Store", "release/1.4.0", "release/v1.4"]
 )
-def test_a_branch_off_the_convention_is_caught(product, name):
+def test_an_arch_or_release_branch_off_its_form_is_caught(product, name):
     git(product, "checkout", "-q", "-b", name)
     assert rules(product) == ["BAD_BRANCH_NAME"]
 
@@ -117,7 +119,7 @@ def test_the_main_branch_is_exempt_and_reads_no_commit(product):
 
 def test_ci_names_the_pull_requests_branch(product, monkeypatch):
     git(product, "checkout", "-q", "--detach")
-    monkeypatch.setenv("GITHUB_HEAD_REF", "wip")
+    monkeypatch.setenv("GITHUB_HEAD_REF", "release/1.4")
     assert rules(product) == ["BAD_BRANCH_NAME"]
 
 

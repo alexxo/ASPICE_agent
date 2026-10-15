@@ -57,3 +57,12 @@ def test_reset_starts_a_new_round(tmp_path):
     record_attempt(tmp_path, "requirements", _fail(1))
     reset(tmp_path, "requirements")
     assert decide(tmp_path, "requirements")["attempts"] == 0
+
+
+def test_a_stage_number_and_its_id_share_one_counter(tmp_path, capsys):
+    from agent.count_retries_tool import main
+
+    record_attempt(tmp_path, "diagram", _fail(1))
+    assert main(["decide", "--stage", "1", "--root", str(tmp_path)]) == 0
+    assert '"attempts": 1' in capsys.readouterr().out
+    assert main(["decide", "--stage", "nine", "--root", str(tmp_path)]) == 2

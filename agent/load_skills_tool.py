@@ -21,7 +21,7 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agent.read_config_tool import read_config  # noqa: E402
-from agent.read_stages_tool import stage  # noqa: E402
+from agent.read_stages_tool import UnknownStage, stage  # noqa: E402
 
 __all__ = ["SKILLS_DIR", "load_skills"]
 
@@ -68,6 +68,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         print(json.dumps(load_skills(args.root, args.stage), indent=2))
+    except UnknownStage as err:
+        print(str(err), file=sys.stderr)
+        return 2
     except ValueError as err:
         print(str(err), file=sys.stderr)
         return 1

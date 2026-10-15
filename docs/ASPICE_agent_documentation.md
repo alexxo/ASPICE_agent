@@ -767,7 +767,7 @@ belongs to another process group and is referenced, not repeated.
 | SUP.8 | BP1: Identify the configuration items | The work products under configuration management are declared:<br>• **The list** — the framework declares which work products are configuration items: the wishes, the diagrams, the requirements, the architecture and detailed designs, the verification plan, the code, the tests, the product configuration and the framework version.<br>• **Extensions** — a product may add its own items to the list, never remove the framework's. | **Statement:** Every declared item is under version control<br>**Evidence:** The list of configuration items + the repository<br>**Gate:** check_config_items_gate<br>**What it verifies:** Every declared item exists and is tracked by git — none is missing, untracked or ignored |
 |  | BP2: Define the configuration item properties | Every configuration item has a status, given by where it is:<br>• **In work** — it exists only on a branch.<br>• **Agreed** — it has been merged into the main branch (after the approvals of SWE.1 BP6 and SWE.2 BP5, where they apply).<br>• **Released** — it is contained in a release tag.<br>• **Superseded** — a later version replaced it; git keeps the history. | **No gate of its own:** the status is derived from git, which records exactly where every item is |
 |  | BP3: Establish the configuration management | Configuration management uses git:<br>• **Repository** — every configuration item lives in the product's git repository.<br>• **Parallel work** — every change is made on its own branch; conflicts between parallel changes are resolved when merging, and architecture changes travel on their own branch (SWE.2 BP5).<br>• **Main branch** — the main branch is the only source of what is agreed. | **Statement:** The main branch takes only reviewed changes<br>**Evidence:** Every commit new on the main branch + its merged pull request<br>**Gate:** verify_delivery_reviewed_gate<br>**What it verifies:** Every commit a push adds to the main branch came from a reviewed pull request that passed the gates |
-|  | BP4: Control the modifications | No configuration item changes without control:<br>• **Through a pull request** — every change reaches the main branch through a reviewed pull request; a commit that did not is caught on the push.<br>• **History is never rewritten** — every push to the main branch keeps the previous main branch in its history, so every past state stays recoverable; a rewrite is caught on the push, and the lost commits come back from any clone.<br>• **Conventional commits** — every commit message follows Conventional Commits and names the requirement or issue it serves (e.g. *feat(parser): reject empty files REQ-0047*), and every feature branch is named after its requirement (e.g. *feature/REQ-0047-empty-files*); architecture branches are *arch/slug*. | **Statement:** History kept<br>**Evidence:** The main branch before and after every push<br>**Gate:** verify_history_kept_gate<br>**What it verifies:** Every push to the main branch keeps the previous main branch in its history<br>────────────────<br>**Statement:** Commit and branch conventions<br>**Evidence:** Commit messages of the pull request + its branch name<br>**Gate:** check_commit_conventions_gate<br>**What it verifies:** Every non-merge commit of a pull request and of a push to the main branch is a Conventional Commit naming a requirement or issue, and the branch follows the naming convention |
+|  | BP4: Control the modifications | No configuration item changes without control:<br>• **Through a pull request** — every change reaches the main branch through a reviewed pull request; a commit that did not is caught on the push.<br>• **History is never rewritten** — every push to the main branch keeps the previous main branch in its history, so every past state stays recoverable; a rewrite is caught on the push, and the lost commits come back from any clone.<br>• **Conventional commits** — every commit message follows Conventional Commits and names the requirement or issue it serves (e.g. *feat(parser): reject empty files REQ-0047*). A branch carries meaning only on the architecture track (*arch/slug*) and for a release (*release/v&lt;version&gt;*); any other branch name is free, because every commit already names its reason. | **Statement:** History kept<br>**Evidence:** The main branch before and after every push<br>**Gate:** verify_history_kept_gate<br>**What it verifies:** Every push to the main branch keeps the previous main branch in its history<br>────────────────<br>**Statement:** Commit and branch conventions<br>**Evidence:** Commit messages of the pull request + its branch name<br>**Gate:** check_commit_conventions_gate<br>**What it verifies:** Every non-merge commit of a pull request and of a push to the main branch is a Conventional Commit naming a requirement or issue, and an architecture or release branch has its form |
 |  | BP5: Establish baselines | Baselines are recorded as git tags:<br>• **Release baseline** — every release is an annotated tag on the main branch (e.g. *v1.4.0*), recording what was delivered.<br>• **Internal baseline** — every merge into the main branch is an agreed state that can be referenced. | **Statement:** Every release has its baseline<br>**Evidence:** Release tags<br>**Gate:** verify_baseline_gate<br>**What it verifies:** Every release is an annotated tag that points to a commit on the main branch |
 |  | BP6: Summarize and communicate the configuration status | The configuration status is communicated with every release:<br>• **What changed** — the release record lists the configuration items changed since the previous release.<br>• **What is pinned** — it states the framework version the release was built with. | **Statement:** Status in the release record<br>**Evidence:** The release record<br>**Gate:** verify_baseline_gate<br>**What it verifies:** The release record lists exactly the items changed since the previous release, and the pinned framework version |
 |  | BP7: Ensure completeness and consistency | Every baseline is complete and consistent:<br>• **Complete** — the release tag contains every declared configuration item (BP1).<br>• **Consistent** — the framework version is pinned in the tag (the framework commit), so the release can be rebuilt exactly. | **Statement:** The baseline is complete<br>**Evidence:** The release tag + the list of configuration items<br>**Gate:** verify_baseline_gate<br>**What it verifies:** Every declared item is present in the tag, and the framework commit is recorded |
@@ -2281,7 +2281,8 @@ Its rules, numbered as the code cites them (*decision N of starting a product*):
    in five sampled, escalation after 30 days), the two CI workflows and the
    framework feedback log copied from *templates/*, a *CODEOWNERS* naming the
    code owners for the CI file, *.gitmodules* and the architecture folder, and
-   the *.gitignore* lines for *.qf/*, *.agents/* and *.claude/*. No work
+   the *.gitignore* lines for *.qf/*, *.agents/*, *.claude/* and *.archify/*
+   (the diagram plugin's working folders). No work
    product — wishes, diagrams and requirements are the stages' work — and no
    empty folder.
 5. **Nothing is overwritten.** It refuses when *qf.yaml* or any file it would
@@ -2913,8 +2914,10 @@ joins the main branch, and a release is recorded as the official baseline.
    release is *1.0.0*. The release gate rejects any other number.
 3. **What runs on every pull request.** *check_commit_conventions_gate*
    (every non-merge commit is a Conventional Commit naming a requirement or
-   issue; the branch is named after its requirement, or is *arch/slug* or
-   *release/v&lt;version&gt;*), *verify_history_kept_gate* (rule 7),
+   issue; only the branch names that carry meaning are checked — *arch/slug*
+   for the architecture track and *release/v&lt;version&gt;* for a release — and
+   any other name is free, since every commit names its reason),
+   *verify_history_kept_gate* (rule 7),
    *check_config_items_gate*, *check_track_rule_gate*
    (architecture and feature paths never in one pull request; architecture
    changes from an *arch/* branch) and *verify_architecture_tests_gate* (an
@@ -3588,6 +3591,16 @@ label together.
   administrator's setting, a paid plan for a private repository, and an
   administrator's token to check it; a pre-push hook, which each person can
   skip.
+
+- **Branch names** (2026-10-15, Alex: option B, FB-10 of wp_publisher).
+  *Chosen:* only the names that carry meaning are checked — *arch/slug*, which
+  the track rule needs, and *release/v&lt;version&gt;*, which the release needs;
+  any other name is free, since every commit already names its *REQ-&lt;n&gt;* or
+  *#&lt;n&gt;*, so no traceability is lost. *Not taken:* A — an extra
+  *chore/&lt;n&gt;-&lt;slug&gt;* form for work outside the requirements (tooling,
+  documentation, a framework bump), one more rule repeating what the commits
+  say; the former *feature/* and *bugfix/REQ-&lt;n&gt;-&lt;slug&gt;* forms, which
+  left such work without a valid branch.
 
 ### A.10 Validation stage — stage 11
 
