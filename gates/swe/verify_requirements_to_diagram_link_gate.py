@@ -4,8 +4,12 @@ Both directions:
 - every requirement's derived_from names a diagram element that exists, or — for
   a constraint — a wish that exists;
 - every node, edge and invariant of every diagram is covered by at least one
-  requirement. Messages produce acceptance criteria, not requirements, so they
-  need no requirement of their own.
+  requirement of the diagram's level. Messages produce acceptance criteria, not
+  requirements, so they need no requirement of their own.
+
+A diagram's level is set by its type: a sequence diagram is software level, any
+other type system level. A requirement derives from a diagram of its own level
+(LEVEL_MISMATCH), and only then covers the element.
 
 A diagram the adapter cannot read faithfully is reported once
 (DIAGRAM_UNREADABLE) and its links are not checked: the adapter's detailed
@@ -33,6 +37,7 @@ from tools.run_gate_command_tool import run_gate_command  # noqa: E402
 GATE = "verify_requirements_to_diagram_link_gate"
 WISH = re.compile(r"^W-[0-9]+$")
 COVERED_KINDS = ("node", "edge", "invariant")
+LEVELS = ("system", "software")
 
 
 def check(config: ProductConfig) -> list[Finding]:
@@ -110,6 +115,18 @@ def check(config: ProductConfig) -> list[Finding]:
                     f"element '{element_id}'; use an existing element ID.",
                 )
             )
+        elif req.text("level") in LEVELS and req.text("level") != _level(diagram):
+            findings.append(
+                Finding(
+                    "LEVEL_MISMATCH",
+                    req.file,
+                    req.line("level"),
+                    f"{uid} is {req.text('level')} level but derives from {target}, an element "
+                    f"of a {_level(diagram)}-level diagram ({diagram['type']}); a "
+                    "system-level requirement derives from a system-level diagram, a "
+                    "software-level one from a sequence diagram.",
+                )
+            )
         else:
             covered.add((diagram_id, element_id))
 
@@ -123,10 +140,14 @@ def check(config: ProductConfig) -> list[Finding]:
                         element.get("line"),
                         f"{element['kind'].capitalize()} {diagram_id}#{element['id']} "
                         f"('{element['label']}') is covered by no requirement; derive at "
-                        "least one requirement from it.",
+                        f"least one {_level(diagram)}-level requirement from it.",
                     )
                 )
     return findings
+
+
+def _level(diagram: dict) -> str:
+    return "software" if diagram["type"] == "sequence" else "system"
 
 
 def _wish_ids(config: ProductConfig) -> set[str]:

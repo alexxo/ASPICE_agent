@@ -24,7 +24,7 @@
       "pattern": "^REQ-[0-9]{4,}$"
     },
     "level": {
-      "description": "SWE.1 BP2. system: the product as seen from outside, derived from the architecture diagrams. software: refines a system requirement, derived from the feature's sequence diagram.",
+      "description": "SWE.1 BP2. system: the product as seen from outside, derived from the system-level diagrams (architecture, workflow, dataflow, lifecycle). software: refines a system requirement, derived from the feature's sequence diagram.",
       "enum": [
         "system",
         "software"

@@ -88,3 +88,22 @@ def test_an_unreadable_diagram_is_reported_once(tmp_path):
 def test_no_diagrams_fails_closed(tmp_path):
     root = build_product(tmp_path, diagrams={}, invariants={})
     assert "NO_DIAGRAMS" in _rules(root)
+
+
+def test_a_software_requirement_from_the_picture_is_a_level_mismatch(tmp_path):
+    root = _derived(tmp_path, "REQ-0047", "auth-flow#auth-service")
+    findings = [f for f in _findings(root) if f.rule == "LEVEL_MISMATCH"]
+    (finding,) = findings
+    line = (root / finding.file).read_text().splitlines()[finding.line - 1]
+    assert line.startswith("level:")
+    assert "sequence" in finding.message
+
+
+def test_a_mismatched_requirement_covers_nothing(tmp_path):
+    reqs = baseline_requirements()
+    next(r for r in reqs["login"] if r["uid"] == "REQ-0011")["level"] = "software"
+    next(r for r in reqs["login"] if r["uid"] == "REQ-0011")["refines"] = "REQ-0012"
+    root = build_product(tmp_path, requirements=reqs)
+    rules = _rules(root)
+    assert "LEVEL_MISMATCH" in rules
+    assert "UNCOVERED_ELEMENT" in rules

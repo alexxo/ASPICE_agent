@@ -72,3 +72,28 @@ def test_a_link_to_an_unknown_wish_is_reported(tmp_path):
 def test_an_invalid_wishes_file_is_reported(tmp_path):
     root = _links(tmp_path, lambda links: links["login"].update(links={}))
     assert "INVALID_WISH_LINKS" in _rules(root)
+
+
+def test_a_behaviour_wish_realised_only_in_the_picture_is_reported(tmp_path):
+    def change(links):
+        links["login"]["links"].pop("INV-1")
+        links["auth-flow"]["links"]["auth-service"].append("W-02")
+
+    (finding,) = _findings(_links(tmp_path, change))
+    assert finding.rule == "WISH_NOT_IN_SEQUENCE"
+    assert "W-02" in finding.message
+
+
+def test_without_a_sequence_diagram_only_the_contract_gate_reports_it(tmp_path):
+    from product_builder import ARCHITECTURE
+
+    links = {"auth-flow": copy.deepcopy(WISH_LINKS["auth-flow"])}
+    links["auth-flow"]["links"]["auth-service"].append("W-02")
+    root = build_product(
+        tmp_path,
+        diagrams={"auth-flow.architecture.json": ARCHITECTURE},
+        invariants={},
+        wish_links=links,
+        git=False,
+    )
+    assert "WISH_NOT_IN_SEQUENCE" not in _rules(root)

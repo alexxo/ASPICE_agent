@@ -4,7 +4,10 @@ Each diagram has its <diagram>.wishes.yaml (diagram_wishes.v1), linking elements
 to the wishes they realise. The gate checks that every link names an element of
 its diagram and a wish that exists, and that every wish of kind behaviour is
 realised by at least one element; a wish of kind constraint need not be — it
-becomes a constraint requirement at SWE.1. Elements of a diagram the adapter
+becomes a constraint requirement at SWE.1. A behaviour wish is also realised by
+an element of a sequence diagram, so every feature reaches the software level;
+while there is no sequence diagram, check_diagram_contract_gate reports it
+instead. Elements of a diagram the adapter
 cannot read are not checked here; check_diagram_contract_gate reports it.
 
     python gates/swe/verify_diagram_to_wishes_link_gate.py [--root PRODUCT]
@@ -18,7 +21,10 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from adapters.read_archify_diagram_adapter import read_archify_diagrams  # noqa: E402
+from adapters.read_archify_diagram_adapter import (  # noqa: E402
+    diagram_type,
+    read_archify_diagrams,
+)
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
 from tools.read_yaml_blocks_tool import (  # noqa: E402
@@ -46,13 +52,22 @@ def check(config: ProductConfig) -> list[Finding]:
             )
         )
     realised: set[str] = set()
+    in_sequence: set[str] = set()
+    has_sequence = False
     for path, result in read_archify_diagrams(config.diagrams_dir, config.root):
         diagram_id = path.name.split(".", 1)[0]
         readable = result.diagram is not None and not result.problems
         elements = {e["id"] for e in result.diagram["elements"]} if readable else None
-        findings.extend(_links(config, path, diagram_id, elements, wishes, realised))
+        linked: set[str] = set()
+        findings.extend(_links(config, path, diagram_id, elements, wishes, linked))
+        realised |= linked
+        if diagram_type(path, result) == "sequence":
+            has_sequence = True
+            in_sequence |= linked
     for wish_id, (kind, line) in sorted(wishes.items()):
-        if kind != "constraint" and wish_id not in realised:
+        if kind == "constraint":
+            continue
+        if wish_id not in realised:
             findings.append(
                 Finding(
                     "UNCOVERED_WISH",
@@ -60,6 +75,17 @@ def check(config: ProductConfig) -> list[Finding]:
                     line,
                     f"Wish {wish_id} is realised by no diagram element; draw it, link it in the "
                     "diagram's wishes file, or mark it kind constraint if no diagram can show it.",
+                )
+            )
+        elif has_sequence and wish_id not in in_sequence:
+            findings.append(
+                Finding(
+                    "WISH_NOT_IN_SEQUENCE",
+                    wishes_file,
+                    line,
+                    f"Wish {wish_id} is realised by no element of a sequence diagram; draw its "
+                    "steps in its feature's sequence diagram and link them in that diagram's "
+                    "wishes file.",
                 )
             )
     return findings

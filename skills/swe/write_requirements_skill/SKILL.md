@@ -22,8 +22,9 @@ contract.
 ## Inputs
 
 - The **approved diagrams** — their element lists (*diagram.v1*): the
-  architecture diagrams for system-level requirements, the feature's sequence
-  diagram for software-level requirements. A diagram without a recorded
+  system-level diagrams (architecture, workflow, dataflow, lifecycle) for
+  system-level requirements, the feature's sequence diagram for software-level
+  requirements. A diagram without a recorded
   checkpoint-1 approval (*approval.v1*) is not an input.
 - The **customer's wishes** (*W-01*, *W-02*, …) — the origin of constraint
   requirements the diagram cannot show (e.g. *must run on Java 21*).
@@ -64,7 +65,7 @@ and *watched_by*.
 |---|---|---|
 | R1 | There is at least one requirement; every block can be read and validates against *requirement.v1*; nothing outside a block counts | check_requirements_contract_gate · NO_REQUIREMENTS, UNREADABLE_REQUIREMENT, SCHEMA_VIOLATION |
 | R2 | Every UID is used once across all requirement files | check_requirements_contract_gate · DUPLICATE_UID |
-| R3 | Every node, edge and invariant of an approved diagram produces at least one requirement | verify_requirements_to_diagram_link_gate · UNCOVERED_ELEMENT, DIAGRAM_UNREADABLE |
+| R3 | Every node, edge and invariant of an approved diagram produces at least one requirement of the diagram's level | verify_requirements_to_diagram_link_gate · UNCOVERED_ELEMENT, DIAGRAM_UNREADABLE |
 | R4 | Every *derived_from* names a diagram element, or a wish, that exists | verify_requirements_to_diagram_link_gate · UNKNOWN_DIAGRAM, UNKNOWN_ELEMENT, UNKNOWN_WISH |
 | R5 | Only a requirement of kind *constraint* may derive from a wish; every other kind derives from a diagram element | check_requirements_contract_gate · SCHEMA_VIOLATION |
 | R6 | Every *refines* names an existing system-level requirement (so the tree has one level, and no cycle or self-reference can occur) | check_requirements_contract_gate · UNKNOWN_PARENT, PARENT_NOT_SYSTEM |
@@ -74,7 +75,7 @@ and *watched_by*.
 | R10 | Every requirement of criticality *high* also has a criterion of case *edge* or *error* — what goes wrong first is what an LLM leaves out | check_requirements_contract_gate · MISSING_ERROR_CASE |
 | R11 | Every domain term in a statement or criterion is marked *_term_* and defined in the glossary — see *define_glossary_terms_skill* | check_glossary_gate · UNDEFINED_TERM, UNMARKED_TERM, ALIAS_USED |
 | R12 | Each message of the sequence diagram produces at least one acceptance criterion | Checkpoint 2 |
-| R13 | System-level requirements derive from architecture diagrams; software-level ones from the feature's sequence diagram | Checkpoint 2 |
+| R13 | System-level requirements derive from system-level diagrams (architecture, workflow, dataflow, lifecycle); software-level ones from the feature's sequence diagram | verify_requirements_to_diagram_link_gate · LEVEL_MISMATCH |
 | R14 | Write only requirement files. Never edit a diagram, an invariants file, an approval or *qf.yaml* | Checkpoint 2 |
 | R15 | Each requirement states one behaviour; two behaviours are two requirements | Checkpoint 2 |
 

@@ -27,6 +27,20 @@ rules ask for.
 - On a retry: the **findings** of the previous attempt; at checkpoint 1: the
   architect's comment.
 
+## Two levels
+
+The diagrams are drawn at two levels, set by their type:
+
+- **System level** — an *architecture*, *workflow*, *dataflow* or *lifecycle*
+  diagram: the picture people read at a glance, the parts and how they hand
+  over to each other. Keep it a picture: the main hand-overs, not every step.
+- **Software level** — a *sequence* diagram, one per feature: its steps in
+  detail, message by message.
+
+Each level is a source of requirements of its own level at SWE.1, and a step is
+derived once, at the level that details it. Draw a step in detail in the
+sequence diagram, not again in the picture.
+
 ## Contract
 
 Per diagram, in *paths.diagrams_dir*, three files sharing its ID:
@@ -56,6 +70,9 @@ hyphens (*login.sequence.json* → *login*). An element is referenced as
 | R9 | Every wish of kind behaviour is realised by an element of some diagram; a constraint need not be | verify_diagram_to_wishes_link_gate · NO_WISHES, UNCOVERED_WISH |
 | R10 | The architect approves the diagrams at checkpoint 1 before any requirement is derived, and the approval covers their current content | verify_diagram_approval_gate · MISSING_APPROVAL, APPROVAL_OUTDATED, APPROVED_TOO_LATE, NOT_A_GIT_REPOSITORY |
 | R11 | Every flow has its error path, and no flow is ambiguous | Checkpoint 1 |
+| R12 | There is at least one system-level diagram and at least one sequence diagram | check_diagram_contract_gate · NO_SYSTEM_DIAGRAM, NO_SEQUENCE_DIAGRAM |
+| R13 | Every wish of kind behaviour is realised by an element of a sequence diagram, so every feature reaches the software level | verify_diagram_to_wishes_link_gate · WISH_NOT_IN_SEQUENCE |
+| R14 | The picture stays a picture: the parts and the main hand-overs, the steps in the sequence diagrams | Checkpoint 1 |
 
 ## Not checkable
 
@@ -63,6 +80,7 @@ The architect confirms these at checkpoint 1:
 
 - The diagram says what the wishes mean — the right elements, not only linked ones.
 - Error paths are drawn, and no flow can be read two ways.
+- The system-level picture does not repeat the sequence diagrams step by step.
 - Every behaviour a wish asks for is either drawn or written as an invariant.
 
 ## Example

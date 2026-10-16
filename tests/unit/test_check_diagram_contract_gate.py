@@ -72,3 +72,20 @@ def test_an_invariant_naming_an_unknown_element_is_reported(tmp_path):
         "UNKNOWN_CONSTRAINED_ELEMENT",
         "docs/diagrams/login.invariants.yaml",
     )
+
+
+def test_diagrams_without_a_sequence_diagram_are_reported(tmp_path):
+    diagrams = {"auth-flow.architecture.json": ARCHITECTURE}
+    root = build_product(tmp_path, diagrams=diagrams, invariants={}, git=False)
+    assert _rules(root) == ["NO_SEQUENCE_DIAGRAM"]
+
+
+def test_diagrams_without_a_system_level_diagram_are_reported(tmp_path):
+    root = build_product(tmp_path, diagrams={"login.sequence.json": SEQUENCE}, git=False)
+    assert _rules(root) == ["NO_SYSTEM_DIAGRAM"]
+
+
+def test_an_unreadable_diagram_still_counts_for_its_level(tmp_path):
+    diagrams = {"auth-flow.architecture.json": ARCHITECTURE, "login.sequence.json": {}}
+    root = build_product(tmp_path, diagrams=diagrams, invariants={}, git=False)
+    assert "NO_SEQUENCE_DIAGRAM" not in _rules(root)

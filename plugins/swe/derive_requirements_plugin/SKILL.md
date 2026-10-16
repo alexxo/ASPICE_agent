@@ -67,8 +67,10 @@ When in doubt, full.
 
 One task per diagram element, in this order:
 
-1. **System level** — for each node, edge and invariant of the architecture
-   diagrams, the system-level requirement(s) it implies.
+1. **System level** — for each node, edge and invariant of the system-level
+   diagrams (architecture, workflow, dataflow, lifecycle), the system-level
+   requirement(s) it implies. A step the sequence diagram details is derived
+   there, not again here.
 2. **Software level** — for each participant and invariant of the feature's
    sequence diagram, the software-level requirement(s), each refining the
    system-level requirement it serves.

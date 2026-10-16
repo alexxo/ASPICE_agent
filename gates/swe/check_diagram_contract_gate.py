@@ -4,7 +4,9 @@ Every diagram is read through its adapter, whose problems are passed on as they
 are (an element without an ID or label, an endpoint missing, an ID used twice, an
 unreadable file or invariants file). On what was read: every edge and message
 connects nodes that exist, every node takes part in a flow, and every invariant
-names only elements that exist.
+names only elements that exist. The diagrams hold both levels: at least one
+system-level diagram (architecture, workflow, dataflow, lifecycle), the picture
+at a glance, and at least one sequence diagram, the software level in detail.
 
     python gates/swe/check_diagram_contract_gate.py [--root PRODUCT]
 """
@@ -17,7 +19,10 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from adapters.read_archify_diagram_adapter import read_archify_diagrams  # noqa: E402
+from adapters.read_archify_diagram_adapter import (  # noqa: E402
+    diagram_type,
+    read_archify_diagrams,
+)
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
 from tools.read_yaml_blocks_tool import YamlReadError, read_yaml_file  # noqa: E402
@@ -37,7 +42,7 @@ def check(config: ProductConfig) -> list[Finding]:
                 "No diagram found; the diagrams drawn from the wishes belong here.",
             )
         ]
-    findings: list[Finding] = []
+    findings = _levels(config, results)
     for path, result in results:
         findings.extend(result.problems)
         if result.diagram is None:
@@ -45,6 +50,33 @@ def check(config: ProductConfig) -> list[Finding]:
         if not result.problems:  # an incomplete diagram would make its neighbours look orphaned
             findings.extend(_connected(result.diagram))
         findings.extend(_invariants(config, path, result.diagram))
+    return findings
+
+
+def _levels(config: ProductConfig, results) -> list[Finding]:
+    types = {diagram_type(path, result) for path, result in results}
+    findings = []
+    if "sequence" not in types:
+        findings.append(
+            Finding(
+                "NO_SEQUENCE_DIAGRAM",
+                config.relative(config.diagrams_dir),
+                None,
+                "No sequence diagram found; every feature's steps are drawn in one, and the "
+                "software-level requirements are derived from it.",
+            )
+        )
+    if not types - {"sequence", None}:
+        findings.append(
+            Finding(
+                "NO_SYSTEM_DIAGRAM",
+                config.relative(config.diagrams_dir),
+                None,
+                "No system-level diagram found (architecture, workflow, dataflow or "
+                "lifecycle); it shows the system at a glance, and the system-level "
+                "requirements are derived from it.",
+            )
+        )
     return findings
 
 

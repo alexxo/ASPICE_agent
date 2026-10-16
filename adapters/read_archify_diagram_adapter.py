@@ -41,7 +41,7 @@ from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_yaml_blocks_tool import YamlReadError, read_yaml_file  # noqa: E402
 from tools.validate_contract_tool import validate  # noqa: E402
 
-__all__ = ["AdapterResult", "read_archify_diagram", "read_archify_diagrams"]
+__all__ = ["AdapterResult", "diagram_type", "read_archify_diagram", "read_archify_diagrams"]
 
 # Archify diagram_type -> (node collection, edge collection, edge kind)
 COLLECTIONS: dict[str, tuple[str, str, str]] = {
@@ -130,6 +130,14 @@ def read_archify_diagrams(directory: Path, root: Path) -> list[tuple[Path, Adapt
     if not directory.is_dir():
         return []
     return [(path, read_archify_diagram(path, root)) for path in sorted(directory.glob("*.json"))]
+
+
+def diagram_type(path: Path, result: AdapterResult) -> str | None:
+    """The diagram's type as read, else as its file name declares it (<id>.<type>.json)."""
+    if result.diagram is not None:
+        return result.diagram["type"]
+    parts = Path(path).name.split(".")
+    return parts[1] if len(parts) == 3 and parts[1] in COLLECTIONS else None
 
 
 def _element(element_id: str, kind: str, label: str, line: int | None) -> dict[str, Any]:

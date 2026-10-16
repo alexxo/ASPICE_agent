@@ -35,6 +35,23 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-16
+
+Diagrams at two levels: the picture at a glance gives the system-level requirements, each feature's sequence diagram the software-level ones.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Draw at least one system-level diagram (architecture, workflow, dataflow or lifecycle) and at least one sequence diagram, and approve them again at checkpoint 1 | `paths.diagrams_dir` | required — stage 1 fails with NO_SYSTEM_DIAGRAM or NO_SEQUENCE_DIAGRAM |
+| Link every behaviour wish to an element of a sequence diagram | `<diagram>.wishes.yaml` of the sequence diagrams | required — stage 1 fails with WISH_NOT_IN_SEQUENCE |
+| Derive each system-level requirement from a system-level diagram and each software-level one from a sequence diagram; a step the sequence diagram details is derived there only | `paths.requirements_dir` | required for requirements already written — stage 2 fails with LEVEL_MISMATCH |
+
+### Changed
+
+- **Two levels of diagram.** A stage 1 diagram's type sets its level. A system-level diagram (architecture, workflow, dataflow, lifecycle) is the picture people read at a glance, and its nodes, edges and invariants give the system-level requirements. A sequence diagram, one per feature, holds the steps in detail, and its participants and invariants give the software-level requirements, each refining a system-level one, and its messages their acceptance criteria. A step is derived once, at the level that details it, so a flow drawn as a picture and as a sequence no longer doubles its requirements. `check_diagram_contract_gate` requires both levels (NO_SYSTEM_DIAGRAM, NO_SEQUENCE_DIAGRAM); `verify_diagram_to_wishes_link_gate` requires every behaviour wish in a sequence diagram (WISH_NOT_IN_SEQUENCE); `verify_requirements_to_diagram_link_gate` requires a requirement's level to be its diagram's (LEVEL_MISMATCH), which was checked only at checkpoint 2 before, and counts coverage per level. `draw_diagram_skill` R12–R14, `write_requirements_skill` R3 and R13, `derive_requirements_plugin` step 1. Design document § 5 stages 1 and 2, rules 17–20, and Appendix A.2. Origin: FB-16, FB-17 (wp_publisher).
+- **The quick start names its roles reviewer, developer and reviewer-bot,** and says that three accounts are enough: one account fills the code owner, urgent approver and change approver. The README gives only the quick start's address. Origin: internal.
+
 ## [1.3.1] - 2026-10-15
 
 A quick start for new teams, free branch names, and stages named by number.
