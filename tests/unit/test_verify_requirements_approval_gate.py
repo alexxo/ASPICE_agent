@@ -59,3 +59,15 @@ def test_an_approval_given_after_the_design_is_reported(tmp_path):
     root = build_product(tmp_path, stack=STACK)
     _approve(root, when=datetime.now(timezone.utc) + timedelta(days=1))
     assert _rules(root) == ["APPROVED_TOO_LATE"]
+
+
+def test_requirements_without_their_review_page_are_reported(tmp_path):
+    root = build_product(tmp_path, review_pages=False, git=False)
+    (finding,) = check(read_product_config(root))
+    assert (finding.rule, finding.file) == ("MISSING_REVIEW_PAGE", "docs/requirements/review.html")
+
+
+def test_a_review_page_older_than_the_requirements_is_reported(product):
+    login = product / "docs/requirements/login.md"
+    login.write_text(login.read_text().replace("Five failed", "Three failed"))
+    assert _rules(product) == ["REVIEW_PAGE_OUTDATED"]

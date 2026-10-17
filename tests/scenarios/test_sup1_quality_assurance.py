@@ -111,9 +111,15 @@ def _deliver(root, tmp_path, monkeypatch, **pull):
 
 
 def _finish(root):
-    """The agent records stages 9 and 10 done once their own gates pass."""
+    """The agent records stages 9 and 10 done once their own gates pass, and
+    commits each record; the commit is a new tree, so the report is written
+    again first, as the agent does before every stage's gates from stage 8 on."""
     record_stage_done(root, STAGE)
+    commit_all(root, "docs(approvals): stage 9 done REQ-0047")
+    write_report(read_product_config(root))
     record_stage_done(root, "configuration_management")
+    commit_all(root, "docs(approvals): stage 10 done REQ-0047")
+    write_report(read_product_config(root))
 
 
 def _state(root):

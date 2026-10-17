@@ -1,7 +1,5 @@
 """gates/sup/verify_required_checks_gate.py — the gates run on every change."""
 
-import shutil
-
 import pytest
 from product_builder import build_product
 
@@ -12,11 +10,8 @@ CI = ".github/workflows/quality_gates.yml"
 
 
 @pytest.fixture
-def product(tmp_path, repo_root):
-    root = build_product(tmp_path / "product")
-    (root / ".github/workflows").mkdir(parents=True)
-    shutil.copy(repo_root / "templates/github/quality_gates.yml", root / CI)
-    return root
+def product(tmp_path):
+    return build_product(tmp_path / "product")  # with the template, as the setup writes it
 
 
 def _rules(product):

@@ -56,9 +56,9 @@ def product(tmp_path):
         record_checkpoint(
             root, checkpoint, "approved", "Example Architect", "architect", now=APPROVED
         )
-    commit_all(root, "checkpoints 1 to 3 approved")
+    commit_all(root, "docs(approvals): checkpoints 1 to 3 REQ-0047")
     record_stages_done(root, "architecture", "detailed_design")
-    commit_all(root, "stages 3 and 4 recorded as done")
+    commit_all(root, "docs(approvals): stages 3 and 4 done REQ-0047")
     state = resolve_stage(root)
     assert (state["stage"], state["status"]) == ("unit_tests", "in_progress")
     assert {f["rule"] for f in state["reported"]} == {"MISSING_STUB", "MISSING_UNIT_TEST"}
@@ -70,7 +70,7 @@ def _attempts(root, stage_id, writers):
     """The plugin writes and commits, the stage's gates judge, the counter decides."""
     for write in writers:
         write(root)
-        commit_all(root, f"{stage_id}: attempt")
+        commit_all(root, f"feat: {stage_id} attempt REQ-0047")
         results = run_gates(root, reached_gates(root, stage(stage_id)))
         record_attempt(root, stage_id, results)
         decision = decide(root, stage_id)

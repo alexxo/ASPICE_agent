@@ -11,8 +11,8 @@ scripted in `tests/scenarios/plugin_outputs/`.
 |---|---|
 | `qf.yaml` | Framework configuration: paths and slots |
 | `docs/wishes.md` | The customer's wishes, W-01 … W-03 |
-| `docs/diagrams/` | Archify specs (architecture, sequence) and the invariants file |
-| `docs/approvals/` | The checkpoint-1 approval, bound to the diagrams' SHA-256 |
+| `docs/diagrams/` | Archify specs (architecture, sequence), their pictures (stand-ins, to keep the example small), the invariants file and the checkpoint-1 review page |
+| `docs/approvals/` | The checkpoint-1 approval, bound to the SHA-256 of the diagrams, their pictures and the review page |
 | `docs/glossary.md` | The domain terms |
 
 The plugins are not part of the product: they are tools on the machine of

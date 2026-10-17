@@ -8,7 +8,7 @@ description: "Rules for SWE.1 requirement files: the requirement contract, the r
 **Stage:** 2 · SWE.1 Software requirements
 **Loaded with:** create_requirements_plugin
 **Contract:** contracts/requirement_contract.v1.schema.json
-**Gates:** check_requirements_contract_gate, verify_requirements_to_diagram_link_gate, check_glossary_gate
+**Gates:** check_requirements_contract_gate, verify_requirements_to_diagram_link_gate, check_glossary_gate, verify_requirements_approval_gate
 **Replaces:** requirements-authoring (main)
 
 ## What it governs
@@ -78,6 +78,7 @@ and *watched_by*.
 | R13 | System-level requirements derive from system-level diagrams (architecture, workflow, dataflow, lifecycle); software-level ones from the feature's sequence diagram | verify_requirements_to_diagram_link_gate · LEVEL_MISMATCH |
 | R14 | Write only requirement files. Never edit a diagram, an invariants file, an approval or *qf.yaml* | Checkpoint 2 |
 | R15 | Each requirement states one behaviour; two behaviours are two requirements | Checkpoint 2 |
+| R16 | The architect reviews the requirements on the checkpoint-2 review page (*&lt;requirements_dir&gt;/review.html*), rendered from the current files by *agent/render_review_tool.py --checkpoint 2*, never written by hand: each system-level requirement followed by the software-level ones refining it, every field, what changed since the previous approval marked | verify_requirements_approval_gate · MISSING_REVIEW_PAGE, REVIEW_PAGE_OUTDATED |
 
 ## Not checkable
 

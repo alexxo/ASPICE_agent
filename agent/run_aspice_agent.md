@@ -48,6 +48,11 @@ where it already is in `.qf/environment.yaml` (this project) or
 
 ## 3. Where the product stands
 
+From stage 8 on, write the verification report of the tree first, as CI does:
+the report belongs to the tree, so every change — a stage done record or an
+approval included — needs it again:
+`python <framework>/tools/write_verification_report_tool.py --root <product>`.
+
 Run `python <framework>/agent/resolve_stage_tool.py --root <product>` and act on
 `status`:
 
@@ -111,6 +116,15 @@ own format disagrees with a framework skill, the framework skill wins.
 
 On a retry, also read the findings of the previous attempt and fix exactly what
 they name — the rule, the file and the line are in every finding.
+
+**Stages 1 and 2, what the person reads.** At stage 1 the diagram plugin
+renders every diagram's picture next to it (*&lt;id&gt;.&lt;type&gt;.html*);
+commit the picture with the diagram, never one without the other. Once the
+work is written, at both stages, render the checkpoint's review page — never
+write it by hand — and commit it with the work:
+`python <framework>/agent/render_review_tool.py --checkpoint 1|2 --root <product>`.
+Render it again after every change, a retry's included: the gates compare it
+with what the files render now.
 
 **Stage 9, the delivery desk.** The work is not yours to judge. Push the branch
 and open its pull request with the host's tool (e.g. `gh pr create`); wait for
@@ -184,7 +198,8 @@ initiator for `/confirm-change`; then close the issue.
 
 ## 7. Gates and retries
 
-1. Run `python <framework>/agent/run_gates_tool.py --stage <stage> --root <product>`.
+1. From stage 8 on, write the verification report of the tree first (step 3).
+   Then run `python <framework>/agent/run_gates_tool.py --stage <stage> --root <product>`.
 2. Pipe its output to
    `python <framework>/agent/count_retries_tool.py record --stage <stage> --root <product>`.
 3. Act on `decision`:
@@ -207,7 +222,9 @@ it. Until then CI stays red on the release pull request, so it cannot merge
 before the village accepts. Commit the decision to the pull request.
 
 For the other checkpoints, show the person the work product of the stage and
-ask for their decision. Then record it — never record a decision the person did
+ask for their decision. At checkpoints 1 and 2 that is the review page (step
+6): give them its path, with the pictures it links, not the raw files.
+What it marks changed is what changed since their previous approval. Then record it — never record a decision the person did
 not give:
 
 `python <framework>/agent/record_checkpoint_tool.py --checkpoint <n> --decision approved|changes-requested --approver <name> --role <role> [--comment <text>] --root <product>`
@@ -219,7 +236,8 @@ not give:
   At checkpoint 2, if the person says the diagram is wrong, the product goes back
   to the diagram stage.
 
-The approval records the SHA-256 of every file it covers. If any of them changes
+The approval records the SHA-256 of every file it covers — at checkpoints 1
+and 2 the pictures and the review page too, so it covers what the person saw. If any of them changes
 later, the approval no longer counts and step 3 sends the product back here.
 
 ## 9. Close

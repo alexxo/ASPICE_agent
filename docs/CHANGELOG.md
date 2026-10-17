@@ -35,9 +35,9 @@ checking whether it is still current.
 
 ## [Unreleased]
 
-## [1.5.0] - unreleased
+## [1.5.0] - 2026-10-17
 
-CI checks every change by the rules that apply to it, and only for what it contains: the always-on gates run from the setup on, a finished stage stays enforced, the current stage is work in progress.
+CI checks every change by the rules that apply to it, and only for what it contains: the always-on gates run from the setup on, a finished stage stays enforced, the current stage is work in progress. At checkpoints 1 and 2 the person approves what they can read: the diagrams' pictures and a review page, committed and covered by the approval.
 
 ### Migration
 
@@ -45,12 +45,15 @@ CI checks every change by the rules that apply to it, and only for what it conta
 |---|---|---|
 | Replace the gates step with the template's two steps *Quality gates* and *Show the gates not run* | `.github/workflows/quality_gates.yml` | optional — the old step still runs the gates; the new one lists the gates not run in the run's summary |
 | For every stage from 3 to 10 the product has already passed, record it as done: `python .framework/agent/record_stage_done_tool.py --stage <stage> --root .`, in order, and commit the records | `paths.approvals_dir` | required for a product past stage 3 — until then the resolver stops at the first such stage, as work in progress |
+| Next to every diagram, commit the picture the diagram plugin renders from it, as `<id>.<type>.html` (for Archify, copy the page it writes under `.archify/`) | `paths.diagrams_dir` | required — stage 1 fails with MISSING_PICTURE |
+| Render both review pages, `python .framework/agent/render_review_tool.py --checkpoint 1 --root .` and `--checkpoint 2`, commit them with the pictures, and have checkpoints 1 and 2 approved again on them | `paths.diagrams_dir`, `paths.requirements_dir` | required — stages 1 and 2 fail with MISSING_REVIEW_PAGE, then APPROVAL_OUTDATED until approved again |
 
 ### Changed
 
 - **The always-on gates.** `verify_framework_integrity_gate`, `verify_required_checks_gate`, `check_framework_feedback_gate`, `verify_delivery_reviewed_gate`, `check_commit_conventions_gate` and `verify_history_kept_gate` moved out of stages 9 and 10 into `agent/stages.yaml always_gates`: they run on every pull request and every push to the main branch from the setup on, whatever stage the product is in. A pin, CI file or `qf.yaml` change needs a person's approval from the first pull request on. The two that read the code host (`host_gates`) run where one is configured — always in CI — and are listed as not run, reason *no_host*, without one. Design document § 5 *What CI fails on*, Appendix A.1. Origin: FB-12 (wp_publisher).
 - **Only finished stages fail CI.** A stage is finished once its checkpoint has been approved, or, for a stage without a closing checkpoint, once its stage done record exists (`stage_done.v1`, written by the new `agent/record_stage_done_tool.py` when its gates first pass); breaking a finished stage fails CI. The current stage is work in progress: `resolve_stage_tool` reports its findings under `reported`, status *in_progress*, and CI does not fail on them; its checkpoint and the release still need them gone, and while a release is proposed every stage is enforced. A framework bump, a tooling or documentation change, a stage split over several pull requests and a checkpoint approval committed with its stage's work all pass. `run_aspice_agent.md` says when to record a stage and where an approval is committed. Origin: FB-13, FB-15 (wp_publisher).
 - **Every gate not run is reported.** `not_run` lists each gate with its reason — *stage_not_reached*, *planned* or *no_host* — and the CI template prints the list in the run's summary. Origin: FB-12 (wp_publisher).
+- **The person approves what they can read** (new: `agent/render_review_tool.py`). Every diagram keeps its picture, the page the diagram plugin renders, committed next to it with the diagram's last change or after it; `check_diagram_contract_gate` checks it by git's order of commits, so CI needs no plugin (MISSING_PICTURE, PICTURE_OUTDATED). Before checkpoints 1 and 2 the agent renders a review page with the new tool, never by hand: at checkpoint 1 every diagram's elements and wish links next to its picture, at checkpoint 2 each system-level requirement followed by the software-level ones refining it, with every field, and the glossary. What changed since the previous approval of the checkpoint is marked, read from git. The page depends only on the files and that approval's commit, so `verify_diagram_approval_gate` and `verify_requirements_approval_gate` render it again and compare byte for byte while it awaits approval (MISSING_REVIEW_PAGE, REVIEW_PAGE_OUTDATED). The approval covers the pictures and the page through the hashes it already holds; no new hash or receipt. `draw_diagram_skill` R15–R16, `write_requirements_skill` R16, `run_aspice_agent.md` steps 6 and 8. Design document § 5 stages 1 and 2, rules 21–25, and Appendix A.2. Origin: FB-18, FB-19 (wp_publisher).
 - **Only failing attempts in a row count.** `count_retries_tool` ends a round at a passing attempt, so passing runs and changes asked for after a pass no longer use up the retry budget; the escalation report holds the attempts of the round. Origin: FB-14 (wp_publisher).
 
 ## [1.4.0] - 2026-10-16

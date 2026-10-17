@@ -58,13 +58,13 @@ def product(tmp_path):
         record_checkpoint(
             root, checkpoint, "approved", "Example Architect", "architect", now=APPROVED
         )
-    commit_all(root, "checkpoints 1 to 3 approved")
+    commit_all(root, "docs(approvals): checkpoints 1 to 3 REQ-0047")
     write_all_tests_and_stubs(root)
-    commit_all(root, "test: every unit")
+    commit_all(root, "test(auth): every unit REQ-0047")
     write_all_code(root)
-    commit_all(root, "feat: every unit")
+    commit_all(root, "feat(auth): every unit REQ-0047")
     record_stages_done(root, "architecture", "detailed_design", "unit_tests", "unit_construction")
-    commit_all(root, "stages 3 to 6 recorded as done")
+    commit_all(root, "docs(approvals): stages 3 to 6 done REQ-0047")
     state = resolve_stage(root)
     assert (state["stage"], state["status"]) == (STAGE, "in_progress")
     assert {f["rule"] for f in state["reported"]} == {
@@ -81,7 +81,7 @@ def _attempts(root, writers):
     """Each attempt: the assembler's and the coder's work, then the stage's gates."""
     for write in writers:
         write(root)
-        commit_all(root, f"{STAGE}: attempt")
+        commit_all(root, f"feat: {STAGE} attempt REQ-0047")
         results = run_gates(root, reached_gates(root, stage(STAGE)))
         record_attempt(root, STAGE, results)
         decision = decide(root, STAGE)
@@ -104,7 +104,7 @@ def the_assembler(root):
 
 def the_assembler_then_the_coder(root):
     write_all_integration_tests(root)
-    commit_all(root, "test: every component and flow")
+    commit_all(root, "test(auth): every component and flow REQ-0047")
     write_events_code(root)
 
 
@@ -114,7 +114,7 @@ def the_coder(root):
 
 def the_coder_loosening_a_test(root):
     write_all_integration_tests(root)
-    commit_all(root, "test: every component and flow")
+    commit_all(root, "test(auth): every component and flow REQ-0047")
     write_events_code(root)
     write_component_test(root, "web-app", assertion="run(1) is not None")
 
@@ -123,7 +123,7 @@ def assembled_without_the_plan(root):
     write_component_test(root, "web-app")
     write_component_test(root, "auth-service")
     write_flow_test(root)
-    commit_all(root, "test: every component and flow")
+    commit_all(root, "test(auth): every component and flow REQ-0047")
     write_events_code(root)
 
 

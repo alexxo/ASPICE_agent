@@ -58,9 +58,14 @@ def subject_files(config: ProductConfig, approves: str) -> list[Path]:
             *directory.glob("*.json"),
             *directory.glob("*.invariants.yaml"),
             *directory.glob("*.wishes.yaml"),
+            *directory.glob("*.html"),  # the pictures and the review page the person saw
         ]
     elif approves == "requirements":
-        files = [*config.requirements_dir.rglob("*.md"), config.glossary_file]
+        files = [
+            *config.requirements_dir.rglob("*.md"),
+            config.glossary_file,
+            config.requirements_dir / "review.html",
+        ]
     elif approves == "stack":
         files = [config.stack_file, *_decision_record(config)]
     elif approves == "release":

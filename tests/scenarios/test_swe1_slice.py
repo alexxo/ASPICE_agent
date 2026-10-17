@@ -21,6 +21,7 @@ from agent.load_skills_tool import load_skills
 from agent.read_config_tool import read_config
 from agent.read_stages_tool import stage
 from agent.record_checkpoint_tool import record_checkpoint
+from agent.render_review_tool import render_review
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import run_gates
 
@@ -47,12 +48,14 @@ def _start(product):
 
 
 def _attempts(repo_root, product, outputs):
-    """Step 3–4 repeated: the plugin writes, the gates judge, the counter decides."""
+    """Step 3–4 repeated: the plugin writes, the agent renders the review page, the
+    gates judge, the counter decides."""
     decision = None
     for output in outputs:
         target = product / "docs" / "requirements" / "login.md"
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(repo_root / OUTPUTS / output / "login.md", target)
+        render_review(product, 2)
         results = run_gates(product, stage("requirements").gates)
         record_attempt(product, "requirements", results)
         decision = decide(product, "requirements")
@@ -125,6 +128,7 @@ def test_editing_approved_requirements_withdraws_the_approval(repo_root, product
     record_checkpoint(product, 2, "approved", "Example Architect", "architect", now=now)
     login = product / "docs" / "requirements" / "login.md"
     login.write_text(login.read_text().replace("five consecutive", "three consecutive"))
+    render_review(product, 2)  # the agent renders the page again after every change
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("requirements", "awaiting_checkpoint")
     assert "docs/requirements/login.md" in state["reason"]
@@ -132,7 +136,8 @@ def test_editing_approved_requirements_withdraws_the_approval(repo_root, product
 
 def test_a_changed_diagram_sends_the_product_back_to_stage_1(repo_root, product):
     """Requirements derived and approved; then the diagram changes. The checkpoint-1
-    approval no longer covers it, so the product is back at the diagram stage."""
+    approval no longer covers it, nor do its picture and review page, so the product
+    is back at the diagram stage."""
     _start(product)
     _attempts(repo_root, product, ["correct"])
     now = datetime(2026, 10, 4, 15, 0, tzinfo=timezone.utc)
@@ -143,5 +148,9 @@ def test_a_changed_diagram_sends_the_product_back_to_stage_1(repo_root, product)
     spec.write_text(spec.read_text().replace("session opened", "session started"))
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("diagram", "gates_failing")
-    assert [f["rule"] for f in state["findings"]] == ["APPROVAL_OUTDATED"]
+    assert [f["rule"] for f in state["findings"]] == [
+        "PICTURE_OUTDATED",
+        "APPROVAL_OUTDATED",
+        "REVIEW_PAGE_OUTDATED",
+    ]
     assert state["done"] == []

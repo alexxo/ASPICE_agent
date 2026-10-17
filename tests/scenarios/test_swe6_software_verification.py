@@ -74,17 +74,17 @@ def product(tmp_path):
         record_checkpoint(
             root, checkpoint, "approved", "Example Architect", "architect", now=APPROVED
         )
-    commit_all(root, "checkpoints 1 to 3 approved")
+    commit_all(root, "docs(approvals): checkpoints 1 to 3 REQ-0047")
     write_all_tests_and_stubs(root)
-    commit_all(root, "test: every unit")
+    commit_all(root, "test(auth): every unit REQ-0047")
     write_all_code(root)
-    commit_all(root, "feat: every unit")
+    commit_all(root, "feat(auth): every unit REQ-0047")
     write_all_integration_tests(root)
-    commit_all(root, "test: every component and flow")
+    commit_all(root, "test(auth): every component and flow REQ-0047")
     write_events_code(root)
-    commit_all(root, "feat: the sign-in events")
+    commit_all(root, "feat(auth): the sign-in events REQ-0047")
     record_stages_done(root, *BUILT[2:])
-    commit_all(root, "stages 3 to 7 recorded as done")
+    commit_all(root, "docs(approvals): stages 3 to 7 done REQ-0047")
     state = resolve_stage(root)
     assert (state["stage"], state["status"]) == (STAGE, "in_progress")
     assert {f["rule"] for f in state["reported"]} == {
@@ -102,7 +102,7 @@ def _attempts(root, writers, report=True):
     tree, then the stage's gates."""
     for write in writers:
         write(root)
-        commit_all(root, f"{STAGE}: attempt")
+        commit_all(root, f"feat: {STAGE} attempt REQ-0047")
         if report:
             write_report(read_product_config(root))
         results = run_gates(root, reached_gates(root, stage(STAGE)))
@@ -132,7 +132,7 @@ def the_bridge_tester_measuring_too_many(root):
 
 def the_bridge_tester_then_a_coder_loosening_a_test(root):
     write_all_software_tests(root)
-    commit_all(root, "test: every requirement")
+    commit_all(root, "test(auth): every requirement REQ-0047")
     write_events_code(root)  # a code change, in the same commit as the loosened test
     (root / "src/auth_service/check_credentials.py").write_text(
         (root / "src/auth_service/check_credentials.py").read_text() + "\n# tidied\n"
@@ -167,8 +167,11 @@ def test_the_bridge_tester_and_the_coder_are_loaded_with_their_rulebooks(product
 def test_tests_measurements_and_the_report_move_the_product_to_stage_9(product):
     decision = _attempts(product, [the_bridge_tester])
     assert decision["decision"] == "pass"
-    commit_all(product, "software verified")
+    commit_all(product, "test(auth): software verified REQ-0047")
+    write_report(read_product_config(product))  # the commit is a new tree
     record_stage_done(product, STAGE)
+    commit_all(product, "docs(approvals): stage 8 done REQ-0047")
+    write_report(read_product_config(product))  # and so is the record's commit
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("quality_assurance", "in_progress")
     assert state["done"] == [*BUILT, STAGE]

@@ -1,6 +1,6 @@
 ---
 name: draw_diagram_skill
-description: "Rules for the diagrams drawn first at SWE.2: every element identified and labelled, every flow connected, rules in the invariants file, the link to the wishes in the wishes file, and the architect's approval before requirements are derived."
+description: "Rules for the diagrams drawn first at SWE.2: every element identified and labelled, every flow connected, rules in the invariants file, the link to the wishes in the wishes file, the picture committed next to each diagram, and the architect's approval on the review page before requirements are derived."
 ---
 
 # skill: draw_diagram_skill
@@ -43,13 +43,19 @@ sequence diagram, not again in the picture.
 
 ## Contract
 
-Per diagram, in *paths.diagrams_dir*, three files sharing its ID:
+Per diagram, in *paths.diagrams_dir*, four files sharing its ID:
 
 | File | Contract | Holds |
 |---|---|---|
 | *&lt;id&gt;.&lt;type&gt;.json* | the diagram tool's own (read through the adapter into *diagram.v1*) | The drawing: nodes, edges, messages |
 | *&lt;id&gt;.invariants.yaml* | *invariants.v1* | The rules the drawing cannot show, *INV-&lt;n&gt;*, each naming the elements it constrains |
 | *&lt;id&gt;.wishes.yaml* | *diagram_wishes.v1* | Which wishes each element realises |
+| *&lt;id&gt;.&lt;type&gt;.html* | the diagram tool's own page | The picture the tool renders from the drawing, committed with it |
+
+Next to them, one *review.html* for all the diagrams: the page the architect
+reads at checkpoint 1, rendered by *agent/render_review_tool.py --checkpoint 1*,
+never written by hand. It lists every element and its wishes next to each
+picture, and marks what changed since the previous approval.
 
 The ID is the file name up to its first dot, lower-case words joined by
 hyphens (*login.sequence.json* → *login*). An element is referenced as
@@ -73,6 +79,8 @@ hyphens (*login.sequence.json* → *login*). An element is referenced as
 | R12 | There is at least one system-level diagram and at least one sequence diagram | check_diagram_contract_gate · NO_SYSTEM_DIAGRAM, NO_SEQUENCE_DIAGRAM |
 | R13 | Every wish of kind behaviour is realised by an element of a sequence diagram, so every feature reaches the software level | verify_diagram_to_wishes_link_gate · WISH_NOT_IN_SEQUENCE |
 | R14 | The picture stays a picture: the parts and the main hand-overs, the steps in the sequence diagrams | Checkpoint 1 |
+| R15 | Every diagram keeps its picture, committed with the diagram's last change or after it | check_diagram_contract_gate · MISSING_PICTURE, PICTURE_OUTDATED |
+| R16 | The architect reviews on the review page, rendered from the current files; the approval covers the pictures and the page | verify_diagram_approval_gate · MISSING_REVIEW_PAGE, REVIEW_PAGE_OUTDATED |
 
 ## Not checkable
 

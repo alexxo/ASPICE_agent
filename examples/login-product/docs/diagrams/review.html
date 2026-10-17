@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkpoint 1 — the diagrams</title>
+<style>
+body { font-family: system-ui, sans-serif; margin: 1.5rem; color: #1b1b1b; background: #fff; }
+table { border-collapse: collapse; margin: 0.5rem 0 1.5rem; font-size: 0.9rem; }
+th, td { border: 1px solid #c8c8c8; padding: 0.3rem 0.5rem; text-align: left;
+  vertical-align: top; }
+th { background: #f0f0f0; }
+section { overflow-x: auto; }
+iframe { width: 100%; height: 32rem; border: 1px solid #c8c8c8; }
+.mark { font-weight: 600; }
+.new { background: #e3f6e3; }
+.changed { background: #fff4d6; }
+.removed { background: #fbe3e3; text-decoration: line-through; }
+.differs { outline: 2px solid #d29b00; }
+</style>
+</head>
+<body>
+<h1>Checkpoint 1 — the diagrams</h1>
+<p>Each diagram's picture, then every element. Rendered by the framework's render_review_tool from the committed files;
+never edited by hand.</p>
+<p>Nothing is marked: no earlier approval of this checkpoint to compare with.</p>
+<section>
+<h2>auth-flow.architecture.json</h2>
+<p><a href="auth-flow.architecture.html">Open the picture</a></p>
+<iframe src="auth-flow.architecture.html" title="auth-flow.architecture.html" loading="lazy"></iframe>
+<table>
+<thead><tr><th>change</th><th>id</th><th>kind</th><th>label</th><th>from</th><th>to</th><th>wishes</th></tr></thead>
+<tbody>
+<tr><td></td><td>web-app</td><td>node</td><td>Web app</td><td></td><td></td><td>W-01</td></tr>
+<tr><td></td><td>auth-service</td><td>node</td><td>Auth service</td><td></td><td></td><td>W-01<br>
+W-02</td></tr>
+<tr><td></td><td>signin-request</td><td>edge</td><td>sign in</td><td>web-app</td><td>auth-service</td><td>W-01</td></tr>
+</tbody>
+</table>
+</section>
+<section>
+<h2>login.sequence.json</h2>
+<p><a href="login.sequence.html">Open the picture</a></p>
+<iframe src="login.sequence.html" title="login.sequence.html" loading="lazy"></iframe>
+<table>
+<thead><tr><th>change</th><th>id</th><th>kind</th><th>label</th><th>from</th><th>to</th><th>wishes</th></tr></thead>
+<tbody>
+<tr><td></td><td>web-app</td><td>node</td><td>Web app</td><td></td><td></td><td>W-01</td></tr>
+<tr><td></td><td>auth-service</td><td>node</td><td>Auth service</td><td></td><td></td><td>W-01</td></tr>
+<tr><td></td><td>submit-credentials</td><td>message</td><td>submit email and password</td><td>web-app</td><td>auth-service</td><td>W-01</td></tr>
+<tr><td></td><td>session-opened</td><td>message</td><td>session opened</td><td>auth-service</td><td>web-app</td><td>W-01</td></tr>
+</tbody>
+</table>
+</section>
+<section>
+<h2>login.invariants.yaml</h2>
+<table>
+<thead><tr><th>change</th><th>id</th><th>statement</th><th>constrains</th><th>wishes</th></tr></thead>
+<tbody>
+<tr><td></td><td>INV-1</td><td>After five consecutive failed sign-ins the account is locked.</td><td>submit-credentials</td><td>W-02</td></tr>
+</tbody>
+</table>
+</section>
+</body>
+</html>

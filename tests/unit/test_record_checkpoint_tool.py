@@ -17,17 +17,21 @@ def test_requirements_subject_is_the_requirement_files_and_the_glossary(product)
     assert [f.relative_to(product).as_posix() for f in files] == [
         "docs/glossary.md",
         "docs/requirements/login.md",
+        "docs/requirements/review.html",
     ]
 
 
-def test_diagrams_subject_is_the_specs_and_invariants(product):
+def test_diagrams_subject_is_the_specs_invariants_pictures_and_review_page(product):
     files = subject_files(read_product_config(product), "diagrams")
     assert [f.name for f in files] == [
+        "auth-flow.architecture.html",
         "auth-flow.architecture.json",
         "auth-flow.wishes.yaml",
         "login.invariants.yaml",
+        "login.sequence.html",
         "login.sequence.json",
         "login.wishes.yaml",
+        "review.html",
     ]
 
 
@@ -39,6 +43,7 @@ def test_record_writes_a_valid_dated_approval(product):
     assert [s["path"] for s in data["subject"]] == [
         "docs/glossary.md",
         "docs/requirements/login.md",
+        "docs/requirements/review.html",
     ]
 
 

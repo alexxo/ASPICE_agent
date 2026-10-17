@@ -468,13 +468,17 @@ def build_product(
     decisions: dict[str, dict] | None = None,
     detailed_design: dict[str, dict] | None = None,
     env_variables: list[dict] | None = None,
+    pictures: bool = True,
+    review_pages: bool = True,
     git: bool = True,
 ) -> Path:
     """Write the product under root; any argument replaces that part of the baseline.
 
     The architecture (stack, decision records, components and interfaces) is
     written only when one of architecture, stack or decisions is given — the
-    baseline is a product at the end of SWE.1.
+    baseline is a product at the end of SWE.1. Every diagram gets a stand-in
+    picture, as the diagram plugin renders it, and both review pages are
+    rendered by the framework's tool (pictures, review_pages: False leaves them out).
     """
     root = Path(root)
     docs = root / "docs"
@@ -499,6 +503,8 @@ def build_product(
     )
     for name, spec in specs.items():
         (docs / "diagrams" / name).write_text(json.dumps(spec, indent=2))
+        if pictures:
+            write_picture(docs / "diagrams" / name)
     for name, data in (wish_links if wish_links is not None else WISH_LINKS).items():
         (docs / "diagrams" / f"{name}.wishes.yaml").write_text(
             yaml.safe_dump(data, sort_keys=False)
@@ -516,12 +522,34 @@ def build_product(
     ci = root / (qf if qf is not None else QF)["paths"].get("ci_file", QF["paths"]["ci_file"])
     ci.parent.mkdir(parents=True, exist_ok=True)
     ci.write_text(CI_TEMPLATE.read_text())  # the setup writes it: the always-on gates need it
+    if review_pages:
+        render_reviews(root)
     if git:
         commit_all(root, "product as built")
     return root
 
 
 CI_TEMPLATE = Path(__file__).resolve().parents[1] / "templates/github/quality_gates.yml"
+
+
+def write_picture(spec: Path) -> Path:
+    """A stand-in for the page the diagram plugin renders next to its diagram."""
+    picture = Path(spec).with_suffix(".html")
+    title = f"<title>{picture.name}</title>"
+    picture.write_text(f"<!doctype html>\n{title}\n<p>Stand-in picture.</p>\n")
+    return picture
+
+
+def render_reviews(root: Path) -> None:
+    """Both review pages, as the agent renders them before checkpoints 1 and 2."""
+    from agent.render_review_tool import render_review
+    from tools.read_product_config_tool import ConfigError
+
+    for checkpoint in (1, 2):
+        try:
+            render_review(root, checkpoint)
+        except ConfigError:  # a product built with a broken qf.yaml has no pages
+            return
 
 
 def baseline_requirements() -> dict[str, list[dict]]:

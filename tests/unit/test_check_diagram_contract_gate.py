@@ -2,7 +2,14 @@
 
 import copy
 
-from product_builder import ARCHITECTURE, INVARIANTS, SEQUENCE, build_product
+from product_builder import (
+    ARCHITECTURE,
+    INVARIANTS,
+    SEQUENCE,
+    build_product,
+    commit_all,
+    write_picture,
+)
 
 from gates.swe.check_diagram_contract_gate import GATE, check
 from tools.read_product_config_tool import read_product_config
@@ -89,3 +96,49 @@ def test_an_unreadable_diagram_still_counts_for_its_level(tmp_path):
     diagrams = {"auth-flow.architecture.json": ARCHITECTURE, "login.sequence.json": {}}
     root = build_product(tmp_path, diagrams=diagrams, invariants={}, git=False)
     assert "NO_SEQUENCE_DIAGRAM" not in _rules(root)
+
+
+def test_a_diagram_without_its_picture_is_reported(tmp_path):
+    root = build_product(tmp_path, pictures=False, git=False)
+    findings = _findings(root)
+    assert [(f.rule, f.file) for f in findings] == [
+        ("MISSING_PICTURE", "docs/diagrams/auth-flow.architecture.json"),
+        ("MISSING_PICTURE", "docs/diagrams/login.sequence.json"),
+    ]
+    assert "auth-flow.architecture.html" in findings[0].message
+
+
+def test_a_picture_ignored_by_git_is_not_committed(product):
+    import subprocess
+
+    picture = "docs/diagrams/login.sequence.html"
+    subprocess.run(["git", "-C", str(product), "rm", "-q", "--cached", picture], check=True)
+    (product / ".gitignore").write_text(f"{picture}\n")
+    (finding,) = _findings(product)
+    assert finding.rule == "MISSING_PICTURE" and "ignored by git" in finding.message
+
+
+def test_a_diagram_changed_after_its_picture_is_reported(product):
+    spec = product / "docs/diagrams/login.sequence.json"
+    spec.write_text(spec.read_text().replace('"label": "session"', '"label": "session open"'))
+    (finding,) = _findings(product)
+    assert (finding.rule, finding.file) == ("PICTURE_OUTDATED", "docs/diagrams/login.sequence.html")
+    commit_all(product, "the diagram alone")
+    assert _rules(product) == ["PICTURE_OUTDATED"]
+
+
+def test_a_picture_rendered_with_or_after_the_diagram_passes(product):
+    spec = product / "docs/diagrams/login.sequence.json"
+    spec.write_text(spec.read_text().replace('"label": "session"', '"label": "session open"'))
+    commit_all(product, "the diagram first")
+    write_picture(spec).write_text("<p>The picture rendered again.</p>\n")
+    assert _rules(product) == []  # the picture's change is not committed yet: the newest
+    commit_all(product, "then its picture")
+    assert _rules(product) == []
+
+
+def test_outside_git_only_the_pictures_presence_is_checked(tmp_path):
+    root = build_product(tmp_path, git=False)
+    spec = root / "docs/diagrams/login.sequence.json"
+    spec.write_text(spec.read_text().replace('"label": "session"', '"label": "session open"'))
+    assert _rules(root) == []

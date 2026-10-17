@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from agent.record_checkpoint_tool import record_checkpoint
-from tools.read_approvals_tool import approval_state
+from tools.read_approvals_tool import approval_state, subject_files
 from tools.read_product_config_tool import read_product_config
 
 NOW = datetime(2026, 10, 4, 9, 0, tzinfo=timezone.utc)
@@ -79,3 +79,16 @@ def test_the_release_decision_covers_both_records_and_is_due_only_for_a_release(
     ]
     tag_release(root, "1.0.0")
     assert not checkpoint_due(config, "release")
+
+
+def test_the_approval_covers_the_pictures_and_the_review_pages(product):
+    """What the person saw is approved with the files it shows (§ 5 stages 1–2, rule 25)."""
+    config = read_product_config(product)
+    diagrams = {config.relative(f) for f in subject_files(config, "diagrams")}
+    assert {
+        "docs/diagrams/auth-flow.architecture.html",
+        "docs/diagrams/login.sequence.html",
+        "docs/diagrams/review.html",
+    } <= diagrams
+    requirements = {config.relative(f) for f in subject_files(config, "requirements")}
+    assert "docs/requirements/review.html" in requirements

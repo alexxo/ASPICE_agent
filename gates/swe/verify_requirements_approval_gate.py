@@ -5,6 +5,11 @@ an architecture file or a detailed-design file exists, the latest checkpoint-2
 decision must approve the current requirements and glossary, dated before the
 first of those files appeared (from git history).
 
+Once requirements exist, the person reviews them on the checkpoint-2 review
+page: it must exist, and while no current approval covers it, match what
+agent/render_review_tool.py renders from the files now (§ 5 stages 1 and 2,
+rules 22–24).
+
     python gates/swe/verify_requirements_approval_gate.py [--root PRODUCT]
 """
 
@@ -16,6 +21,7 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from agent.render_review_tool import review_page_findings  # noqa: E402
 from tools.check_approval_order_tool import approval_order_findings  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
@@ -32,9 +38,13 @@ def check(config: ProductConfig) -> list[Finding]:
     design = config.detailed_design_dir
     if design.is_dir():
         derived += sorted(p for p in design.iterdir() if p.suffix in (".md", ".json"))
-    return approval_order_findings(
+    findings = approval_order_findings(
         config, 2, "requirements", derived, "stack, architecture and detailed-design files"
     )
+    folder = config.requirements_dir
+    if folder.is_dir() and any(folder.rglob("*.md")):
+        findings += review_page_findings(config, 2)
+    return findings
 
 
 if __name__ == "__main__":
