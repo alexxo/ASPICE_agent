@@ -23,6 +23,7 @@ from product_builder import (
     build_python_product,
     commit_all,
     install_plugins,
+    record_stages_done,
     write_all_code,
     write_all_tests_and_stubs,
     write_code,
@@ -33,6 +34,7 @@ from agent.count_retries_tool import decide, record_attempt
 from agent.load_skills_tool import load_skills
 from agent.read_stages_tool import stage
 from agent.record_checkpoint_tool import record_checkpoint
+from agent.record_stage_done_tool import record_stage_done
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import reached_gates, run_gates
 
@@ -55,9 +57,11 @@ def product(tmp_path):
             root, checkpoint, "approved", "Example Architect", "architect", now=APPROVED
         )
     commit_all(root, "checkpoints 1 to 3 approved")
+    record_stages_done(root, "architecture", "detailed_design")
+    commit_all(root, "stages 3 and 4 recorded as done")
     state = resolve_stage(root)
-    assert (state["stage"], state["status"]) == ("unit_tests", "gates_failing")
-    assert {f["rule"] for f in state["findings"]} == {"MISSING_STUB", "MISSING_UNIT_TEST"}
+    assert (state["stage"], state["status"]) == ("unit_tests", "in_progress")
+    assert {f["rule"] for f in state["reported"]} == {"MISSING_STUB", "MISSING_UNIT_TEST"}
     assert state["done"] == DESIGNED
     return root
 
@@ -142,9 +146,10 @@ def test_the_tester_and_the_coder_are_loaded_with_their_rulebooks(product):
 def test_tests_first_then_the_units_move_the_product_to_stage_7(product):
     decision = _attempts(product, "unit_tests", [red_tests_and_stubs])
     assert decision["decision"] == "pass"
+    record_stage_done(product, "unit_tests")
     state = resolve_stage(product)
-    assert (state["stage"], state["status"]) == ("unit_construction", "gates_failing")
-    assert {f["rule"] for f in state["findings"]} == {
+    assert (state["stage"], state["status"]) == ("unit_construction", "in_progress")
+    assert {f["rule"] for f in state["reported"]} == {
         "FAILED_TEST",
         "MISSING_SECURITY_TEST",
         "UNTESTED_UNIT",
@@ -155,8 +160,9 @@ def test_tests_first_then_the_units_move_the_product_to_stage_7(product):
 
     decision = _attempts(product, "unit_construction", [the_units])
     assert decision["decision"] == "pass"
+    record_stage_done(product, "unit_construction")
     state = resolve_stage(product)
-    assert (state["stage"], state["status"]) == ("integration_verification", "gates_failing")
+    assert (state["stage"], state["status"]) == ("integration_verification", "in_progress")
     assert state["done"] == [*DESIGNED, "unit_tests", "unit_construction"]
 
 

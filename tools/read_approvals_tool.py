@@ -6,6 +6,11 @@ approves, and every file it covers is unchanged and no file was added or
 removed — so editing approved work withdraws the approval. The customer's
 decision on a release (checkpoint 5) is due only while a release is proposed,
 and covers its release record and its validation record.
+
+Whether a stage was finished once is read here too: a checkpoint approved at
+least once, or a stage done record (stage_done.v1) in
+<approvals_dir>/<date>-stage-<n>-done.yaml for a stage without a closing
+checkpoint.
 """
 
 from __future__ import annotations
@@ -20,7 +25,15 @@ from tools.read_yaml_blocks_tool import YamlReadError, read_yaml_file
 from tools.validate_contract_tool import validate
 from tools.write_release_tool import pending
 
-__all__ = ["ApprovalState", "approval_state", "checkpoint_due", "sha256", "subject_files"]
+__all__ = [
+    "ApprovalState",
+    "approval_state",
+    "checkpoint_due",
+    "ever_approved",
+    "sha256",
+    "stage_done_record",
+    "subject_files",
+]
 
 
 @dataclass(frozen=True)
@@ -105,3 +118,30 @@ def approval_state(config: ProductConfig, checkpoint: int, approves: str) -> App
             "outdated", f"files changed since the approval: {', '.join(paths)}", latest, date
         )
     return ApprovalState("approved", "approved", latest, date)
+
+
+def ever_approved(config: ProductConfig, checkpoint: int, approves: str) -> bool:
+    """Whether any decision at the checkpoint approved, even one outdated since."""
+    folder = config.approvals_dir
+    pattern = f"*-checkpoint-{checkpoint}-{approves}.yaml"
+    for path in sorted(folder.glob(pattern)) if folder.is_dir() else []:
+        try:
+            data = read_yaml_file(path)
+        except YamlReadError:
+            continue
+        if not validate(data, "approval") and data["decision"] == "approved":
+            return True
+    return False
+
+
+def stage_done_record(config: ProductConfig, stage_id: str, number: int) -> Path | None:
+    """The first valid stage done record of the stage, if one exists."""
+    folder = config.approvals_dir
+    for path in sorted(folder.glob(f"*-stage-{number}-done.yaml")) if folder.is_dir() else []:
+        try:
+            data = read_yaml_file(path)
+        except YamlReadError:
+            continue
+        if not validate(data, "stage_done") and data["stage"] == stage_id:
+            return path
+    return None

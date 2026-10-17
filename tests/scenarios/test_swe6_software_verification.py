@@ -25,6 +25,7 @@ from product_builder import (
     build_python_product,
     commit_all,
     install_plugins,
+    record_stages_done,
     write_all_code,
     write_all_integration_tests,
     write_all_software_tests,
@@ -40,6 +41,7 @@ from agent.count_retries_tool import decide, record_attempt
 from agent.load_skills_tool import load_skills
 from agent.read_stages_tool import stage
 from agent.record_checkpoint_tool import record_checkpoint
+from agent.record_stage_done_tool import record_stage_done
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import reached_gates, run_gates
 from tools.read_product_config_tool import read_product_config
@@ -81,9 +83,11 @@ def product(tmp_path):
     commit_all(root, "test: every component and flow")
     write_events_code(root)
     commit_all(root, "feat: the sign-in events")
+    record_stages_done(root, *BUILT[2:])
+    commit_all(root, "stages 3 to 7 recorded as done")
     state = resolve_stage(root)
-    assert (state["stage"], state["status"]) == (STAGE, "gates_failing")
-    assert {f["rule"] for f in state["findings"]} == {
+    assert (state["stage"], state["status"]) == (STAGE, "in_progress")
+    assert {f["rule"] for f in state["reported"]} == {
         "UNVERIFIED_REQUIREMENT",
         "MISSING_MEASUREMENT",
         "UNOBSERVED_REQUIREMENT",
@@ -163,8 +167,10 @@ def test_the_bridge_tester_and_the_coder_are_loaded_with_their_rulebooks(product
 def test_tests_measurements_and_the_report_move_the_product_to_stage_9(product):
     decision = _attempts(product, [the_bridge_tester])
     assert decision["decision"] == "pass"
+    commit_all(product, "software verified")
+    record_stage_done(product, STAGE)
     state = resolve_stage(product)
-    assert (state["stage"], state["status"]) == ("quality_assurance", "gates_failing")
+    assert (state["stage"], state["status"]) == ("quality_assurance", "in_progress")
     assert state["done"] == [*BUILT, STAGE]
 
 

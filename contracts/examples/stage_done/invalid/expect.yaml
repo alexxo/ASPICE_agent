@@ -1,0 +1,3 @@
+short-commit.yaml: {path: "commit", keyword: pattern}
+unknown-number.yaml: {path: "number", keyword: maximum}
+date-without-offset.yaml: {path: "date", keyword: pattern}

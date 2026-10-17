@@ -28,6 +28,7 @@ from product_builder import (
     open_delivery,
     prepare_delivery,
     pull_request,
+    record_stages_done,
     review,
     write_all_code,
     write_all_integration_tests,
@@ -40,6 +41,7 @@ from product_builder import (
 
 from agent.load_skills_tool import load_skills
 from agent.record_checkpoint_tool import record_checkpoint
+from agent.record_stage_done_tool import record_stage_done
 from agent.resolve_stage_tool import main, resolve_stage
 from tools.read_product_config_tool import read_product_config
 from tools.write_verification_report_tool import write_report
@@ -85,6 +87,8 @@ def built(tmp_path_factory):
     ):
         write(root)
         commit_all(root, message)
+    record_stages_done(root, *BUILT[2:])
+    commit_all(root, "docs(approvals): stages 3 to 8 done REQ-0047")
     prepare_delivery(root, work, ref="#1")
     return root
 
@@ -104,6 +108,12 @@ def product(built, tmp_path, monkeypatch):
 
 def _deliver(root, tmp_path, monkeypatch, **pull):
     monkeypatch.setenv("QF_HOST_FILE", str(open_delivery(root, tmp_path, **pull)))
+
+
+def _finish(root):
+    """The agent records stages 9 and 10 done once their own gates pass."""
+    record_stage_done(root, STAGE)
+    record_stage_done(root, "configuration_management")
 
 
 def _state(root):
@@ -130,6 +140,7 @@ def test_the_reviewer_agents_approval_moves_the_product_on(product, tmp_path, mo
     _deliver(product, tmp_path, monkeypatch, reviewers=())
     assert _state(product) == (STAGE, "gates_failing", ["MISSING_AGENT_REVIEW"])
     _deliver(product, tmp_path, monkeypatch, reviewers=(AGENT,))
+    _finish(product)
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == (None, "complete")
     assert state["done"] == [*BUILT, STAGE, "configuration_management", "validation"]
@@ -143,6 +154,7 @@ def test_a_sampled_pull_request_waits_for_a_person_and_fails_ci(
     assert main(["--root", str(product), "--check"]) == 1
     capsys.readouterr()
     _deliver(product, tmp_path, monkeypatch, number=5, reviewers=(AGENT, PERSON))
+    _finish(product)
     assert _state(product)[:2] == (None, "complete")
     assert main(["--root", str(product), "--check"]) == 0
 

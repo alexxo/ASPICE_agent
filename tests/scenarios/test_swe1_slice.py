@@ -33,9 +33,10 @@ def _start(product):
     assert problems == [] and config is not None
 
     state = resolve_stage(product)
-    assert (state["stage"], state["status"]) == ("requirements", "gates_failing")
+    assert (state["stage"], state["status"]) == ("requirements", "in_progress")
     assert state["done"] == ["diagram"]
-    assert "NO_REQUIREMENTS" in {f["rule"] for f in state["findings"]}
+    assert "NO_REQUIREMENTS" in {f["rule"] for f in state["reported"]}
+    assert state["findings"] == []  # work in progress does not fail CI
 
     loaded = load_skills(product, "requirements")
     assert loaded["plugin"]["name"] == "quality-framework/derive_requirements_plugin"
@@ -76,8 +77,8 @@ def test_requirements_that_pass_the_gates_move_on_after_checkpoint_2(repo_root, 
     now = datetime(2026, 10, 4, 15, 0, tzinfo=timezone.utc)
     record_checkpoint(product, 2, "approved", "Example Architect", "architect", now=now)
     state = resolve_stage(product)
-    assert (state["stage"], state["status"]) == ("architecture", "gates_failing")
-    assert state["findings"][0]["rule"] == "MISSING_STACK"
+    assert (state["stage"], state["status"]) == ("architecture", "in_progress")
+    assert state["reported"][0]["rule"] == "MISSING_STACK"
     assert state["done"] == ["diagram", "requirements"]
 
 
@@ -96,7 +97,7 @@ def test_a_stuck_requirement_reaches_the_architect(repo_root, product):
     report = (product / decision["escalation_report"]).read_text()
     assert report.count("UNKNOWN_ELEMENT") == 4
     assert report.count("## Attempt") == 4
-    assert resolve_stage(product)["status"] == "gates_failing"
+    assert resolve_stage(product)["status"] == "in_progress"
 
 
 def test_changes_requested_at_checkpoint_2_keep_the_product_waiting(repo_root, product):

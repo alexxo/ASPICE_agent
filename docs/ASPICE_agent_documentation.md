@@ -857,9 +857,12 @@ SWE.3 and SWE.4 are split around the test under TDD — the detailed design
 
 **Retry policy.** When a gate fails, the ASPICE Agent sends
 the findings back to the skill that produced the work and runs it again, **up to
-3 retries**. If the gates still fail after the third retry, the agent stops the
-stage and **escalates to the architect** with the findings of every attempt. The
-architect fixes the work, gives guidance for another attempt, or stops.
+3 retries in a row**. Only consecutive failing attempts count: an attempt whose
+gates pass starts a new round, so a change the architect asks for after a pass
+has the full budget. If the gates still fail after the third retry, the agent
+stops the stage and **escalates to the architect** with the findings of every
+attempt of the round. The architect fixes the work, gives guidance for another
+attempt, or stops.
 
 Legend: rectangles — the agent triggers a plugin or tool, with the rules it
 loads; circles — the agent calls a person (checkpoint); rounded boxes — a person
@@ -873,6 +876,8 @@ fails when one drifts.
 ```mermaid
 flowchart TD
   start(["Customer writes the wishes<br/>W-01, W-02 …"]):::human
+  always{"Always-on gates, on every change whatever the stage:<br/>verify_framework_integrity_gate · verify_required_checks_gate<br/>check_framework_feedback_gate · verify_delivery_reviewed_gate<br/>check_commit_conventions_gate · verify_history_kept_gate"}:::gate
+  start ~~~ always
 
   subgraph P1["1 · SWE.2 Software architecture — diagram, drawn first"]
     d1["Agent triggers create_diagram_plugin<br/>(e.g. archify)<br/>draft diagram from the wishes<br/>rules: draw_diagram_skill"]:::agent
@@ -951,7 +956,7 @@ flowchart TD
 
   subgraph P9["9 · SUP.1 Quality assurance"]
     q1["Agent opens the pull request, CI re-runs every gate;<br/>review_pull_request_plugin reviews from its own account<br/>rules: review_code_skill, report_framework_feedback_skill,<br/>track_nonconformances_skill"]:::agent
-    g8{"verify_framework_integrity_gate · verify_required_checks_gate<br/>scan_security_gate · check_framework_feedback_gate<br/>verify_delivery_reviewed_gate"}:::gate
+    g8{"scan_security_gate<br/>(and the always-on gates)"}:::gate
     h4(("Checkpoint 4<br/>A person approves on the host<br/>if the PR is sampled")):::human
     q1 --> g8
     g8 -. "fail: back to the crew of its stage" .-> q1
@@ -960,7 +965,7 @@ flowchart TD
 
   subgraph P10["10 · SUP.8 Configuration management"]
     m1["Agent merges to the main branch;<br/>for a release, write_release_tool writes the<br/>release record and the agent opens its pull request<br/>rules: record_baseline_skill"]:::agent
-    g9{"check_commit_conventions_gate · verify_history_kept_gate<br/>check_config_items_gate · check_track_rule_gate<br/>verify_architecture_tests_gate<br/>at release: verify_baseline_gate"}:::gate
+    g9{"check_config_items_gate · check_track_rule_gate<br/>verify_architecture_tests_gate<br/>at release: verify_baseline_gate"}:::gate
     m1 --> g9
   end
 
@@ -1018,6 +1023,8 @@ flowchart TD
   classDef done fill:#1d2430,stroke:#1d2430,color:#ffffff
 ```
 
+The always-on gates run on every change, whatever the stage (§ 5 *What CI fails on*): verify_framework_integrity_gate, verify_required_checks_gate, check_framework_feedback_gate, verify_delivery_reviewed_gate, check_commit_conventions_gate, verify_history_kept_gate.
+
 | Stage (ASPICE process) | Agent triggers | Gates run on the output | Person called in |
 |---|---|---|---|
 | 1 Diagram (SWE.2 Software architecture, drawn first) | create_diagram_plugin drafts the diagram from the wishes | check_diagram_contract_gate, verify_diagram_to_wishes_link_gate, verify_diagram_approval_gate | Architect corrects and approves — iterate until approved |
@@ -1028,13 +1035,54 @@ flowchart TD
 | 6 Unit construction (SWE.3 BP3 + SWE.4 BP2–BP5) | create_unit_code_plugin replaces the stubs with the units until the tests pass, never editing a test | verify_test_first_gate (again: tests unchanged, none after its unit's code), verify_tests_to_requirements_link_gate, verify_code_to_design_link_gate, check_stack_commands_gate; principle: verify_security_tests_gate, check_env_config_gate | — |
 | 7 Component + integration verification (SWE.5 Software component verification and integration verification) | create_integration_tests_plugin writes the integration section of the verification plan, the component tests and the integration tests along the approved flows, in a test-only commit; then create_unit_code_plugin changes the code until they pass, never editing a test | check_verification_plan_gate, verify_test_first_gate (no integration test changed with code), verify_tests_to_components_link_gate, verify_tests_to_flows_link_gate, verify_log_events_gate | — |
 | 8 Software verification (SWE.6 Software verification) | create_software_tests_plugin writes the software section of the verification plan, a software-level test per requirement (system-level ones end-to-end), the measurements of the measured ones and the observability definitions, in a test-only commit; then create_unit_code_plugin changes the code until they pass, never editing a test | check_verification_plan_gate, verify_test_first_gate, verify_software_tests_to_requirements_link_gate, verify_nfr_thresholds_gate, check_verification_report_gate; principle: check_observability_gate | — |
-| 9 Quality assurance (SUP.1 Quality assurance) | Opens the PR; CI re-runs every gate; review_pull_request_plugin reviews from its own account with the checklist | verify_framework_integrity_gate, verify_required_checks_gate, verify_delivery_reviewed_gate; principle: scan_security_gate, check_framework_feedback_gate (check_nonconformances_gate, check_escalations_gate, report_quality_trends_gate, check_retro_actions_gate run at release, step 11) | A person, on every architecture PR and 1 in N others |
-| 10 Configuration management (SUP.8 Configuration management) | Merges to the main branch; for a release, opens the release pull request with the release record (write_release_tool), and CI tags the merge | check_commit_conventions_gate, verify_history_kept_gate, check_config_items_gate, check_track_rule_gate; principle: verify_architecture_tests_gate; at release: verify_baseline_gate | — |
+| 9 Quality assurance (SUP.1 Quality assurance) | Opens the PR; CI re-runs every gate; review_pull_request_plugin reviews from its own account with the checklist | principle: scan_security_gate (check_nonconformances_gate, check_escalations_gate, report_quality_trends_gate, check_retro_actions_gate run at release, step 11) | A person, on every architecture PR and 1 in N others |
+| 10 Configuration management (SUP.8 Configuration management) | Merges to the main branch; for a release, opens the release pull request with the release record (write_release_tool), and CI tags the merge | check_config_items_gate, check_track_rule_gate; principle: verify_architecture_tests_gate; at release: verify_baseline_gate | — |
 | 11 Validation (VAL.1 Validation) | create_validation_scenarios_plugin writes, from the wishes only, the validation scenarios and the validation section of the verification plan; for a release, after the deployment to staging, write_validation_record_tool records the deployed commit and the results, and the customer decides | verify_acceptance_to_wishes_link_gate, verify_release_evidence_gate; at release, for SUP.1: check_nonconformances_gate, check_escalations_gate, report_quality_trends_gate, check_retro_actions_gate | Customer accepts or rejects the release |
 | 12 Problem resolution (SUP.9 Problem resolution management) | On a defect: records and analyses the problem as an issue; create_unit_tests_plugin reproduces it with a failing test marked *@problem[n]*, then create_unit_code_plugin fixes it; its gates run on every pull request once the flow is done | check_problem_record_gate, check_urgent_fix_gate, verify_problem_closure_gate; at release: report_problem_trends_gate | — |
 | 13 Change request (SUP.10 Change request management) | On a changed wish: records and analyses the change request as an issue; once the architect approves it, the change re-enters the flow at stage 1, and every pull request that builds it names it; its gates run on every pull request once the flow is done | check_change_record_gate, verify_change_approval_gate, verify_change_trace_gate; at release: verify_change_closure_gate | Architect approves the change (*/approve-change*) |
 
 *Principle* gates come from practices the principles require beyond ASPICE (§ 4.2).
+
+### What CI fails on
+
+CI runs the stage resolver on every pull request and every push to the main
+branch. The resolver works out from what is on disk where the product stands,
+and CI fails on three things:
+
+1. **The always-on gates.** Framework integrity, the CI file's gates job, the
+   feedback log, the reviewed delivery, the commit conventions and the kept
+   history run on every change from the setup on, whatever stage the product
+   is in. They guard the change itself, not a stage's work. Two of them read
+   the code host (*host_gates*: framework integrity and the reviewed
+   delivery); they run where a host is configured — always in CI, on a
+   developer's machine once *QF_HOST_TOKEN* is set — so the agent's work on
+   the machine is not blocked before a pull request exists.
+2. **Every finished stage.** A stage that was finished once stays enforced:
+   a change that breaks its work fails CI. A stage with a checkpoint is
+   finished once its checkpoint has been approved, even if a later change
+   made that approval outdated; changing a sealed stage's work therefore
+   needs the seal again, in the same pull request. A stage without a
+   checkpoint is finished once its *stage done* record exists: the agent
+   writes it, as it records an approval, when the stage's gates first pass.
+   The resolver counts such a stage as done only with its record, so the
+   record cannot be skipped. The record never goes outdated: it says the
+   stage was finished once.
+3. **A missing seal 4 or 5.** A pull request waiting for a person's approval,
+   or a release waiting for the customer's decision, fails, so it does not
+   merge before it.
+
+The **current stage**, the first one not done and never finished, is work in
+progress. Its findings are reported but do not fail CI. They are enforced
+where a stage ends: its checkpoint is not given while they remain, and while a
+release is proposed every stage is enforced, so no release is made while any
+finding remains. So a framework bump, a tooling or documentation change, a stage
+split over several pull requests, and a checkpoint approval that moves the
+product to the next stage all pass.
+
+**Every gate not run is reported.** The resolver lists each gate it did not
+run, with the reason: its stage is not reached yet (*stage_not_reached*), it is
+planned and not built (*planned*), or it reads the code host and none is
+configured (*no_host*). CI prints the list, so no pull request looks more checked than it was.
 
 ### The tech stack
 
@@ -1126,6 +1174,7 @@ sequenceDiagram
   participant CI as Repository + CI
 
   C->>AG: Wishes document (W-01, W-02 …)
+  CI->>G: On every change, whatever the stage: verify_framework_integrity_gate, verify_required_checks_gate, check_framework_feedback_gate, verify_delivery_reviewed_gate, check_commit_conventions_gate, verify_history_kept_gate
 
   rect rgba(59,110,158,0.12)
   Note over C,CI: 1 · SWE.2 Software architecture — diagram, drawn first
@@ -1208,7 +1257,7 @@ sequenceDiagram
   rect rgba(181,118,31,0.10)
   Note over C,CI: 9 · SUP.1 Quality assurance
   AG->>CI: Open the pull request
-  CI->>G: Re-run every gate: verify_framework_integrity_gate, verify_required_checks_gate, scan_security_gate, check_framework_feedback_gate, verify_delivery_reviewed_gate
+  CI->>G: Re-run every gate: the always-on gates and scan_security_gate
   AG->>RV: Review the pull request's head (rules: review_code_skill, report_framework_feedback_skill, track_nonconformances_skill)
   RV->>CI: Review, posted from its own account
   opt the pull request is in the sample
@@ -1219,7 +1268,7 @@ sequenceDiagram
   rect rgba(181,118,31,0.05)
   Note over C,CI: 10 · SUP.8 Configuration management
   AG->>CI: Merge to the main branch (rules: record_baseline_skill)
-  CI->>G: check_commit_conventions_gate, verify_history_kept_gate, check_config_items_gate, check_track_rule_gate, verify_architecture_tests_gate
+  CI->>G: check_config_items_gate, check_track_rule_gate, verify_architecture_tests_gate
   opt the architect asks for a release
     AG->>CI: Release branch, release record (write_release_tool), its pull request
     CI->>G: verify_baseline_gate
@@ -1328,6 +1377,7 @@ sequenceDiagram
   end
 
   C->>AG: Wishes document (W-01, W-02 …)
+  CI->>G: On every change, whatever the stage: verify_framework_integrity_gate, verify_required_checks_gate, check_framework_feedback_gate, verify_delivery_reviewed_gate, check_commit_conventions_gate, verify_history_kept_gate
 
   rect rgba(59,110,158,0.12)
   Note over C,CI: 1 · SWE.2 Software architecture — diagram, drawn first
@@ -1441,7 +1491,7 @@ sequenceDiagram
   rect rgba(181,118,31,0.10)
   Note over C,CI: 9 · SUP.1 Quality assurance
   AG->>CI: Push the branch, open the pull request
-  CI->>G: Re-run every gate: verify_framework_integrity_gate, verify_required_checks_gate, scan_security_gate, check_framework_feedback_gate, verify_delivery_reviewed_gate
+  CI->>G: Re-run every gate: the always-on gates and scan_security_gate
   AG->>CRV: Load the review checklist
   AG->>NC: Load the non-conformance rules
   AG->>REV: Review the pull request's head
@@ -1456,7 +1506,7 @@ sequenceDiagram
   Note over C,CI: 10 · SUP.8 Configuration management
   AG->>BSL: Load the baseline rules (commits, branches, releases)
   AG->>CI: Merge the accepted pull request to the main branch
-  CI->>G: check_commit_conventions_gate, verify_history_kept_gate, check_config_items_gate, check_track_rule_gate, verify_architecture_tests_gate
+  CI->>G: check_config_items_gate, check_track_rule_gate, verify_architecture_tests_gate
   opt the architect asks for a release
     AG->>CI: Release branch, release record (write_release_tool), its pull request
     CI->>G: verify_baseline_gate
@@ -1533,6 +1583,7 @@ sequenceDiagram
     participant GR as run_gates_tool
     participant RP as count_retries_tool
     participant CP as record_checkpoint_tool
+    participant RS as record_stage_done_tool
   end
   participant ST as read_stages_tool<br/>(stages.yaml)
   participant SK as Plugin + framework skills
@@ -1553,9 +1604,9 @@ sequenceDiagram
     GR-->>SR: Pass or findings
     SR->>CP: Is its approval current (every hash still matches)?
     CP-->>SR: Current approval, or none
-    SR-->>OR: First stage not done — complete, not_implemented, awaiting_checkpoint, gates_failing or invalid_config
+    SR-->>OR: First stage not done — complete, not_implemented, awaiting_checkpoint, in_progress, gates_failing or invalid_config
 
-    alt gates_failing
+    alt in_progress or gates_failing
       OR->>SL: Skills for this stage
       SL->>ST: The stage's slot, extra slots and framework skills
       SL->>CFG: Each slot's plugin (pinned)
@@ -1570,6 +1621,10 @@ sequenceDiagram
         GR-->>OR: Result
         OR->>RP: Record the attempt
         RP-->>OR: pass, retry (with retries_left) or escalate
+      end
+      opt pass, and the stage has no closing checkpoint
+        OR->>RS: Record the stage done
+        RS->>REPO: Stage done record (stage, date, commit)
       end
       opt escalate
         OR->>A: The stage is blocked — the findings of every attempt
@@ -1959,16 +2014,17 @@ and format).
 | *agent/stages.yaml* | The stage manifest: per stage the process, slot, skills, gates (built, after the checkpoint, and planned), checkpoint and what it approves |
 | *agent/read_stages_tool.py* | Reads the manifest for the other agent tools |
 | *agent/read_config_tool.py* | Reads *qf.yaml* and the machine's *environment.yaml*; runs the pipeline preconditions — every slot's skill found |
-| *agent/resolve_stage_tool.py* | The first stage not done — implemented gates passing and checkpoint approval matching the files; planned gates listed as not run |
+| *agent/resolve_stage_tool.py* | The first stage not done — implemented gates passing and checkpoint approval matching the files; the always-on gates and every finished stage enforced, the current stage reported; every gate not run listed with its reason |
 | *agent/load_skills_tool.py* | The slot's plugin plus the stage's framework skills |
 | *agent/run_gates_tool.py* | Runs the stage's gates and collects their findings |
-| *agent/count_retries_tool.py* | Counts attempts: 3 retries, then the architect |
+| *agent/count_retries_tool.py* | Counts attempts: 3 retries in a row, then the architect; a pass starts a new round |
 | *agent/record_checkpoint_tool.py* | Writes the checkpoint decision as *approval.v1* |
+| *agent/record_stage_done_tool.py* | Writes the stage done record as *stage_done.v1*, for a stage without a closing checkpoint once its gates pass |
 | *agent/run_aspice_agent.md* | The orchestrator: the only LLM part; holds ODD's common steps — Authorize, Classify, Track before write, Close |
 | *agent/start_product.md* | The start rulebook: asks the person the setup's values, runs the construction site setup, relays the host steps, then hands over to the orchestrator (starting a product) |
 | *examples/login-product/* | The example product: an approved diagram, wishes, glossary, configuration |
 | *tests/unit/test_&lt;name&gt;.py*, *tests/scenarios/test_swe1_slice.py* | One test file per gate, adapter and tool; the slice's three outcomes — pass, fixed by a retry, escalated |
-| *templates/github/quality_gates.yml* | The product's CI: the gates of every stage reached, the framework from the product's pinned submodule, run again on every review, the host read with the run's own token (*QF_HOST_TOKEN* is *github.token*, read permissions only); no plugin needed |
+| *templates/github/quality_gates.yml* | The product's CI: the always-on gates and every finished stage enforced, the current stage reported, the gates not run listed in the summary, the framework from the product's pinned submodule, run again on every review, the host read with the run's own token (*QF_HOST_TOKEN* is *github.token*, read permissions only); no plugin needed |
 | *contracts/diagram_wishes_contract.v1.schema.json* | Diagram stage: which wishes each diagram element realises |
 | *skills/swe/draw_diagram_skill/SKILL.md* | Diagram stage: the rules a diagram follows, each naming its gate rule or checkpoint 1 |
 | *tools/read_approvals_tool.py* | Which files an approval covers and whether the latest decision still counts — shared by gates and agent |
@@ -2035,19 +2091,19 @@ and format).
 | *templates/FRAMEWORK_FEEDBACK.md* | The framework feedback log a product copies: the entry template, severities and classes |
 | *tools/read_host_tool.py* | The code host: pull requests and their reviews, the checks that passed on a commit, release tags; the delivery of the current branch; a recorded host for tests |
 | *tools/post_review_tool.py* | The reviewer agent's review of the current head, with the checklist in its fixed form |
-| *gates/sup/verify_framework_integrity_gate.py* | Quality assurance stage: the framework a pinned submodule, unchanged, at a released commit |
-| *gates/sup/verify_required_checks_gate.py* | Quality assurance stage: the CI file runs the gates |
+| *gates/sup/verify_framework_integrity_gate.py* | Always-on, from the quality assurance stage: the framework a pinned submodule, unchanged, at a released commit |
+| *gates/sup/verify_required_checks_gate.py* | Always-on, from the quality assurance stage: the CI file runs the gates |
 | *gates/sup/scan_security_gate.py* | Quality assurance stage: both scanners ran, no critical or high finding (principle #29) |
-| *gates/sup/check_framework_feedback_gate.py* | Quality assurance stage: complete feedback entries, every framework bump named (principle #47) |
-| *gates/sup/verify_delivery_reviewed_gate.py* | Quality assurance stage: a pull request, the reviewer agent's approval of its head with the checklist, a person's on the sample |
+| *gates/sup/check_framework_feedback_gate.py* | Always-on, from the quality assurance stage: complete feedback entries, every framework bump named (principle #47) |
+| *gates/sup/verify_delivery_reviewed_gate.py* | Always-on, from the quality assurance stage: a pull request, the reviewer agent's approval of its head with the checklist, a person's on the sample |
 | *tests/consistency/test_rulebook.py* | The rulebook is complete (SUP.1 BP2): every gate script belongs to a practice, every gate a practice names is built or planned |
 | *tests/scenarios/test_sup1_quality_assurance.py* | Stage 9 on the Python product with a recorded host: no pull request, the reviewer agent's approval, a sampled pull request waiting for a person, a push after the approvals |
 | *contracts/release_contract.v1.schema.json* | Configuration management stage: one release record — version, configuration items changed since the previous release, framework version (SUP.8 BP5–BP7) |
 | *skills/sup/record_baseline_skill* | Configuration management stage: commit and branch conventions, the main branch's history kept, every configuration item under git, the two tracks apart, a release proposed as a pull request with a computed version, tagged |
 | *tools/write_release_tool.py* | The next release's record: the version computed from the commits since the last release tag, the configuration items changed, the pinned framework release; the records not yet tagged |
 | *templates/github/release.yml* | The product's release workflow: after the release pull request's merge, tag the merge commit and check the baseline |
-| *gates/sup/check_commit_conventions_gate.py* | Configuration management stage: every commit a Conventional Commit naming a requirement or issue, the branch named by convention |
-| *gates/sup/verify_history_kept_gate.py* | Configuration management stage: every push to the main branch keeps its previous history |
+| *gates/sup/check_commit_conventions_gate.py* | Always-on, from the configuration management stage: every commit a Conventional Commit naming a requirement or issue, the branch named by convention |
+| *gates/sup/verify_history_kept_gate.py* | Always-on, from the configuration management stage: every push to the main branch keeps its previous history |
 | *gates/sup/check_config_items_gate.py* | Configuration management stage: every configuration item exists and is tracked by git |
 | *gates/sup/check_track_rule_gate.py* | Configuration management stage: an architecture pull request changes no feature-track work product and comes from an *arch/* branch |
 | *gates/sup/verify_architecture_tests_gate.py* | Configuration management stage: an architecture pull request contains no code (principle #4) |
@@ -3308,6 +3364,53 @@ label together.
   flow and the plugins only and point to the stage table for the gates and
   skills (B) — fewer names to keep in step, but no picture shows a stage
   whole. → § 5 *The ASPICE Agent — the flow*.
+
+- **The risk analysis behind what CI fails on** (2026-10-17, from the product
+  team's FB-12 to FB-15). Two purposes. **P1:** every change on its way to the
+  main branch is checked, at once, by every rule that applies to it, and only
+  for what it contains — no false green (a rule that applies is never
+  skipped) and no false red (a change never fails for work it does not
+  contain; a false red teaches people to merge on red, which hides the next
+  real red). **P2:** the agent gets a fixed number of tries to fix its own
+  failing work, then a person steps in. The scales and the rule are those of
+  configuration management (A.9); the scenarios come from the framework's own
+  gating, so the ratings start from the framework before this analysis.
+
+  | # | Scenario | O | S | D | Risk | Decision | Residual |
+  |---|---|---|---|---|---|---|---|
+  | C1 | The rules that guard every change do not run before their stage | 7 | 7 | 7 | 343 | G1: the always-on gates run on every change from the setup on | 7·7·2 = 98 |
+  | C3 | CI does not say which gates it skipped | 10 | 5 | 9 | 450 | R1: every gate not run is listed with its reason | 10·5·2 = 100 |
+  | C5 | A change with no stage work fails on the current stage's missing work | 8 | 7 | 4 | 224 | F1: only finished stages fail CI; the current stage is reported | 1·7·4 = 28 |
+  | C6 | A stage's work and its checkpoint approval fail on the next stage's missing work | 9 | 6 | 4 | 216 | F1 | 1·6·4 = 24 |
+  | C2 | Work of a later stage arrives early and its stage's gates do not run | 4 | 6 | 6 | 144 | Accepted: checked once its stage is reached, then enforced by F1 | 144 |
+  | C7 | A stage split over several pull requests fails on every one but the last | 6 | 6 | 4 | 144 | Closed by F1 | low |
+  | R1 | Passing attempts use up the retry budget | 6 | 4 | 2 | 48 | Only consecutive failing attempts count; a pass starts a new round | — |
+  | R2 | A change the person asks for starts no new round | 6 | 4 | 2 | 48 | As R1 | — |
+  | R5 | A large stage progresses on every try and still escalates | 4 | 4 | 2 | 32 | As R1 | — |
+
+  *Out of scope:* C4 — each pull request passes, the main branch fails once
+  both are merged (plain git; CI on the main branch shows it at once); C8 —
+  merging on red after false reds (it is why C5–C7 are severe, so it is in
+  their severity); R3 — the retry counter lives in the clone, and R4 — the
+  agent never records its attempts (the budget is a signal to call the
+  person, not a control, and the person sees the agent working). R1, R2 and
+  R5 are low, and fixed all the same: the new counting rule is one rule.
+
+  *Not taken:* G2 — the always-on gates as a stage 0, a stage that never ends
+  and has no checkpoint; G3 — every gate of every stage run, unreached ones
+  informative, which does not close C1 and floods every pull request; F2 —
+  only findings the change adds fail CI (*clean as you code*), which runs the
+  gates, test suites included, on the base and on the head and needs a stable
+  identity per finding; F3 — the change classified by its paths, which closes
+  C5 only; F4 — commits before the first release exempt, which leaves the
+  pull request red. For telling a finished stage from one in progress where
+  no checkpoint shows it: *chosen* X1, the *stage done* record; *not taken*
+  X2 — resolving the base branch too, which runs the finished stages' gates
+  twice, and X3 — enforcing those stages only after the first release, itself
+  a high risk (5·7·6 = 210). F1's own gap — a pull request that makes the
+  unfinished current stage worse — is accepted: the checkpoint and the
+  release still need the stage green. → § 5 *What CI fails on*, *The ASPICE
+  Agent — the flow* (retry policy).
 
 ### A.2 Diagram and requirements stages — stages 1 and 2
 

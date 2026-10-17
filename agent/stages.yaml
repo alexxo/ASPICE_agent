@@ -24,6 +24,25 @@
 #   implemented   false: the agent stops here and says the stage is not built yet
 #   trigger       flow (walked in order) or event (problem and change requests): an event
 #                 stage's gates run once the flow is done, on every pull request
+#
+# always_gates      the gates that guard the change itself, not a stage's work: they run
+#                   on every pull request and every push to the main branch from the
+#                   setup on, whatever stage the product is in (§ 5 What CI fails on)
+# host_gates        the always-on gates that read the code host: they run where a host is
+#                   configured (always in CI, locally once QF_HOST_TOKEN is set); without
+#                   one they are listed as not run, reason no_host
+
+always_gates:
+  - verify_framework_integrity_gate
+  - verify_required_checks_gate
+  - check_framework_feedback_gate
+  - verify_delivery_reviewed_gate
+  - check_commit_conventions_gate
+  - verify_history_kept_gate
+
+host_gates:
+  - verify_framework_integrity_gate
+  - verify_delivery_reviewed_gate
 
 stages:
   - id: diagram
@@ -185,11 +204,7 @@ stages:
       - report_framework_feedback_skill
       - track_nonconformances_skill
     gates:
-      - verify_framework_integrity_gate
-      - verify_required_checks_gate
       - scan_security_gate
-      - check_framework_feedback_gate
-      - verify_delivery_reviewed_gate
     planned_gates: []
     checkpoint: 4
     approves: pull_request
@@ -203,8 +218,6 @@ stages:
     skills:
       - record_baseline_skill
     gates:
-      - check_commit_conventions_gate
-      - verify_history_kept_gate
       - check_config_items_gate
       - check_track_rule_gate
       - verify_architecture_tests_gate

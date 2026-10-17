@@ -12,7 +12,7 @@ import re
 
 import pytest
 
-from agent.read_stages_tool import read_stages
+from agent.read_stages_tool import always_gates, read_stages
 
 pytestmark = pytest.mark.layer2
 
@@ -98,3 +98,14 @@ def test_the_inside_names_every_agent_tool(repo_root):
     tools = {p.stem for p in (repo_root / "agent").glob("*_tool.py")}
     missing = tools - {name for _, name in PARTICIPANT.findall(block)}
     assert not missing, f"the agent's inside has no participant {sorted(missing)}"
+
+
+def test_every_diagram_names_the_always_on_gates_before_the_stages(repo_root):
+    flow = next(b for b in _blocks(repo_root) if b.startswith("flowchart") and "subgraph P1[" in b)
+    walks = [flow.split("subgraph P1[")[0]]
+    for block in _blocks(repo_root):
+        if block.startswith("sequenceDiagram") and "Note over C,CI: 1 ·" in block:
+            walks.append(block.split("Note over C,CI: 1 ·")[0])
+    assert len(walks) == 3
+    for before in walks:
+        assert _names(before, "gate") == set(always_gates())

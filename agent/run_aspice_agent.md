@@ -56,11 +56,14 @@ Run `python <framework>/agent/resolve_stage_tool.py --root <product>` and act on
 | `complete` | Go to step 9. |
 | `not_implemented` | Report the stage and its `reason`, and go to step 9: this framework version does not build that stage yet. |
 | `awaiting_checkpoint` | Go to step 8. A checkpoint may sit inside a stage (stage 3 approves the stack before components): after the approval, step 3 sends you back to work on the same stage. |
-| `gates_failing` | Go to step 4. |
+| `in_progress` | The current stage's work is not done yet; `reported` holds its findings, which do not fail CI. Go to step 4 with them. When `reported` is empty and `reason` asks for the stage done record, the stage's gates pass: record it (step 7) and come back here. |
+| `gates_failing` | `findings` fail CI: a finished stage broke, or an always-on gate fails. Go to step 4, and fix exactly what they name. |
 | `invalid_config` | Report the findings, and stop. |
 
-Always report `not_run`: the planned gates of the stages so far, which nothing
-has checked yet.
+`findings` always fail CI; `reported` never does (§ 5 *What CI fails on* of the
+design document). Always report `not_run`: every gate that did not run, with
+its reason — `stage_not_reached`, `planned`, or `no_host` (an always-on gate
+that reads the code host, run once `QF_HOST_TOKEN` is set, and always in CI).
 
 `<stage>` below is the `stage` the tool returns, its id (e.g. `diagram`); its
 `number` (e.g. `1`) works too.
@@ -188,8 +191,8 @@ initiator for `/confirm-change`; then close the issue.
 
 | decision | What you do |
 |---|---|
-| `pass` | Go back to step 3: the product moves on, or waits for its checkpoint. |
-| `retry` | Go back to step 6 with the findings. `retries_left` says how many remain. |
+| `pass` | If the stage has no closing checkpoint (stages 3 to 10; stage 3 after its components), record it as done: `python <framework>/agent/record_stage_done_tool.py --stage <stage> --root <product>`, and commit the record with the stage's work. From then on the stage is enforced: a change that breaks it fails CI. Go back to step 3: the product moves on, or waits for its checkpoint. |
+| `retry` | Go back to step 6 with the findings. `retries_left` says how many remain: only failing attempts in a row count, and a pass starts a new round. |
 | `escalate` | Stop. Give the architect the `escalation_report` — the findings of every attempt — and ask: fix the work, give guidance for a new round, or stop. For a new round, run `count_retries_tool.py reset` and go back to step 6. |
 
 ## 8. Checkpoint
@@ -209,7 +212,9 @@ not give:
 
 `python <framework>/agent/record_checkpoint_tool.py --checkpoint <n> --decision approved|changes-requested --approver <name> --role <role> [--comment <text>] --root <product>`
 
-- **approved** — go back to step 3; the product moves to the next stage.
+- **approved** — commit the approval with the stage's work, in the same pull
+  request: the next stage is work in progress, so CI stays green. Go back to
+  step 3; the product moves to the next stage.
 - **changes-requested** — the comment is the finding: go back to step 4 with it.
   At checkpoint 2, if the person says the diagram is wrong, the product goes back
   to the diagram stage.

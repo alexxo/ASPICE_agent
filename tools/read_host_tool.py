@@ -43,6 +43,7 @@ __all__ = [
     "PullRequest",
     "Review",
     "delivery",
+    "host_configured",
     "read_host",
     "remote_slug",
     "repository",
@@ -319,6 +320,11 @@ class FileHost:
             for i in self._repo(repo).get("issues", [])
             if label in i.get("labels", ())
         ]
+
+
+def host_configured() -> bool:
+    """Whether read_host can reach a host: a test host's file or a token."""
+    return bool(os.environ.get(HOST_FILE) or os.environ.get(HOST_TOKEN))
 
 
 def read_host() -> Host:

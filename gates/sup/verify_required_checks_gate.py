@@ -1,7 +1,7 @@
 """verify_required_checks_gate — SUP.1 BP1, BP6: the gates run on every change.
 
-The product's CI file (qf.yaml paths.ci_file) has a job that runs the gates of
-every stage reached (resolve_stage_tool.py --check), so every pull request and
+The product's CI file (qf.yaml paths.ci_file) has a job that runs the gates
+(resolve_stage_tool.py --check), so every pull request and
 every push to the main branch gets its gates check (MISSING_GATES_JOB). No host
 setting is read (decision 6 of the quality assurance stage): that a change
 merged with that check passing, and with the reviews it needed, is

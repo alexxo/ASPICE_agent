@@ -29,6 +29,7 @@ from product_builder import (
     open_delivery,
     prepare_delivery,
     pull_request,
+    record_stages_done,
     review,
     write_all_code,
     write_all_integration_tests,
@@ -66,6 +67,18 @@ def git(root, *args):
     ).stdout
 
 
+DONE_BY_THE_AGENT = (
+    "architecture",
+    "detailed_design",
+    "unit_tests",
+    "unit_construction",
+    "integration_verification",
+    "software_verification",
+    "quality_assurance",
+    STAGE,
+)
+
+
 @pytest.fixture(scope="module")
 def built(tmp_path_factory):
     """Where stage 9 begins, every commit by convention; copied for each test."""
@@ -87,6 +100,8 @@ def built(tmp_path_factory):
     ):
         write(root)
         commit_all(root, message)
+    record_stages_done(root, *DONE_BY_THE_AGENT)
+    commit_all(root, "docs(approvals): stages 3 to 10 done REQ-0047")
     prepare_delivery(root, work, ref="#1")
     return root
 
@@ -152,12 +167,12 @@ def test_a_delivery_by_convention_passes_stages_10_and_11(product):
     assert state["done"][-3:] == ["quality_assurance", STAGE, "validation"]
 
 
-def test_a_commit_off_the_convention_holds_the_product_at_stage_10(product, tmp_path, monkeypatch):
+def test_a_commit_off_the_convention_fails_whatever_the_stage(product, tmp_path, monkeypatch):
     commit_all(product, "wip")
     write_report(read_product_config(product))
     monkeypatch.setenv("QF_HOST_FILE", str(open_delivery(product, tmp_path, reviewers=(AGENT,))))
-    assert _state(product) == (
-        STAGE,
+    assert _state(product) == (  # the commit conventions are an always-on gate
+        None,
         "gates_failing",
         ["MISSING_REQUIREMENT_TOKEN", "NOT_CONVENTIONAL"],
     )

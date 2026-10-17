@@ -12,7 +12,16 @@ from pathlib import Path
 
 from tools.read_yaml_blocks_tool import read_yaml_file
 
-__all__ = ["MANIFEST", "Stage", "UnknownStage", "flow_stages", "read_stages", "stage"]
+__all__ = [
+    "MANIFEST",
+    "Stage",
+    "UnknownStage",
+    "always_gates",
+    "host_gates",
+    "flow_stages",
+    "read_stages",
+    "stage",
+]
 
 MANIFEST = Path(__file__).resolve().parent / "stages.yaml"
 
@@ -62,6 +71,18 @@ def read_stages() -> tuple[Stage, ...]:
         )
         for s in data["stages"]
     )
+
+
+@cache
+def always_gates() -> tuple[str, ...]:
+    """The gates that run on every change, whatever stage the product is in."""
+    return tuple(read_yaml_file(MANIFEST).get("always_gates") or ())
+
+
+@cache
+def host_gates() -> tuple[str, ...]:
+    """The always-on gates that read the code host, so they need one configured."""
+    return tuple(read_yaml_file(MANIFEST).get("host_gates") or ())
 
 
 def flow_stages() -> tuple[Stage, ...]:

@@ -22,6 +22,7 @@ from agent.count_retries_tool import decide, record_attempt
 from agent.load_skills_tool import load_skills
 from agent.read_stages_tool import stage
 from agent.record_checkpoint_tool import record_checkpoint
+from agent.record_stage_done_tool import record_stage_done
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import reached_gates, run_gates
 
@@ -46,8 +47,8 @@ def _requirements_approved(repo_root, product):
 def _stack_written(repo_root, product):
     """Steps 3–7 up to checkpoint 3: the stack and its decision record."""
     state = resolve_stage(product)
-    assert (state["stage"], state["status"]) == ("architecture", "gates_failing")
-    assert [f["rule"] for f in state["findings"]] == ["MISSING_STACK"]
+    assert (state["stage"], state["status"]) == ("architecture", "in_progress")
+    assert [f["rule"] for f in state["reported"]] == ["MISSING_STACK"]
     assert state["done"] == ["diagram", "requirements"]
 
     loaded = load_skills(product, "architecture")
@@ -69,8 +70,8 @@ def _stack_approved(repo_root, product):
     record_checkpoint(product, 3, "approved", "Example Architect", "architect")
     commit_all(product, "stack approved at checkpoint 3")
     state = resolve_stage(product)
-    assert (state["stage"], state["status"]) == ("architecture", "gates_failing")
-    assert [f["rule"] for f in state["findings"]] == ["NO_ARCHITECTURE"] * 2  # design + testability
+    assert (state["stage"], state["status"]) == ("architecture", "in_progress")
+    assert [f["rule"] for f in state["reported"]] == ["NO_ARCHITECTURE"] * 2  # design + testability
 
 
 def _attempts(repo_root, product, outputs):
@@ -99,8 +100,13 @@ def test_an_approved_stack_and_a_passing_design_move_the_product_on(repo_root, p
     decision = _attempts(repo_root, product, ["correct"])
     assert decision["decision"] == "pass"
     state = resolve_stage(product)
-    assert (state["stage"], state["status"]) == ("detailed_design", "gates_failing")
-    assert [f["rule"] for f in state["findings"]] == ["NO_DETAILED_DESIGN"]
+    assert (state["stage"], state["status"]) == ("architecture", "in_progress")
+    assert "record_stage_done_tool" in state["reason"]
+    commit_all(product, "architecture designed")
+    record_stage_done(product, "architecture")
+    state = resolve_stage(product)
+    assert (state["stage"], state["status"]) == ("detailed_design", "in_progress")
+    assert [f["rule"] for f in state["reported"]] == ["NO_DETAILED_DESIGN"]
     assert state["done"] == ["diagram", "requirements", "architecture"]
 
 

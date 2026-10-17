@@ -21,11 +21,14 @@
 # (seal 4). release.yml tags an accepted release after its merge.
 #
 # CI needs no plugin: plugins are tools the agent uses on the person's machine to
-# produce work; the gates check the work and use none. The gates run for every
-# stage the product has reached (resolve_stage_tool --check, which also fails on
-# an invalid qf.yaml): a product still at its diagram is not failed for having no
-# requirements yet, and the gates of every stage already passed keep running, so
-# a later change cannot silently break them.
+# produce work; the gates check the work and use none. resolve_stage_tool --check
+# fails on the always-on gates, which guard every change whatever the stage, on
+# every stage finished once (a checkpoint approved, or a stage done record), so a
+# later change cannot silently break it, on a missing seal 4 or 5, and on an
+# invalid qf.yaml. The current stage is work in progress: its findings are
+# reported, not failed, so a framework bump or a stage split over several pull
+# requests passes; while a release is proposed, every stage is enforced. The
+# gates that did not run are listed in the run's summary, with the reason.
 #
 # From the unit stages on, the gates run the product's own commands — the checks
 # and the unit suite of its stack — and read the pull request's commits since the
@@ -91,10 +94,24 @@ jobs:
       - name: Write the verification report
         run: python .framework/tools/write_verification_report_tool.py --root .
 
-      - name: Quality gates of every stage reached
+      - name: Quality gates
         env:
           QF_HOST_TOKEN: ${{ github.token }}
-        run: python .framework/agent/resolve_stage_tool.py --root . --check
+        run: |
+          set -o pipefail
+          mkdir -p .qf
+          python .framework/agent/resolve_stage_tool.py --root . --check | tee .qf/stage.json
+
+      - name: Show the gates not run
+        if: always()
+        run: |
+          python - >> "$GITHUB_STEP_SUMMARY" <<'EOF' || true
+          import json
+          state = json.load(open(".qf/stage.json"))
+          print("## Gates not run\n")
+          for entry in state["not_run"]:
+              print(f"- {entry['gate']} — {entry['reason']}")
+          EOF
 
       - name: Show the verification report
         if: always()

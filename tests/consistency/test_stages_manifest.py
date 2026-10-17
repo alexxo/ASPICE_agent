@@ -9,7 +9,7 @@ import json
 
 import pytest
 
-from agent.read_stages_tool import read_stages
+from agent.read_stages_tool import always_gates, host_gates, read_stages
 
 pytestmark = pytest.mark.layer2
 
@@ -67,3 +67,14 @@ def test_an_implemented_stage_has_gates():
     for s in read_stages():
         if s.implemented:
             assert s.gates, f"{s.id} is implemented but has no gate"
+
+
+def test_every_always_on_gate_exists_and_belongs_to_no_stage(repo_root):
+    staged = {g for s in read_stages() for g in (*s.built_gates, *s.planned_gates)}
+    for gate in always_gates():
+        assert list(repo_root.glob(f"gates/*/{gate}.py")), f"always-on gate {gate} not found"
+        assert gate not in staged, f"{gate} is always-on and also a stage's gate"
+
+
+def test_the_host_gates_are_always_on_gates():
+    assert set(host_gates()) <= set(always_gates())

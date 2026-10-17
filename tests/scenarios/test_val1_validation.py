@@ -33,6 +33,7 @@ from product_builder import (
     open_delivery,
     prepare_delivery,
     pull_request,
+    record_stages_done,
     review,
     write_all_code,
     write_all_integration_tests,
@@ -75,6 +76,18 @@ def git(root, *args):
     ).stdout
 
 
+DONE_BY_THE_AGENT = (
+    "architecture",
+    "detailed_design",
+    "unit_tests",
+    "unit_construction",
+    "integration_verification",
+    "software_verification",
+    "quality_assurance",
+    "configuration_management",
+)
+
+
 @pytest.fixture(scope="module")
 def built(tmp_path_factory):
     """Where stage 10 ends, every wish with its scenario; copied for each test."""
@@ -96,6 +109,8 @@ def built(tmp_path_factory):
     ):
         write(root)
         commit_all(root, message)
+    record_stages_done(root, *DONE_BY_THE_AGENT)
+    commit_all(root, "docs(approvals): stages 3 to 10 done REQ-0047")
     prepare_delivery(root, work, ref="#1")
     return root
 
@@ -111,7 +126,8 @@ def product(built, tmp_path, monkeypatch):
 
 def _state(root):
     state = resolve_stage(root)
-    return state["stage"], state["status"], sorted({f["rule"] for f in state["findings"]})
+    found = state["findings"] + state["reported"]
+    return state["stage"], state["status"], sorted({f["rule"] for f in found})
 
 
 def _merge(root, branch, number):
@@ -193,7 +209,8 @@ def test_a_wish_without_a_scenario_holds_the_delivery_at_stage_11(product, tmp_p
     commit_all(product, "test(validation): drop the demo REQ-0047")
     write_report(read_product_config(product))
     monkeypatch.setenv("QF_HOST_FILE", str(open_delivery(product, tmp_path, reviewers=(AGENT,))))
-    assert _state(product) == (STAGE, "gates_failing", ["MISSING_SCENARIO"])
+    # before the first release the stage is in progress; a proposed release enforces it
+    assert _state(product) == (STAGE, "in_progress", ["MISSING_SCENARIO"])
 
 
 def test_a_release_is_validated_and_waits_for_the_customer(product, tmp_path, monkeypatch, capsys):

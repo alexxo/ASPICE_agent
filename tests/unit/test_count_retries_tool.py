@@ -66,3 +66,24 @@ def test_a_stage_number_and_its_id_share_one_counter(tmp_path, capsys):
     assert main(["decide", "--stage", "1", "--root", str(tmp_path)]) == 0
     assert '"attempts": 1' in capsys.readouterr().out
     assert main(["decide", "--stage", "nine", "--root", str(tmp_path)]) == 2
+
+
+def test_passing_attempts_do_not_use_up_the_budget(tmp_path):
+    for _ in range(3):
+        record_attempt(tmp_path, "diagram", PASS)
+    assert decide(tmp_path, "diagram")["retries_left"] == MAX_RETRIES
+    record_attempt(tmp_path, "diagram", _fail(4))
+    state = decide(tmp_path, "diagram")
+    assert (state["decision"], state["retries_left"]) == ("retry", MAX_RETRIES)
+
+
+def test_a_pass_starts_a_new_round(tmp_path):
+    for n in range(1, 4):
+        record_attempt(tmp_path, "diagram", _fail(n))
+    record_attempt(tmp_path, "diagram", PASS)
+    for n in range(5, 9):
+        record_attempt(tmp_path, "diagram", _fail(n))
+    state = decide(tmp_path, "diagram")
+    assert (state["decision"], state["attempts"]) == ("escalate", 8)
+    report = (tmp_path / state["escalation_report"]).read_text()
+    assert "attempt 5" in report and "attempt 3" not in report

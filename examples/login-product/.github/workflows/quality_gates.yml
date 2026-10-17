@@ -1,0 +1,126 @@
+# quality_gates.yml — the Quality Framework's gates in a product's CI.
+#
+# Copy to .github/workflows/quality_gates.yml in the product. Nothing needs
+# configuring on the code host: every pull request runs the gates, and every
+# push to the main branch checks that each change it adds came through a merged
+# pull request that passed the gates and had its reviews — whoever wrote it, a
+# person or an agent — and that the push rewrote no history. A finding there
+# blocks the next release until the change is reverted or reviewed.
+#
+# The framework is the product's git submodule at qf.yaml paths.framework_dir
+# (.framework here), pinned to a released commit: the version the gates run at
+# changes only through a pull request of the product, and
+# verify_framework_integrity_gate checks the pin. If the framework repository is
+# private, give the checkout a token that can read it.
+#
+# From the quality assurance stage on, the gates read the code host — pull
+# requests, their reviews and checks, issues — with the token every run has
+# (QF_HOST_TOKEN is github.token, with the read permissions below); no secret
+# and no host setting is needed. A submitted or dismissed review runs the gates
+# again, so a sampled pull request turns green once a person approves it
+# (seal 4). release.yml tags an accepted release after its merge.
+#
+# CI needs no plugin: plugins are tools the agent uses on the person's machine to
+# produce work; the gates check the work and use none. resolve_stage_tool --check
+# fails on the always-on gates, which guard every change whatever the stage, on
+# every stage finished once (a checkpoint approved, or a stage done record), so a
+# later change cannot silently break it, on a missing seal 4 or 5, and on an
+# invalid qf.yaml. The current stage is work in progress: its findings are
+# reported, not failed, so a framework bump or a stage split over several pull
+# requests passes; while a release is proposed, every stage is enforced. The
+# gates that did not run are listed in the run's summary, with the reason.
+#
+# From the unit stages on, the gates run the product's own commands — the checks
+# and the unit suite of its stack — and read the pull request's commits since the
+# base branch: the job checks out the whole history, passes the base as QF_BASE,
+# and installs the product's toolchain before the gates run. The verification
+# report of the tree is written first — every suite runs once and the gates
+# reuse the runs — shown as the run's summary and kept as an artifact.
+#
+# A suite whose stack entry declares run_selected, at a level whose plan section
+# says on_change: selected, runs only the tests traced to the pull request's
+# change since its base branch (QF_BASE; decisions 30–32 of the unit stages).
+# Every test runs on main after a merge, while a release is proposed, and on a
+# run started by hand (QF_RUN=full):
+#   gh workflow run quality-gates
+name: quality-gates
+
+on:
+  pull_request:
+  pull_request_review:
+    types: [submitted, dismissed]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  issues: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    env:
+      QF_BASE: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
+      QF_RUN: ${{ github.event_name == 'workflow_dispatch' && 'full' || '' }}
+    steps:
+      - name: Check out the product and its pinned framework, with its history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Refuse to run without the pinned framework
+        run: |
+          test -f .framework/agent/resolve_stage_tool.py || {
+            echo "Add the framework as a git submodule at .framework, pinned to a release." >&2
+            exit 1
+          }
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the framework's runtime dependencies
+        run: pip install -r .framework/requirements.txt
+
+      # Replace with the product's own toolchain: the commands of its stack
+      # (paths.stack_file) must run here, e.g. actions/setup-java plus Maven.
+      - name: Install the product's toolchain
+        run: echo "Install the tools the stack's commands need." >&2
+
+      - name: Write the verification report
+        run: python .framework/tools/write_verification_report_tool.py --root .
+
+      - name: Quality gates
+        env:
+          QF_HOST_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          mkdir -p .qf
+          python .framework/agent/resolve_stage_tool.py --root . --check | tee .qf/stage.json
+
+      - name: Show the gates not run
+        if: always()
+        run: |
+          python - >> "$GITHUB_STEP_SUMMARY" <<'EOF' || true
+          import json
+          state = json.load(open(".qf/stage.json"))
+          print("## Gates not run\n")
+          for entry in state["not_run"]:
+              print(f"- {entry['gate']} — {entry['reason']}")
+          EOF
+
+      - name: Show the verification report
+        if: always()
+        run: cat .qf/runs/*/report.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+
+      - name: Keep the verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-report
+          path: .qf/runs/*/report.*
+          if-no-files-found: ignore

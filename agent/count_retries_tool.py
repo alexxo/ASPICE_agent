@@ -1,9 +1,11 @@
-"""Count a stage's attempts: the first run plus 3 retries, then the architect.
+"""Count a stage's attempts: the first run plus 3 retries in a row, then the architect.
 
 Every attempt's gate results are logged to .qf/attempts/<stage>/attempt-<n>.json
 in the product (ignored by git), so the agent can resume and the escalation
-carries the findings of every attempt. After the fourth failing attempt the
-decision is escalate, and an escalation report for the architect is written
+carries the findings of every attempt of the round. Only consecutive failing
+attempts count: an attempt whose gates pass ends the round, so the next failure
+starts a new one with the full budget. After the fourth failing attempt in a row
+the decision is escalate, and an escalation report for the architect is written
 next to the log.
 
     python agent/count_retries_tool.py record --stage ID [--root PRODUCT] < results.json
@@ -54,13 +56,14 @@ def decide(root: Path, stage_id: str) -> dict:
     state = {"stage": stage_id, "attempts": len(attempts), "escalation_report": None}
     if not attempts:
         return {**state, "decision": "run", "retries_left": MAX_RETRIES}
-    if all(r["result"] == "pass" for r in attempts[-1]):
-        return {**state, "decision": "pass", "retries_left": MAX_RETRIES - (len(attempts) - 1)}
-    retries_used = len(attempts) - 1
+    if _passed(attempts[-1]):
+        return {**state, "decision": "pass", "retries_left": MAX_RETRIES}
+    round_ = _round(attempts)
+    retries_used = len(round_) - 1
     if retries_used < MAX_RETRIES:
         return {**state, "decision": "retry", "retries_left": MAX_RETRIES - retries_used}
     report = _dir(root, stage_id) / "escalation.md"
-    report.write_text(_report(stage_id, attempts), encoding="utf-8")
+    report.write_text(_report(stage_id, round_), encoding="utf-8")
     return {
         **state,
         "decision": "escalate",
@@ -69,19 +72,31 @@ def decide(root: Path, stage_id: str) -> dict:
     }
 
 
+def _passed(results: list[dict]) -> bool:
+    return all(r["result"] == "pass" for r in results)
+
+
+def _round(attempts: list[list[dict]]) -> list[tuple[int, list[dict]]]:
+    """The failing attempts since the last passing one, with their numbers."""
+    numbered = list(enumerate(attempts, start=1))
+    last_pass = max((n for n, results in numbered if _passed(results)), default=0)
+    return numbered[last_pass:]
+
+
 def reset(root: Path, stage_id: str) -> None:
     """Start a new round, after the architect has fixed the work or given guidance."""
     shutil.rmtree(_dir(root, stage_id), ignore_errors=True)
 
 
-def _report(stage_id: str, attempts: list[list[dict]]) -> str:
+def _report(stage_id: str, round_: list[tuple[int, list[dict]]]) -> str:
     lines = [
         f"# Escalation — stage {stage_id}",
         "",
-        f"The gates still fail after the first run and {MAX_RETRIES} retries. Fix the work, "
-        "give guidance for another round, or stop. Findings of every attempt:",
+        f"The gates still fail after the first run and {MAX_RETRIES} retries in a row. Fix "
+        "the work, give guidance for another round, or stop. Findings of every attempt of "
+        "the round:",
     ]
-    for number, results in enumerate(attempts, start=1):
+    for number, results in round_:
         lines += ["", f"## Attempt {number}", ""]
         for gate in results:
             for f in gate["findings"]:

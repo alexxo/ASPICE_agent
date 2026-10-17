@@ -513,9 +513,15 @@ def build_product(
         _write_detailed_design(root, detailed_design)
     if env_variables is not None:
         (docs / "configuration.md").write_text(_blocks("env_variable", env_variables))
+    ci = root / (qf if qf is not None else QF)["paths"].get("ci_file", QF["paths"]["ci_file"])
+    ci.parent.mkdir(parents=True, exist_ok=True)
+    ci.write_text(CI_TEMPLATE.read_text())  # the setup writes it: the always-on gates need it
     if git:
         commit_all(root, "product as built")
     return root
+
+
+CI_TEMPLATE = Path(__file__).resolve().parents[1] / "templates/github/quality_gates.yml"
 
 
 def baseline_requirements() -> dict[str, list[dict]]:
@@ -548,6 +554,27 @@ def build_installed_product(root: Path, **parts) -> Path:
     build_product(root, **parts)
     install_plugins(root)
     return Path(root)
+
+
+def record_stages_done(root: Path, *stage_ids: str) -> None:
+    """The stage done records of the stages finished before a scenario starts, as
+    the agent writes them (record_stage_done_tool) when a stage's gates first pass."""
+    import subprocess
+
+    from agent.read_stages_tool import stage
+    from tools.read_product_config_tool import read_product_config
+
+    commit = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+    ).stdout.strip()
+    folder = read_product_config(root).approvals_dir
+    folder.mkdir(parents=True, exist_ok=True)
+    for stage_id in stage_ids:
+        s = stage(stage_id)
+        record = {"stage": s.id, "number": s.number, "date": "2026-10-04T08:00:00+00:00"}
+        record["commit"] = commit
+        name = f"2026-10-04T0800{s.number:02d}Z-stage-{s.number}-done.yaml"
+        (folder / name).write_text(yaml.safe_dump(record, sort_keys=False))
 
 
 def commit_all(root: Path, message: str) -> None:

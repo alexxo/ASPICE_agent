@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/stage_done_contract.v1.schema.json",
+  "title": "stage_done.v1",
+  "description": "The record that a stage without a closing checkpoint was finished once: its gates passed. One YAML file in the approvals directory, written by the agent, no person needed. From then on the stage is enforced: a change that breaks its work fails CI. It never goes outdated; it says the stage was finished once.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "stage",
+    "number",
+    "date",
+    "commit"
+  ],
+  "properties": {
+    "stage": {
+      "description": "The stage's id in agent/stages.yaml, e.g. unit_tests.",
+      "type": "string",
+      "pattern": "^[a-z]+(_[a-z]+)*$"
+    },
+    "number": {
+      "description": "The stage's number in agent/stages.yaml.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 13
+    },
+    "date": {
+      "description": "When the record was written: ISO 8601 with an offset.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "commit": {
+      "description": "The product's commit the stage's gates passed on.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    }
+  }
+}

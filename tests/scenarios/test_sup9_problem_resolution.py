@@ -28,6 +28,7 @@ from product_builder import (
     open_delivery,
     prepare_delivery,
     problem,
+    record_stages_done,
     write_all_code,
     write_all_integration_tests,
     write_all_scenarios,
@@ -55,6 +56,18 @@ def _no_ci_base(monkeypatch):
     monkeypatch.delenv("QF_BASE", raising=False)
 
 
+DONE_BY_THE_AGENT = (
+    "architecture",
+    "detailed_design",
+    "unit_tests",
+    "unit_construction",
+    "integration_verification",
+    "software_verification",
+    "quality_assurance",
+    "configuration_management",
+)
+
+
 @pytest.fixture(scope="module")
 def built(tmp_path_factory):
     """Where the flow ends, every wish with its scenario; copied for each test."""
@@ -76,6 +89,8 @@ def built(tmp_path_factory):
     ):
         write(root)
         commit_all(root, message)
+    record_stages_done(root, *DONE_BY_THE_AGENT)
+    commit_all(root, "docs(approvals): stages 3 to 10 done REQ-0047")
     prepare_delivery(root, work, ref="#1")
     unit = root / UNIT
     unit.write_text(unit.read_text().replace(SOUND, CRACKED))

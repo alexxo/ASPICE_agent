@@ -20,7 +20,13 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from agent.read_stages_tool import Stage, UnknownStage, read_stages, stage  # noqa: E402
+from agent.read_stages_tool import (  # noqa: E402
+    Stage,
+    UnknownStage,
+    always_gates,
+    read_stages,
+    stage,
+)
 from agent.record_checkpoint_tool import current_approval  # noqa: E402
 from tools.emit_findings_tool import Finding, result  # noqa: E402
 from tools.read_product_config_tool import ConfigError, read_product_config  # noqa: E402
@@ -97,7 +103,8 @@ def main(argv: list[str] | None = None) -> int:
     which.add_argument("--all", action="store_true", help="run every implemented gate")
     args = parser.parse_args(argv)
     if args.all:
-        gates = [g for s in read_stages() if s.implemented for g in s.built_gates]
+        gates = [*always_gates()]
+        gates += [g for s in read_stages() if s.implemented for g in s.built_gates]
     else:
         try:
             chosen = stage(args.stage)

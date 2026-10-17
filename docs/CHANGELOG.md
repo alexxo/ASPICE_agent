@@ -35,6 +35,24 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.5.0] - unreleased
+
+CI checks every change by the rules that apply to it, and only for what it contains: the always-on gates run from the setup on, a finished stage stays enforced, the current stage is work in progress.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Replace the gates step with the template's two steps *Quality gates* and *Show the gates not run* | `.github/workflows/quality_gates.yml` | optional — the old step still runs the gates; the new one lists the gates not run in the run's summary |
+| For every stage from 3 to 10 the product has already passed, record it as done: `python .framework/agent/record_stage_done_tool.py --stage <stage> --root .`, in order, and commit the records | `paths.approvals_dir` | required for a product past stage 3 — until then the resolver stops at the first such stage, as work in progress |
+
+### Changed
+
+- **The always-on gates.** `verify_framework_integrity_gate`, `verify_required_checks_gate`, `check_framework_feedback_gate`, `verify_delivery_reviewed_gate`, `check_commit_conventions_gate` and `verify_history_kept_gate` moved out of stages 9 and 10 into `agent/stages.yaml always_gates`: they run on every pull request and every push to the main branch from the setup on, whatever stage the product is in. A pin, CI file or `qf.yaml` change needs a person's approval from the first pull request on. The two that read the code host (`host_gates`) run where one is configured — always in CI — and are listed as not run, reason *no_host*, without one. Design document § 5 *What CI fails on*, Appendix A.1. Origin: FB-12 (wp_publisher).
+- **Only finished stages fail CI.** A stage is finished once its checkpoint has been approved, or, for a stage without a closing checkpoint, once its stage done record exists (`stage_done.v1`, written by the new `agent/record_stage_done_tool.py` when its gates first pass); breaking a finished stage fails CI. The current stage is work in progress: `resolve_stage_tool` reports its findings under `reported`, status *in_progress*, and CI does not fail on them; its checkpoint and the release still need them gone, and while a release is proposed every stage is enforced. A framework bump, a tooling or documentation change, a stage split over several pull requests and a checkpoint approval committed with its stage's work all pass. `run_aspice_agent.md` says when to record a stage and where an approval is committed. Origin: FB-13, FB-15 (wp_publisher).
+- **Every gate not run is reported.** `not_run` lists each gate with its reason — *stage_not_reached*, *planned* or *no_host* — and the CI template prints the list in the run's summary. Origin: FB-12 (wp_publisher).
+- **Only failing attempts in a row count.** `count_retries_tool` ends a round at a passing attempt, so passing runs and changes asked for after a pass no longer use up the retry budget; the escalation report holds the attempts of the round. Origin: FB-14 (wp_publisher).
+
 ## [1.4.0] - 2026-10-16
 
 Diagrams at two levels: the picture at a glance gives the system-level requirements, each feature's sequence diagram the software-level ones.

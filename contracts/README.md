@@ -30,6 +30,7 @@ versioned in its name, with valid and invalid examples under `examples/<name>/`.
 | `change_request.v1` | One change request (SUP.10 BP1, BP2, BP4): what, initiator, reason, status; then the affected wishes, diagram elements and requirements, dependencies, size, the problem that caused it | A fenced `yaml change_request` block in the body of a host issue labelled *change-request*; its commits name it `#<n>` | check_change_record_gate, verify_change_approval_gate, verify_change_trace_gate, verify_change_closure_gate |
 | `env_variable.v1` | One environment variable the code reads (principle #23): description, required, example, valid values | A fenced `yaml env_variable` block in `paths.env_variables_file`, written with the detailed design | check_detailed_design_contract_gate, check_env_config_gate |
 | `approval.v1` | One human decision at a checkpoint | One YAML file under `paths.approvals_dir` | verify_diagram_approval_gate, verify_requirements_approval_gate, checkpoint recorder |
+| `stage_done.v1` | The record that a stage without a closing checkpoint was finished once: its gates passed (§ 5 *What CI fails on*) | One YAML file `<date>-stage-<n>-done.yaml` under `paths.approvals_dir`, written by the agent | resolve_stage_tool, record_stage_done_tool |
 | `findings.v1` | A gate's result | JSON on the gate's stdout | Gate runner, retry policy |
 
 ## Rules

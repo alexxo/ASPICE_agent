@@ -23,6 +23,7 @@ from agent.count_retries_tool import decide, record_attempt
 from agent.load_skills_tool import load_skills
 from agent.read_stages_tool import stage
 from agent.record_checkpoint_tool import record_checkpoint
+from agent.record_stage_done_tool import record_stage_done
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import reached_gates, run_gates
 
@@ -48,9 +49,11 @@ def _architecture_done(repo_root, product):
     commit_all(product, "stack approved at checkpoint 3")
     _write(repo_root, product, "architecture/correct")
     commit_all(product, "architecture written")
+    record_stage_done(product, "architecture")
+    commit_all(product, "architecture recorded as done")
     state = resolve_stage(product)
-    assert (state["stage"], state["status"]) == ("detailed_design", "gates_failing")
-    assert [f["rule"] for f in state["findings"]] == ["NO_DETAILED_DESIGN"]
+    assert (state["stage"], state["status"]) == ("detailed_design", "in_progress")
+    assert [f["rule"] for f in state["reported"]] == ["NO_DETAILED_DESIGN"]
     assert state["done"] == ["diagram", "requirements", "architecture"]
 
 
@@ -90,9 +93,10 @@ def test_a_passing_design_moves_the_product_to_stage_5(repo_root, product):
     decision = _attempts(product, repo_root, ["correct"])
     assert decision["decision"] == "pass"
     commit_all(product, "detailed design written")
+    record_stage_done(product, "detailed_design")
     state = resolve_stage(product)
-    assert (state["stage"], state["status"]) == ("unit_tests", "gates_failing")
-    rules = {f["rule"] for f in state["findings"]}
+    assert (state["stage"], state["status"]) == ("unit_tests", "in_progress")
+    rules = {f["rule"] for f in state["reported"]}
     assert {"MISSING_VERIFICATION_PLAN", "MISSING_UNIT_TEST"} <= rules  # stage 5 is due
     assert state["done"] == ["diagram", "requirements", "architecture", "detailed_design"]
 
