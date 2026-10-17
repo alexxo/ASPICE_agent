@@ -477,8 +477,8 @@ def build_product(
     The architecture (stack, decision records, components and interfaces) is
     written only when one of architecture, stack or decisions is given — the
     baseline is a product at the end of SWE.1. Every diagram gets a stand-in
-    picture, as the diagram plugin renders it, and both review pages are
-    rendered by the framework's tool (pictures, review_pages: False leaves them out).
+    picture, as the diagram plugin renders it, and the requirements review page
+    is rendered by the framework's tool (pictures, review_pages: False leaves them out).
     """
     root = Path(root)
     docs = root / "docs"
@@ -541,15 +541,14 @@ def write_picture(spec: Path) -> Path:
 
 
 def render_reviews(root: Path) -> None:
-    """Both review pages, as the agent renders them before checkpoints 1 and 2."""
+    """The requirements review page, as the agent renders it before checkpoint 2."""
     from agent.render_review_tool import render_review
     from tools.read_product_config_tool import ConfigError
 
-    for checkpoint in (1, 2):
-        try:
-            render_review(root, checkpoint)
-        except ConfigError:  # a product built with a broken qf.yaml has no pages
-            return
+    try:
+        render_review(root)
+    except ConfigError:  # a product built with a broken qf.yaml has no page
+        return
 
 
 def baseline_requirements() -> dict[str, list[dict]]:

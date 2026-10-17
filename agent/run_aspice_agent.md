@@ -119,12 +119,13 @@ they name — the rule, the file and the line are in every finding.
 
 **Stages 1 and 2, what the person reads.** At stage 1 the diagram plugin
 renders every diagram's picture next to it (*&lt;id&gt;.&lt;type&gt;.html*);
-commit the picture with the diagram, never one without the other. Once the
-work is written, at both stages, render the checkpoint's review page — never
-write it by hand — and commit it with the work:
-`python <framework>/agent/render_review_tool.py --checkpoint 1|2 --root <product>`.
+commit the picture with the diagram, never one without the other. At stage 2,
+once the requirements are written, render their review page — never write it
+by hand — and commit it with the work:
+`python <framework>/agent/render_review_tool.py --root <product>`.
 Render it again after every change, a retry's included: the gates compare it
-with what the files render now.
+with what the files render now, and an approval on a page they no longer
+render is refused.
 
 **Stage 9, the delivery desk.** The work is not yours to judge. Push the branch
 and open its pull request with the host's tool (e.g. `gh pr create`); wait for
@@ -222,9 +223,10 @@ it. Until then CI stays red on the release pull request, so it cannot merge
 before the village accepts. Commit the decision to the pull request.
 
 For the other checkpoints, show the person the work product of the stage and
-ask for their decision. At checkpoints 1 and 2 that is the review page (step
-6): give them its path, with the pictures it links, not the raw files.
-What it marks changed is what changed since their previous approval. Then record it — never record a decision the person did
+ask for their decision. At checkpoint 1 that is the diagrams' pictures, at
+checkpoint 2 the review page (step 6): give them the full paths, not the raw
+files. What the page marks changed is what changed since their previous
+approval, and it names the diagrams changed since then. Then record it — never record a decision the person did
 not give:
 
 `python <framework>/agent/record_checkpoint_tool.py --checkpoint <n> --decision approved|changes-requested --approver <name> --role <role> [--comment <text>] --root <product>`
@@ -237,8 +239,10 @@ not give:
   to the diagram stage.
 
 The approval records the SHA-256 of every file it covers — at checkpoints 1
-and 2 the pictures and the review page too, so it covers what the person saw. If any of them changes
-later, the approval no longer counts and step 3 sends the product back here.
+and 2 the pictures and the review page too, so it covers what the person saw;
+at checkpoint 2 also the diagrams the requirements are derived from. If any of
+them changes later, the approval no longer counts and step 3 sends the product
+back here: a changed diagram brings back checkpoint 1, then checkpoint 2.
 
 ## 9. Close
 

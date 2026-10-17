@@ -42,7 +42,7 @@ def _architecture_done(repo_root, product):
     target = product / "docs" / "requirements" / "login.md"
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(repo_root / OUTPUTS / "requirements" / "correct" / "login.md", target)
-    render_review(product, 2)
+    render_review(product)
     record_checkpoint(product, 2, "approved", "Example Architect", "architect", now=APPROVED)
     commit_all(product, "requirements approved at checkpoint 2")
     _write(repo_root, product, "architecture/stack")

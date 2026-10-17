@@ -46,7 +46,7 @@ def test_an_approval_of_older_diagram_content_is_reported(product):
     _approve(product)
     spec = product / "docs/diagrams/login.sequence.json"
     spec.write_text(spec.read_text().replace("submit", "send"))
-    assert _rules(product) == ["APPROVAL_OUTDATED", "REVIEW_PAGE_OUTDATED"]
+    assert _rules(product) == ["APPROVAL_OUTDATED"]
 
 
 def test_an_approval_given_after_the_requirements_is_reported(product):
@@ -76,23 +76,7 @@ def test_a_later_commit_of_the_requirements_keeps_their_first_date(product):
     assert _rules(product) == []
 
 
-def test_diagrams_without_their_review_page_are_reported(tmp_path):
+def test_the_diagrams_need_no_review_page(tmp_path):
+    """The person reviews the diagrams on their pictures (§ 5 stages 1 and 2, rule 22)."""
     root = build_product(tmp_path, requirements={}, review_pages=False, git=False)
-    assert _rules(root) == ["MISSING_REVIEW_PAGE"]
-
-
-def test_a_review_page_edited_by_hand_is_reported(tmp_path):
-    root = build_product(tmp_path, requirements={}, git=False)
-    page = root / "docs/diagrams/review.html"
-    page.write_text(page.read_text().replace("Web app", "Website"))
-    (finding,) = check(read_product_config(root))
-    assert (finding.rule, finding.file) == ("REVIEW_PAGE_OUTDATED", "docs/diagrams/review.html")
-
-
-def test_an_approved_review_page_is_held_by_the_approval(product, monkeypatch):
-    """A later framework version may render differently: the approval still counts."""
-    from agent import render_review_tool
-
-    _approve(product)
-    monkeypatch.setattr(render_review_tool, "PAGE", render_review_tool.PAGE + "<!-- v2 -->\n")
-    assert _rules(product) == []
+    assert _rules(root) == []

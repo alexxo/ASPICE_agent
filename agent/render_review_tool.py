@@ -1,30 +1,35 @@
-"""Render the review page a person reads before checkpoint 1 or 2.
+"""Render the requirements review page a person reads before checkpoint 2.
 
-    checkpoint 1   <diagrams_dir>/review.html       every diagram's elements, invariants
-                                                    and wish links, next to its picture
-    checkpoint 2   <requirements_dir>/review.html   every requirement, each system-level
-                                                    one followed by the software-level ones
-                                                    refining it, and the glossary terms
+<requirements_dir>/review.html shows every requirement, each system-level one
+(shaded) followed by the software-level ones refining it (indented), then the
+glossary terms. Every field of every record is shown; glossary terms are in
+italics, each acceptance criterion coloured by its case, a threshold in bold.
 
-Every field of every record is shown. What is new, changed or removed is marked
-against the previous approval of the same checkpoint: the latest approval of
-other content than the page shows, its files read from git at the commit that
-added it. At the first approval nothing is marked.
+What is new, changed or removed is marked against the previous approval of
+checkpoint 2: the latest approval of other content than the page shows, its
+files read from git at the commit that added it. A changed row marks the words
+removed and added; a summary counts the changes and names the diagram files
+changed since that approval, which the requirements are derived from. At the
+first approval nothing is marked.
 
 The page depends only on the files it shows and that commit — no clock, no
-machine, a fixed order — so the checkpoint's approval gate renders it again and
-compares byte for byte (§ 5 stages 1 and 2, rules 22–24). The agent never writes
-it by hand; it renders it, and commits it, before the person reviews.
+machine, a fixed order — so the approval gate renders it again and compares
+byte for byte, and record_checkpoint_tool refuses an approval on a page the
+files no longer render (§ 5 stages 1 and 2, rules 22–25). The agent never
+writes it by hand; it renders it, and commits it, before the person reviews.
+The diagrams are reviewed on their pictures; they have no review page.
 
-    python agent/render_review_tool.py --checkpoint 1|2 [--root PRODUCT]
+    python agent/render_review_tool.py [--root PRODUCT]
 """
 
 from __future__ import annotations
 
 import argparse
 import dataclasses
+import difflib
 import html
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -34,7 +39,6 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from adapters.read_archify_diagram_adapter import read_archify_diagrams  # noqa: E402
 from tools.check_approval_order_tool import in_git  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_approvals_tool import approval_state, sha256, subject_files  # noqa: E402
@@ -49,65 +53,66 @@ from tools.validate_contract_tool import validate  # noqa: E402
 
 __all__ = ["render", "render_review", "review_page", "review_page_findings"]
 
-APPROVES = {1: "diagrams", 2: "requirements"}
 CONTRACTS = Path(__file__).resolve().parent.parent / "contracts"
-ELEMENT_FIELDS = ["id", "kind", "label", "from", "to", "wishes"]
+# The requirement's columns: one field each, then the measure, then every other field.
+COLUMNS = [
+    ("UID", ["uid"]),
+    ("Kind", ["kind"]),
+    ("Criticality", ["criticality"]),
+    ("Statement", ["statement"]),
+    ("Derived from", ["derived_from"]),
+    ("Acceptance criteria", ["acceptance_criteria"]),
+    ("Measure", ["metric", "threshold", "measurement_method", "events", "watched_by"]),
+]
 
 
-def review_page(config: ProductConfig, checkpoint: int) -> Path:
-    folder = config.diagrams_dir if checkpoint == 1 else config.requirements_dir
-    return folder / "review.html"
+def review_page(config: ProductConfig) -> Path:
+    return config.requirements_dir / "review.html"
 
 
-def render_review(root: Path, checkpoint: int) -> Path:
-    """Write the checkpoint's review page and return its path."""
+def render_review(root: Path) -> Path:
+    """Write the review page and return its path."""
     config = read_product_config(root)
-    page = review_page(config, _checked(checkpoint))
+    page = review_page(config)
     page.parent.mkdir(parents=True, exist_ok=True)
-    page.write_text(render(config, checkpoint), encoding="utf-8")
+    page.write_text(render(config), encoding="utf-8")
     return page
 
 
-def render(config: ProductConfig, checkpoint: int) -> str:
+def render(config: ProductConfig) -> str:
     """The review page's text, from the files as they are and the previous approval."""
-    _checked(checkpoint)
-    baseline, commit = _baseline(config, checkpoint)
+    baseline, commit, recorded = _baseline(config)
     old: list[dict] | None = None
     if commit is not None:
         with tempfile.TemporaryDirectory() as folder:
-            old = _model(_config_at(config, checkpoint, commit, Path(folder)), checkpoint)
-    if checkpoint == 1:
-        title, intro = "Checkpoint 1 — the diagrams", "Each diagram's picture, then every element."
-    else:
-        title, intro = (
-            "Checkpoint 2 — the requirements",
-            (
-                "Each system-level requirement, followed by the software-level ones refining it; "
-                "then the glossary."
-            ),
-        )
-    if commit is None:
-        against = "Nothing is marked: no earlier approval of this checkpoint to compare with."
-    else:
-        against = (
-            f"Marked against the previous approval, {html.escape(baseline)}, "
-            f"at commit <code>{commit}</code>."
-        )
-    sections = _model(config, checkpoint)
-    body = "".join(_section(s, old) for s in sections)
-    for section in old or []:  # a whole diagram or file removed since the approval
+            old = _model(_config_at(config, commit, Path(folder)))
+    sections = _model(config)
+    rendered = [_section(s, old) for s in sections]
+    for section in old or []:  # the glossary removed since the approval
         if section["key"] not in {s["key"] for s in sections}:
-            gone = {k: v for k, v in section.items() if k != "picture"}
-            body += _section({**gone, "rows": []}, [section], removed=True)
-    return PAGE.format(title=title, intro=intro, against=against, body=body)
+            rendered.append(_section({**section, "rows": []}, [section]))
+    body = "".join(text for text, _ in rendered)
+    if commit is None:
+        summary = "Nothing is marked: no earlier approval of checkpoint 2 to compare with."
+    else:
+        counts = {mark: sum(c[mark] for _, c in rendered) for mark in ("new", "changed", "removed")}
+        summary = (
+            f"<b>{counts['new']} new · {counts['changed']} changed · {counts['removed']} "
+            f"removed</b> since the previous approval, {html.escape(baseline)}, at commit "
+            f"<code>{commit}</code>. {_diagrams_changed(config, recorded)}"
+            '<label><input type="checkbox" '
+            "onchange=\"document.body.classList.toggle('only', this.checked)\"> "
+            "Show changes only</label>"
+        )
+    return PAGE.format(summary=summary, body=body)
 
 
-def review_page_findings(config: ProductConfig, checkpoint: int) -> list[Finding]:
+def review_page_findings(config: ProductConfig) -> list[Finding]:
     """The page missing, or different from a fresh render while it awaits approval.
 
     Once a current approval covers the page, its hashes hold it: a later framework
     version that renders differently does not withdraw an approval."""
-    page = review_page(config, checkpoint)
+    page = review_page(config)
     shown = config.relative(page)
     if not page.is_file():
         return [
@@ -115,22 +120,21 @@ def review_page_findings(config: ProductConfig, checkpoint: int) -> list[Finding
                 "MISSING_REVIEW_PAGE",
                 shown,
                 None,
-                f"No review page for checkpoint {checkpoint}; render it with "
-                f"agent/render_review_tool.py --checkpoint {checkpoint} and commit it, so the "
-                "person reviews a page, not the raw files.",
+                "No review page for the requirements; render it with "
+                "agent/render_review_tool.py and commit it, so the person reviews a page, "
+                "not the raw files.",
             )
         ]
-    if approval_state(config, checkpoint, APPROVES[checkpoint]).status == "approved":
+    if approval_state(config, 2, "requirements").status == "approved":
         return []
-    if page.read_text(encoding="utf-8") != render(config, checkpoint):
+    if page.read_text(encoding="utf-8") != render(config):
         return [
             Finding(
                 "REVIEW_PAGE_OUTDATED",
                 shown,
                 None,
-                f"The review page differs from what the files render now (stale or edited "
-                f"by hand); render it again with agent/render_review_tool.py --checkpoint "
-                f"{checkpoint} and commit it.",
+                "The review page differs from what the files render now (stale or edited "
+                "by hand); render it again with agent/render_review_tool.py and commit it.",
             )
         ]
     return []
@@ -139,54 +143,7 @@ def review_page_findings(config: ProductConfig, checkpoint: int) -> list[Finding
 # --- the model: sections of rows, each row a key and its fields -------------------------
 
 
-def _model(config: ProductConfig, checkpoint: int) -> list[dict]:
-    return _diagrams(config) if checkpoint == 1 else _requirements(config)
-
-
-def _diagrams(config: ProductConfig) -> list[dict]:
-    sections = []
-    for path, result in read_archify_diagrams(config.diagrams_dir, config.root):
-        name = path.name.split(".", 1)[0]
-        links = _wish_links(path.with_name(f"{name}.wishes.yaml"))
-        rows = []
-        for element in (result.diagram or {}).get("elements", []):
-            if element["kind"] == "invariant":
-                continue
-            fields = {k: v for k, v in element.items() if k not in ("line", "source")}
-            if element["id"] in links:
-                fields["wishes"] = links[element["id"]]
-            rows.append({"key": element["id"], "fields": fields})
-        rows += [
-            {"key": f"problem {i + 1}", "fields": {"problem": f"{p.rule}: {p.message}"}}
-            for i, p in enumerate(result.problems)
-        ]
-        picture = path.with_suffix(".html")
-        sections.append(
-            {
-                "key": path.name,
-                "heading": path.name,
-                "picture": picture.name if picture.is_file() else None,
-                "columns": ELEMENT_FIELDS,
-                "rows": rows,
-            }
-        )
-        invariants = _invariants(path.with_name(f"{name}.invariants.yaml"))
-        for row in invariants:
-            if row["key"] in links:
-                row["fields"] = {**row["fields"], "wishes": links[row["key"]]}
-        if invariants:
-            sections.append(
-                {
-                    "key": f"{name}.invariants.yaml",
-                    "heading": f"{name}.invariants.yaml",
-                    "columns": _columns("invariants", invariants, "invariants"),
-                    "rows": invariants,
-                }
-            )
-    return sections
-
-
-def _requirements(config: ProductConfig) -> list[dict]:
+def _model(config: ProductConfig) -> list[dict]:
     blocks = read_requirements(config)
     rows = [_block_row(b.file, b.block) for b in blocks]
     readable = [r for r in rows if "uid" in r["fields"]]
@@ -201,23 +158,25 @@ def _requirements(config: ProductConfig) -> list[dict]:
             key=lambda r: r["key"],
         )
     ordered += [r for r in rows if r not in ordered]  # unrefined or unreadable: at the end
+    shown = [field for _, fields in COLUMNS for field in fields]
+    rest = [f for f in _fields("requirement", ordered) if f not in shown]
     sections = [
         {
             "key": "requirements",
             "heading": "Requirements",
-            "columns": _columns("requirement", ordered),
+            "columns": [*COLUMNS, ("Details", rest)],
             "rows": ordered,
         }
     ]
     glossary = config.glossary_file
     if glossary.is_file():
-        shown = config.relative(glossary)
-        terms = [_block_row(shown, b) for b in read_yaml_blocks(glossary, "glossary_term")]
+        shown_as = config.relative(glossary)
+        terms = [_block_row(shown_as, b) for b in read_yaml_blocks(glossary, "glossary_term")]
         sections.append(
             {
                 "key": "glossary",
-                "heading": config.relative(glossary),
-                "columns": _columns("glossary_term", terms),
+                "heading": f"Glossary ({shown_as})",
+                "columns": [(_label(f), [f]) for f in _fields("glossary_term", terms)],
                 "rows": terms,
             }
         )
@@ -233,57 +192,32 @@ def _block_row(file: str, block) -> dict:
     return {"key": str(key), "fields": data}
 
 
-def _wish_links(file: Path) -> dict[str, list]:
-    data = _yaml(file)
-    if not isinstance(data, dict) or validate(data, "diagram_wishes"):
-        return {}
-    return data["links"]
-
-
-def _invariants(file: Path) -> list[dict]:
-    data = _yaml(file)
-    if not isinstance(data, dict) or not isinstance(data.get("invariants"), list):
-        return []
-    return [
-        {"key": str(entry.get("id", f"entry {i + 1}")), "fields": entry}
-        for i, entry in enumerate(data["invariants"])
-        if isinstance(entry, dict)
-    ]
-
-
-def _yaml(file: Path) -> Any:
-    if not file.is_file():
-        return None
-    try:
-        return read_yaml_file(file)
-    except YamlReadError:
-        return None
-
-
-def _columns(contract: str, rows: list[dict], nested: str | None = None) -> list[str]:
+def _fields(contract: str, rows: list[dict]) -> list[str]:
     """The contract's fields in its own order, then any other field a row holds."""
     schema = json.loads((CONTRACTS / f"{contract}_contract.v1.schema.json").read_text())
     properties = schema["properties"]
-    if nested:
-        properties = properties[nested]["items"]["properties"]
     present = [k for row in rows for k in row["fields"]]
     return [k for k in properties if k in present] + sorted(set(present) - set(properties))
+
+
+def _label(field: str) -> str:
+    return field.replace("_", " ").capitalize()
 
 
 # --- the baseline: the previous approval's files, from git -------------------------------
 
 
-def _baseline(config: ProductConfig, checkpoint: int) -> tuple[str, str | None]:
-    """The previous approval and the commit that added it: the latest approval of
-    other content than the page shows. None when there is none, or it is not committed."""
-    approves = APPROVES[checkpoint]
+def _baseline(config: ProductConfig) -> tuple[str, str | None, dict[str, str]]:
+    """The previous approval, the commit that added it and the hashes it records: the
+    latest approval of other content than the page shows. No commit when there is
+    none, or it is not committed."""
     shown = {
         config.relative(f): sha256(f)
-        for f in subject_files(config, approves)
+        for f in subject_files(config, "requirements")
         if f.suffix != ".html"
     }
     folder = config.approvals_dir
-    pattern = f"*-checkpoint-{checkpoint}-{approves}.yaml"
+    pattern = "*-checkpoint-2-requirements.yaml"
     for path in sorted(folder.glob(pattern), reverse=True) if folder.is_dir() else []:
         try:
             data = read_yaml_file(path)
@@ -296,24 +230,41 @@ def _baseline(config: ProductConfig, checkpoint: int) -> tuple[str, str | None]:
         }
         if recorded == shown:
             continue  # the approval of what the page shows, not the previous one
-        return config.relative(path), _added_in(config.root, path)
-    return "", None
+        commit = _added_in(config.root, path)
+        return config.relative(path), commit, recorded if commit else {}
+    return "", None, {}
+
+
+def _diagrams_changed(config: ProductConfig, recorded: dict[str, str]) -> str:
+    """The diagram files changed since the previous approval, if it recorded them."""
+    folder = config.relative(config.diagrams_dir) + "/"
+    before = {p: h for p, h in recorded.items() if p.startswith(folder)}
+    if not before:
+        return ""
+    now = {
+        config.relative(f): sha256(f)
+        for f in subject_files(config, "requirements")
+        if config.relative(f).startswith(folder)
+    }
+    changed = sorted(p for p in set(before) | set(now) if before.get(p) != now.get(p))
+    if not changed:
+        return "The diagrams are unchanged. "
+    names = ", ".join(f"<code>{html.escape(p)}</code>" for p in changed)
+    return f"<b>The diagrams changed:</b> {names} — check the requirements derived from them. "
 
 
 def _added_in(root: Path, file: Path) -> str | None:
     if not in_git(root):
         return None
-    commits = _git(root, "log", "--diff-filter=A", "--format=%H", "--", str(file)).split()
+    added = _git(root, "log", "--diff-filter=A", "--format=%H", "--", str(file.resolve()))
+    commits = added.split()
     return commits[-1] if commits else None
 
 
-def _config_at(config: ProductConfig, checkpoint: int, commit: str, folder: Path) -> ProductConfig:
-    """The configuration over a copy of the files the page shows, as they were at a commit
-    (the pictures left out: the page only links them)."""
-    if checkpoint == 1:
-        shown = [config.diagrams_dir]
-    else:
-        shown = [config.requirements_dir, config.glossary_file]
+def _config_at(config: ProductConfig, commit: str, folder: Path) -> ProductConfig:
+    """The configuration over a copy of the requirements and the glossary, as they were
+    at a commit."""
+    shown = [config.requirements_dir, config.glossary_file]
     listed = _git(
         config.root, "ls-tree", "-r", "--name-only", commit, "--", *map(config.relative, shown)
     )
@@ -345,29 +296,25 @@ def _git(root: Path, *args: str) -> str:
 
 # --- the page ----------------------------------------------------------------------------
 
+# Marks travel through escaping as control characters, then become tags.
+INS, INS_END, DEL, DEL_END = "\x01", "\x02", "\x03", "\x04"
+TAGS = {INS: "<ins>", INS_END: "</ins>", DEL: "<del>", DEL_END: "</del>"}
+# A glossary term is one token, so a mark never cuts through its italics.
+TERM = r"(?<![A-Za-z0-9_])_[^_\n]+?_(?![A-Za-z0-9_])"
+TOKEN = re.compile(rf"{TERM}|\s+|[^\s_]+|\S")
 
-def _section(section: dict, old: list[dict] | None, removed: bool = False) -> str:
+
+def _section(section: dict, old: list[dict] | None) -> tuple[str, dict[str, int]]:
+    """The section's table, and how many of its rows are new, changed and removed."""
     before = next((s for s in old or [] if s["key"] == section["key"]), None)
     previous = {r["key"]: r["fields"] for r in (before or {}).get("rows", [])}
     columns = section["columns"]
-    if before is not None:
-        columns = columns + [c for c in before["columns"] if c not in columns]
-    heading = html.escape(section["heading"])
-    if removed:
-        heading += ' <span class="mark removed">removed</span>'
-    elif old is not None and before is None:
-        heading += ' <span class="mark new">new</span>'
-    parts = [f"<section>\n<h2>{heading}</h2>\n"]
-    if section.get("picture"):
-        name = html.escape(section["picture"])
-        parts.append(
-            f'<p><a href="{name}">Open the picture</a></p>\n'
-            f'<iframe src="{name}" title="{name}" loading="lazy"></iframe>\n'
-        )
-    elif "picture" in section:
-        parts.append("<p>No picture yet.</p>\n")
-    head = "".join(f"<th>{html.escape(c)}</th>" for c in ["change", *columns])
-    parts.append(f"<table>\n<thead><tr>{head}</tr></thead>\n<tbody>\n")
+    counts = {"new": 0, "changed": 0, "removed": 0}
+    head = "".join(f"<th>{html.escape(label)}</th>" for label, _ in [("Change", []), *columns])
+    parts = [
+        f"<section>\n<h2>{html.escape(section['heading'])}</h2>\n"
+        f"<table>\n<thead><tr>{head}</tr></thead>\n<tbody>\n"
+    ]
     keys = set()
     for row in section["rows"]:
         keys.add(row["key"])
@@ -377,34 +324,114 @@ def _section(section: dict, old: list[dict] | None, removed: bool = False) -> st
         elif was is None:
             mark = "new"
         else:
-            mark = "changed" if was != row["fields"] else ""
+            mark = "changed" if was != row["fields"] else "unchanged"
+        if mark in counts:
+            counts[mark] += 1
         parts.append(_row(mark, columns, row["fields"], was if mark == "changed" else None))
     for key, fields in previous.items():
         if key not in keys:
+            counts["removed"] += 1
             parts.append(_row("removed", columns, fields, None))
     parts.append("</tbody>\n</table>\n</section>\n")
-    return "".join(parts)
+    return "".join(parts), counts
 
 
-def _row(mark: str, columns: list[str], fields: dict, was: dict | None) -> str:
-    cells = [f'<td class="mark {mark}">{mark}</td>' if mark else "<td></td>"]
-    for column in columns:
-        differs = was is not None and was.get(column) != fields.get(column)
-        cls = ' class="differs"' if differs else ""
-        cells.append(f"<td{cls}>{_value(fields.get(column))}</td>")
-    cls = f' class="{mark}"' if mark else ""
-    return f"<tr{cls}>{''.join(cells)}</tr>\n"
+def _row(mark: str, columns: list, fields: dict, was: dict | None) -> str:
+    level = "software" if fields.get("level") == "software" else "system"
+    if "uid" not in fields:
+        level = "term"
+    cells = [f'<td class="mark">{"" if mark == "unchanged" else mark}</td>']
+    for label, names in columns:
+        lines = _lines(fields, names, len(names) > 1)
+        if was is not None:
+            lines = _marked(_lines(was, names, len(names) > 1), lines)
+        elif mark == "removed":
+            lines = [(cls, DEL + text + DEL_END) for cls, text in lines]
+        cls = f' class="{label.lower().replace(" ", "-")}"'
+        cells.append(f"<td{cls}>{_cell(lines)}</td>")
+    classes = f"{level} {mark}".strip()
+    if fields.get("criticality") == "high":
+        classes += " high"
+    return f'<tr class="{classes}">{"".join(cells)}</tr>\n'
 
 
-def _value(value: Any) -> str:
-    """A field on the page: a list one item per line, a mapping as key: value pairs."""
+def _lines(fields: dict, names: list[str], labelled: bool) -> list[tuple[str, str]]:
+    """A cell as lines of plain text, each with its class: a list one item per line,
+    a mapping as key: value pairs; several fields each under its label."""
+    lines = []
+    for name in names:
+        if name not in fields:
+            continue
+        value = fields[name]
+        prefix = f"{_label(name)}: " if labelled else ""
+        cls = "threshold" if name == "threshold" else ""
+        items = value if isinstance(value, list) else [value]
+        for item in items:
+            if name == "acceptance_criteria" and isinstance(item, dict):
+                steps = "; ".join(f"{k} {_text(v)}" for k, v in item.items() if k != "case")
+                text = f"{item.get('case', '')} — {steps}"
+                lines.append((f"case {item.get('case', '')}", prefix + text))
+            else:
+                lines.append((cls, prefix + _text(item)))
+    return lines
+
+
+def _text(value: Any) -> str:
     if value is None:
         return ""
-    if isinstance(value, list):
-        return "<br>\n".join(_value(item) for item in value)
     if isinstance(value, dict):
-        return "; ".join(f"<b>{html.escape(str(k))}</b>: {_value(v)}" for k, v in value.items())
-    return html.escape(str(value))
+        return "; ".join(f"{k.replace('_', ' ')}: {_text(v)}" for k, v in value.items())
+    if isinstance(value, list):
+        return ", ".join(_text(v) for v in value)
+    return str(value)
+
+
+def _marked(old: list[tuple[str, str]], new: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """The new lines with what changed from the old ones marked: a line added or
+    removed as a whole, the words in a changed line."""
+    out = []
+    matcher = difflib.SequenceMatcher(None, [t for _, t in old], [t for _, t in new], False)
+    for op, i1, i2, j1, j2 in matcher.get_opcodes():
+        if op == "equal":
+            out += new[j1:j2]
+            continue
+        olds, news = old[i1:i2], new[j1:j2]
+        for k in range(max(len(olds), len(news))):
+            o = olds[k] if k < len(olds) else None
+            n = news[k] if k < len(news) else None
+            if n is None:
+                out.append((f"{o[0]} gone".strip(), DEL + o[1] + DEL_END))
+            elif o is None:
+                out.append((f"{n[0]} added".strip(), INS + n[1] + INS_END))
+            else:
+                out.append((n[0], _words(o[1], n[1])))
+    return out
+
+
+def _words(old: str, new: str) -> str:
+    a, b = TOKEN.findall(old), TOKEN.findall(new)
+    out = []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, False).get_opcodes():
+        if op in ("delete", "replace"):
+            out.append(DEL + "".join(a[i1:i2]) + DEL_END)
+        if op in ("insert", "replace"):
+            out.append(INS + "".join(b[j1:j2]) + INS_END)
+        if op == "equal":
+            out.append("".join(b[j1:j2]))
+    return "".join(out)
+
+
+def _cell(lines: list[tuple[str, str]]) -> str:
+    return "".join(
+        f'<div class="{cls}">{_formatted(text)}</div>' if cls else f"<div>{_formatted(text)}</div>"
+        for cls, text in lines
+    )
+
+
+def _formatted(text: str) -> str:
+    """Escaped, glossary terms in italics, the change marks as tags."""
+    out = re.sub(TERM, lambda m: f"<i>{m.group()[1:-1]}</i>", html.escape(text))
+    return re.sub("[\x01-\x04]", lambda m: TAGS[m.group()], out)
 
 
 PAGE = """<!doctype html>
@@ -412,49 +439,52 @@ PAGE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title}</title>
+<title>Checkpoint 2 — the requirements</title>
 <style>
-body {{ font-family: system-ui, sans-serif; margin: 1.5rem; color: #1b1b1b; background: #fff; }}
-table {{ border-collapse: collapse; margin: 0.5rem 0 1.5rem; font-size: 0.9rem; }}
-th, td {{ border: 1px solid #c8c8c8; padding: 0.3rem 0.5rem; text-align: left;
+body {{ font: 14px system-ui, sans-serif; margin: 1.5rem; color: #111; background: #fff; }}
+table {{ border-collapse: collapse; width: 100%; margin: 0.5rem 0 1.5rem; }}
+th, td {{ border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left;
   vertical-align: top; }}
-th {{ background: #f0f0f0; }}
+th {{ background: #eee; position: sticky; top: 0; }}
 section {{ overflow-x: auto; }}
-iframe {{ width: 100%; height: 32rem; border: 1px solid #c8c8c8; }}
-.mark {{ font-weight: 600; }}
-.new {{ background: #e3f6e3; }}
-.changed {{ background: #fff4d6; }}
-.removed {{ background: #fbe3e3; text-decoration: line-through; }}
-.differs {{ outline: 2px solid #d29b00; }}
+tr.system td {{ background: #f3f6fb; font-weight: 500; }}
+tr.software td.uid {{ padding-left: 1.6rem; }}
+tr.high td.criticality {{ color: #b00; font-weight: 600; }}
+td.mark {{ font-size: 12px; font-weight: 600; }}
+tr.new td.mark {{ box-shadow: inset 5px 0 #1f6feb; color: #1f6feb; }}
+tr.changed td.mark {{ box-shadow: inset 5px 0 #b8860b; color: #b8860b; }}
+tr.removed td.mark {{ box-shadow: inset 5px 0 #888; color: #666; }}
+tr.removed td {{ color: #777; }}
+.case {{ margin: 2px 0; padding-left: 4px; border-left: 3px solid; }}
+.case.happy {{ border-color: #070; }}
+.case.edge {{ border-color: #a60; }}
+.case.error {{ border-color: #b00; }}
+.threshold {{ font-weight: 700; }}
+i {{ color: #036; }}
+ins {{ background: #d7f5dd; color: #05631d; }}
+del {{ background: #fde0e0; color: #a40000; }}
+.added {{ background: #d7f5dd; }}
+.gone {{ background: #fde0e0; }}
+.summary {{ background: #fffbe6; border: 1px solid #e6d58a; padding: 0.5rem; }}
+body.only tr.unchanged {{ display: none; }}
 </style>
 </head>
 <body>
-<h1>{title}</h1>
-<p>{intro} Rendered by the framework's render_review_tool from the committed files;
-never edited by hand.</p>
-<p>{against}</p>
+<h1>Checkpoint 2 — the requirements</h1>
+<p>Each system-level requirement (shaded), followed by the software-level ones refining it
+(indented); then the glossary. <i>Italics</i>: a glossary term. Rendered by the framework's
+render_review_tool from the committed files; never edited by hand.</p>
+<p class="summary">{summary}</p>
 {body}</body>
 </html>
 """
 
 
-def _checked(checkpoint: int) -> int:
-    if checkpoint not in APPROVES:
-        raise ValueError(f"checkpoint {checkpoint} has no review page: only 1 and 2 have one")
-    return checkpoint
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", type=Path, default=Path.cwd())
-    parser.add_argument("--checkpoint", type=int, required=True)
     args = parser.parse_args(argv)
-    try:
-        path = render_review(args.root, args.checkpoint)
-    except ValueError as err:
-        print(str(err), file=sys.stderr)
-        return 1
-    print(path)
+    print(render_review(args.root))
     return 0
 
 

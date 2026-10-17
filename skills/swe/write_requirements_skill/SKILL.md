@@ -78,7 +78,8 @@ and *watched_by*.
 | R13 | System-level requirements derive from system-level diagrams (architecture, workflow, dataflow, lifecycle); software-level ones from the feature's sequence diagram | verify_requirements_to_diagram_link_gate · LEVEL_MISMATCH |
 | R14 | Write only requirement files. Never edit a diagram, an invariants file, an approval or *qf.yaml* | Checkpoint 2 |
 | R15 | Each requirement states one behaviour; two behaviours are two requirements | Checkpoint 2 |
-| R16 | The architect reviews the requirements on the checkpoint-2 review page (*&lt;requirements_dir&gt;/review.html*), rendered from the current files by *agent/render_review_tool.py --checkpoint 2*, never written by hand: each system-level requirement followed by the software-level ones refining it, every field, what changed since the previous approval marked | verify_requirements_approval_gate · MISSING_REVIEW_PAGE, REVIEW_PAGE_OUTDATED |
+| R16 | The architect reviews the requirements on the review page (*&lt;requirements_dir&gt;/review.html*), rendered from the current files by *agent/render_review_tool.py*, never written by hand: each system-level requirement (shaded) followed by the software-level ones refining it (indented), every field, what changed since the previous approval marked word by word, the diagrams changed since then named; an approval on a page the files no longer render is refused | verify_requirements_approval_gate · MISSING_REVIEW_PAGE, REVIEW_PAGE_OUTDATED |
+| R17 | The approval covers the diagrams the requirements are derived from: a changed diagram withdraws it, and the requirements are reviewed again against it | verify_requirements_approval_gate · APPROVAL_OUTDATED |
 
 ## Not checkable
 

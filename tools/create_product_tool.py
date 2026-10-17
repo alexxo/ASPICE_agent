@@ -5,7 +5,7 @@ at .framework, checked out at a release tag. The person clones the framework at 
 release into the product folder and runs the setup from that clone, so the
 framework exists once (decisions 1 and 3 of starting a product):
 
-    git clone --branch v1.5.0 <framework repository> my-product/.framework
+    git clone --branch v1.6.0 <framework repository> my-product/.framework
     python my-product/.framework/tools/create_product_tool.py --root my-product \\
         --reviewer-agent LOGIN --urgent-approver LOGIN --change-approver LOGIN \\
         --code-owner @LOGIN-OR-@ORG/TEAM

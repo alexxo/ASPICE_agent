@@ -81,14 +81,19 @@ def test_the_release_decision_covers_both_records_and_is_due_only_for_a_release(
     assert not checkpoint_due(config, "release")
 
 
-def test_the_approval_covers_the_pictures_and_the_review_pages(product):
-    """What the person saw is approved with the files it shows (§ 5 stages 1–2, rule 25)."""
+def test_the_approval_covers_what_the_person_saw_and_what_it_is_derived_from(product):
+    """The pictures, the review page, and the diagrams under the requirements
+    (§ 5 stages 1–2, rule 25)."""
     config = read_product_config(product)
     diagrams = {config.relative(f) for f in subject_files(config, "diagrams")}
     assert {
         "docs/diagrams/auth-flow.architecture.html",
         "docs/diagrams/login.sequence.html",
-        "docs/diagrams/review.html",
     } <= diagrams
+    (product / "docs/diagrams/review.html").write_text("left over\n")
+    assert "docs/diagrams/review.html" not in {
+        config.relative(f) for f in subject_files(config, "diagrams")
+    }
     requirements = {config.relative(f) for f in subject_files(config, "requirements")}
-    assert "docs/requirements/review.html" in requirements
+    assert {"docs/requirements/review.html", "docs/diagrams/login.sequence.json"} <= requirements
+    assert "docs/diagrams/login.sequence.html" not in requirements

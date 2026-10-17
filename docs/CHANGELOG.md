@@ -35,6 +35,24 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-17
+
+The diagrams are reviewed on their pictures, the requirements on one page laid out to be read; an approval is never recorded on a stale page, and a changed diagram sends the requirements back for review.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Delete `review.html` and have checkpoint 1 approved again on the pictures | `paths.diagrams_dir` | required — the approval no longer covers that page, so the existing one reports APPROVAL_OUTDATED |
+| Render the requirements' page again, `python .framework/agent/render_review_tool.py --root .` (the `--checkpoint` option is gone), commit it, and have checkpoint 2 approved again on it | `paths.requirements_dir` | required — REVIEW_PAGE_OUTDATED until rendered; an approval of checkpoint 2 now also covers the diagrams, so an existing one reports APPROVAL_OUTDATED |
+
+### Changed
+
+- **The diagrams are reviewed on their pictures.** The checkpoint 1 review page is gone: `verify_diagram_approval_gate` no longer asks for `<diagrams_dir>/review.html`, and the checkpoint 1 approval covers the diagrams and their pictures only. `draw_diagram_skill` R16. Origin: FB-20 (wp_publisher).
+- **The requirements' page is laid out to be read.** `render_review_tool` renders the checkpoint 2 page only: each system-level requirement shaded, the software-level ones refining it indented under it; readable headers, every other field under *Details*; glossary terms in italics; each acceptance case coloured by its case; a threshold in bold. A changed row marks the removed and added words; a summary counts what is new, changed and removed, and can hide the rest. `write_requirements_skill` R16; design document § 5 stages 1 and 2, rules 22–23. Origin: FB-21 (wp_publisher).
+- **No approval on a stale page.** `record_checkpoint_tool` refuses to record an approval at checkpoint 2 while the review page is missing or differs from what the files render now. Rule 24. Origin: FB-22 (wp_publisher).
+- **A changed diagram sends the requirements back for review.** The checkpoint 2 approval also covers the diagrams the requirements are derived from (the specs, invariants and wish links), so a diagram change withdraws it; the review page names the diagram files changed since the previous approval. `write_requirements_skill` R17; rule 25, Appendix A.2. Origin: FB-23 (wp_publisher).
+
 ## [1.5.0] - 2026-10-17
 
 CI checks every change by the rules that apply to it, and only for what it contains: the always-on gates run from the setup on, a finished stage stays enforced, the current stage is work in progress. At checkpoints 1 and 2 the person approves what they can read: the diagrams' pictures and a review page, committed and covered by the approval.

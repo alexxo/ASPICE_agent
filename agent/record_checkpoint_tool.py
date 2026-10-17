@@ -4,7 +4,9 @@ The decision is written as approval.v1 to
 <approvals_dir>/<date>-checkpoint-<n>-<subject>.yaml, with the SHA-256 of every
 file it covers, so it is bound to the exact content reviewed. The latest file
 for a checkpoint and subject counts; it is current only while every covered file
-is unchanged and no file was added or removed.
+is unchanged and no file was added or removed. An approval at checkpoint 2 is
+refused while the review page is missing or differs from what the files render
+now: the person approves the requirements they saw.
 
     python agent/record_checkpoint_tool.py --checkpoint N --decision approved \\
         --approver NAME --role ROLE [--comment TEXT] [--root PRODUCT]
@@ -23,6 +25,7 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
 import yaml  # noqa: E402
 
 from agent.read_stages_tool import read_stages  # noqa: E402
+from agent.render_review_tool import render, review_page  # noqa: E402
 from tools.read_approvals_tool import approval_state, sha256, subject_files  # noqa: E402
 from tools.read_product_config_tool import ProductConfig, read_product_config  # noqa: E402
 from tools.validate_contract_tool import validate  # noqa: E402
@@ -54,6 +57,8 @@ def record_checkpoint(
 ) -> Path:
     config = read_product_config(root)
     approves = _approves(checkpoint)
+    if approves == "requirements" and decision == "approved":
+        _reviewed(config)
     files = subject_files(config, approves)
     now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     data = {
@@ -73,6 +78,15 @@ def record_checkpoint(
     path = config.approvals_dir / f"{now:%Y-%m-%dT%H%M%SZ}-checkpoint-{checkpoint}-{approves}.yaml"
     path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
     return path
+
+
+def _reviewed(config: ProductConfig) -> None:
+    page = review_page(config)
+    if not page.is_file() or page.read_text(encoding="utf-8") != render(config):
+        raise ValueError(
+            f"{config.relative(page)} is missing or not what the files render now: render it "
+            "with agent/render_review_tool.py, commit it and have the person review it again"
+        )
 
 
 def current_approval(

@@ -2,13 +2,14 @@
 
 While no design work exists, nothing has to be approved yet. Once the stack,
 an architecture file or a detailed-design file exists, the latest checkpoint-2
-decision must approve the current requirements and glossary, dated before the
-first of those files appeared (from git history).
+decision must approve the current requirements, glossary and the diagrams they
+are derived from, dated before the first of those files appeared (from git
+history): a changed diagram withdraws the approval.
 
-Once requirements exist, the person reviews them on the checkpoint-2 review
-page: it must exist, and while no current approval covers it, match what
+Once requirements exist, the person reviews them on the review page: it must
+exist, and while no current approval covers it, match what
 agent/render_review_tool.py renders from the files now (§ 5 stages 1 and 2,
-rules 22–24).
+rules 22–25).
 
     python gates/swe/verify_requirements_approval_gate.py [--root PRODUCT]
 """
@@ -43,7 +44,7 @@ def check(config: ProductConfig) -> list[Finding]:
     )
     folder = config.requirements_dir
     if folder.is_dir() and any(folder.rglob("*.md")):
-        findings += review_page_findings(config, 2)
+        findings += review_page_findings(config)
     return findings
 
 

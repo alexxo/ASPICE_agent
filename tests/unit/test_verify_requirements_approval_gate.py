@@ -71,3 +71,22 @@ def test_a_review_page_older_than_the_requirements_is_reported(product):
     login = product / "docs/requirements/login.md"
     login.write_text(login.read_text().replace("Five failed", "Three failed"))
     assert _rules(product) == ["REVIEW_PAGE_OUTDATED"]
+
+
+def test_a_changed_diagram_withdraws_the_approval(tmp_path):
+    """The requirements are reviewed again against the new diagram (rule 25)."""
+    root = build_product(tmp_path, stack=STACK)
+    _approve(root)
+    links = root / "docs/diagrams/login.wishes.yaml"
+    links.write_text(links.read_text() + "\n")
+    assert _rules(root) == ["APPROVAL_OUTDATED"]
+
+
+def test_an_approved_review_page_is_held_by_the_approval(tmp_path, monkeypatch):
+    """A later framework version may render differently: the approval still counts."""
+    from agent import render_review_tool
+
+    root = build_product(tmp_path, stack=STACK)
+    _approve(root)
+    monkeypatch.setattr(render_review_tool, "PAGE", render_review_tool.PAGE + "<!-- v2 -->\n")
+    assert _rules(root) == []

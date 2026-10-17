@@ -12,16 +12,21 @@ from tools.validate_contract_tool import validate
 NOW = datetime(2026, 10, 4, 14, 20, tzinfo=timezone.utc)
 
 
-def test_requirements_subject_is_the_requirement_files_and_the_glossary(product):
+def test_requirements_subject_is_the_requirements_their_page_and_their_diagrams(product):
     files = subject_files(read_product_config(product), "requirements")
     assert [f.relative_to(product).as_posix() for f in files] == [
+        "docs/diagrams/auth-flow.architecture.json",
+        "docs/diagrams/auth-flow.wishes.yaml",
+        "docs/diagrams/login.invariants.yaml",
+        "docs/diagrams/login.sequence.json",
+        "docs/diagrams/login.wishes.yaml",
         "docs/glossary.md",
         "docs/requirements/login.md",
         "docs/requirements/review.html",
     ]
 
 
-def test_diagrams_subject_is_the_specs_invariants_pictures_and_review_page(product):
+def test_diagrams_subject_is_the_specs_invariants_and_pictures(product):
     files = subject_files(read_product_config(product), "diagrams")
     assert [f.name for f in files] == [
         "auth-flow.architecture.html",
@@ -31,7 +36,6 @@ def test_diagrams_subject_is_the_specs_invariants_pictures_and_review_page(produ
         "login.sequence.html",
         "login.sequence.json",
         "login.wishes.yaml",
-        "review.html",
     ]
 
 
@@ -41,10 +45,28 @@ def test_record_writes_a_valid_dated_approval(product):
     data = read_yaml_file(path)
     assert validate(data, "approval") == []
     assert [s["path"] for s in data["subject"]] == [
+        "docs/diagrams/auth-flow.architecture.json",
+        "docs/diagrams/auth-flow.wishes.yaml",
+        "docs/diagrams/login.invariants.yaml",
+        "docs/diagrams/login.sequence.json",
+        "docs/diagrams/login.wishes.yaml",
         "docs/glossary.md",
         "docs/requirements/login.md",
         "docs/requirements/review.html",
     ]
+
+
+def test_an_approval_on_a_stale_review_page_is_refused(product):
+    """The person approves the requirements they saw (§ 5 stages 1 and 2, rule 24)."""
+    login = product / "docs/requirements/login.md"
+    login.write_text(login.read_text().replace("Five failed", "Three failed"))
+    with pytest.raises(ValueError, match="not what the files render now"):
+        record_checkpoint(product, 2, "approved", "Alex", "architect", now=NOW)
+    (product / "docs/requirements/review.html").unlink()
+    with pytest.raises(ValueError, match="missing"):
+        record_checkpoint(product, 2, "approved", "Alex", "architect", now=NOW)
+    path = record_checkpoint(product, 2, "changes-requested", "Alex", "architect", "No.", NOW)
+    assert path.is_file()  # asking for changes needs no page
 
 
 def test_changes_requested_needs_a_comment(product):

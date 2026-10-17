@@ -53,18 +53,16 @@ def sha256(path: Path) -> str:
 def subject_files(config: ProductConfig, approves: str) -> list[Path]:
     """The files a checkpoint's approval covers, sorted by repository path."""
     if approves == "diagrams":
-        directory = config.diagrams_dir
         files = [
-            *directory.glob("*.json"),
-            *directory.glob("*.invariants.yaml"),
-            *directory.glob("*.wishes.yaml"),
-            *directory.glob("*.html"),  # the pictures and the review page the person saw
-        ]
+            *_diagram_files(config),
+            *(spec.with_suffix(".html") for spec in config.diagrams_dir.glob("*.json")),
+        ]  # with the pictures the person saw
     elif approves == "requirements":
         files = [
             *config.requirements_dir.rglob("*.md"),
             config.glossary_file,
             config.requirements_dir / "review.html",
+            *_diagram_files(config),  # what they are derived from: a changed diagram withdraws it
         ]
     elif approves == "stack":
         files = [config.stack_file, *_decision_record(config)]
@@ -77,6 +75,15 @@ def subject_files(config: ProductConfig, approves: str) -> list[Path]:
     else:
         raise ValueError(f"the files approved as '{approves}' are not defined yet")
     return sorted((f for f in files if f.is_file()), key=config.relative)
+
+
+def _diagram_files(config: ProductConfig) -> list[Path]:
+    directory = config.diagrams_dir
+    return [
+        *directory.glob("*.json"),
+        *directory.glob("*.invariants.yaml"),
+        *directory.glob("*.wishes.yaml"),
+    ]
 
 
 def checkpoint_due(config: ProductConfig, approves: str) -> bool:
