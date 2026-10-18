@@ -21,7 +21,7 @@ from gates.swe.check_stack_commands_gate import check as check_stack_commands
 from gates.swe.verify_tests_to_requirements_link_gate import check as check_unit_links
 from tools.read_product_config_tool import read_product_config
 from tools.run_stack_commands_tool import run_command
-from tools.select_tests_tool import Selection, select, tests_argument, trace
+from tools.select_tests_tool import Selection, select, selected_tests_argument, trace
 
 COUNT_FAILURES = "src/auth_service/count_failures.py"
 COUNT_FAILURES_TEST = "src/auth_service/test_count_failures.py"
@@ -167,8 +167,9 @@ def test_suites_outside_the_three_levels_run_every_test(product):
 def test_the_tests_are_listed_as_paths_or_names():
     chosen = Selection("unit", None, {"src/a/test_b.py": [], "src/a/test_c.py": []})
 
-    assert tests_argument(chosen, {"selected_form": "paths"}) == "src/a/test_b.py src/a/test_c.py"
-    assert tests_argument(chosen, {"selected_form": "names"}) == "test_b,test_c"
+    paths = selected_tests_argument(chosen, {"selected_form": "paths"})
+    assert paths == "src/a/test_b.py src/a/test_c.py"
+    assert selected_tests_argument(chosen, {"selected_form": "names"}) == "test_b,test_c"
 
 
 def test_the_suite_runs_only_the_selected_tests(product):

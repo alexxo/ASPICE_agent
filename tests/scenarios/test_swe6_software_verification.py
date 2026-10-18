@@ -140,7 +140,7 @@ def the_bridge_tester_then_a_coder_loosening_a_test(root):
     write_e2e_test(root, assertion="run(1) is not None")
 
 
-def tested_without_the_plan(root):
+def the_bridge_tester_without_the_plan(root):
     write_e2e_test(root)
     write_software_test(root)
     write_bench_test(root)
@@ -190,7 +190,7 @@ def test_a_coder_who_loosens_an_end_to_end_test_is_caught(product):
 
 
 def test_tests_without_the_plans_software_section_are_caught(product):
-    decision = _attempts(product, [tested_without_the_plan])
+    decision = _attempts(product, [the_bridge_tester_without_the_plan])
     assert decision["decision"] == "retry"
     assert _rules(product, 1) == ["MISSING_SOFTWARE_SECTION"]
 

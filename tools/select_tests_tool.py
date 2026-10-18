@@ -56,7 +56,7 @@ from tools.read_unit_markers_tool import (  # noqa: E402
 from tools.read_yaml_blocks_tool import read_yaml_blocks  # noqa: E402
 from tools.validate_contract_tool import validate  # noqa: E402
 
-__all__ = ["LEVELS", "Scope", "Selection", "Trace", "select", "tests_argument", "trace"]
+__all__ = ["LEVELS", "Scope", "Selection", "Trace", "select", "selected_tests_argument", "trace"]
 
 # suite → its section of the verification plan; other suites always run in full
 LEVELS = {"unit": "unit", "integration": "integration", "software": "software"}
@@ -216,7 +216,7 @@ def select(
     return Selection(suite, None, tests, scope)
 
 
-def tests_argument(selection: Selection, entry: dict) -> str:
+def selected_tests_argument(selection: Selection, entry: dict) -> str:
     """What replaces {tests} in run_selected."""
     if entry["selected_form"] == "names":
         return ",".join(PurePosixPath(p).stem for p in sorted(selection.tests))

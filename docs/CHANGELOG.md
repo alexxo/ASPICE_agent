@@ -35,6 +35,10 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Two helpers no longer collected as tests.** `tools/select_tests_tool.py` `tests_argument` is now `selected_tests_argument`, and the SWE.6 scenario's `tested_without_the_plan` is now `the_bridge_tester_without_the_plan`: pytest collected both as tests by their *test* prefix, and they failed for want of fixtures. Origin: internal.
+
 ## [1.6.0] - 2026-10-17
 
 The diagrams are reviewed on their pictures, the requirements on one page laid out to be read; an approval is never recorded on a stale page, and a changed diagram sends the requirements back for review.

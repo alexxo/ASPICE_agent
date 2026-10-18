@@ -195,10 +195,10 @@ def _selection(config: ProductConfig, name: str) -> dict | None:
 def _command(entry: dict, selection: dict | None) -> str:
     if selection is None or selection["full"] is not None:
         return entry["run"]
-    from tools.select_tests_tool import Selection, tests_argument
+    from tools.select_tests_tool import Selection, selected_tests_argument
 
     chosen = Selection("", None, selection["tests"])
-    return entry["run_selected"].replace("{tests}", tests_argument(chosen, entry))
+    return entry["run_selected"].replace("{tests}", selected_tests_argument(chosen, entry))
 
 
 def kept_run(config: ProductConfig, key: str | None, kind: str, name: str) -> CommandRun | None:
