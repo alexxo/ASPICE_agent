@@ -7,6 +7,7 @@ The root is also put on the import path, so tests import the framework's
 code as `tools.<name>`, `gates.swe.<name>`, `adapters.<name>`.
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -17,6 +18,14 @@ TESTS = ROOT / "tests"
 for path in (ROOT, TESTS):  # framework code, and test helpers such as product_builder
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
+
+# No git maintenance in the background: a detached gc removes its lock files
+# while a test copies the repository it built (shutil.Error, CI run 39136190632).
+# Set at import, so the session-wide products are built with it too.
+for i, (key, value) in enumerate((("gc.auto", "0"), ("maintenance.auto", "false"))):
+    os.environ[f"GIT_CONFIG_KEY_{i}"] = key
+    os.environ[f"GIT_CONFIG_VALUE_{i}"] = value
+os.environ["GIT_CONFIG_COUNT"] = "2"
 
 
 @pytest.fixture(scope="session")
