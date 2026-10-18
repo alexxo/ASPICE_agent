@@ -89,7 +89,7 @@ Every path in this repository is relative to its root.
 `.github/workflows/framework-ci.yml` runs the self-test suite in parallel
 (`python -m pytest tests -q -n auto --dist loadfile`) and ruff (`ruff check .`,
 `ruff format --check .`) on every push and pull request; the full suite fails
-over its budget of 300 s. The suite follows
+over its budget of 420 s. The suite follows
 the strategy it asks of products (design document, Appendix A.5, *Fast by
 design*), each layer proving one thing once:
 

@@ -53,15 +53,15 @@ jobs:
           echo "full=$full" >> "$GITHUB_OUTPUT"
           echo "full suite: $full"
 
-      - name: tests (pytest, within the 300 s budget of the full suite)
+      - name: tests (pytest, within the 420 s budget of the full suite)
         run: |
           if [ "${{ steps.scope.outputs.full }}" = true ]; then
             start=$SECONDS
             python -m pytest tests -q -n auto --dist loadfile --durations=25
             took=$((SECONDS - start))
-            echo "full suite: ${took} s of its 300 s budget"
-            if [ "$took" -gt 300 ]; then
-              echo "::error::The full suite ran ${took} s, over its 300 s budget: test each behaviour once, at the lowest level (Appendix A.5, Fast by design)."
+            echo "full suite: ${took} s of its 420 s budget"
+            if [ "$took" -gt 420 ]; then
+              echo "::error::The full suite ran ${took} s, over its 420 s budget: test each behaviour once, at the lowest level (Appendix A.5, Fast by design)."
               exit 1
             fi
           else

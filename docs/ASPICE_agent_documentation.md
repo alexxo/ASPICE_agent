@@ -3758,7 +3758,10 @@ label together.
   tighten them, and loosen one only with a reason. *Not taken:* a budget
   overrun only reported (D1 B), which leaves E8 as it was; the selection kept
   on CI (D2 B), which keeps E9; a gate counting tests per level (D3 B), a
-  proxy agents can game while the budget already bounds the cost.
+  proxy agents can game while the budget already bounds the cost. The
+  framework's own full suite has a budget of 420 s on CI (Alex, D1 A): GitHub's
+  machines differ about 1.8 times in speed, and a 300 s budget failed a run of
+  312 s whose tests all passed.
   → § 5 unit stages, rules 30–33.
 
 ### A.6 Integration verification stage — stage 7
