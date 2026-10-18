@@ -1,4 +1,4 @@
-"""Scenario — stage 8 end to end: the whole software against every requirement.
+"""Journey — stage 8 end to end: the whole software against every requirement.
 
 The product starts where stage 7 ends: its components and flows tested. The
 bridge tester writes the plan's software section, the end-to-end and software
@@ -10,14 +10,12 @@ agent/run_aspice_agent.md is driven with the agent's own tools, as in the
 scenarios of stages 5 to 7.
 
 - the bridge tester and the coder are loaded with their rulebooks;
-- tests, measurements, definitions and the report move the product to stage 9;
-- a measured value beyond its threshold is caught;
-- a coder who loosens an end-to-end test is caught;
-- tests without the plan's software section are caught;
-- a report written before the last commit is missing for the new tree.
+- tests, measurements, definitions and the report move the product to stage 9.
+
+Each rule a step could break is its gate's unit tests' to prove, and the
+resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
-import json
 from datetime import datetime, timezone
 
 import pytest
@@ -30,11 +28,7 @@ from product_builder import (
     write_all_integration_tests,
     write_all_software_tests,
     write_all_tests_and_stubs,
-    write_bench_test,
-    write_e2e_test,
     write_events_code,
-    write_observability,
-    write_software_test,
 )
 
 from agent.count_retries_tool import decide, record_attempt
@@ -113,38 +107,11 @@ def _attempts(root, writers, report=True):
     return decision
 
 
-def _rules(root, number):
-    log = root / ".qf/attempts" / STAGE / f"attempt-{number}.json"
-    return sorted(f["rule"] for gate in json.loads(log.read_text()) for f in gate["findings"])
-
-
 # ── what the plugins write ──────────────────────────────────────────────────
 
 
 def the_bridge_tester(root):
     write_all_software_tests(root)
-
-
-def the_bridge_tester_measuring_too_many(root):
-    write_all_software_tests(root)
-    write_bench_test(root, value="run(5)")  # 6 failed sign-ins, threshold <= 5
-
-
-def the_bridge_tester_then_a_coder_loosening_a_test(root):
-    write_all_software_tests(root)
-    commit_all(root, "test(auth): every requirement REQ-0047")
-    write_events_code(root)  # a code change, in the same commit as the loosened test
-    (root / "src/auth_service/check_credentials.py").write_text(
-        (root / "src/auth_service/check_credentials.py").read_text() + "\n# tidied\n"
-    )
-    write_e2e_test(root, assertion="run(1) is not None")
-
-
-def the_bridge_tester_without_the_plan(root):
-    write_e2e_test(root)
-    write_software_test(root)
-    write_bench_test(root)
-    write_observability(root)
 
 
 # ── the scenarios ───────────────────────────────────────────────────────────
@@ -175,27 +142,3 @@ def test_tests_measurements_and_the_report_move_the_product_to_stage_9(product):
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("quality_assurance", "in_progress")
     assert state["done"] == [*BUILT, STAGE]
-
-
-def test_a_measured_value_beyond_its_threshold_is_caught(product):
-    decision = _attempts(product, [the_bridge_tester_measuring_too_many])
-    assert decision["decision"] == "retry"
-    assert _rules(product, 1) == ["THRESHOLD_NOT_MET"] * 3
-
-
-def test_a_coder_who_loosens_an_end_to_end_test_is_caught(product):
-    decision = _attempts(product, [the_bridge_tester_then_a_coder_loosening_a_test])
-    assert decision["decision"] == "retry"
-    assert _rules(product, 1) == ["TEST_CHANGED_WITH_CODE"]
-
-
-def test_tests_without_the_plans_software_section_are_caught(product):
-    decision = _attempts(product, [the_bridge_tester_without_the_plan])
-    assert decision["decision"] == "retry"
-    assert _rules(product, 1) == ["MISSING_SOFTWARE_SECTION"]
-
-
-def test_without_the_report_of_the_tree_the_stage_does_not_pass(product):
-    decision = _attempts(product, [the_bridge_tester], report=False)
-    assert decision["decision"] == "retry"
-    assert _rules(product, 1) == ["MISSING_REPORT"]

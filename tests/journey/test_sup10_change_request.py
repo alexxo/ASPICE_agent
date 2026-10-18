@@ -1,4 +1,4 @@
-"""Scenario — stage 13 end to end: a change ordered, signed, then built.
+"""Journey — stage 13 end to end: a change ordered, signed, then built.
 
 The product starts where the flow ends: every stage done, delivered in a
 reviewed pull request. The host is a recorded one (QF_HOST_FILE) and holds the
@@ -7,9 +7,10 @@ gates run on every pull request once the flow is done (decision 4 of the change
 request stage).
 
 - the agent loads the change desk's rulebook and no plugin;
-- a commit building a change nobody signed holds the pull request at stage 13;
-- the same change, signed by an approver before the commit, passes;
-- a change that names an item the product does not have is caught.
+- the same change, signed by an approver before the commit, passes.
+
+Each rule a step could break is its gate's unit tests' to prove, and the
+resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
 import json
@@ -123,20 +124,7 @@ def test_the_change_desk_has_a_rulebook_and_no_plugin(product):
     assert [p.split("/")[-2] for p in loaded["framework_skills"]] == ["manage_changes_skill"]
 
 
-def test_a_change_nobody_signed_holds_its_pull_request(product, tmp_path, monkeypatch):
-    _deliver(product, tmp_path, monkeypatch, issue(20, CR, change(20)))
-    assert _state(product) == (STAGE, "gates_failing", ["UNAPPROVED_CHANGE"])
-
-
 def test_a_change_signed_before_it_was_built_passes(product, tmp_path, monkeypatch):
     signed = comment(PERSON, "/approve-change", BEFORE)
     _deliver(product, tmp_path, monkeypatch, issue(20, CR, change(20), comments=[signed]))
     assert _state(product) == (None, "complete", [])
-
-
-def test_a_change_naming_an_unknown_requirement_is_caught(product, tmp_path, monkeypatch):
-    signed = comment(PERSON, "/approve-change", BEFORE)
-    affected = {"wishes": ["W-02"], "elements": [], "requirements": ["REQ-9999"]}
-    order = issue(20, CR, change(20, affected=affected), comments=[signed])
-    _deliver(product, tmp_path, monkeypatch, order)
-    assert _state(product) == (STAGE, "gates_failing", ["UNKNOWN_AFFECTED_ITEM"])

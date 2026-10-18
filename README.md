@@ -80,12 +80,21 @@ tests/.venv/bin/python agent/resolve_stage_tool.py --root examples/login-product
 ```
 
 The example has no requirements yet, so the requirement gates fail closed and
-the resolver places it at stage 2. `tests/scenarios/test_swe1_slice.py` runs the
-whole stage: a pass, a fix by retry, and an escalation to the architect.
+the resolver places it at stage 2. `tests/journey/test_swe1_slice.py` runs the
+whole stage: a pass, and a stuck requirement retried, then escalated to the architect.
 
 ## Continuous integration
 
 Every path in this repository is relative to its root.
-`.github/workflows/framework-ci.yml` runs the self-test suite
-(`python -m pytest tests -q`) and ruff (`ruff check .`, `ruff format --check .`)
-on every push and pull request.
+`.github/workflows/framework-ci.yml` runs the self-test suite in parallel
+(`python -m pytest tests -q -n auto --dist loadfile`) and ruff (`ruff check .`,
+`ruff format --check .`) on every push and pull request. The suite follows
+the strategy it asks of products (design document, Appendix A.5, *Fast by
+design*), each layer proving one thing once:
+
+| Layer | Folder | Proves |
+|---|---|---|
+| Static | `tests/consistency`, `tests/schema` | the documents, skills and contracts agree with the code; every rule a gate reports has a unit test |
+| Unit | `tests/unit` | each gate's rules, each tool, and the resolver's routing for every stage |
+| Seam | `tests/seam` | every gate script runs as a real process and prints one findings.v1 result |
+| Journey | `tests/journey` | one happy walk per stage through the real tools and gates |

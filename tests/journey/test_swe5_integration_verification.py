@@ -1,4 +1,4 @@
-"""Scenario — stage 7 end to end: the components alone, then joined along the flows.
+"""Journey — stage 7 end to end: the components alone, then joined along the flows.
 
 The product starts where stage 6 ends: its units built tests first. The
 assembler writes the plan's integration section, the component tests and the
@@ -8,13 +8,12 @@ agent/run_aspice_agent.md is driven with the agent's own tools, as in the
 scenario of stages 5 and 6.
 
 - the assembler and the coder are loaded with their rulebooks;
-- tests, then the code that emits the log events, move the product to stage 8;
-- the assembler alone leaves the flow failing, and the coder's retry fixes it;
-- a coder who loosens a component test is caught;
-- tests without the plan's integration section are caught.
+- tests, then the code that emits the log events, move the product to stage 8.
+
+Each rule a step could break is its gate's unit tests' to prove, and the
+resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
-import json
 from datetime import datetime, timezone
 
 import pytest
@@ -26,9 +25,7 @@ from product_builder import (
     write_all_code,
     write_all_integration_tests,
     write_all_tests_and_stubs,
-    write_component_test,
     write_events_code,
-    write_flow_test,
 )
 
 from agent.count_retries_tool import decide, record_attempt
@@ -90,39 +87,11 @@ def _attempts(root, writers):
     return decision
 
 
-def _rules(root, number):
-    log = root / ".qf/attempts" / STAGE / f"attempt-{number}.json"
-    return sorted(f["rule"] for gate in json.loads(log.read_text()) for f in gate["findings"])
-
-
 # ── what the plugins write ──────────────────────────────────────────────────
-
-
-def the_assembler(root):
-    write_all_integration_tests(root)
 
 
 def the_assembler_then_the_coder(root):
     write_all_integration_tests(root)
-    commit_all(root, "test(auth): every component and flow REQ-0047")
-    write_events_code(root)
-
-
-def the_coder(root):
-    write_events_code(root)
-
-
-def the_coder_loosening_a_test(root):
-    write_all_integration_tests(root)
-    commit_all(root, "test(auth): every component and flow REQ-0047")
-    write_events_code(root)
-    write_component_test(root, "web-app", assertion="run(1) is not None")
-
-
-def assembled_without_the_plan(root):
-    write_component_test(root, "web-app")
-    write_component_test(root, "auth-service")
-    write_flow_test(root)
     commit_all(root, "test(auth): every component and flow REQ-0047")
     write_events_code(root)
 
@@ -150,30 +119,3 @@ def test_tests_then_the_events_move_the_product_to_stage_8(product):
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("software_verification", "in_progress")
     assert state["done"] == [*BUILT, "unit_construction", STAGE]
-
-
-def test_the_assembler_alone_leaves_the_flow_failing_until_the_coder_runs(product):
-    decision = _attempts(product, [the_assembler, the_coder])
-    assert decision["decision"] == "pass"
-    assert _rules(product, 1) == [
-        "FAILED_INTEGRATION_TEST",
-        "FAILED_INTEGRATION_TEST",
-        "MISSING_FLOW_TEST",
-        "UNTESTED_EVENT",
-        "UNTESTED_EVENT",
-        "UNTESTED_EVENT",
-        "UNTESTED_INTERFACE",
-    ]
-    assert _rules(product, 2) == []
-
-
-def test_a_coder_who_loosens_a_component_test_is_caught(product):
-    decision = _attempts(product, [the_coder_loosening_a_test])
-    assert decision["decision"] == "retry"
-    assert _rules(product, 1) == ["TEST_CHANGED_WITH_CODE"]
-
-
-def test_assembled_without_the_plans_integration_section_are_caught(product):
-    decision = _attempts(product, [assembled_without_the_plan])
-    assert decision["decision"] == "retry"
-    assert _rules(product, 1) == ["MISSING_INTEGRATION_SECTION"]

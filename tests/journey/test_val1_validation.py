@@ -1,4 +1,4 @@
-"""Scenario — stage 11 end to end: the village crosses, and accepts or rejects the release.
+"""Journey — stage 11 end to end: the village crosses, and accepts the release.
 
 The product starts where stage 10 ends: every wish has its scenario — two
 automated, run by the validation suite, and a guided demo run by a person —
@@ -6,12 +6,13 @@ listed in the plan's validation section. The host is a recorded one
 (QF_HOST_FILE), as in the gates' tests.
 
 - the agent loads the village crew's method and the validation rulebook;
-- a wish without a scenario holds a delivery at stage 11;
 - a release is validated on its pull request: the tool records the deployed
   commit and the automated results, a person adds the demo's, and the merge
   waits for the customer's decision (seal 5), red in CI until it is given;
-- after the merge and the tag, the release keeps its validation record;
-- a rejection, and a change after the deployment, hold the release.
+- after the merge and the tag, the release keeps its validation record.
+
+Each rule a step could break is its gate's unit tests' to prove, and the
+resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
 import shutil
@@ -25,7 +26,6 @@ import yaml
 from product_builder import (
     AGENT,
     DEMO,
-    QF,
     build_python_product,
     commit_all,
     git_head,
@@ -196,23 +196,6 @@ def test_the_village_crew_has_its_method_and_rulebook(product):
     assert [p.split("/")[-2] for p in loaded["framework_skills"]] == ["validate_release_skill"]
 
 
-def test_a_wish_without_a_scenario_holds_the_delivery_at_stage_11(product, tmp_path, monkeypatch):
-    (product / DEMO).unlink()  # and its entry in the plan, so only stage 11 notices
-    path = product / QF["paths"]["verification_plan_file"]
-    fence = "```yaml verification_plan\n"
-    text = path.read_text()
-    start = text.index(fence) + len(fence)
-    plan = yaml.safe_load(text[start : text.index("```", start)])
-    entries = plan["validation"]["scenarios"]
-    plan["validation"]["scenarios"] = [e for e in entries if e["scenario"] != DEMO]
-    path.write_text(f"{text[:start]}{yaml.safe_dump(plan, sort_keys=False)}```\n")
-    commit_all(product, "test(validation): drop the demo REQ-0047")
-    write_report(read_product_config(product))
-    monkeypatch.setenv("QF_HOST_FILE", str(open_delivery(product, tmp_path, reviewers=(AGENT,))))
-    # before the first release the stage is in progress; a proposed release enforces it
-    assert _state(product) == (STAGE, "in_progress", ["MISSING_SCENARIO"])
-
-
 def test_a_release_is_validated_and_waits_for_the_customer(product, tmp_path, monkeypatch, capsys):
     merged = _propose(product, tmp_path, monkeypatch)
     assert _state(product) == (
@@ -242,22 +225,3 @@ def test_a_release_is_validated_and_waits_for_the_customer(product, tmp_path, mo
     tagged = _tag_script(product)
     assert tagged.returncode == 0, tagged.stderr
     assert verify_release_evidence_gate.check(read_product_config(product)) == []
-
-
-def test_a_rejected_release_goes_back_to_the_village(product, tmp_path, monkeypatch):
-    merged = _propose(product, tmp_path, monkeypatch)
-    _validate(product, tmp_path, monkeypatch, merged)
-    _decide(product, tmp_path, monkeypatch, merged, "changes-requested", "Too many steps.")
-    assert _state(product) == (STAGE, "gates_failing", ["RELEASE_REJECTED"])
-
-
-def test_a_change_after_the_deployment_is_not_what_was_validated(product, tmp_path, monkeypatch):
-    merged = _propose(product, tmp_path, monkeypatch)
-    _validate(product, tmp_path, monkeypatch, merged)
-    (product / "NOTES.md").write_text("A last-minute note.\n")
-    _push(product, tmp_path, monkeypatch, merged, "docs: a last-minute note #2")
-    assert _state(product) == (
-        STAGE,
-        "gates_failing",
-        ["MISSING_CUSTOMER_DECISION", "WRONG_DEPLOYED_COMMIT"],
-    )

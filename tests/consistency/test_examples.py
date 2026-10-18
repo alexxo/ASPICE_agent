@@ -27,7 +27,7 @@ GATES = [
     check_glossary_gate,
     verify_requirements_to_diagram_link_gate,
 ]
-OUTPUTS = "tests/scenarios/plugin_outputs/requirements"
+OUTPUTS = "tests/journey/plugin_outputs/requirements"
 
 
 @pytest.fixture

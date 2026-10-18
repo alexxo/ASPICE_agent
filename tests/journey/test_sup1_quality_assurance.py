@@ -1,4 +1,4 @@
-"""Scenario — stage 9 end to end: the delivery desk.
+"""Journey — stage 9 end to end: the delivery desk.
 
 The product starts where stage 8 ends, with what its first delivery needs: the
 framework pinned as a released submodule, the CI file, the code owners and the
@@ -8,11 +8,11 @@ request a person approves too (decisions 1, 2 and 7 of the quality assurance
 stage). The host is a recorded one (QF_HOST_FILE), as in the gates' tests.
 
 - the reviewer is loaded with its rulebooks;
-- without a pull request the work is not delivered;
 - the reviewer agent's approval moves the product through stages 10 and 11, every wish
-  with its scenario, to the end of the flow;
-- a sampled pull request waits for a person, and fails CI while it waits;
-- a push after the approvals needs them again.
+  with its scenario, to the end of the flow.
+
+Each rule a step could break is its gate's unit tests' to prove, and the
+resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
 from datetime import datetime, timezone
@@ -20,16 +20,13 @@ from datetime import datetime, timezone
 import pytest
 from product_builder import (
     AGENT,
-    PERSON,
     build_python_product,
     commit_all,
     git_head,
     install_plugins,
     open_delivery,
     prepare_delivery,
-    pull_request,
     record_stages_done,
-    review,
     write_all_code,
     write_all_integration_tests,
     write_all_scenarios,
@@ -42,7 +39,7 @@ from product_builder import (
 from agent.load_skills_tool import load_skills
 from agent.record_checkpoint_tool import record_checkpoint
 from agent.record_stage_done_tool import record_stage_done
-from agent.resolve_stage_tool import main, resolve_stage
+from agent.resolve_stage_tool import resolve_stage
 from tools.read_product_config_tool import read_product_config
 from tools.write_verification_report_tool import write_report
 
@@ -58,7 +55,6 @@ BUILT = [
     "software_verification",
 ]
 STAGE = "quality_assurance"
-BRANCH = "feature/REQ-0047-lockout"
 
 
 @pytest.fixture(autouse=True)
@@ -137,11 +133,6 @@ def test_the_reviewer_is_loaded_with_its_rulebooks(product):
     ]
 
 
-def test_without_a_pull_request_the_work_is_not_delivered(product):
-    assert _state(product) == (STAGE, "gates_failing", ["NO_PULL_REQUEST"])
-    assert resolve_stage(product)["done"] == BUILT
-
-
 def test_the_reviewer_agents_approval_moves_the_product_on(product, tmp_path, monkeypatch):
     _deliver(product, tmp_path, monkeypatch, reviewers=())
     assert _state(product) == (STAGE, "gates_failing", ["MISSING_AGENT_REVIEW"])
@@ -150,34 +141,3 @@ def test_the_reviewer_agents_approval_moves_the_product_on(product, tmp_path, mo
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == (None, "complete")
     assert state["done"] == [*BUILT, STAGE, "configuration_management", "validation"]
-
-
-def test_a_sampled_pull_request_waits_for_a_person_and_fails_ci(
-    product, tmp_path, monkeypatch, capsys
-):
-    _deliver(product, tmp_path, monkeypatch, number=5, reviewers=(AGENT,))
-    assert _state(product) == (STAGE, "awaiting_checkpoint", ["MISSING_PERSON_APPROVAL"])
-    assert main(["--root", str(product), "--check"]) == 1
-    capsys.readouterr()
-    _deliver(product, tmp_path, monkeypatch, number=5, reviewers=(AGENT, PERSON))
-    _finish(product)
-    assert _state(product)[:2] == (None, "complete")
-    assert main(["--root", str(product), "--check"]) == 0
-
-
-def test_a_push_after_the_approvals_needs_them_again(product, tmp_path, monkeypatch):
-    approved = git_head(product)
-    (product / "README.md").write_text("The login product.\n")
-    commit_all(product, "docs: a late change REQ-0047")
-    write_report(read_product_config(product))
-    head = git_head(product)  # the host's pull request now points at the pushed head
-    reviews = [review(AGENT, approved), review(PERSON, approved)]
-    pull = pull_request(5, head, branch=BRANCH, reviews=reviews)
-    tags = {"v6.0.0": git_head(product / ".framework")}
-    host = write_host(tmp_path / "pushed.json", pulls=[pull], tags=tags)
-    monkeypatch.setenv("QF_HOST_FILE", str(host))
-    assert _state(product) == (
-        STAGE,
-        "gates_failing",
-        ["MISSING_AGENT_REVIEW", "MISSING_PERSON_APPROVAL"],
-    )

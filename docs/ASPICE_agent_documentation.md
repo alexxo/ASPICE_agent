@@ -2037,7 +2037,7 @@ and format).
 | *agent/run_reviewer_agent.md* | The reviewer's own session: the only one holding the reviewer agent's token; loads the reviewer's method and rules, reviews one pull request's head, posts, changes nothing |
 | *agent/start_product.md* | The start rulebook: asks the person the setup's values, runs the construction site setup, relays the host steps, then hands over to the orchestrator (starting a product) |
 | *examples/login-product/* | The example product: approved diagrams with their pictures, wishes, glossary, configuration |
-| *tests/unit/test_&lt;name&gt;.py*, *tests/scenarios/test_swe1_slice.py* | One test file per gate, adapter and tool; the slice's three outcomes — pass, fixed by a retry, escalated |
+| *tests/unit/test_&lt;name&gt;.py*, *tests/journey/test_swe1_slice.py* | One test file per gate, adapter and tool; the journey of stages 1 and 2 — a pass, and a stuck requirement retried then escalated |
 | *templates/github/quality_gates.yml* | The product's CI: the always-on gates and every finished stage enforced, the current stage reported, the gates not run listed in the summary, the framework from the product's pinned submodule, run again on every review, the host read with the run's own token (*QF_HOST_TOKEN* is *github.token*, read permissions only); no plugin needed |
 | *contracts/diagram_wishes_contract.v1.schema.json* | Diagram stage: which wishes each diagram element realises |
 | *skills/swe/draw_diagram_skill/SKILL.md* | Diagram stage: the rules a diagram follows, each naming its gate rule or checkpoint 1 |
@@ -2054,7 +2054,10 @@ and format).
 | *gates/swe/verify_decision_records_gate.py* | Architecture stage: decision records well-formed, named after their ID, the choice among the options |
 | *gates/swe/verify_stack_approval_gate.py* | Architecture stage, after checkpoint 3: the stack approved before the first architecture file |
 | *gates/swe/check_design_contract_gate.py* | Architecture stage, after checkpoint 3: one component per node, one interface per edge, every software requirement met |
-| *tests/scenarios/test_swe2_architecture.py* | The architecture stage on the example product, through checkpoint 3 |
+| *tests/seam/test_gate_scripts.py* | Every gate script run once as a real process on the example product: it imports, takes *--root* and prints one findings.v1 result |
+| *tests/consistency/test_every_rule_is_tested.py* | Every rule ID a gate, a tool or the agent reports has a unit test that names it |
+| *tests/unit/test_resolve_stage_routing.py* | The resolver's routing for every stage, with the gates, approvals and records stood in |
+| *tests/journey/test_swe2_architecture.py* | The architecture stage on the example product, through checkpoint 3 |
 | *contracts/unit_contract.v1.schema.json* | Detailed design stage: one unit, its inputs and outputs with range and unit of measure |
 | *gates/swe/check_testability_gate.py* | Architecture stage, after checkpoint 3: a composition root per component, a real implementation and a test double per interface |
 | *skills/swe/ensure_testability_skill* | Architecture stage: a composition root per component, a real implementation and a test double per interface |
@@ -2099,7 +2102,7 @@ and format).
 | *gates/swe/verify_nfr_thresholds_gate.py* | Software verification stage: a measured value per non-functional requirement, in its unit, meeting its threshold |
 | *gates/swe/check_observability_gate.py* | Software verification stage: every observability requirement named by an alert, dashboard or health-check definition |
 | *gates/swe/check_verification_report_gate.py* | Software verification stage: the report exists for the current tree, written from its suite runs |
-| *tests/scenarios/test_swe6_software_verification.py* | Stage 8 on the Python product: tests, measurements, definitions and the report to stage 9; a missed threshold, a loosened end-to-end test, a missing software section and a missing report caught |
+| *tests/journey/test_swe6_software_verification.py* | Stage 8 on the Python product: tests, measurements, definitions and the report to stage 9 |
 | *skills/sup/review_code_skill* | Quality assurance stage: every delivery a pull request, a reviewer agent's approval of the head with the checklist, a person on the sample, faults left unfixed as non-conformance issues |
 | *skills/sup/report_framework_feedback_skill* | Quality assurance stage: every framework weakness a complete entry, every framework bump accounted for (principle #47) |
 | *plugins/sup/derive_review_plugin/SKILL.md* | Quality assurance stage: the reviewer agent's method — read, judge the checklist, post from its own account |
@@ -2112,7 +2115,7 @@ and format).
 | *gates/sup/check_framework_feedback_gate.py* | Always-on, from the quality assurance stage: complete feedback entries, every framework bump named (principle #47) |
 | *gates/sup/verify_delivery_reviewed_gate.py* | Always-on, from the quality assurance stage: a pull request, the reviewer agent's approval of its head with the checklist, a person's on the sample |
 | *tests/consistency/test_rulebook.py* | The rulebook is complete (SUP.1 BP2): every gate script belongs to a practice, every gate a practice names is built or planned |
-| *tests/scenarios/test_sup1_quality_assurance.py* | Stage 9 on the Python product with a recorded host: no pull request, the reviewer agent's approval, a sampled pull request waiting for a person, a push after the approvals |
+| *tests/journey/test_sup1_quality_assurance.py* | Stage 9 on the Python product with a recorded host: the reviewer agent's approval moves the product to the end of the flow |
 | *contracts/release_contract.v1.schema.json* | Configuration management stage: one release record — version, configuration items changed since the previous release, framework version (SUP.8 BP5–BP7) |
 | *skills/sup/record_baseline_skill* | Configuration management stage: commit and branch conventions, the main branch's history kept, every configuration item under git, the two tracks apart, a release proposed as a pull request with a computed version, tagged |
 | *tools/write_release_tool.py* | The next release's record: the version computed from the commits since the last release tag, the configuration items changed, the pinned framework release; the records not yet tagged |
@@ -2123,14 +2126,14 @@ and format).
 | *gates/sup/check_track_rule_gate.py* | Configuration management stage: an architecture pull request changes no feature-track work product and comes from an *arch/* branch |
 | *gates/sup/verify_architecture_tests_gate.py* | Configuration management stage: an architecture pull request contains no code (principle #4) |
 | *gates/sup/verify_baseline_gate.py* | Configuration management stage: every release record complete with its computed version; every release tag annotated, on main, holding its record and every item, never moved |
-| *tests/scenarios/test_sup8_configuration_management.py* | Stage 10 on the Python product with a recorded host: a delivery by convention, a commit off it, a release proposed and tagged after its merge |
+| *tests/journey/test_sup8_configuration_management.py* | Stage 10 on the Python product with a recorded host: a delivery by convention, a release proposed and tagged after its merge |
 | *contracts/validation_contract.v1.schema.json* | Validation stage: one validation record — the environment, the deployed commit, every scenario's technique and result (VAL.1 BP3, BP4) |
 | *skills/val/validate_release_skill* | Validation stage: every wish a scenario listed in the plan; a release validated on a staging deployment of exactly what is released, every automated scenario and affected wish with a result, none failed, accepted by the customer before its merge |
 | *plugins/val/derive_validation_scenarios_plugin/SKILL.md* | Validation stage: the village crew's method — scenarios from the wishes, the diagrams and the outside interfaces only, and the plan's validation section |
 | *tools/write_validation_record_tool.py* | The proposed release's validation record: the deployed commit and the automated results of the validation suite, keeping the results entered by hand; the scenarios and the wishes a release affects |
 | *gates/val/verify_acceptance_to_wishes_link_gate.py* | Validation stage: every wish a scenario, every marker a real wish; at release, every affected wish a scenario with a result |
 | *gates/val/verify_release_evidence_gate.py* | Validation stage: every release tag its validation record; the proposed release validated on exactly what is released, every automated scenario run, none failed, accepted by the customer |
-| *tests/scenarios/test_val1_validation.py* | Stage 11 on the Python product with a recorded host: a wish without a scenario, a release validated on staging waiting for the customer with CI red, accepted and tagged with its record, rejected, and changed after its deployment |
+| *tests/journey/test_val1_validation.py* | Stage 11 on the Python product with a recorded host: a release validated on staging waiting for the customer with CI red, accepted and tagged with its record |
 | *contracts/problem_contract.v1.schema.json* | Problem resolution stage: one problem — the template, its analysis, its alert and its change request (SUP.9 BP1, BP2, BP4, BP5) |
 | *contracts/nonconformance_contract.v1.schema.json* | Quality assurance at release: one fault left open — where it was found, what fixed it (SUP.1 BP6) |
 | *contracts/retro_action_contract.v1.schema.json* | Quality assurance at release: one retrospective action — owner and due date (principle #41) |
@@ -2144,17 +2147,17 @@ and format).
 | *gates/sup/check_escalations_gate.py* | Quality assurance at release: every old open fault note escalated and assigned |
 | *gates/sup/report_quality_trends_gate.py* | Quality assurance at release: the release report counts the fault notes |
 | *gates/sup/check_retro_actions_gate.py* | Quality assurance at release: no lesson card past its due date |
-| *tests/scenarios/test_sup9_problem_resolution.py* | Stage 12 on the Python product with a recorded host: a crack nobody analysed, an analysed crack reproduced first and fixed, a critical one waiting for its authorization, a bench naming no problem |
+| *tests/journey/test_sup9_problem_resolution.py* | Stage 12 on the Python product with a recorded host: an analysed crack reproduced first and fixed |
 | *contracts/change_request_contract.v1.schema.json* | Change request stage: one change request — what, initiator, reason, status, then its analysis and its problem (SUP.10 BP1, BP2, BP4) |
 | *skills/sup/manage_changes_skill* | Change request stage: a change recorded, analysed, signed before it is built, traced, and closed with its initiator's word |
 | *gates/sup/check_change_record_gate.py* | Change request stage: every change its commits name recorded and analysed; at release every change, and its dependencies |
 | *gates/sup/verify_change_approval_gate.py* | Change request stage: every change a commit builds signed by an approver before that commit |
 | *gates/sup/verify_change_trace_gate.py* | Change request stage: every affected item exists; a change and its problem name each other |
 | *gates/sup/verify_change_closure_gate.py* | Change request stage: at release, every closed change built on the main branch and confirmed by its initiator; the report lists the changes |
-| *tests/scenarios/test_sup10_change_request.py* | Stage 13 on the Python product with a recorded host: a change built unsigned, signed before it was built, and naming an unknown requirement |
+| *tests/journey/test_sup10_change_request.py* | Stage 13 on the Python product with a recorded host: a change signed before it was built |
 | *gates/swe/check_detailed_design_contract_gate.py* | Detailed design stage: per component its units, design diagrams, calls and interactions, all consistent |
-| *tests/scenarios/test_swe3_detailed_design.py* | The detailed design stage on the example product, from a passing architecture to stage 5 |
-| *tests/scenarios/test_swe4_unit_verification.py* | Stages 5 and 6 on a small Python product (decision 3): tests first, then the units, to stage 7; a test green on its stub fixed by a retry; wrong code escalated; a loosened test caught |
+| *tests/journey/test_swe3_detailed_design.py* | The detailed design stage on the example product, from a passing architecture to stage 5 |
+| *tests/journey/test_swe4_unit_verification.py* | Stages 5 and 6 on a small Python product (decision 3): tests first, then the units, to stage 7 |
 
 ### Contracts
 

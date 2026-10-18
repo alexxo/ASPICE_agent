@@ -1,16 +1,16 @@
-"""Scenario — the SWE.2 architecture stage end to end, on a copy of the example product.
+"""Journey — the SWE.2 architecture stage end to end, on a copy of the example product.
 
 The product starts where the SWE.1 scenario ends: requirements derived and
 approved at checkpoint 2. The loop of agent/run_aspice_agent.md is driven with
 the agent's own tools; each attempt copies a scripted plugin output
-(tests/scenarios/plugin_outputs/architecture/) into the product. The stage has
+(tests/journey/plugin_outputs/architecture/) into the product. The stage has
 its checkpoint inside it: the stack is written and approved at checkpoint 3
 before any component is designed.
 
-- the stack is approved, the design passes the gates, and the product moves on;
-- a broken design is caught and fixed by a retry;
-- changes requested at checkpoint 3 keep the product waiting, with no component;
-- a stack changed after its approval withdraws it.
+- the stack is approved, the design passes the gates, and the product moves on.
+
+Each rule a step could break is its gate's unit tests' to prove, and the
+resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
 import shutil
@@ -27,7 +27,7 @@ from agent.render_review_tool import render_review
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import reached_gates, run_gates
 
-OUTPUTS = "tests/scenarios/plugin_outputs"
+OUTPUTS = "tests/journey/plugin_outputs"
 APPROVED = datetime(2026, 10, 4, 15, 0, tzinfo=timezone.utc)
 
 
@@ -90,13 +90,6 @@ def _attempts(repo_root, product, outputs):
     return decision
 
 
-def _rules(product, number):
-    import json
-
-    log = product / ".qf/attempts/architecture" / f"attempt-{number}.json"
-    return sorted(f["rule"] for gate in json.loads(log.read_text()) for f in gate["findings"])
-
-
 def test_an_approved_stack_and_a_passing_design_move_the_product_on(repo_root, product):
     _stack_approved(repo_root, product)
     decision = _attempts(repo_root, product, ["correct"])
@@ -110,44 +103,3 @@ def test_an_approved_stack_and_a_passing_design_move_the_product_on(repo_root, p
     assert (state["stage"], state["status"]) == ("detailed_design", "in_progress")
     assert [f["rule"] for f in state["reported"]] == ["NO_DETAILED_DESIGN"]
     assert state["done"] == ["diagram", "requirements", "architecture"]
-
-
-def test_a_broken_design_is_caught_and_fixed_by_a_retry(repo_root, product):
-    _stack_approved(repo_root, product)
-    attempts_before = len(list((product / ".qf/attempts/architecture").glob("*.json")))
-    decision = _attempts(repo_root, product, ["broken", "correct"])
-    assert decision["decision"] == "pass"
-    first = attempts_before + 1
-    assert _rules(product, first) == [
-        "EXTERNAL_MISMATCH",
-        "UNKNOWN_REQUIREMENT",
-        "UNMET_REQUIREMENT",
-    ]
-    assert _rules(product, first + 1) == []
-
-
-def test_changes_requested_at_checkpoint_3_keep_the_product_waiting(repo_root, product):
-    _requirements_approved(repo_root, product)
-    _stack_written(repo_root, product)
-    record_checkpoint(
-        product,
-        3,
-        "changes-requested",
-        "Example Architect",
-        "architect",
-        "Pin the Maven wrapper, not a system Maven.",
-    )
-    state = resolve_stage(product)
-    assert (state["stage"], state["status"]) == ("architecture", "awaiting_checkpoint")
-    assert "Pin the Maven wrapper" in state["reason"]
-    assert not (product / "docs/architecture/auth-flow.md").exists()
-
-
-def test_a_stack_changed_after_its_approval_withdraws_it(repo_root, product):
-    _stack_approved(repo_root, product)
-    _attempts(repo_root, product, ["correct"])
-    stack = product / "docs" / "architecture" / "stack.yaml"
-    stack.write_text(stack.read_text().replace('version: "3.3.4"', 'version: "3.4.0"'))
-    state = resolve_stage(product)
-    assert (state["stage"], state["status"]) == ("architecture", "awaiting_checkpoint")
-    assert "docs/architecture/stack.yaml" in state["reason"]

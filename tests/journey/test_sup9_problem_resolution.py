@@ -1,4 +1,4 @@
-"""Scenario — stage 12 end to end: a crack recorded, reproduced first, repaired, confirmed.
+"""Journey — stage 12 end to end: a crack recorded, reproduced first, repaired, confirmed.
 
 The product starts where the flow ends: every stage done, delivered in a
 reviewed pull request. The host is a recorded one (QF_HOST_FILE) and holds the
@@ -6,10 +6,10 @@ issues. Stage 12 runs on a defect, not in the flow; its gates run on every pull
 request once the flow is done (decision 4 of the problem resolution stage).
 
 - the agent loads the tester and the coder, with the repair rulebook;
-- a crack bench for a problem nobody analysed holds the pull request at stage 12;
-- an analysed problem, its crack bench in a test-only commit, passes;
-- a critical crack waits for /authorize-urgent-fix from an urgent approver;
-- a marker naming no problem is caught.
+- an analysed problem, its crack bench in a test-only commit, passes.
+
+Each rule a step could break is its gate's unit tests' to prove, and the
+resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
 import json
@@ -19,9 +19,7 @@ from datetime import datetime, timezone
 import pytest
 from product_builder import (
     AGENT,
-    PERSON,
     build_python_product,
-    comment,
     commit_all,
     install_plugins,
     issue,
@@ -144,35 +142,7 @@ def test_the_repair_crew_is_the_tester_then_the_coder(product):
     ]
 
 
-def test_without_a_bench_the_flow_is_complete(product, tmp_path, monkeypatch):
-    _deliver(product, tmp_path, monkeypatch)
-    assert _state(product) == (None, "complete", [])
-
-
-def test_a_crack_nobody_analysed_holds_its_fix_at_stage_12(product, tmp_path, monkeypatch):
-    _repair(product)
-    reported = problem(12, status="open", cause=None, impact=None, severity=None)
-    _deliver(product, tmp_path, monkeypatch, issue(12, "problem", reported))
-    assert _state(product) == (STAGE, "gates_failing", ["MISSING_ANALYSIS"])
-
-
 def test_an_analysed_crack_with_its_bench_passes(product, tmp_path, monkeypatch):
     _repair(product)
     _deliver(product, tmp_path, monkeypatch, issue(12, "problem", problem(12)))
     assert _state(product) == (None, "complete", [])
-
-
-def test_a_critical_crack_waits_for_its_authorization(product, tmp_path, monkeypatch):
-    _repair(product)
-    urgent = problem(12, severity="critical")
-    _deliver(product, tmp_path, monkeypatch, issue(12, "problem", urgent))
-    assert _state(product) == (STAGE, "gates_failing", ["UNAUTHORIZED_URGENT_FIX"])
-    authorized = issue(12, "problem", urgent, comments=[comment(PERSON, "/authorize-urgent-fix")])
-    _deliver(product, tmp_path, monkeypatch, authorized)
-    assert _state(product) == (None, "complete", [])
-
-
-def test_a_bench_naming_no_problem_is_caught(product, tmp_path, monkeypatch):
-    _repair(product, number=99)
-    _deliver(product, tmp_path, monkeypatch)
-    assert _state(product) == (STAGE, "gates_failing", ["UNKNOWN_PROBLEM"])

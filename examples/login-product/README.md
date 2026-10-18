@@ -5,7 +5,7 @@ drawn and approved at checkpoint 1, and the glossary exists. The requirements ar
 not written yet — producing them is the SWE.1 stage the ASPICE Agent runs next,
 followed by the architecture (SWE.2): the tech stack, approved at checkpoint 3,
 then the components and interfaces. What the plugins would write at each step is
-scripted in `tests/scenarios/plugin_outputs/`.
+scripted in `tests/journey/plugin_outputs/`.
 
 | Path | What it is |
 |---|---|

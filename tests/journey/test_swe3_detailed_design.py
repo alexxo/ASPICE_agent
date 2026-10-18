@@ -1,19 +1,19 @@
-"""Scenario — the SWE.3 detailed design stage end to end, on a copy of the example product.
+"""Journey — the SWE.3 detailed design stage end to end, on a copy of the example product.
 
 The product starts where the SWE.2 scenario ends: requirements approved at
 checkpoint 2, the stack approved at checkpoint 3, and an architecture that
 passes its gates. The loop of agent/run_aspice_agent.md is driven with the
 agent's own tools; each attempt copies a scripted plugin output
-(tests/scenarios/plugin_outputs/detailed_design/) into the product. Stage 4 has
+(tests/journey/plugin_outputs/detailed_design/) into the product. Stage 4 has
 no checkpoint: the design is agreed at the pull request.
 
 - the method and the diagram plugin are both loaded;
-- a design that passes the gate moves the product to stage 5;
-- a broken design is caught and fixed by a retry;
-- a design that stays broken reaches the architect after the first run and 3 retries.
+- a design that passes the gate moves the product to stage 5.
+
+Each rule a step could break is its gate's unit tests' to prove, and the
+resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
-import json
 import shutil
 from datetime import datetime, timezone
 
@@ -28,7 +28,7 @@ from agent.render_review_tool import render_review
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import reached_gates, run_gates
 
-OUTPUTS = "tests/scenarios/plugin_outputs"
+OUTPUTS = "tests/journey/plugin_outputs"
 APPROVED = datetime(2026, 10, 4, 15, 0, tzinfo=timezone.utc)
 
 
@@ -72,11 +72,6 @@ def _attempts(product_root, repo_root, outputs):
     return decision
 
 
-def _rules(product, number):
-    log = product / ".qf/attempts/detailed_design" / f"attempt-{number}.json"
-    return sorted(f["rule"] for gate in json.loads(log.read_text()) for f in gate["findings"])
-
-
 def test_the_method_and_the_diagram_plugin_are_loaded(repo_root, product):
     _architecture_done(repo_root, product)
     loaded = load_skills(product, "detailed_design")
@@ -101,17 +96,3 @@ def test_a_passing_design_moves_the_product_to_stage_5(repo_root, product):
     rules = {f["rule"] for f in state["reported"]}
     assert {"MISSING_VERIFICATION_PLAN", "MISSING_UNIT_TEST"} <= rules  # stage 5 is due
     assert state["done"] == ["diagram", "requirements", "architecture", "detailed_design"]
-
-
-def test_a_broken_design_is_caught_and_fixed_by_a_retry(repo_root, product):
-    _architecture_done(repo_root, product)
-    decision = _attempts(product, repo_root, ["broken", "correct"])
-    assert decision["decision"] == "pass"
-    assert _rules(product, 1) == ["INVALID_RANGE", "UNSHOWN_CALL"]
-    assert _rules(product, 2) == []
-
-
-def test_a_design_that_stays_broken_reaches_the_architect(repo_root, product):
-    _architecture_done(repo_root, product)
-    decision = _attempts(product, repo_root, ["broken"] * 5)
-    assert (decision["decision"], decision["attempts"]) == ("escalate", 4)

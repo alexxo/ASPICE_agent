@@ -1,4 +1,4 @@
-"""Scenario — stage 10 end to end: the librarian and the official baseline.
+"""Journey — stage 10 end to end: the librarian and the official baseline.
 
 The product starts where stage 9 ends, every commit of its feature branch a
 Conventional Commit naming its requirement.
@@ -7,9 +7,11 @@ of the configuration management stage).
 
 - the agent loads the librarian's rulebook and no plugin;
 - a delivery by convention, every wish with its scenario, passes stages 10 and 11;
-- a commit off the convention holds it at stage 10;
 - a release is a pull request: the tool writes its record, the gates accept it;
 - after the merge the release workflow tags it, and the baseline is checked.
+
+Each rule a step could break is its gate's unit tests' to prove, and the
+resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
 import shutil
@@ -165,17 +167,6 @@ def test_a_delivery_by_convention_passes_stages_10_and_11(product):
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == (None, "complete")
     assert state["done"][-3:] == ["quality_assurance", STAGE, "validation"]
-
-
-def test_a_commit_off_the_convention_fails_whatever_the_stage(product, tmp_path, monkeypatch):
-    commit_all(product, "wip")
-    write_report(read_product_config(product))
-    monkeypatch.setenv("QF_HOST_FILE", str(open_delivery(product, tmp_path, reviewers=(AGENT,))))
-    assert _state(product) == (  # the commit conventions are an always-on gate
-        None,
-        "gates_failing",
-        ["MISSING_REQUIREMENT_TOKEN", "NOT_CONVENTIONAL"],
-    )
 
 
 def test_a_release_is_proposed_and_tagged_after_its_merge(product, tmp_path, monkeypatch):
