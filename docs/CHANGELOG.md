@@ -71,6 +71,7 @@ Every pull request is reviewed by the reviewer agent from the first one on, in a
 
 ### Fixed
 
+- **A host that cannot be read fails the gate closed, with a result.** A gate that reads the code host (`verify_delivery_reviewed_gate`, `verify_framework_integrity_gate`) ran as a script without a host stopped with a traceback; `run_gate_command_tool` now reports HOST_UNREADABLE in findings.v1 and exits 1. Design document § 5 stage 9, rule 4. Origin: found by the new seam test.
 - **Two helpers no longer collected as tests.** `tools/select_tests_tool.py` `tests_argument` is now `selected_tests_argument`, and the SWE.6 scenario's `tested_without_the_plan` is now `the_bridge_tester_without_the_plan`: pytest collected both as tests by their *test* prefix, and they failed for want of fixtures. Origin: internal.
 
 ## [1.6.0] - 2026-10-17

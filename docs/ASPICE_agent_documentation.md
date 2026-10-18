@@ -3001,7 +3001,8 @@ person reviews a sample.
    GitHub API, with the token in *QF_HOST_TOKEN* — in CI the token every run
    has (*github.token*, with read permissions); on a person's machine e.g.
    *export QF_HOST_TOKEN=$(gh auth token)*. Tests use a recorded host
-   (*QF_HOST_FILE*); a host that cannot be read fails the gate closed.
+   (*QF_HOST_FILE*); a host that cannot be read fails the gate closed
+   (HOST_UNREADABLE), with a result, never a traceback.
 5. **The framework is a pinned submodule.** *qf.v1 framework_dir* (e.g.
    *.framework*); the product's CI checks out the submodule.
    *verify_framework_integrity_gate* requires the submodule

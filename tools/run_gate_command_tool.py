@@ -7,7 +7,8 @@ A gate that reads the pull request's commits also takes base, the reference the
 range starts after (decision 9); without --base it comes from QF_BASE or the
 main branch.
 The result is printed in findings.v1. Exit codes: 0 pass, 1 fail — a missing or
-invalid qf.yaml is a finding too, so the gate fails closed —, 2 wrong usage.
+invalid qf.yaml is a finding too, and so is a code host that cannot be read
+(HOST_UNREADABLE), so the gate fails closed —, 2 wrong usage.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from tools.emit_findings_tool import Finding, emit
+from tools.read_host_tool import HostError
 from tools.read_product_config_tool import ConfigError, read_product_config
 
 __all__ = ["run_gate_command"]
@@ -39,6 +41,11 @@ def run_gate_command(
         config = read_product_config(args.root)
     except ConfigError as err:
         return emit(gate, [err.to_finding()])
-    if "base" in inspect.signature(check).parameters:
-        return emit(gate, check(config, base=args.base))
-    return emit(gate, check(config))
+    try:
+        if "base" in inspect.signature(check).parameters:
+            return emit(gate, check(config, base=args.base))
+        return emit(gate, check(config))
+    except HostError as err:
+        return emit(
+            gate, [Finding("HOST_UNREADABLE", ".", None, f"The code host cannot be read: {err}")]
+        )

@@ -71,6 +71,19 @@ def test_a_check_taking_base_receives_it(product, capsys):
     assert seen == ["origin/main", None]
 
 
+def test_a_host_that_cannot_be_read_fails_closed(product, capsys):
+    from tools.read_host_tool import HostError
+
+    def check(config):
+        raise HostError("No QF_HOST_TOKEN")
+
+    code, doc = _command(capsys, check, ["--root", str(product)])
+    assert code == 1
+    assert validate(doc, "findings") == []
+    assert doc["findings"][0]["rule"] == "HOST_UNREADABLE"
+    assert "No QF_HOST_TOKEN" in doc["findings"][0]["message"]
+
+
 def test_wrong_usage_exits_2():
     with pytest.raises(SystemExit) as exit_:
         run_gate_command(STAND_IN, lambda config: [], ["--no-such-flag"])
