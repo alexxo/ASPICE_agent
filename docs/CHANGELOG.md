@@ -35,6 +35,8 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-18
+
 Tests are fast by design: CI runs every test on every change, within a time budget per level.
 
 ### Migration
