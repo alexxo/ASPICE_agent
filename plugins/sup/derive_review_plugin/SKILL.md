@@ -1,6 +1,6 @@
 ---
 name: derive_review_plugin
-description: "Reviews one pull request as the reviewer agent: from its own declared account, never the author's, after every gate passes; checks what no gate can — correctness, style, traceability, logging — and posts its decision with the checklist; findings left unfixed become non-conformance issues."
+description: "Reviews one pull request as the reviewer agent: in a session of its own, from its own declared account, never the author's, after every gate passes; checks what no gate can — correctness, style, traceability, and logging for a change with code — and posts its decision with the checklist; findings left unfixed become non-conformance issues."
 ---
 
 # plugin: derive_review_plugin
@@ -59,15 +59,16 @@ When in doubt, full.
 1. **Wait for green** — start only when CI passed every gate except the ones
    that wait for a review.
 2. **Read** — every changed file, with what its markers name.
-3. **Judge** — the four checklist items of *review_code_skill*: correctness,
-   style, traceability, logging. Each finding names the file, the line and
-   what must change.
+3. **Judge** — the checklist items of *review_code_skill* the pull request
+   asks for: correctness, style, traceability, and logging when it changes
+   code. Each finding names the file, the line and what must change.
 4. **Decide** — approve only when every item holds; otherwise request
    changes.
-5. **Post** — from your own account (its token in *QF_HOST_TOKEN* for this session):
+5. **Post** — from your own account, in your own session
+   (*agent/run_reviewer_agent.md*; its token in *QF_HOST_TOKEN* there only):
    *python tools/post_review_tool.py --pull-request N --decision approve*
-   (or *request_changes*, with *--findings FILE*). The tool writes the
-   checklist in its fixed form.
+   (or *request_changes*, with *--failing* and *--findings FILE*). The tool
+   writes the items the pull request asks for in their fixed form.
 6. **Follow up** — a finding the author fixes in the pull request needs
    nothing more; one the architect defers becomes an issue labelled
    *non-conformance* whose *nonconformance* block names the pull request

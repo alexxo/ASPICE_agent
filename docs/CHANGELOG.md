@@ -35,6 +35,23 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-10-18
+
+Every pull request is reviewed by the reviewer agent from the first one on, in a session of its own, on a checklist of what the pull request holds.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Create the reviewer agent's token as a fine-grained token for the product's repository only, *Pull requests: read and write* and *Contents: read* (QUICKSTART step 3), and keep it out of the developer's session | the reviewer agent's account | recommended — a token in the developer's session lets the author's agent post the review itself |
+| For each pull request the agent asks for a review, start a second session with the reviewer agent's token in `QF_HOST_TOKEN` and have it follow `.framework/agent/run_reviewer_agent.md` | the developer's machine | required — the pull request stays red with MISSING_AGENT_REVIEW until the reviewer approves its head |
+
+### Changed
+
+- **The reviewer agent reviews every pull request.** `run_aspice_agent.md` step 6 sends every pull request, at every stage, to the reviewer, not only stage 9's; the MISSING_AGENT_REVIEW finding names the next step. Design document § 5 stage 9, rule 1. Origin: FB-24 (wp_publisher).
+- **The reviewer works in a session of its own** (new: `agent/run_reviewer_agent.md`). Only that session holds the reviewer agent's token, a token that can review and not push; the author's session never posts a review. `review_code_skill`, `derive_review_plugin`; rule 1, Appendix A.8. Origin: FB-24 (wp_publisher).
+- **The checklist follows what the pull request holds.** `post_review_tool.required_items` asks for *logging* only when the pull request changes a file under `paths.code_dir`; the tool writes those items and `verify_delivery_reviewed_gate` checks those (INCOMPLETE_CHECKLIST). *Style* covers the names and conventions of documents too. `review_code_skill` R3, R7; rule 7. Origin: FB-24 (wp_publisher).
+
 ### Fixed
 
 - **Two helpers no longer collected as tests.** `tools/select_tests_tool.py` `tests_argument` is now `selected_tests_argument`, and the SWE.6 scenario's `tested_without_the_plan` is now `the_bridge_tester_without_the_plan`: pytest collected both as tests by their *test* prefix, and they failed for want of fixtures. Origin: internal.

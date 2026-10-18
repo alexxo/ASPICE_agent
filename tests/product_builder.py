@@ -1247,11 +1247,14 @@ def add_origin(root: Path, repo: str = HOST_REPO) -> None:
     subprocess.run(["git", "-C", str(root), "remote", "add", "origin", url], check=True)
 
 
-def review(author: str, commit: str, state: str = "APPROVED", failing=(), bot=False) -> dict:
-    """A review as the host records it; the agent's carries the checklist."""
-    from tools.post_review_tool import render
+def review(
+    author: str, commit: str, state: str = "APPROVED", failing=(), bot=False, items=None
+) -> dict:
+    """A review as the host records it; the agent's carries the checklist (every
+    item, or the items given)."""
+    from tools.post_review_tool import CHECKLIST, render
 
-    body = render(set(failing)) if author == AGENT else "Looks right."
+    body = render(set(failing), items=items or CHECKLIST) if author == AGENT else "Looks right."
     return {"author": author, "state": state, "commit": commit, "body": body, "bot": bot}
 
 

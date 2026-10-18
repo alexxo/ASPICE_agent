@@ -111,6 +111,11 @@ Then the person does, on GitHub:
    `.gitignore`.
 3. Add every developer and the reviewer-bot as collaborators with **write**
    access. A review counts only from an account that can write.
+4. Signed in as the reviewer-bot, create its token: a **fine-grained** token
+   for the product's repository only, with *Pull requests: read and write*
+   and *Contents: read*. It can review, but not push or merge. If GitHub does
+   not offer the repository for a fine-grained token, use a classic one; the
+   separate session below still keeps it out of the developer's.
 
 Nothing else is configured on GitHub. There is no secret, no branch protection,
 no mirror and no paid plan. CI reads GitHub with its own token, and every push
@@ -221,8 +226,11 @@ wishes. Tell the person how the work runs from now on:
 - **developer** opens the agent in the product folder and asks it to follow
   `run_aspice_agent.md`.
 - **reviewer-bot**: the reviewer agent posts its reviews from this account,
-  with its token in the agent's session: `export QF_HOST_TOKEN=<reviewer-bot's
-  token>`.
+  in a session of its own, never the developer's. For every pull request the
+  agent asks for it, the developer opens a second session in the product
+  folder, sets `export QF_HOST_TOKEN=<reviewer-bot's token>` there only, and
+  asks it to follow `.framework/agent/run_reviewer_agent.md` for that pull
+  request.
 - **reviewer** approves the sampled pull requests on GitHub, and gives the
   checkpoint decisions the agent asks for.
 - **Everyone**: every change reaches `main` through a reviewed pull request

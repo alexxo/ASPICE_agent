@@ -4,8 +4,9 @@ The reviewer agent posts from its own account — its token in QF_HOST_TOKEN for
 its session — never the author's: GitHub forbids approving one's own pull
 request, and verify_delivery_reviewed_gate counts only approvals from the accounts in
 qf.yaml review.agents. The review is given on the pull request's current head.
-An approval needs every checklist item checked; a request for changes names the
-items that fail (--failing) and the findings (--findings, a text file).
+An approval needs every checklist item the pull request asks for checked
+(required_items: logging only when it changes code); a request for changes names
+the items that fail (--failing) and the findings (--findings, a text file).
 
     python tools/post_review_tool.py --pull-request N --decision approve
     python tools/post_review_tool.py --pull-request N --decision request_changes \\
@@ -27,17 +28,31 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.read_host_tool import API, HOST_TOKEN, GitHubHost, HostError, repository  # noqa: E402
+from tools.read_product_config_tool import (  # noqa: E402
+    ConfigError,
+    ProductConfig,
+    read_product_config,
+)
 
-__all__ = ["CHECKLIST", "MARK", "checklist", "render"]
+__all__ = ["CHECKLIST", "MARK", "checklist", "render", "required_items"]
 
 CHECKLIST = ("correctness", "style", "traceability", "logging")
 MARK = "<!-- qf-review-checklist -->"
 _ITEM = re.compile(r"^\s*- \[([ xX])\] (\w+)\s*$")
 
 
-def render(failing: set[str], findings: str = "") -> str:
+def required_items(config: ProductConfig, files) -> tuple[str, ...]:
+    """The checklist items a pull request's review answers: every one, but logging
+    only when the pull request changes a file under paths.code_dir."""
+    code = config.relative(config.code_dir).rstrip("/") + "/"
+    if any(f.startswith(code) for f in files):
+        return CHECKLIST
+    return tuple(item for item in CHECKLIST if item != "logging")
+
+
+def render(failing: set[str], findings: str = "", items: tuple[str, ...] = CHECKLIST) -> str:
     """The review body: the checklist, then the findings."""
-    lines = [MARK] + [f"- [{' ' if item in failing else 'x'}] {item}" for item in CHECKLIST]
+    lines = [MARK] + [f"- [{' ' if item in failing else 'x'}] {item}" for item in items]
     text = "\n".join(lines)
     return f"{text}\n\n{findings.strip()}\n" if findings.strip() else f"{text}\n"
 
@@ -93,14 +108,28 @@ def main(argv: list[str] | None = None) -> int:
         print(f"No {HOST_TOKEN}: set it to the reviewer agent's own token.", file=sys.stderr)
         return 2
     try:
+        config = read_product_config(args.root)
+    except ConfigError as err:
+        print(err, file=sys.stderr)
+        return 2
+    try:
         repo = repository(args.root)
         host = GitHubHost(token, os.environ.get("GITHUB_API_URL", API))
         pull = host.pull_request(repo, args.pull_request)
         if pull is None:
             print(f"No pull request {args.pull_request} in {repo}.", file=sys.stderr)
             return 2
+        items = required_items(config, pull.files)
+        extra = sorted(set(args.failing) - set(items))
+        if extra:
+            print(
+                f"{', '.join(extra)}: not asked of {repo}#{pull.number}, which changes no code.",
+                file=sys.stderr,
+            )
+            return 2
         event = "APPROVE" if args.decision == "approve" else "REQUEST_CHANGES"
-        _post(token, repo, pull.number, pull.head, event, render(set(args.failing), findings))
+        body = render(set(args.failing), findings, items)
+        _post(token, repo, pull.number, pull.head, event, body)
     except HostError as err:
         print(err, file=sys.stderr)
         return 2

@@ -127,17 +127,24 @@ Render it again after every change, a retry's included: the gates compare it
 with what the files render now, and an approval on a page they no longer
 render is refused.
 
-**Stage 9, the delivery desk.** The work is not yours to judge. Push the branch
-and open its pull request with the host's tool (e.g. `gh pr create`); wait for
-CI. Then the reviewer — the stage's plugin, a reviewer agent that is never you —
-reviews the pull request's current head from its own account (its token in
-`QF_HOST_TOKEN` for that session) and posts with `tools/post_review_tool.py`. A
-finding it requests is fixed in the pull request by the crew of the stage it
-belongs to; after each push the reviewer reviews the new head. A finding the
-architect defers becomes an issue labelled *non-conformance*, its block naming
-the pull request (`track_nonconformances_skill`). Throughout, a
-framework weakness you meet goes into the framework feedback log
-(`report_framework_feedback_skill`), never worked around.
+**Every pull request.** Every change reaches the main branch through a pull
+request, at every stage from the first one on, and its review is not yours.
+Push the branch and open its pull request with the host's tool (e.g.
+`gh pr create`); wait for CI. CI stays red (MISSING_AGENT_REVIEW) until the
+reviewer agent approves the pull request's current head. Ask the person to
+start the reviewer's own session for it: a new session, with the reviewer
+agent's token in its `QF_HOST_TOKEN`, following
+`<framework>/agent/run_reviewer_agent.md` for that pull request. That token is
+never in your session, and you never post a review. A finding the reviewer
+requests is fixed in the pull request by the crew of the stage it belongs to;
+after each push, the person starts the review of the new head.
+
+**Stage 9, the delivery desk.** The stage's pull request is reviewed as every
+other one. A finding the architect defers becomes an issue labelled
+*non-conformance*, its block naming the pull request
+(`track_nonconformances_skill`). Throughout, a framework weakness you meet
+goes into the framework feedback log (`report_framework_feedback_skill`),
+never worked around.
 
 **Stage 10, the official baseline.** There is no plugin: you follow
 `record_baseline_skill` yourself. Every commit you write is a Conventional

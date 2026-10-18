@@ -2,7 +2,8 @@
 
 The work travels in a pull request (NO_PULL_REQUEST). A reviewer agent — one of
 qf.yaml review.agents, never the author — approves the current head
-(MISSING_AGENT_REVIEW) with every checklist item checked (INCOMPLETE_CHECKLIST).
+(MISSING_AGENT_REVIEW) with every checklist item it asks for checked — logging
+only when it changes code (INCOMPLETE_CHECKLIST).
 Every pull request that changes paths.architecture_dir or the gates' own files
 — the CI file, the framework pin (.gitmodules) and qf.yaml — and every one whose
 number is a multiple of review.sample_every, also has a person's approval of
@@ -34,7 +35,7 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
 
 from gates.sup.verify_required_checks_gate import GATES_JOB, gates_job  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
-from tools.post_review_tool import CHECKLIST, checklist  # noqa: E402
+from tools.post_review_tool import checklist, required_items  # noqa: E402
 from tools.read_commit_range_tool import (  # noqa: E402
     first_parents,
     is_ancestor,
@@ -126,6 +127,7 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
     agents = set(config.review_agents)
     approvals = [r for r in pull.approvals() if r.author != pull.author]
     by_agent = [r for r in approvals if r.author in agents]
+    items = required_items(config, pull.files)
     findings = []
     if not by_agent:
         findings.append(
@@ -134,12 +136,13 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
                 ".",
                 None,
                 f"{where} has no approval of its head {pull.head[:7]} from a reviewer agent "
-                f"({', '.join(sorted(agents))}) other than its author.",
+                f"({', '.join(sorted(agents))}) other than its author: start the reviewer "
+                "agent's own session for it (agent/run_reviewer_agent.md).",
             )
         )
-    elif not any(_complete(r.body) for r in by_agent):
-        items = checklist(by_agent[-1].body) or {}
-        open_items = [i for i in CHECKLIST if not items.get(i)]
+    elif not any(_complete(r.body, items) for r in by_agent):
+        checked = checklist(by_agent[-1].body) or {}
+        open_items = [i for i in items if not checked.get(i)]
         findings.append(
             Finding(
                 "INCOMPLETE_CHECKLIST",
@@ -193,9 +196,9 @@ def sampled(config: ProductConfig, pull: PullRequest) -> str | None:
     return None
 
 
-def _complete(body: str) -> bool:
-    items = checklist(body)
-    return items is not None and all(items.get(i) for i in CHECKLIST)
+def _complete(body: str, items: tuple[str, ...]) -> bool:
+    checked = checklist(body)
+    return checked is not None and all(checked.get(i) for i in items)
 
 
 if __name__ == "__main__":

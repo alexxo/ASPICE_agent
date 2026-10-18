@@ -165,6 +165,30 @@ def test_an_approval_with_an_unchecked_item_is_incomplete(product, tmp_path, mon
     assert _rules(product, tmp_path, monkeypatch, pull) == ["INCOMPLETE_CHECKLIST"]
 
 
+DOCUMENTS = ["docs/requirements/login.md", "docs/diagrams/login.sequence.json"]
+WITHOUT_LOGGING = ("correctness", "style", "traceability")
+
+
+def test_a_change_without_code_is_reviewed_without_logging(product, tmp_path, monkeypatch):
+    head = git_head(product)
+    agent = review(AGENT, head, items=WITHOUT_LOGGING)
+    pull = pull_request(1, head, files=DOCUMENTS, reviews=[agent])
+    assert _rules(product, tmp_path, monkeypatch, pull) == []
+
+
+def test_a_change_with_code_is_reviewed_for_logging(product, tmp_path, monkeypatch):
+    head = git_head(product)
+    pull = pull_request(1, head, reviews=[review(AGENT, head, items=WITHOUT_LOGGING)])
+    assert _rules(product, tmp_path, monkeypatch, pull) == ["INCOMPLETE_CHECKLIST"]
+
+
+def test_a_missing_review_names_the_reviewer_session(product, tmp_path, monkeypatch):
+    pull = pull_request(1, git_head(product))
+    monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json", pulls=[pull])))
+    (finding,) = check(read_product_config(product))
+    assert "agent/run_reviewer_agent.md" in finding.message
+
+
 def test_a_sampled_pull_request_waits_for_a_person(product, tmp_path, monkeypatch):
     head = git_head(product)
     agent = review(AGENT, head)
