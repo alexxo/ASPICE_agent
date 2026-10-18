@@ -6,8 +6,10 @@ the token every run has (github.token, with read permissions); on a person's
 machine, e.g. export QF_HOST_TOKEN=$(gh auth token). No host setting is read, so
 no administrator's token is needed. With QF_HOST_FILE set, the host is read
 from that JSON file instead: the tests' fake host, and a recorded host checked
-offline. A host that cannot be read raises HostError, which crashes the gate:
-the runner fails closed (GATE_CRASHED), never open.
+offline. A host that cannot be read raises HostError, and the gate fails
+closed (HOST_UNREADABLE), never open. GitHub answers 404 when a token cannot see
+a private repository, so a pull request that is not found is missing only when
+the repository itself can be read.
 
 The delivery is the pull request the work travels in: the one of the CI event,
 else the open one of the current branch, else — on the main branch — the merged
@@ -52,6 +54,13 @@ __all__ = [
 HOST_TOKEN = "QF_HOST_TOKEN"
 HOST_FILE = "QF_HOST_FILE"
 API = "https://api.github.com"
+
+
+UNREADABLE = (
+    "The token cannot read {repo}, or it does not exist: check the token's resource owner"
+    " (the organization, for an organization's repository), its repository list and"
+    " permissions, and the organization's approval of the token."
+)
 
 
 class HostError(Exception):
@@ -176,7 +185,7 @@ class GitHubHost:
     def default_branch(self, repo: str) -> str:
         data = self._get(f"/repos/{repo}")
         if data is None:
-            raise HostError(f"No repository {repo} on GitHub, or the token cannot read it.")
+            raise HostError(UNREADABLE.format(repo=repo))
         return data["default_branch"]
 
     def passed_checks(self, repo: str, sha: str) -> frozenset[str]:
@@ -188,6 +197,8 @@ class GitHubHost:
     def pull_request(self, repo: str, number: int) -> PullRequest | None:
         data = self._get(f"/repos/{repo}/pulls/{number}")
         if data is None:
+            if self._get(f"/repos/{repo}") is None:
+                raise HostError(UNREADABLE.format(repo=repo))
             return None
         files = self._pages(f"/repos/{repo}/pulls/{number}/files")
         reviews = self._pages(f"/repos/{repo}/pulls/{number}/reviews")

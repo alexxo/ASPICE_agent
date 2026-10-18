@@ -150,6 +150,20 @@ def test_github_passed_checks_are_read_from_the_api(monkeypatch):
     assert host.passed_checks(HOST_REPO, "b" * 40) == frozenset()
 
 
+def test_a_pull_request_is_missing_only_from_a_repository_the_token_reads(monkeypatch):
+    """GitHub answers 404 for a private repository the token cannot see (FB-25)."""
+    host = GitHubHost("token")
+    monkeypatch.setattr(
+        host,
+        "_get",
+        lambda path: {"default_branch": "main"} if path == "/repos/acme/login" else None,
+    )
+    assert host.pull_request(HOST_REPO, 6) is None
+    monkeypatch.setattr(host, "_get", lambda path: None)
+    with pytest.raises(HostError, match="cannot read acme/login.*resource owner"):
+        host.pull_request(HOST_REPO, 6)
+
+
 def test_recorded_checks_pass_every_head_unless_given(tmp_path):
     pulls = [pull_request(1, "c" * 40)]
     host = FileHost(write_host(tmp_path / "host.json", pulls=pulls))

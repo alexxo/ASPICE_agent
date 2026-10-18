@@ -106,21 +106,64 @@ owner, urgent approver and change approver roles to different people.
 
 Then the person does, on GitHub:
 
-1. Create the reviewer-bot account, if it does not exist.
+1. Create the reviewer-bot account, if it does not exist: its own e-mail, and
+   two-factor authentication if the organization requires it.
 2. Create an **empty** repository for the product: no README, no licence, no
    `.gitignore`.
-3. Add every developer and the reviewer-bot as collaborators with **write**
-   access. A review counts only from an account that can write.
-4. Signed in as the reviewer-bot, create its token: a **fine-grained** token
-   for the product's repository only, with *Pull requests: read and write*
-   and *Contents: read*. It can review, but not push or merge. If GitHub does
-   not offer the repository for a fine-grained token, use a classic one; the
-   separate session below still keeps it out of the developer's.
+3. Give every developer and the reviewer-bot **write** access. A review counts
+   only from an account that can write.
+   - *Personal repository:* repository → Settings → Collaborators → *Add
+     people* → *Write*.
+   - *Organization's repository:* an organization owner invites each account
+     as a **member** (the organization → People → *Invite member*), then gives
+     it write on the repository (repository → Settings → Collaborators and
+     teams → *Add people* → *Write*). Make the reviewer-bot a member, not an
+     outside collaborator: GitHub limits fine-grained tokens for outside
+     collaborators.
 
-Nothing else is configured on GitHub. There is no secret, no branch protection,
-no mirror and no paid plan. CI reads GitHub with its own token, and every push
-to `main` checks that each change came through a reviewed pull request with
-passing gates.
+   Signed in as each account, accept the invitation (the e-mail, or
+   `https://github.com/orgs/<org>/invitation`).
+4. *Organization's repository only*, once, by an organization owner: the
+   organization → Settings → Third-party Access → Personal access tokens →
+   Settings: allow access via **fine-grained** tokens, and choose whether they
+   need an owner's approval.
+5. Signed in as the reviewer-bot, create its token: Settings → Developer
+   settings → Personal access tokens → Fine-grained tokens → *Generate new
+   token*.
+   - *Name and expiry:* e.g. *qf-reviewer <repository>*; note the expiry date,
+     since the reviewer cannot post once the token expires.
+   - *Resource owner:* the repository's owner: the **organization** for an
+     organization's repository (offered only once the bot is a member), the
+     bot's own account otherwise.
+   - *Repository access:* *Only select repositories* → the product's
+     repository.
+   - *Repository permissions:* **Pull requests: read and write** and
+     **Contents: read**, nothing else. It can review, but not push or merge.
+
+   Copy the token once and keep it in a password manager, never in the
+   developer's session or a file in the repository.
+6. *Organization's repository, if item 4 asks for approval:* an organization
+   owner opens the organization → Settings → Third-party Access → Personal
+   access tokens → *Pending requests*, checks that the reviewer-bot's request
+   asks only for the product's repository with those two permissions, and
+   *Approves* it. Until then the token reads only public resources, so a
+   private repository answers as if it did not exist.
+7. Check the token, in a terminal that is not the developer's session:
+   `GH_TOKEN=<token> gh api repos/<owner>/<repo> -q .full_name` prints the
+   repository's name. A 404 means item 3, 5 or 6 is missing.
+
+When the token expires, the reviewer-bot creates a new one (item 5), approved
+again (item 6).
+
+If GitHub does not offer the repository for a fine-grained token, a classic
+token with the `repo` scope works and needs no organization approval, but it
+reaches every repository the reviewer-bot can write to; the separate session
+still keeps it out of the developer's.
+
+Nothing else is configured on GitHub beyond these steps: there is no secret, no
+branch protection, no mirror and no paid plan. CI reads GitHub with its own
+token, and every push to `main` checks that each change came through a reviewed
+pull request with passing gates.
 
 ### Step 4 — Fetch the framework at its latest release
 

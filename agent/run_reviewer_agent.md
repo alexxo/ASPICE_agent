@@ -20,6 +20,14 @@ product root.
 and ask the person to set it in this session
 (`export QF_HOST_TOKEN=<the reviewer agent's token>`), never a developer's.
 
+Check that the token reads the repository:
+`GH_TOKEN=$QF_HOST_TOKEN gh api repos/<owner>/<repo> -q .full_name` prints its
+name. A 404 means the token cannot see it: stop and send the person to the
+framework's `QUICKSTART.md` step 3, the reviewer-bot's access, token and, for an
+organization's repository, the owner's approval. `post_review_tool` reports
+the same case as "The token cannot read <repo>", never as a missing pull
+request.
+
 Run `python <framework>/agent/read_config_tool.py --root <product>`. If `ok` is
 false, stop and report every problem to the person.
 

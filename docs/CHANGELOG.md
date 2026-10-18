@@ -35,6 +35,26 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-10-18
+
+The reviewer-bot's GitHub setup is written step by step, for a personal and an organization's repository, and a token that cannot read the repository says so.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| For an organization's repository: make the reviewer-bot a member, create its token with the organization as resource owner and the repository selected, and have an owner approve it where the organization asks (QUICKSTART step 3, items 3–6) | the organization's settings and the reviewer-bot's account | required where the token cannot read the repository — the reviewer posts nothing until it can |
+
+### Changed
+
+- **The reviewer-bot's GitHub setup, step by step.** `QUICKSTART.md` step 3 now covers write access as a collaborator or an organization member, the organization's token policy, the fine-grained token's resource owner, repository and permissions, the owner's approval of the token, a check that the token reads the repository, its renewal, and the trade-off of the classic-token fallback. "Nothing else is configured on GitHub" now holds beyond those steps. Origin: FB-26 (wp_publisher).
+- **The reviewer checks its token first.** `run_reviewer_agent.md` § 1 reads the repository with the token before the review, and sends the person to the QUICKSTART on a 404. Origin: FB-25 (wp_publisher).
+
+### Fixed
+
+- **A token that cannot read the repository is no longer reported as a missing pull request.** GitHub answers 404 for a private repository the token cannot see; `read_host_tool` now reports a pull request missing only when the repository itself reads, and otherwise raises "The token cannot read <repo>", naming the resource owner, repository list, permissions and the organization's approval. `post_review_tool` prints it; a gate reports it as HOST_UNREADABLE. Design document § 5 stage 9, rule 4. Origin: FB-25 (wp_publisher).
+- **`read_host_tool`'s docstring** said a host that cannot be read crashes the gate (GATE_CRASHED); it fails closed with HOST_UNREADABLE since v1.7.0. Origin: found verifying FB-25.
+
 ## [1.7.0] - 2026-10-18
 
 Tests are fast by design: CI runs every test on every change, within a time budget per level.

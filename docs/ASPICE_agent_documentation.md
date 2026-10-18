@@ -3002,7 +3002,10 @@ person reviews a sample.
    has (*github.token*, with read permissions); on a person's machine e.g.
    *export QF_HOST_TOKEN=$(gh auth token)*. Tests use a recorded host
    (*QF_HOST_FILE*); a host that cannot be read fails the gate closed
-   (HOST_UNREADABLE), with a result, never a traceback.
+   (HOST_UNREADABLE), with a result, never a traceback. GitHub answers a
+   repository the token cannot see as missing, so a pull request is reported
+   missing only from a repository the token reads; otherwise the result says
+   the token cannot read the repository.
 5. **The framework is a pinned submodule.** *qf.v1 framework_dir* (e.g.
    *.framework*); the product's CI checks out the submodule.
    *verify_framework_integrity_gate* requires the submodule
