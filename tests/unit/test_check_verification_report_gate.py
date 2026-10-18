@@ -81,6 +81,18 @@ def test_the_report_lists_every_level(tmp_path):
     assert (path := root / ".qf" / "runs").is_dir() and any(path.rglob("report.md"))
 
 
+def test_the_report_shows_how_long_each_suite_took(tmp_path):
+    root = _verified(tmp_path)
+    path = write_report(read_product_config(root))
+    report = json.loads(path.read_text())
+    unit = report["durations"]["unit"]
+    assert unit["seconds"] > 0
+    assert unit["slowest"] and len(unit["slowest"]) <= 5
+    times = [t["seconds"] for t in unit["slowest"]]
+    assert times == sorted(times, reverse=True)
+    assert "## How long it took" in path.with_name("report.md").read_text()
+
+
 def test_a_proposed_release_adds_its_validation_per_wish(tmp_path, monkeypatch):
     from product_builder import (
         DEMO,

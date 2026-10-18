@@ -1,4 +1,4 @@
-"""tools/select_tests_tool.py — on a change, only the tests traced to it run."""
+"""tools/select_tests_tool.py — the coder's loop runs the tests traced to a change."""
 
 import copy
 import subprocess
@@ -35,18 +35,18 @@ def _selected_stack() -> dict:
     return stack
 
 
-def _plan(on_change: str = "selected", minimum: int = 50) -> dict:
+def _plan(minimum: int = 50) -> dict:
     plan = copy.deepcopy(PLAN)
-    plan["unit"]["on_change"] = on_change
     plan["unit"]["coverage"]["minimum"] = minimum
     return plan
 
 
 @pytest.fixture
 def product(tmp_path, monkeypatch):
-    """Every unit built and tested on main; the work continues on a feature branch."""
+    """Every unit built and tested on main; the work continues on a feature branch,
+    in the coder's loop (QF_RUN=selected)."""
     monkeypatch.delenv("QF_BASE", raising=False)
-    monkeypatch.delenv("QF_RUN", raising=False)
+    monkeypatch.setenv("QF_RUN", "selected")
     root = build_python_product(tmp_path, plan=_plan(), stack=_selected_stack(), branch=None)
     write_all_tests_and_stubs(root)
     write_all_code(root)
@@ -135,18 +135,16 @@ def test_a_proposed_release_runs_every_test(product):
     assert "a release is proposed" in _unit(product).full
 
 
-def test_qf_run_full_runs_every_test(product, monkeypatch):
+def test_ci_runs_every_test_on_every_change(product, monkeypatch):
+    """Without the coder's QF_RUN=selected, the suite runs in full, and keeps its time."""
     _change(product, COUNT_FAILURES)
-    monkeypatch.setenv("QF_RUN", "full")
+    monkeypatch.delenv("QF_RUN")
+    config = read_product_config(product)
 
-    assert "QF_RUN=full" in _unit(product).full
+    run = run_command(config, "suites", "unit", _selected_stack()["suites"]["unit"])
 
-
-def test_a_plan_saying_all_runs_every_test(tmp_path):
-    root = build_python_product(tmp_path, plan=_plan("all"), stack=_selected_stack())
-    _change(root, "qf.yaml")
-
-    assert "on_change: selected" in _unit(root).full
+    assert run.full and run.selection is None
+    assert run.seconds is not None and run.seconds > 0
 
 
 def test_a_suite_without_run_selected_runs_every_test(product):
@@ -238,15 +236,6 @@ def test_coverage_is_judged_on_a_full_run_only(product):
     assert check_stack_commands(config) == []
 
 
-def test_the_plan_requires_on_change():
-    plan = yaml.safe_load(yaml.safe_dump(PLAN))
-    del plan["unit"]["on_change"]
-
-    from tools.validate_contract_tool import validate
-
-    assert any("on_change" in v.message for v in validate(plan, "verification_plan"))
-
-
 def test_the_integration_and_software_levels_follow_the_scope(tmp_path, monkeypatch):
     """A changed auth-service unit selects the component tests of the auth service
     and its neighbour, the login flow, and the software tests of the requirements
@@ -263,8 +252,6 @@ def test_the_integration_and_software_levels_follow_the_scope(tmp_path, monkeypa
     write_all_code(root)
     write_all_integration_tests(root)
     write_all_software_tests(root)
-    plan_file = root / "docs" / "verification-plan.md"
-    plan_file.write_text(plan_file.read_text().replace("on_change: all", "on_change: selected"))
     commit_all(root, "every level built")
     subprocess.run(["git", "-C", str(root), "checkout", "-q", "-b", "feature/x"], check=True)
     _change(root, COUNT_FAILURES)

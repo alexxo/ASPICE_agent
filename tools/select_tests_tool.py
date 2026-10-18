@@ -1,6 +1,9 @@
-"""Select the tests traced to a change (decisions 30–33 of the unit stages).
+"""Select the tests traced to a change, for the coder's own loop (decisions 30–33
+of the unit stages).
 
-On a change, only the tests traced to it run. The change is every file of the
+CI runs every test on every change (decision 32); this selection is what the
+coder runs while working, and what a gate run with QF_RUN=selected runs
+(run_stack_commands_tool). The change is every file of the
 commits since the base (read_commit_range_tool: --base, QF_BASE, else the merge
 base with the main branch) and every uncommitted file. Each changed file is
 traced through its markers:
@@ -18,11 +21,10 @@ suite the tests naming a requirement in scope. Every selected test keeps its
 reasons — the changed file and the marker that links them — for the
 verification report (decision 30).
 
-Every test runs instead (a full run) when a release is proposed (decision 32),
-when QF_RUN=full, when there is no base or nothing changed, when a changed file
-traces to nothing (no marker, deleted, or no code or test at all), when the
-plan's section says on_change: all or the plan cannot be read, and for a suite
-without run_selected or outside the unit, integration and software levels.
+Every test runs instead (a full run) when a release is proposed, when there is
+no base or nothing changed, when a changed file traces to nothing (no marker,
+deleted, or no code or test at all), and for a suite without run_selected or
+outside the unit, integration and software levels.
 
     python tools/select_tests_tool.py [--root PRODUCT] [--base REF]
 """
@@ -53,8 +55,6 @@ from tools.read_unit_markers_tool import (  # noqa: E402
     scan_software_tests,
     scan_sources,
 )
-from tools.read_yaml_blocks_tool import read_yaml_blocks  # noqa: E402
-from tools.validate_contract_tool import validate  # noqa: E402
 
 __all__ = ["LEVELS", "Scope", "Selection", "Trace", "select", "selected_tests_argument", "trace"]
 
@@ -120,8 +120,6 @@ def trace(config: ProductConfig, stack: dict) -> Trace:
     """The change traced through the markers, shared by every suite."""
     if _proposed_release(config):
         return Trace("a release is proposed: the release commit runs every test")
-    if os.environ.get("QF_RUN") == "full":
-        return Trace("QF_RUN=full asks for a full run")
     changed, why = _changed(config)
     if changed is None:
         return Trace(why)
@@ -169,27 +167,15 @@ def trace(config: ProductConfig, stack: dict) -> Trace:
     return Trace(None, scope, tests)
 
 
-def _plan_section(config: ProductConfig, section: str) -> dict | None:
-    path = config.verification_plan_file
-    blocks = read_yaml_blocks(path, "verification_plan") if path.is_file() else []
-    if len(blocks) != 1 or blocks[0].error or validate(blocks[0].data, "verification_plan"):
-        return None
-    return blocks[0].data.get(section)
-
-
 def select(
     config: ProductConfig, stack: dict, suite: str, traced: Trace | None = None
 ) -> Selection:
     """Which tests of one suite run, and why."""
     entry = stack["suites"].get(suite, {})
-    level = LEVELS.get(suite)
-    if level is None:
+    if suite not in LEVELS:
         return Selection(suite, f"the {suite} suite always runs in full")
     if "run_selected" not in entry:
         return Selection(suite, f"suites.{suite} declares no run_selected")
-    section = _plan_section(config, level)
-    if section is None or section["on_change"] != "selected":
-        return Selection(suite, f"the plan's {level} section does not say on_change: selected")
     traced = traced if traced is not None else trace(config, stack)
     if traced.full is not None:
         return Selection(suite, traced.full)

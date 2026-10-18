@@ -70,9 +70,10 @@ When in doubt, full.
 ## Steps
 
 1. **Plan** — the first time, the integration section of the verification
-   plan: techniques, criteria, infrastructure, regression, *on_change*
-   (*selected* unless the architect asks for *all*), and the order of
-   steps, each with its components, preconditions and selection.
+   plan: techniques, criteria, infrastructure, regression, and the order of
+   steps, each with its components, preconditions and selection. Each test
+   covers an interaction once, never a rule a unit test already shows, so the
+   suite stays within its budget (300 s by default).
 2. **Component tests** — per component, tests through its own interfaces with
    the test doubles the architecture declares, marked
    *@component[&lt;component-id&gt;]*, in files matching *integration_test_files*

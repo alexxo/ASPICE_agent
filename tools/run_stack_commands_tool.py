@@ -7,11 +7,13 @@ gates need the same unit-suite run, so each command runs once per tree
 wrote (JUnit XML results, Cobertura XML coverage, measurements.v1 JSON) are kept under
 .qf/runs/<tree-hash>/, which git ignores. The tree hash covers HEAD, the
 uncommitted changes and the untracked files, so any edit runs the command again.
-Outside git nothing is kept. A suite of the unit, integration or software level
-runs only the tests traced to the change when select_tests_tool selects them
-(decisions 30–32): its run_selected with {tests} filled in, or nothing when no
-test is traced; the run keeps its selection, so the gates judge completeness
-only for what it covered. The red run of an older commit runs in its own
+Outside git nothing is kept. Every suite runs every test (decision 32), and the
+run keeps how long it took (seconds, wall clock), which check_time_budget_gate
+judges. Only in the coder's own loop, with QF_RUN=selected, a suite of the
+unit, integration or software level runs the tests select_tests_tool traces to
+the change (decision 30): its run_selected with {tests} filled in, or nothing
+when no test is traced; the run keeps its selection, so the gates judge
+completeness only for what it covered. The red run of an older commit runs in its own
 checkout and is kept under that commit's key: a commit never changes.
 """
 
@@ -20,8 +22,10 @@ from __future__ import annotations
 import glob
 import hashlib
 import json
+import os
 import shutil
 import subprocess
+import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -57,6 +61,7 @@ class CommandRun:
     # a suite's selection: {"full": why every test ran, or None; "tests": test file →
     # reasons; "scope": units, components, flows, requirements covered}; None: a full run
     selection: dict | None = None
+    seconds: float | None = None  # how long the command ran, wall clock
 
     @property
     def full(self) -> bool:
@@ -141,7 +146,7 @@ def run_command(
 ) -> CommandRun:
     """Run one declared check or suite in cwd (default: the product root), kept
     under key (default: the tree's) unless cache is False. A suite run in the
-    product root runs what select_tests_tool selects."""
+    product root with QF_RUN=selected runs what select_tests_tool selects."""
     selection = _selection(config, name) if kind == "suites" and cwd is None else None
     cwd = Path(cwd) if cwd is not None else config.root
     if cache and key is None:
@@ -156,12 +161,16 @@ def run_command(
     for stale in [p for w in written for p in _matches(cwd, entry.get(w))]:
         stale.unlink(missing_ok=True)
     version_exit, version_output = _shell(entry["version_command"], cwd)
+    seconds = None
     if selection is not None and selection["full"] is None and not selection["tests"]:
         exit_code, output = 0, "No test is traced to the change."
     else:
+        started = time.monotonic()
         exit_code, output = _shell(_command(entry, selection), cwd)
+        seconds = round(time.monotonic() - started, 3)
     run = CommandRun(kind, name, exit_code, output, version_exit, version_output)
     run.selection = selection
+    run.seconds = seconds
 
     results = _matches(cwd, entry.get("results"))
     coverage = _matches(cwd, entry.get("coverage"))
@@ -181,7 +190,10 @@ def run_command(
 
 
 def _selection(config: ProductConfig, name: str) -> dict | None:
-    """The suite's selection, as kept with its run."""
+    """The suite's selection, as kept with its run: None (every test) unless the
+    coder's loop asks for it with QF_RUN=selected."""
+    if os.environ.get("QF_RUN") != "selected":
+        return None
     from tools.select_tests_tool import select
 
     stack = read_stack(config)

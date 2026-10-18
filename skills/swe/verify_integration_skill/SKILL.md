@@ -8,7 +8,7 @@ description: "Rules for component and integration verification (SWE.5): the inte
 **Stage:** 7 · SWE.5 Software component verification and integration verification
 **Loaded with:** create_integration_tests_plugin, create_unit_code_plugin
 **Contract:** contracts/verification_plan_contract.v1.schema.json
-**Gates:** check_verification_plan_gate, verify_test_first_gate, verify_tests_to_components_link_gate, verify_tests_to_flows_link_gate
+**Gates:** check_verification_plan_gate, verify_test_first_gate, verify_tests_to_components_link_gate, verify_tests_to_flows_link_gate, check_time_budget_gate
 
 ## What it governs
 
@@ -33,7 +33,7 @@ changes the code until they pass and never touches a test.
 
 The *integration* section of the ```yaml verification_plan block
 (*verification_plan.v1*): techniques, pass/fail criteria, entry and exit
-criteria, infrastructure, regression, *on_change* (*selected* or *all*) and the *order* — the steps in which the
+criteria, infrastructure, regression, an optional *time_budget* (default 300 s) and the *order* — the steps in which the
 components are integrated, each with its *components*, its *preconditions*
 and its *selection*: the flows and components whose tests run after it.
 
@@ -52,6 +52,7 @@ integration test names its flow as *@flow[&lt;sequence-diagram-id&gt;]*.
 | R6 | The integration suite writes its results, and every component and integration test passes | verify_tests_to_flows_link_gate · MISSING_RESULTS, FAILED_INTEGRATION_TEST |
 | R7 | No component or integration test changes in a commit that changes code | verify_test_first_gate · TEST_CHANGED_WITH_CODE |
 | R8 | Component tests are black-box, through the component's interfaces only, and the selection and order make sense | Checkpoint 4 |
+| R9 | An integration test tests each interaction once, never a rule a unit test already shows | check_time_budget_gate · SUITE_OVER_BUDGET |
 
 ## Not checkable
 
@@ -75,7 +76,6 @@ unit:
   infrastructure: [JUnit 5]
   selection: every unit test on every pull request
   regression: all unit tests run again
-  on_change: selected
   coverage: {metric: lines, minimum: 80}
 integration:
   techniques:
@@ -86,7 +86,6 @@ integration:
   exit_criteria: [every component, flow and step has a passing test]
   infrastructure: [PostgreSQL 16 in a container]
   regression: every test of a changed component and of its neighbours
-  on_change: selected
   order:
     - step: the auth service alone
       components: [auth-service]

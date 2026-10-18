@@ -36,6 +36,16 @@ def test_each_testcase_has_its_outcome(tmp_path):
     ]
 
 
+def test_each_testcase_keeps_its_time(tmp_path):
+    path = tmp_path / "unit.xml"
+    path.write_text(
+        '<testsuite><testcase classname="a" name="t1" time="0.25"/>'
+        '<testcase classname="a" name="t2"/><testcase classname="a" name="t3" time="x"/>'
+        "</testsuite>"
+    )
+    assert [r.seconds for r in read_results([path])] == [0.25, None, None]
+
+
 def test_a_file_that_is_not_xml_is_an_error(tmp_path):
     path = tmp_path / "unit.xml"
     path.write_text("not xml")

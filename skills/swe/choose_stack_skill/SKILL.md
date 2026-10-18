@@ -47,6 +47,7 @@ record that compares the alternatives.
 | R3 | Every verification suite a requirement names has a command in the stack | check_stack_decision_gate · UNKNOWN_INSTRUMENT |
 | R4 | The architect approves the stack at checkpoint 3 before any component is designed, and the approval covers its current content | verify_stack_approval_gate · MISSING_APPROVAL, APPROVAL_OUTDATED, APPROVED_TOO_LATE, NOT_A_GIT_REPOSITORY |
 | R5 | The stack respects every constraint requirement and fits the non-functional requirements | Checkpoint 3 |
+| R6 | Every suite's *run* runs its tests in parallel (e.g. *pytest -n auto*, Maven Surefire's *forkCount*), unless the stack's test runner has no way to | Checkpoint 3 |
 
 ## Not checkable
 

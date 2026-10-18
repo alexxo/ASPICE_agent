@@ -8,7 +8,7 @@ description: "Rules for software verification (SWE.6): the software section of t
 **Stage:** 8 · SWE.6 Software verification
 **Loaded with:** create_software_tests_plugin, create_unit_code_plugin
 **Contract:** contracts/verification_plan_contract.v1.schema.json
-**Gates:** check_verification_plan_gate, verify_test_first_gate, verify_software_tests_to_requirements_link_gate, verify_nfr_thresholds_gate, check_verification_report_gate
+**Gates:** check_verification_plan_gate, verify_test_first_gate, verify_software_tests_to_requirements_link_gate, verify_nfr_thresholds_gate, check_verification_report_gate, check_time_budget_gate
 
 ## What it governs
 
@@ -43,8 +43,8 @@ What proves each requirement:
 The *software* section of the ```yaml verification_plan block
 (*verification_plan.v1*): techniques, pass/fail criteria, entry and exit
 criteria, infrastructure (the environment the software runs in), selection,
-regression, *on_change* (*selected* or *all*) and the *order* in which the
-suites run.
+regression, an optional *time_budget* (default 600 s) and the *order* in which
+the suites run.
 
 A measuring test writes a *measurements.v1* JSON file to the path its suite's
 stack entry names as *measurements* — per requirement its *value* and, when
@@ -66,6 +66,7 @@ the threshold has one, its *unit* exactly as the threshold writes it:
 | R7 | No software-level test changes in a commit that changes code, and every one is committed | verify_test_first_gate · TEST_CHANGED_WITH_CODE, TEST_NOT_COMMITTED |
 | R8 | The verification report exists for the current tree, written from the current results | check_verification_report_gate · MISSING_REPORT, STALE_REPORT |
 | R9 | Each test checks every acceptance criterion of its requirement, a system-level test reaches the product only from outside, and a measurement really measures the metric | Checkpoint 4 |
+| R10 | Each acceptance case is tested once, from the outside, never a rule a unit or integration test already shows | check_time_budget_gate · SUITE_OVER_BUDGET |
 
 ## Not checkable
 
@@ -91,7 +92,6 @@ unit:
   infrastructure: [JUnit 5]
   selection: every unit test on every pull request
   regression: all unit tests run again
-  on_change: selected
   coverage: {metric: lines, minimum: 80}
 software:
   techniques:
@@ -103,6 +103,5 @@ software:
   infrastructure: [the product deployed in a test environment with sample data]
   selection: every software-level test before every release
   regression: all software-level tests run again before every release
-  on_change: selected
   order: [software, bench, e2e]
 ```

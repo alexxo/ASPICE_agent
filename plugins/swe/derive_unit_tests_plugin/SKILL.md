@@ -65,8 +65,10 @@ When in doubt, full.
 
 ## Steps
 
-The first time, write the unit section of the verification plan, with
-*on_change: selected* unless the architect asks for *all*. Then one
+The first time, write the unit section of the verification plan; a
+*time_budget* only when the architect asks for a tighter one than the default
+(120 s for the suite, 0.5 s per test). Each unit test tests one unit's logic
+with test doubles — no database, network, process or clock. Then one
 component at a time, every component of role component:
 
 1. **Test list** — for every unit, the acceptance criteria it serves and the

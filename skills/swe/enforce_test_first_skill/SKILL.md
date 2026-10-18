@@ -8,7 +8,7 @@ description: "Rules for test first in SWE.4: the tester, who never sees the code
 **Stage:** 5 · SWE.4 Software unit verification — unit tests first (BP1); also loaded at stage 6
 **Loaded with:** create_unit_tests_plugin, and create_unit_code_plugin at stage 6
 **Contract:** contracts/verification_plan_contract.v1.schema.json
-**Gates:** verify_test_first_gate, check_verification_plan_gate
+**Gates:** verify_test_first_gate, check_verification_plan_gate, check_time_budget_gate
 
 ## What it governs
 
@@ -38,8 +38,8 @@ first test.
 The verification plan: one ```yaml verification_plan block (*verification_plan.v1*)
 in *paths.verification_plan_file*, with the unit section — techniques,
 pass/fail, entry and exit criteria, infrastructure, selection, regression,
-*on_change* (*selected* — the unit tests traced to a change; *all* — every unit
-test) and minimum coverage.
+minimum coverage and, optionally, the *time_budget* of the unit suite and of
+each unit test (default: 120 s and 0.5 s).
 
 The tests and stubs follow the stack, not a schema:
 
@@ -67,6 +67,7 @@ The tests and stubs follow the stack, not a schema:
 | R6 | No commit changes a test together with code: the coder leaves the tests alone, and a wrong test goes back to the tester as a finding | verify_test_first_gate · TEST_CHANGED_WITH_CODE |
 | R7 | The gate reads the pull request's commits (base..HEAD), so the product is a git repository | verify_test_first_gate · NOT_A_GIT_REPOSITORY |
 | R8 | Each test asserts what its acceptance criterion or range limit says, and the techniques of the plan are the ones used | Checkpoint 4 |
+| R9 | A unit test tests one unit's logic and rules with test doubles for what it calls: no database, network, process or clock, so it stays within the unit test budget | check_time_budget_gate · TEST_OVER_BUDGET |
 
 ## Not checkable
 
@@ -97,7 +98,6 @@ unit:
     - Mockito for test doubles
   selection: every unit test on every pull request
   regression: all unit tests run again on every change
-  on_change: selected
   coverage: {metric: lines, minimum: 80}
 ```
 

@@ -69,9 +69,9 @@ When in doubt, full.
 ## Steps
 
 1. **Plan** — the first time, the software section of the verification plan:
-   techniques, criteria, environment, selection, regression, *on_change*
-   (*selected* unless the architect asks for *all*) and the order of
-   suites.
+   techniques, criteria, environment, selection, regression and the order of
+   suites. Each acceptance case is tested once, from the outside, so the suite
+   stays within its budget (600 s by default).
 2. **Software-level tests** — per software-level requirement that is neither a
    constraint nor measured, tests of its acceptance criteria marked
    *@sdoc[&lt;REQ-UID&gt;]*, run by the *software* suite, in files matching

@@ -25,7 +25,6 @@
         "infrastructure",
         "selection",
         "regression",
-        "on_change",
         "coverage"
       ],
       "properties": {
@@ -57,9 +56,9 @@
           "description": "Which existing unit tests run again when code changes (SWE.4 BP2).",
           "$ref": "#/$defs/text"
         },
-        "on_change": {
-          "description": "Which unit tests run on a change (decision 33 of the unit stages): selected — the tests traced to the changed files, every test when a change traces to nothing; all — every test. Either way every test runs on the release commit.",
-          "enum": ["selected", "all"]
+        "time_budget": {
+          "description": "How long the unit tests may take on CI (decision 33 of the unit stages); without it the framework's defaults apply: the suite 120 seconds, each test 0.5 seconds.",
+          "$ref": "#/$defs/unit_budget"
         },
         "coverage": {
           "description": "The minimum code coverage the unit tests must reach (SWE.4 BP2).",
@@ -97,7 +96,6 @@
         "exit_criteria",
         "infrastructure",
         "regression",
-        "on_change",
         "order"
       ],
       "properties": {
@@ -122,9 +120,9 @@
           "description": "Which component and integration tests run again when a component changes (SWE.5 BP3).",
           "$ref": "#/$defs/text"
         },
-        "on_change": {
-          "description": "Which component and integration tests run on a change (decision 33 of the unit stages): selected — the tests traced to the changed files, every test when a change traces to nothing; all — every test. Either way every test runs on the release commit.",
-          "enum": ["selected", "all"]
+        "time_budget": {
+          "description": "How long the integration suite may take on CI (decision 33 of the unit stages); without it the framework's default applies: 300 seconds.",
+          "$ref": "#/$defs/suite_budget"
         },
         "order": {
           "description": "The integration order (SWE.5 BP1): the steps in which the components are integrated.",
@@ -172,7 +170,6 @@
         "infrastructure",
         "selection",
         "regression",
-        "on_change",
         "order"
       ],
       "properties": {
@@ -201,9 +198,9 @@
           "description": "Which software-level tests run again after a change (SWE.6 BP2).",
           "$ref": "#/$defs/text"
         },
-        "on_change": {
-          "description": "Which software-level tests run on a change (decision 33 of the unit stages): selected — the tests traced to the changed files, every test when a change traces to nothing; all — every test. Either way every test runs on the release commit.",
-          "enum": ["selected", "all"]
+        "time_budget": {
+          "description": "How long the software suite may take on CI (decision 33 of the unit stages); without it the framework's default applies: 600 seconds.",
+          "$ref": "#/$defs/suite_budget"
         },
         "order": {
           "description": "The order in which the suites run (SWE.6 BP1), from the suite vocabulary.",
@@ -285,6 +282,43 @@
       "minItems": 1,
       "items": {
         "$ref": "#/$defs/text"
+      }
+    },
+    "suite_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suite_seconds"],
+      "properties": {
+        "suite_seconds": {
+          "description": "The longest the full suite may run, in wall-clock seconds.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "reason": {
+          "description": "Why the budget is looser than the framework's default; required then (check_time_budget_gate).",
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "unit_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suite_seconds"],
+      "properties": {
+        "suite_seconds": {
+          "description": "The longest the full unit suite may run, in wall-clock seconds.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "test_seconds": {
+          "description": "The longest one unit test may take, in seconds, as its JUnit result records it.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "reason": {
+          "description": "Why the budget is looser than the framework's default; required then (check_time_budget_gate).",
+          "$ref": "#/$defs/text"
+        }
       }
     }
   }

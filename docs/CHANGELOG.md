@@ -35,8 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+Tests are fast by design: CI runs every test on every change, within a time budget per level.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Delete `on_change` from the unit, integration and software sections | `paths.verification_plan_file` | required — `verification_plan.v1` no longer has the field, so the plan fails its contract until it is gone |
+| Delete the `QF_RUN` line and the comment on selection from the CI file, as in `templates/github/quality_gates.yml` | `paths.ci_file` | recommended — CI no longer reads `QF_RUN=full`; every run is full |
+| Run each suite in parallel in its stack command (e.g. `pytest -n auto`) | `paths.stack_file` | recommended — the suites must fit their time budget (`check_time_budget_gate`, from stage 6) |
+
 ### Changed
 
+- **CI runs every test on every change.** `run_stack_commands_tool` runs every suite in full and keeps how long it ran; the selection by markers serves the coder's own loop, with `QF_RUN=selected`. The plan's `on_change` is gone. Design document § 5 unit stages, rules 30–32. Origin: internal.
+- **A time budget per level** (new: `check_time_budget_gate`, at stages 6–8). The plan's sections may state a `time_budget`; without one the defaults apply: the unit suite 120 s and each unit test 0.5 s, the integration suite 300 s, the software suite 600 s. A suite over its budget (SUITE_OVER_BUDGET), a unit test over its own (TEST_OVER_BUDGET) and a looser budget without a reason (MISSING_BUDGET_REASON) fail. The verification report shows each suite's time and its slowest tests. Rule 33, Appendix A.5 *Fast by design*. Origin: internal.
+- **Each level tests what a lower one cannot show.** `enforce_test_first_skill` R9, `verify_integration_skill` R9, `verify_software_skill` R10, the tester methods; `choose_stack_skill` R6 runs every suite in parallel. Origin: internal.
 - **The framework's own tests run in parallel.** `tests/requirements-dev.txt` adds `pytest-xdist`; framework-ci runs the suite with `-n auto` and reports its 25 slowest tests. A full run took 22 minutes, and takes 9 locally. Origin: internal.
 
 ## [1.6.1] - 2026-10-18

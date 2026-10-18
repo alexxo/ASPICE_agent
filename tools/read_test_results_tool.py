@@ -29,6 +29,7 @@ class TestResult:
     name: str
     file: str | None  # the file attribute, when the runner writes one
     outcome: str  # passed, failed, error or skipped
+    seconds: float | None = None  # the time attribute, when the runner writes one
 
     @property
     def label(self) -> str:
@@ -49,9 +50,17 @@ def read_results(paths: list[Path]) -> list[TestResult]:
                     case.get("name", ""),
                     case.get("file"),
                     _outcome(case),
+                    _seconds(case.get("time")),
                 )
             )
     return results
+
+
+def _seconds(value: str | None) -> float | None:
+    try:
+        return float(value) if value is not None else None
+    except ValueError:
+        return None
 
 
 def _outcome(case: ET.Element) -> str:

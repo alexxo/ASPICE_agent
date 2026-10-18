@@ -5,7 +5,8 @@ gates' runs are reused — and writes report.json and report.md under
 .qf/runs/<tree-hash>/: per unit-test file its passed and failed results; per
 component, flow and integration step of the plan; per requirement what proves
 it, its software-level tests or measured values next to the threshold, and the
-latest result (decision 8 of the software verification stage). While a release
+latest result (decision 8 of the software verification stage); per suite how
+long it ran and its slowest tests (decision 33 of the unit stages). While a release
 is proposed, also per wish its scenarios and their results from the release's
 validation record, and the customer's decision (decision 12 of the validation
 stage) — the validation suite runs against the deployment, never here — and,
@@ -48,7 +49,7 @@ from tools.read_software_tool import (  # noqa: E402
     read_threshold,
     valid_requirements,
 )
-from tools.read_test_results_tool import TestResult  # noqa: E402
+from tools.read_test_results_tool import ResultsError, TestResult, read_results  # noqa: E402
 from tools.read_unit_markers_tool import (  # noqa: E402
     scan_integration_tests,
     scan_software_tests,
@@ -106,6 +107,20 @@ def _selection(run: CommandRun) -> dict:
     return {"full": None, "tests": run.selection["tests"]}
 
 
+SLOWEST = 5  # the slowest tests the report lists per suite
+
+
+def _durations(run: CommandRun) -> dict:
+    """How long the suite ran, wall clock, and its slowest tests (decision 33)."""
+    try:
+        results = read_results([Path(p) for p in run.results])
+    except ResultsError:
+        results = []
+    timed = sorted((r for r in results if r.seconds is not None), key=lambda r: -r.seconds)
+    slowest = [{"test": r.label, "seconds": r.seconds} for r in timed[:SLOWEST]]
+    return {"seconds": run.seconds, "slowest": slowest}
+
+
 def verification_suites(stack: dict) -> dict[str, dict]:
     """The suites the report runs: every one but validation, which runs against
     the release's deployment."""
@@ -133,6 +148,7 @@ def build_report(config: ProductConfig, stack: dict) -> dict:
         "tree": tree_key(config.root),
         "inputs": {name: suite_digest(run) for name, run in runs.items()},
         "selection": {name: _selection(run) for name, run in runs.items()},
+        "durations": {name: _durations(run) for name, run in runs.items()},
     }
 
     unit_tests = [s for s in scan_sources(config, stack) if s.kind == "test"]
@@ -324,6 +340,12 @@ def render(report: dict) -> str:
             lines.append(f"| {suite} | none | no test is traced to the change |")
         for test, reasons in (chosen.get("tests") or {}).items():
             lines.append(f"| {suite} | {test} | {'; '.join(reasons)} |")
+    lines.append("")
+    lines += ["## How long it took", "", "| Suite | Seconds | Slowest tests |", "|---|---|---|"]
+    for suite, took in report.get("durations", {}).items():
+        seconds = "—" if took["seconds"] is None else f"{took['seconds']:.1f}"
+        slowest = "; ".join(f"{t['test']} {t['seconds']:.2f} s" for t in took["slowest"])
+        lines.append(f"| {suite} | {seconds} | {slowest or '—'} |")
     lines.append("")
     lines += ["## Unit tests", "", "| Test file | Passed | Failed |", "|---|---|---|"]
     lines += [f"| {u['file']} | {u['passed']} | {u['failed']} |" for u in report["unit"]]

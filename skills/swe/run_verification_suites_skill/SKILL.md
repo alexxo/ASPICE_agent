@@ -8,7 +8,7 @@ description: "Rules for running the product's verification in SWE.3 BP3 and SWE.
 **Stage:** 6 · SWE.3 unit construction (BP3) + SWE.4 Software unit verification (BP2–BP5)
 **Loaded with:** create_unit_code_plugin
 **Contract:** contracts/stack_contract.v1.schema.json
-**Gates:** check_stack_commands_gate, verify_tests_to_requirements_link_gate
+**Gates:** check_stack_commands_gate, verify_tests_to_requirements_link_gate, check_time_budget_gate
 
 ## What it governs
 
@@ -23,7 +23,7 @@ them while working; the gates run them again on every CI run.
   format, static analysis), the *suites* with their *run*, *tool*, *version*,
   *results* and *coverage*, and *test_files*.
 - The **verification plan** — the unit section's selection, regression,
-  *on_change* and minimum coverage.
+  minimum coverage and *time_budget*.
 - The **detailed design** — the units every passing test must cover.
 - On a retry: the **findings** of the previous attempt.
 
@@ -42,14 +42,17 @@ pytest (default *xunit2*) need nothing more. Other runners are configured to
 write one of the two — e.g. *jest-junit* with *addFileAttribute: true*. A
 result that matches no test file is a finding.
 
-On a change, a suite whose stack entry declares *run_selected* and whose plan
-section says *on_change: selected* runs only the tests traced to the change:
-*select_tests_tool* follows the changed files' *@unit*, *@component*, *@flow*
-and *@sdoc* markers, fills *{tests}* with the selected test files (*paths*) or
-their names (*names*), and every selected test keeps its reason for the
-verification report. A change that traces to nothing, *QF_RUN=full* and a
-proposed release run every test. While working, the coder runs the same
-selection: `python .framework/tools/select_tests_tool.py --root .` lists it.
+CI runs every test of every suite on every change, and each suite runs in
+parallel by default. The run keeps how long it took; *check_time_budget_gate*
+judges it against the plan's *time_budget*, else the default — the unit suite
+120 s and each unit test 0.5 s, the integration suite 300 s, the software suite
+600 s. While working, the coder runs the tests traced to the change first: a
+suite whose stack entry declares *run_selected* runs them with
+*QF_RUN=selected* — *select_tests_tool* follows the changed files' *@unit*,
+*@component*, *@flow* and *@sdoc* markers and fills *{tests}* with the
+selected test files (*paths*) or their names (*names*), each test with its
+reason; `python .framework/tools/select_tests_tool.py --root .` lists them. A
+change that traces to nothing and a proposed release select every test.
 
 Each command runs once per state of the working tree; the framework keeps what
 it produced under *.qf/runs/*. Git must ignore *.qf/* and every path a command
@@ -69,6 +72,7 @@ the next gate runs the command again.
 | R7 | The coverage minimum is judged on a full run only; a selected run covers part of the code | check_stack_commands_gate · COVERAGE_BELOW_MINIMUM |
 | R8 | On a selected run, every unit it covers — the units traced to the change — has a passing unit test; on a full run, every unit | verify_tests_to_requirements_link_gate · UNTESTED_UNIT |
 | R9 | The commands run the tests the plan selects, and *run_selected* runs exactly the tests given in *{tests}* | Checkpoint 4 |
+| R10 | Every suite and every unit test runs within its level's time budget — the plan's or the default — and a budget looser than the default states why | check_time_budget_gate · SUITE_OVER_BUDGET, TEST_OVER_BUDGET, MISSING_BUDGET_REASON |
 
 ## Not checkable
 

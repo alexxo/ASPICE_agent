@@ -668,7 +668,6 @@ PLAN = {
         "infrastructure": ["pytest"],
         "selection": "every unit test on every pull request",
         "regression": "all unit tests run again",
-        "on_change": "all",
         "coverage": {"metric": "lines", "minimum": 50},
     },
 }
@@ -1031,7 +1030,6 @@ INTEGRATION_PLAN = {
     "exit_criteria": ["every component, flow and step has a passing test"],
     "infrastructure": ["pytest"],
     "regression": "every test of a changed component runs again",
-    "on_change": "all",
     "order": [
         {
             "step": "the auth service alone",
@@ -1136,7 +1134,6 @@ SOFTWARE_PLAN = {
     "infrastructure": ["pytest"],
     "selection": "every software-level test before every release",
     "regression": "all software-level tests run again before every release",
-    "on_change": "all",
     "order": ["software", "bench", "e2e"],
 }
 

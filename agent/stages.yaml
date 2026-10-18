@@ -151,6 +151,7 @@ stages:
       - verify_tests_to_requirements_link_gate
       - check_env_config_gate
       - verify_security_tests_gate
+      - check_time_budget_gate
     planned_gates: []
     implemented: true
     trigger: flow
@@ -170,6 +171,7 @@ stages:
       - verify_tests_to_components_link_gate
       - verify_tests_to_flows_link_gate
       - verify_log_events_gate
+      - check_time_budget_gate
     planned_gates: []
     implemented: true
     trigger: flow
@@ -191,6 +193,7 @@ stages:
       - verify_nfr_thresholds_gate
       - check_observability_gate
       - check_verification_report_gate
+      - check_time_budget_gate
     planned_gates: []
     implemented: true
     trigger: flow

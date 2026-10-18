@@ -37,11 +37,9 @@
 # report of the tree is written first — every suite runs once and the gates
 # reuse the runs — shown as the run's summary and kept as an artifact.
 #
-# A suite whose stack entry declares run_selected, at a level whose plan section
-# says on_change: selected, runs only the tests traced to the pull request's
-# change since its base branch (QF_BASE; decisions 30–32 of the unit stages).
-# Every test runs on main after a merge, while a release is proposed, and on a
-# run started by hand (QF_RUN=full):
+# Every suite runs every test on every change (decision 32 of the unit stages),
+# within the time budget of its level (check_time_budget_gate). A run can be
+# started by hand:
 #   gh workflow run quality-gates
 name: quality-gates
 
@@ -64,7 +62,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       QF_BASE: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
-      QF_RUN: ${{ github.event_name == 'workflow_dispatch' && 'full' || '' }}
     steps:
       - name: Check out the product and its pinned framework, with its history
         uses: actions/checkout@v4
