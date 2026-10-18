@@ -56,7 +56,7 @@ jobs:
       - name: tests (pytest)
         run: |
           if [ "${{ steps.scope.outputs.full }}" = true ]; then
-            python -m pytest tests -q
+            python -m pytest tests -q -n auto --durations=25
           else
             python -m pytest tests/consistency -q
           fi

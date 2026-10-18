@@ -1,6 +1,7 @@
 # Dev dependencies for the framework's self-tests: the runtime ones plus the
-# test runner and the linter.
+# test runner (in parallel: pytest-xdist) and the linter.
 -r ../requirements.txt
 pytest>=8,<9
+pytest-xdist>=3,<4
 pytest-cov>=5,<7
 ruff==0.6.9

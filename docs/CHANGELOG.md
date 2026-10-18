@@ -35,6 +35,10 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+### Changed
+
+- **The framework's own tests run in parallel.** `tests/requirements-dev.txt` adds `pytest-xdist`; framework-ci runs the suite with `-n auto` and reports its 25 slowest tests. A full run took 22 minutes, and takes 9 locally. Origin: internal.
+
 ## [1.6.1] - 2026-10-18
 
 Every pull request is reviewed by the reviewer agent from the first one on, in a session of its own, on a checklist of what the pull request holds.
