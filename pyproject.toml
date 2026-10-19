@@ -1,6 +1,6 @@
 [project]
 name = "quality-framework"
-version = "1.8.0"
+version = "2.0.0"
 description = "Quality layer over any specification-driven method, organised by the ASPICE 4.1 processes."
 requires-python = ">=3.10"
 dependencies = ["PyYAML>=6,<7", "jsonschema>=4,<5"]

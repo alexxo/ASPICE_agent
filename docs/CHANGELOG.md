@@ -35,7 +35,9 @@ checking whether it is still current.
 
 ## [Unreleased]
 
-The tech stack lists every tool the product takes from outside, area by area, each chosen or not needed with the reason; how the product is tested moved to the verification plan.
+## [2.0.0] - 2026-10-19
+
+The tech stack lists every tool the product takes from outside, area by area, each chosen or not needed with the reason; how the product is tested moved to the verification plan; an accepted delivery that was right closes its non-conformance.
 
 ### Migration
 
