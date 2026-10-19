@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://quality-framework/contracts/nonconformance_contract.v1.schema.json",
   "title": "nonconformance.v1",
-  "description": "One non-conformance (SUP.1 BP6): a fault the reviewer or a person found outside a gate and left unfixed in its pull request, or a delivery that reached the main branch without the delivery desk, recorded as a fenced ```yaml nonconformance block in the body of a host issue labelled non-conformance. That a closed one names a merged fixing pull request is a rule of check_nonconformances_gate; its escalation (label escalated, an assignee) of check_escalations_gate.",
+  "description": "One non-conformance (SUP.1 BP6): a fault the reviewer or a person found outside a gate and left unfixed in its pull request, or a delivery that reached the main branch without the delivery desk, recorded as a fenced ```yaml nonconformance block in the body of a host issue labelled non-conformance. That a closed one names a merged fixing pull request, or for a delivery that was right its acceptance (/accept-delivery by an urgent approver), is a rule of check_nonconformances_gate; its escalation (label escalated, an assignee) of check_escalations_gate.",
   "type": "object",
   "additionalProperties": false,
   "anyOf": [
@@ -29,7 +29,7 @@
       "pattern": "^[0-9a-f]{7,40}$"
     },
     "fixed_by": {
-      "description": "The merged pull request that fixed it; required before the issue is closed.",
+      "description": "The merged pull request that fixed it: the change, the revert, or the fix of a wrong gate; required before the issue is closed, except for a delivery that was right and is closed by its acceptance alone.",
       "type": "integer",
       "minimum": 1
     }

@@ -5,8 +5,10 @@ from datetime import date, datetime, timezone
 
 import pytest
 from product_builder import (
+    AUTHOR,
     PERSON,
     build_releasable_product,
+    comment,
     git_head,
     issue,
     propose_release,
@@ -65,6 +67,28 @@ def test_a_closed_fault_needs_the_merged_pull_request_that_fixed_it(product, tmp
         ("NONCONFORMANCE_WITHOUT_FIX", "#2"),
         ("NONCONFORMANCE_WITHOUT_FIX", "#3"),
         ("NONCONFORMANCE_WITHOUT_FIX", "#4"),
+    ]
+
+
+def test_an_accepted_delivery_that_was_right_closes_without_a_fix(product, tmp_path, monkeypatch):
+    """Its acceptance closes it: an urgent approver's /accept-delivery, never its author's."""
+    nc = "non-conformance"
+    accept = "/accept-delivery"
+    host(
+        product,
+        tmp_path,
+        monkeypatch,
+        issue(1, nc, {"found_in": 6}, state="closed", comments=[comment(PERSON, accept)]),
+        issue(2, nc, {"commit": "38c2eb2"}, state="closed", comments=[comment(PERSON, accept)]),
+        issue(3, nc, {"found_in": 6}, state="closed", comments=[comment(AUTHOR, accept)]),
+        issue(4, nc, {"found_in": 8}, state="closed", comments=[comment(PERSON, accept)]),
+        issue(5, nc, {"found_in": 6}, state="closed", comments=[comment(PERSON, "looks fine")]),
+        pulls=[pull_request(6, "h6", merged=True), pull_request(8, "h8", author=PERSON)],
+    )
+    assert rules(check_nonconformances_gate, product) == [
+        ("NONCONFORMANCE_WITHOUT_FIX", "#3"),
+        ("NONCONFORMANCE_WITHOUT_FIX", "#4"),
+        ("NONCONFORMANCE_WITHOUT_FIX", "#5"),
     ]
 
 

@@ -4,7 +4,11 @@ A non-conformance is an issue labelled non-conformance whose body holds one
 ```yaml nonconformance block (nonconformance.v1; decision 1 of the problem
 resolution stage). While a release is proposed, every closed one has its block
 and names, with fixed_by, a merged pull request that fixed it
-(NONCONFORMANCE_WITHOUT_FIX). Without a release there is nothing to check.
+(NONCONFORMANCE_WITHOUT_FIX) — or, for a delivery that reached the main branch
+without the desk and was right, its acceptance closes it: a person in qf.yaml
+urgent_approvers, not the author of the pull request it names, commented
+/accept-delivery on it, so nothing was fixed (rule 12 of the quality assurance
+stage). Without a release there is nothing to check.
 
     python gates/sup/check_nonconformances_gate.py [--root PRODUCT]
 """
@@ -17,6 +21,7 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from gates.sup.verify_delivery_reviewed_gate import ACCEPT  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_host_tool import read_host, repository  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
@@ -40,7 +45,9 @@ def check(config: ProductConfig) -> list[Finding]:
         if record is None:
             reason = why
         elif "fixed_by" not in record:
-            reason = "its block names no fixed_by"
+            if _accepted(config, host, repo, issue, record):
+                continue
+            reason = f"its block names no fixed_by and no urgent approver commented {ACCEPT}"
         else:
             fix = host.pull_request(repo, record["fixed_by"])
             if fix is not None and fix.merged:
@@ -52,10 +59,22 @@ def check(config: ProductConfig) -> list[Finding]:
                 where,
                 None,
                 f"Non-conformance {where} is closed, but {reason}; it closes only with the "
-                "merged pull request that fixed it.",
+                "merged pull request that fixed it, or, for a delivery that was right, "
+                "its acceptance.",
             )
         )
     return findings
+
+
+def _accepted(config: ProductConfig, host, repo: str, issue, record: dict) -> bool:
+    """Whether a person in urgent_approvers, not the author of the pull request
+    it names, accepted the delivery."""
+    author = None
+    if "found_in" in record:
+        pull = host.pull_request(repo, record["found_in"])
+        author = pull.author if pull is not None else None
+    people = {c.author for c in issue.commands(ACCEPT) if c.author in config.urgent_approvers}
+    return bool(people - {author})
 
 
 if __name__ == "__main__":

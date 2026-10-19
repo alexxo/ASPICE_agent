@@ -58,6 +58,10 @@ The tech stack lists every tool the product takes from outside, area by area, ea
 - **"Every suite runs in parallel" moved with the suites.** `run_verification_suites_skill` R11, judged at checkpoint 4. Origin: FB-31 (wp_publisher).
 - **A contract is found by any version.** `validate_contract_tool` reads `<name>_contract.v<N>.schema.json`. Origin: internal.
 
+### Fixed
+
+- **An accepted delivery that was right can close its non-conformance.** Nothing was fixed, so it has no `fixed_by`: `check_nonconformances_gate` passes a closed non-conformance whose delivery a person in `urgent_approvers`, not the author of the pull request it names, accepted with `/accept-delivery`; `fixed_by` keeps naming a real fix — the change, a revert, the fix of a wrong gate. Before, the issue could neither close (NONCONFORMANCE_WITHOUT_FIX) nor stay open past `escalate_after_days` (UNESCALATED_NONCONFORMANCE). `track_nonconformances_skill` R1; design document § 5 stage 9, rule 12; Appendix A.8. Origin: FB-30 (wp_publisher).
+
 ## [1.8.0] - 2026-10-19
 
 A change that reached the main branch without the delivery desk is accepted after the fact by a declared person, on the record; a re-run after the merge no longer counts.

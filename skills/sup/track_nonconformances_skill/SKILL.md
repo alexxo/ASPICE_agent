@@ -35,14 +35,16 @@ fenced block naming the pull request it was found in:
     ```
 
 Before it is closed, add *fixed_by*: the merged pull request that fixed it.
+A delivery that was right needs no fix: its acceptance closes it.
 
 A change that reached the main branch without the delivery desk is recorded the
 same way: *found_in* names the merged pull request, or, for a commit pushed
 straight to the main branch, *commit* names its SHA, and the body says the
 cause — the change was wrong, or the gate was. A person in *qf.yaml
 urgent_approvers*, not its author, accepts it by commenting */accept-delivery*
-on the issue (*review_code_skill* R11); *fixed_by* names the revert, or the pull
-request that fixed the gate.
+on the issue (*review_code_skill* R11). *fixed_by* names the revert, or the pull
+request that fixed the gate; when the change was right, nothing was fixed, so
+there is no *fixed_by* and the acceptance alone closes the issue.
 
     ```yaml nonconformance
     commit: 38c2eb2
@@ -64,7 +66,7 @@ By its due date it is closed, or rescheduled by moving *due*.
 
 | # | Rule | Checked by |
 |---|---|---|
-| R1 | At release, every closed non-conformance has its block and names the merged pull request that fixed it | check_nonconformances_gate · NONCONFORMANCE_WITHOUT_FIX |
+| R1 | At release, every closed non-conformance has its block and names the merged pull request that fixed it, or, for a delivery that was right, has its acceptance | check_nonconformances_gate · NONCONFORMANCE_WITHOUT_FIX |
 | R2 | At release, every open non-conformance older than escalate_after_days is labelled escalated and assigned | check_escalations_gate · UNESCALATED_NONCONFORMANCE |
 | R3 | While a release is proposed, the report counts the non-conformances opened, closed and escalated since the previous release | report_quality_trends_gate · MISSING_TREND_SECTION |
 | R4 | At release, no open retrospective action is past its due date, and each has its block | check_retro_actions_gate · OVERDUE_RETRO_ACTION |
