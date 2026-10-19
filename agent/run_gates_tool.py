@@ -40,16 +40,21 @@ __all__ = ["GATES_DIR", "RUN_ALONE", "passed", "reached_gates", "run_gates"]
 
 GATES_DIR = Path(__file__).resolve().parent.parent / "gates"
 
-# They run the product's commands (run_stack_commands_tool.run_command), which
-# write the commands' results and keep the runs for the tree.
+# They run the product's commands (run_stack_commands_tool.run_command, also
+# through read_integration_tool.run_suite), which write the commands' results
+# and keep the runs for the tree.
 RUN_ALONE = frozenset(
     {
         "check_env_config_gate",
         "check_stack_commands_gate",
         "scan_security_gate",
+        "verify_log_events_gate",
         "verify_nfr_thresholds_gate",
         "verify_security_tests_gate",
+        "verify_software_tests_to_requirements_link_gate",
         "verify_test_first_gate",
+        "verify_tests_to_components_link_gate",
+        "verify_tests_to_flows_link_gate",
         "verify_tests_to_requirements_link_gate",
     }
 )

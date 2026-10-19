@@ -1,5 +1,6 @@
 """agent/run_gates_tool.py — runs a stage's gates and collects their findings."""
 
+import ast
 import json
 import subprocess
 import sys
@@ -26,9 +27,28 @@ def test_the_results_keep_the_order_asked_for(product):
     assert [r["gate"] for r in run_gates(product, gates)] == list(gates)
 
 
-def test_every_gate_that_runs_the_products_commands_runs_alone():
-    """They write the commands' results and keep the runs, so never two at once."""
-    running = {p.stem for p in GATES_DIR.glob("*/*_gate.py") if "run_command(" in p.read_text()}
+def _called(tree) -> set[str]:
+    return {
+        c.func.id if isinstance(c.func, ast.Name) else c.func.attr
+        for c in ast.walk(tree)
+        if isinstance(c, ast.Call) and isinstance(c.func, ast.Name | ast.Attribute)
+    }
+
+
+def test_every_gate_that_runs_the_products_commands_runs_alone(repo_root):
+    """They write the commands' results and keep the runs, so never two at once:
+    every gate that calls run_command, directly or through a framework tool."""
+    calls: dict[str, set[str]] = {}
+    for path in [*repo_root.glob("tools/*.py"), *repo_root.glob("agent/*.py")]:
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.FunctionDef) and node.name != "main":
+                calls.setdefault(node.name, set()).update(_called(node))
+    runners = {"run_command"}
+    while more := {n for n, called in calls.items() if called & runners} - runners:
+        runners |= more
+    running = {
+        p.stem for p in GATES_DIR.glob("*/*_gate.py") if _called(ast.parse(p.read_text())) & runners
+    }
     assert running == RUN_ALONE
 
 
