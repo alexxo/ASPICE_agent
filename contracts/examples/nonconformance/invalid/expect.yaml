@@ -1,2 +1,3 @@
-missing-found-in.yaml: {path: "", keyword: required}
+missing-found-in.yaml: {path: "", keyword: anyOf}
 found-in-as-text.yaml: {path: "found_in", keyword: type}
+commit-not-a-sha.yaml: {path: "commit", keyword: pattern}

@@ -278,9 +278,11 @@ wishes. Tell the person how the work runs from now on:
   checkpoint decisions the agent asks for.
 - **Everyone**: every change reaches `main` through a reviewed pull request
   with passing gates. Never push to `main` directly and never rewrite it (no
-  force-push, no reset). CI flags a direct push and blocks the next release
-  until the change is reverted or reviewed, and it catches a rewrite on the
-  push itself.
+  force-push, no reset). CI flags a direct push, or a merge with red gates or
+  missing reviews, and blocks the next release until an urgent approver
+  accepts the change after the fact: a non-conformance issue names it, and
+  they comment `/accept-delivery` on it (a revert alone does not clear it).
+  CI catches a rewrite on the push itself.
 
 The rules behind all of this are in `.framework/docs/ASPICE_agent_documentation.md`,
 section *Starting a product*.

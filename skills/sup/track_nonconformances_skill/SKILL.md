@@ -35,6 +35,19 @@ fenced block naming the pull request it was found in:
     ```
 
 Before it is closed, add *fixed_by*: the merged pull request that fixed it.
+
+A change that reached the main branch without the delivery desk is recorded the
+same way: *found_in* names the merged pull request, or, for a commit pushed
+straight to the main branch, *commit* names its SHA, and the body says the
+cause — the change was wrong, or the gate was. A person in *qf.yaml
+urgent_approvers*, not its author, accepts it by commenting */accept-delivery*
+on the issue (*review_code_skill* R11); *fixed_by* names the revert, or the pull
+request that fixed the gate.
+
+    ```yaml nonconformance
+    commit: 38c2eb2
+    fixed_by: 7
+    ```
 Once it is older than *escalate_after_days*, label it *escalated* and assign
 it to a person who can decide.
 

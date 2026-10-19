@@ -2,12 +2,36 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://quality-framework/contracts/nonconformance_contract.v1.schema.json",
   "title": "nonconformance.v1",
-  "description": "One non-conformance (SUP.1 BP6): a fault the reviewer or a person found outside a gate and left unfixed in its pull request, recorded as a fenced ```yaml nonconformance block in the body of a host issue labelled non-conformance. That a closed one names a merged fixing pull request is a rule of check_nonconformances_gate; its escalation (label escalated, an assignee) of check_escalations_gate.",
+  "description": "One non-conformance (SUP.1 BP6): a fault the reviewer or a person found outside a gate and left unfixed in its pull request, or a delivery that reached the main branch without the delivery desk, recorded as a fenced ```yaml nonconformance block in the body of a host issue labelled non-conformance. That a closed one names a merged fixing pull request is a rule of check_nonconformances_gate; its escalation (label escalated, an assignee) of check_escalations_gate.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["found_in"],
+  "anyOf": [
+    {
+      "required": [
+        "found_in"
+      ]
+    },
+    {
+      "required": [
+        "commit"
+      ]
+    }
+  ],
   "properties": {
-    "found_in": { "description": "The pull request the fault was found in.", "type": "integer", "minimum": 1 },
-    "fixed_by": { "description": "The merged pull request that fixed it; required before the issue is closed.", "type": "integer", "minimum": 1 }
+    "found_in": {
+      "description": "The pull request the fault was found in, or that reached the main branch without the delivery desk.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "commit": {
+      "description": "A commit that reached the main branch from no pull request: its SHA, 7 to 40 hexadecimal characters.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$"
+    },
+    "fixed_by": {
+      "description": "The merged pull request that fixed it; required before the issue is closed.",
+      "type": "integer",
+      "minimum": 1
+    }
   }
 }

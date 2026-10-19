@@ -150,6 +150,21 @@ def test_github_passed_checks_are_read_from_the_api(monkeypatch):
     assert host.passed_checks(HOST_REPO, "b" * 40) == frozenset()
 
 
+def test_a_check_counts_before_a_time_only_if_it_finished_by_then(monkeypatch):
+    sha = "a" * 40
+    answers = {
+        f"/repos/acme/login/commits/{sha}/check-runs?per_page=100": {
+            "check_runs": [
+                {"name": "gates", "conclusion": "success", "completed_at": "2026-10-19T05:40:00Z"},
+                {"name": "lint", "conclusion": "success", "completed_at": "2026-10-19T05:30:00Z"},
+            ]
+        }
+    }
+    host = GitHubHost("token")
+    monkeypatch.setattr(host, "_get", lambda path: answers.get(path))
+    assert host.passed_checks(HOST_REPO, sha, before="2026-10-19T05:32:16Z") == {"lint"}
+
+
 def test_a_pull_request_is_missing_only_from_a_repository_the_token_reads(monkeypatch):
     """GitHub answers 404 for a private repository the token cannot see (FB-25)."""
     host = GitHubHost("token")

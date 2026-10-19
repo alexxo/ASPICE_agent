@@ -26,6 +26,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
@@ -63,6 +64,17 @@ UNREADABLE = (
 )
 
 
+def _by(finished: str | None, before: str | None) -> bool:
+    """Whether a check finished at finished (ISO 8601) is done by before."""
+    if before is None:
+        return True
+    return finished is not None and _instant(finished) <= _instant(before)
+
+
+def _instant(stamp: str) -> datetime:
+    return datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+
+
 class HostError(Exception):
     """The host cannot be read: no token, no repository, or the API refused."""
 
@@ -84,6 +96,7 @@ class PullRequest:
     files: tuple[str, ...] = ()
     reviews: tuple[Review, ...] = ()
     merged: bool = False
+    merged_at: str | None = None  # ISO 8601
 
     def approvals(self) -> list[Review]:
         """The approvals that count: each reviewer's latest decision, when it
@@ -140,7 +153,7 @@ class Issue:
 
 class Host(Protocol):
     def default_branch(self, repo: str) -> str: ...
-    def passed_checks(self, repo: str, sha: str) -> frozenset[str]: ...
+    def passed_checks(self, repo: str, sha: str, before: str | None = None) -> frozenset[str]: ...
     def pull_request(self, repo: str, number: int) -> PullRequest | None: ...
     def pull_requests_for_branch(self, repo: str, branch: str) -> list[int]: ...
     def pull_requests_for_commit(self, repo: str, sha: str) -> list[int]: ...
@@ -188,11 +201,16 @@ class GitHubHost:
             raise HostError(UNREADABLE.format(repo=repo))
         return data["default_branch"]
 
-    def passed_checks(self, repo: str, sha: str) -> frozenset[str]:
-        """The names of the checks that passed on the commit (a re-run that passed counts)."""
+    def passed_checks(self, repo: str, sha: str, before: str | None = None) -> frozenset[str]:
+        """The names of the checks that passed on the commit (a re-run that passed
+        counts), only those finished by before, if given."""
         data = self._get(f"/repos/{repo}/commits/{sha}/check-runs?per_page=100") or {}
         runs = data.get("check_runs") or ()
-        return frozenset(r["name"] for r in runs if r.get("conclusion") == "success")
+        return frozenset(
+            r["name"]
+            for r in runs
+            if r.get("conclusion") == "success" and _by(r.get("completed_at"), before)
+        )
 
     def pull_request(self, repo: str, number: int) -> PullRequest | None:
         data = self._get(f"/repos/{repo}/pulls/{number}")
@@ -218,6 +236,7 @@ class GitHubHost:
                 for r in reviews
             ),
             merged=bool(data.get("merged")),
+            merged_at=data.get("merged_at"),
         )
 
     def pull_requests_for_branch(self, repo: str, branch: str) -> list[int]:
@@ -282,8 +301,14 @@ class FileHost:
     def default_branch(self, repo: str) -> str:
         return self._repo(repo).get("default_branch", "main")
 
-    def passed_checks(self, repo: str, sha: str) -> frozenset[str]:
-        return frozenset(self._repo(repo).get("checks", {}).get(sha, ()))
+    def passed_checks(self, repo: str, sha: str, before: str | None = None) -> frozenset[str]:
+        """A check is its name, or {name, completed_at} when its time matters."""
+        checks = self._repo(repo).get("checks", {}).get(sha, ())
+        return frozenset(
+            c if isinstance(c, str) else c["name"]
+            for c in checks
+            if isinstance(c, str) or _by(c.get("completed_at"), before)
+        )
 
     def pull_request(self, repo: str, number: int) -> PullRequest | None:
         for p in self._pulls(repo):
@@ -295,6 +320,7 @@ class FileHost:
                     files=tuple(p.get("files", ())),
                     reviews=tuple(Review(**r) for r in p.get("reviews", ())),
                     merged=p.get("merged", False),
+                    merged_at=p.get("merged_at"),
                 )
         return None
 

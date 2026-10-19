@@ -775,7 +775,7 @@ belongs to another process group and is referenced, not repeated.
 |  | BP3: Assure quality of the work products | Every work product is checked against its criteria by the gates defined for it in the engineering and validation processes (SWE.1–SWE.6, VAL.1: requirements, architecture, detailed design, code, tests and validation results). SUP.1 adds no check of its own here; it relies on those gates being intact and required (BP1). | **No gate of its own:** relies on the SWE and VAL gates, kept intact and required by BP1 |
 |  | BP4: Assure quality of the process activities | Every process step that matters is checked by the gates defined for it in the engineering and validation processes — for example, the diagram approved before requirements are derived (SWE.1 BP6), the test committed before the code (SWE.4 BP1), the customer's decision before a release (VAL.1 BP3). SUP.1 adds no check of its own here. | **No gate of its own:** relies on the SWE and VAL gates, kept intact and required by BP1 |
 |  | BP5: Summarize and communicate quality assurance activities and results | The results of quality assurance are summarised and communicated:<br>• **Per run** — every CI run shows which gates passed and which failed.<br>• **Trends per release** — the release report counts the faults opened and closed since the previous release, by gate and by type (e.g. *4 failures of the requirement gate, 1 escalated fault*), so repeated weaknesses become visible. | **Statement:** Trends in the release report<br>**Evidence:** The fault issues opened and closed since the previous release<br>**Gate:** report_quality_trends_gate<br>**What it verifies:** The release report contains the trend section, generated from the tracker<br>────────────────<br>**Not checkable:** whether anyone acts on the trends — left to the organisation |
-|  | BP6: Ensure the resolution of non-conformances | Every fault found by quality assurance is fixed:<br>• **Found by a gate** — a failing gate keeps the pull request red until the fault is fixed; a merge with a red gate is caught on the main branch and blocks the release.<br>• **Found outside a gate** — a fault found by the reviewer or a person is recorded as an issue labelled *non-conformance* whose *nonconformance* block (*nonconformance.v1*) names the pull request it was found in, and is closed only once the block names the merged pull request that fixed it (*fixed_by*). | **Statement:** Failing gates block<br>**Evidence:** The checks of every merged pull request's head<br>**Gate:** verify_delivery_reviewed_gate<br>**What it verifies:** Every pull request merged into the main branch passed the gates check on its final head; until one is reverted or reviewed, the release is blocked<br>────────────────<br>**Statement:** Faults outside gates closed with their fix<br>**Evidence:** Non-conformance issues + their links<br>**Gate:** check_nonconformances_gate<br>**What it verifies:** At release, every closed non-conformance issue links the pull request that fixed it |
+|  | BP6: Ensure the resolution of non-conformances | Every fault found by quality assurance is fixed:<br>• **Found by a gate** — a failing gate keeps the pull request red until the fault is fixed; a merge with a red gate is caught on the main branch and blocks the release.<br>• **Found outside a gate** — a fault found by the reviewer or a person is recorded as an issue labelled *non-conformance* whose *nonconformance* block (*nonconformance.v1*) names the pull request it was found in (or, for a commit pushed straight to the main branch, the commit), and is closed only once the block names the merged pull request that fixed it (*fixed_by*). | **Statement:** Failing gates block<br>**Evidence:** The checks of every merged pull request's head<br>**Gate:** verify_delivery_reviewed_gate<br>**What it verifies:** Every pull request merged into the main branch passed the gates check on its final head before the merge; until a person in urgent_approvers accepts one that did not (*/accept-delivery* on its non-conformance issue), the release is blocked<br>────────────────<br>**Statement:** Faults outside gates closed with their fix<br>**Evidence:** Non-conformance issues + their links<br>**Gate:** check_nonconformances_gate<br>**What it verifies:** At release, every closed non-conformance issue links the pull request that fixed it |
 |  | BP7: Escalate non-conformances | No fault is forgotten:<br>• **Limit** — the product declares how long a non-conformance may stay open (*qf.yaml escalate_after_days*, e.g. *30*).<br>• **Escalation** — a non-conformance older than the limit must be escalated: labelled *escalated* and assigned to a person who can decide.<br>• **Checked at release** — a release cannot go out while an over-age non-conformance is not escalated. | **Statement:** Over-age faults escalated<br>**Evidence:** Non-conformance issues: age, label, owner<br>**Gate:** check_escalations_gate<br>**What it verifies:** At release, every non-conformance older than the limit is labelled escalated and has an owner<br>────────────────<br>**Not checkable:** that the escalation leads to a decision — left to the organisation |
 | SUP.8 | BP1: Identify the configuration items | The work products under configuration management are declared:<br>• **The list** — the framework declares which work products are configuration items: the wishes, the diagrams, the requirements, the architecture and detailed designs, the verification plan, the code, the tests, the product configuration and the framework version.<br>• **Extensions** — a product may add its own items to the list, never remove the framework's. | **Statement:** Every declared item is under version control<br>**Evidence:** The list of configuration items + the repository<br>**Gate:** check_config_items_gate<br>**What it verifies:** Every declared item exists and is tracked by git — none is missing, untracked or ignored |
 |  | BP2: Define the configuration item properties | Every configuration item has a status, given by where it is:<br>• **In work** — it exists only on a branch.<br>• **Agreed** — it has been merged into the main branch (after the approvals of SWE.1 BP6 and SWE.2 BP5, where they apply).<br>• **Released** — it is contained in a release tag.<br>• **Superseded** — a later version replaced it; git keeps the history. | **No gate of its own:** the status is derived from git, which records exactly where every item is |
@@ -3020,8 +3020,8 @@ person reviews a sample.
    not read: on a free plan the host offers none for a private repository, and
    reading them needs an administrator's token. Instead every push to the main
    branch is checked after the fact (rule 7), and a finding blocks the release
-   until the change is reverted or reviewed — the risk analysis is Appendix
-   A.8.
+   until a person accepts the change after the fact (rule 12) — the risk
+   analysis is Appendix A.8.
 7. **Who reviewed, and the sample.** *qf.v1 review*: *agents* (the reviewer
    accounts) and *sample_every* (the N of *1 in N*). An approver that is
    neither a declared agent, a bot nor the author counts as a person; GitHub
@@ -3064,6 +3064,21 @@ person reviews a sample.
     *framework_dir*, *ci_file*, *framework_feedback_file*, *review.agents*,
     *review.sample_every*; the *stack.v1* field *security_scans*; the token
     *QF_HOST_TOKEN*; the rule IDs above.
+12. **A delivery accepted after the merge.** A change that reached the main
+    branch without the delivery desk — a commit from no pull request
+    (MERGED_WITHOUT_PULL_REQUEST), a pull request merged before its reviews
+    (MISSING_AGENT_REVIEW, MISSING_PERSON_APPROVAL) or without a gates check
+    that passed before the merge (GATES_NOT_PASSED) — blocks the release
+    until it is accepted: an issue labelled *non-conformance* names it
+    (*nonconformance.v1 found_in*, or *commit* for a direct push), with its
+    cause, and a person in *qf.yaml urgent_approvers*, not its author,
+    comments */accept-delivery* on it. *fixed_by* names what fixed it: the
+    revert, or the pull request that fixed a wrong gate. A re-run of the
+    gates after the merge does not count: the head is on the main branch by
+    then, so the history gates read nothing. A revert alone leaves the
+    commit in the history, so it is accepted the same way. Before the merge
+    nothing changes: a red pull request is fixed and pushed again. The risk
+    analysis is Appendix A.8.
 
 #### Configuration management stage — stage 10
 
@@ -3841,7 +3856,7 @@ label together.
   prevention on a free plan for a private repository, and a paid plan is not
   an option, so the measures detect: on every push to the main branch, CI
   checks what happened, with the token every CI run has, and a finding blocks
-  the release until the change is reverted or reviewed.
+  the release until a person accepts the change after the fact (below).
 
   | # | Scenario | O | S | D | Risk | Decision | Residual |
   |---|---|---|---|---|---|---|---|
@@ -3889,6 +3904,43 @@ label together.
   which leaves a leaked token able to push. A review job in CI stays out for
   the reason of D46.
   → § 5 stage 9, rules 1 and 7.
+- **A delivery accepted after the merge** (2026-10-19, D1 A, D2 A, D3 A,
+  D4, from the product team's FB-29). The purpose: **every change on the
+  main branch since the last release either passed its gates and reviews,
+  or a declared person accepted it after the fact, on the record; a release
+  never ships an unchecked change, and neither a framework defect nor a
+  revert blocks a product for good.** The scales and the rule are those of
+  configuration management (A.9); the ratings start from the framework
+  before this analysis, where only a passing gates check on the merged head
+  cleared GATES_NOT_PASSED and nothing cleared the other findings of a
+  change that reached the main branch without the delivery desk.
+
+  | # | Scenario | O | S | D | Risk | Decision | Residual |
+  |---|---|---|---|---|---|---|---|
+  | C4 | A re-run after the merge passes without checking: the head is on the main branch by then, so the history gates read an empty range | 5 | 7 | 7 | 245 | Only a gates check finished before the merge counts | 1·7·2 = 14 |
+  | C3 | The way out becomes a loophole: the author or the agent clears a wrong change itself | 4 | 9 | 6 | 216 | Only an urgent approver's command counts, never the author's, an agent's or a bot's, given on the host | 4·9·2 = 72 |
+  | C5 | Nobody notices that the main branch went red after a merge, and more changes pile up on it | 6 | 5 | 5 | 150 | After a merge the agent waits for the main branch's run and reports a red one | 6·5·2 = 60 |
+  | C1 | The gate itself was wrong (a framework or CI defect): a correct, approved change is red after the merge, and nothing clears it but a rewrite of the main branch | 5 | 9 | 3 | 135 | A non-conformance naming the delivery and its cause, accepted by an urgent approver's command; the release waits only for that | 5·4·1 = 20 |
+  | C2 | The change was wrong and is reverted, but the reverted commit stays in the history the release checks | 4 | 9 | 3 | 108 | As C1, its fix the reverting pull request | 4·4·1 = 16 |
+
+  *Chosen:* D1 A — the delivery is accepted on an issue labelled
+  *non-conformance* (*nonconformance.v1*) naming it, with the cause in the
+  issue and the fix in *fixed_by*, by a person's command on the issue.
+  D2 A — the person is one of *qf.yaml urgent_approvers*, already declared
+  for decisions outside the normal path; never the author, an agent or a
+  bot. D3 A — a gates check counts only if it finished before the merge.
+  D4 — the same acceptance clears every finding of a change that reached the
+  main branch without the delivery desk: a commit from no pull request, a
+  pull request merged before its reviews or with red or unfinished gates.
+  Before the merge nothing changes: a red pull request is fixed and pushed
+  again, with no one's decision. *Not taken:* D1 B, the re-run of the
+  merged head alone, which cannot clear a head whose own CI file is wrong
+  (FB-28), never clears a revert, and leaves C4 open; D1 C, a revert found
+  automatically, brittle with squash merges for little over D1 A; D2 B, any
+  person but the author, the weakest proof against C3; D2 C, a new role in
+  *qf.yaml*; D3 B, every passing re-run, which keeps C4. The wording "until
+  it is reverted or reviewed" was not true: a revert alone never cleared it.
+  → § 5 stage 9, rule 12.
 
 ### A.9 Configuration management stage — stage 10
 

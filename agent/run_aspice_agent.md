@@ -139,6 +139,16 @@ never in your session, and you never post a review. A finding the reviewer
 requests is fixed in the pull request by the crew of the stage it belongs to;
 after each push, the person starts the review of the new head.
 
+Never merge a pull request whose gates are red or still running, and never
+push to the main branch. After a merge, wait for the main branch's CI run. If
+it is red with MERGED_WITHOUT_PULL_REQUEST, GATES_NOT_PASSED or a review
+missing, tell the person at once: the change reached the main branch without
+the delivery desk, and the next release waits until it is accepted. Record it
+as an issue labelled *non-conformance* whose block names the pull request
+(*found_in*) or the commit (*commit*), with the cause, and ask a person in
+*qf.yaml urgent_approvers*, not its author, to comment `/accept-delivery` on
+it. A revert does not clear it on its own.
+
 **Stage 9, the delivery desk.** The stage's pull request is reviewed as every
 other one. A finding the architect defers becomes an issue labelled
 *non-conformance*, its block naming the pull request

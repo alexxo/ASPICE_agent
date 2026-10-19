@@ -10,8 +10,10 @@ from product_builder import (
     PERSON,
     add_origin,
     build_product,
+    comment,
     commit_all,
     git_head,
+    issue,
     pull_request,
     review,
     write_host,
@@ -102,6 +104,57 @@ def test_a_pull_request_merged_with_red_gates_is_caught(product, tmp_path, monke
     monkeypatch.setenv("QF_HOST_FILE", str(host))
     rules = [f.rule for f in check(read_product_config(product))]
     assert rules == ["GATES_NOT_PASSED"]
+
+
+MERGED_AT = "2026-10-19T05:32:16Z"
+
+
+def _red_merge(product, tmp_path, monkeypatch, checks, issues=()):
+    head = _on_main(product)
+    final = "f" * 40
+    merged = pull_request(
+        6, final, merged=True, merged_at=MERGED_AT, commits=[head], reviews=[review(AGENT, final)]
+    )
+    host = write_host(tmp_path / "host.json", pulls=[merged], checks={final: checks}, issues=issues)
+    monkeypatch.setenv("QF_HOST_FILE", str(host))
+    return sorted(f.rule for f in check(read_product_config(product)))
+
+
+@pytest.mark.parametrize(
+    ("finished", "rules"),
+    [("2026-10-19T05:30:00Z", []), ("2026-10-19T05:40:00Z", ["GATES_NOT_PASSED"])],
+)
+def test_only_gates_passed_before_the_merge_count(product, tmp_path, monkeypatch, finished, rules):
+    """A re-run after the merge reads an empty range, so it proves nothing (FB-29)."""
+    checks = [{"name": "gates", "completed_at": finished}]
+    assert _red_merge(product, tmp_path, monkeypatch, checks) == rules
+
+
+@pytest.mark.parametrize(
+    ("by", "rules"),
+    [(PERSON, []), (AUTHOR, ["GATES_NOT_PASSED"]), (AGENT, ["GATES_NOT_PASSED"])],
+)
+def test_an_urgent_approver_accepts_a_red_merge_after_the_fact(
+    product, tmp_path, monkeypatch, by, rules
+):
+    """Only a person in urgent_approvers, never the author or an agent, clears it."""
+    accepted = issue(
+        9,
+        "non-conformance",
+        {"found_in": 6, "fixed_by": 7},
+        comments=[comment(by, "/accept-delivery")],
+    )
+    assert _red_merge(product, tmp_path, monkeypatch, ["lint"], [accepted]) == rules
+
+
+def test_a_direct_push_is_accepted_by_its_commit(product, tmp_path, monkeypatch):
+    head = _on_main(product)
+    accepted = issue(
+        9, "non-conformance", {"commit": head[:7]}, comments=[comment(PERSON, "/accept-delivery")]
+    )
+    host = write_host(tmp_path / "host.json", issues=[accepted])
+    monkeypatch.setenv("QF_HOST_FILE", str(host))
+    assert check(read_product_config(product)) == []
 
 
 def test_a_merge_without_its_review_is_caught_on_main(product, tmp_path, monkeypatch):

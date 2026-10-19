@@ -5,7 +5,8 @@
 # push to the main branch checks that each change it adds came through a merged
 # pull request that passed the gates and had its reviews — whoever wrote it, a
 # person or an agent — and that the push rewrote no history. A finding there
-# blocks the next release until the change is reverted or reviewed.
+# blocks the next release until an urgent approver accepts the change after the
+# fact (/accept-delivery on its non-conformance issue).
 #
 # The framework is the product's git submodule at qf.yaml paths.framework_dir
 # (.framework here), pinned to a released commit: the version the gates run at

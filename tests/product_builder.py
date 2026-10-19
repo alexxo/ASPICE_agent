@@ -1265,6 +1265,7 @@ def pull_request(
     merged: bool = False,
     commits=(),
     author: str = AUTHOR,
+    merged_at: str | None = None,
 ) -> dict:
     return {
         "number": number,
@@ -1274,6 +1275,7 @@ def pull_request(
         "files": list(files),
         "reviews": list(reviews),
         "merged": merged,
+        "merged_at": merged_at,
         "commits": list(commits),
     }
 

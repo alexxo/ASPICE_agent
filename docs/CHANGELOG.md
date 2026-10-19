@@ -35,6 +35,25 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| For a change that reached `main` without the delivery desk (here #6, merged with red gates): open an issue labelled `non-conformance` with a `nonconformance` block naming it (`found_in: 6`) and the cause, and have a person in `urgent_approvers`, not its author, comment `/accept-delivery` on it | the product's issues | required before a release, where the gate reports one |
+
+### Added
+
+- **A delivery accepted after the merge.** A commit from no pull request, a pull request merged before its reviews, or one merged without a gates check that passed before the merge blocks the release until a non-conformance names it (`nonconformance.v1` `found_in`, or the new `commit` for a direct push) and a person in `urgent_approvers`, not its author, comments `/accept-delivery` on it. `verify_delivery_reviewed_gate`; `review_code_skill` R11, `track_nonconformances_skill`; design document § 5 stage 9, rule 12; Appendix A.8. Origin: FB-29 (wp_publisher).
+- **After a merge the agent waits for the main branch's run** and reports one that is red at once, with the way out. `run_aspice_agent.md` step 6. Origin: FB-29 (wp_publisher).
+
+### Changed
+
+- **Only a gates check that finished before the merge counts.** A re-run after the merge reads an empty range — the head is on the main branch by then — so it proved nothing. `read_host_tool` reads each check's completion time and the merge time. Origin: found verifying FB-29.
+
+### Fixed
+
+- **"Until the change is reverted or reviewed" was not true.** A revert leaves the commit in the history the release checks, so it never cleared the finding. The gate's docstring and messages, stage 9 rule 6, BP6, Appendix A.8, the QUICKSTART and the CI template now name the way out. Origin: FB-29 (wp_publisher).
+
 ## [1.7.2] - 2026-10-19
 
 A review's CI run reads only the pull request's commits, and the gates run in parallel.

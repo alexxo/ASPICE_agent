@@ -70,6 +70,7 @@ when the pull request changes no file under *paths.code_dir*:
 | R8 | **Traceability** — every marker names the requirement, unit, component or flow the file really serves, not just one that exists | Checkpoint 4 |
 | R9 | **Logging** — the events the observability requirements list are emitted where the sequence diagrams say | Checkpoint 4 |
 | R10 | A finding is fixed in the same pull request, or recorded as an issue labelled *non-conformance* that links the pull request; a remark fixed before merge stays in the review | Checkpoint 4 |
+| R11 | A change that reached the main branch without the delivery desk — a commit from no pull request, a pull request merged before its reviews or without a gates check that passed before the merge — blocks the release until a non-conformance names it and a person in *qf.yaml urgent_approvers*, not its author, comments */accept-delivery* on it; a re-run after the merge or a revert alone does not clear it | verify_delivery_reviewed_gate · MERGED_WITHOUT_PULL_REQUEST, GATES_NOT_PASSED |
 
 ## Not checkable
 

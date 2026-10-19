@@ -14,12 +14,17 @@ not the author.
 
 No host setting is read (decision 6): on every push to the main branch, every
 commit it adds came from a merged pull request (MERGED_WITHOUT_PULL_REQUEST)
-whose final head had the approvals above and passed the gates check
-(GATES_NOT_PASSED). While a release is proposed, the same holds for every
-commit of the main branch since the last release, so a change that bypassed
-the delivery desk blocks the release until it is reverted or reviewed. The
-commit that started the product (the one adding qf.yaml) and those before it
-are exempt.
+whose final head had the approvals above and passed the gates check before the
+merge (GATES_NOT_PASSED); a re-run after the merge reads an empty range, so it
+proves nothing. While a release is proposed, the same holds for every commit of
+the main branch since the last release, so a change that bypassed the delivery
+desk blocks the release until it is accepted after the fact: an issue labelled
+non-conformance names it (nonconformance.v1 found_in, or commit for a direct
+push), and a person in qf.yaml urgent_approvers, not its author, comments
+/accept-delivery on it (rule 12 of the quality assurance stage). A revert alone
+leaves the commit in the history, so it is accepted the same way, fixed_by the
+revert. The commit that started the product (the one adding qf.yaml) and those
+before it are exempt.
 
     python gates/sup/verify_delivery_reviewed_gate.py [--root PRODUCT]
 """
@@ -32,6 +37,8 @@ from pathlib import Path
 
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from dataclasses import replace
 
 from gates.sup.verify_required_checks_gate import GATES_JOB, gates_job  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
@@ -48,6 +55,11 @@ from tools.run_gate_command_tool import run_gate_command  # noqa: E402
 from tools.write_release_tool import last_release, pending  # noqa: E402
 
 GATE = "verify_delivery_reviewed_gate"
+ACCEPT = "/accept-delivery"
+WAY_OUT = (
+    f"record it as an issue labelled non-conformance and have a person in urgent_approvers "
+    f"comment {ACCEPT} on it."
+)
 
 
 def check(config: ProductConfig) -> list[Finding]:
@@ -68,17 +80,21 @@ def check(config: ProductConfig) -> list[Finding]:
         else:
             findings += _reviewed(config, found.repo, found.pull_request)
     merged: set[int] = set()
+    late: list[tuple[int | str, Finding, str | None]] = []  # after the merge, with the author
     for sha in _main_commits(config, found):
         numbers = host.pull_requests_for_commit(found.repo, sha)
         if not numbers:
-            findings.append(
-                Finding(
-                    "MERGED_WITHOUT_PULL_REQUEST",
-                    ".",
+            late.append(
+                (
+                    sha,
+                    Finding(
+                        "MERGED_WITHOUT_PULL_REQUEST",
+                        ".",
+                        None,
+                        f"Commit {sha[:7]} is on the default branch of {found.repo} but came "
+                        "from no merged pull request; " + WAY_OUT,
+                    ),
                     None,
-                    f"Commit {sha[:7]} is on the default branch of {found.repo} but came from "
-                    "no merged pull request; revert it, or bring it back through a reviewed "
-                    "pull request.",
                 )
             )
             continue
@@ -87,9 +103,46 @@ def check(config: ProductConfig) -> list[Finding]:
         merged.add(numbers[0])
         pull = host.pull_request(found.repo, numbers[0])
         if pull is not None:
-            findings += _reviewed(config, found.repo, pull)
-            findings += _gates_passed(config, host, found.repo, pull)
+            for f in _reviewed(config, found.repo, pull) + _gates_passed(
+                config, host, found.repo, pull
+            ):
+                late.append(
+                    (
+                        pull.number,
+                        replace(f, message=f"{f.message} It is merged, so {WAY_OUT}"),
+                        pull.author,
+                    )
+                )
+    if late:
+        accepted = _accepted(config, host, found.repo)
+        findings += [f for what, f, author in late if not _is_accepted(accepted, what, author)]
     return findings
+
+
+def _accepted(config: ProductConfig, host: Host, repo: str) -> list[tuple[dict, set[str]]]:
+    """Each non-conformance's record, with the urgent approvers who accepted it."""
+    found = []
+    for issue in host.issues(repo, "non-conformance"):
+        record, _why = issue.record("nonconformance")
+        people = {c.author for c in issue.commands(ACCEPT) if c.author in config.urgent_approvers}
+        if record is not None and people:
+            found.append((record, people))
+    return found
+
+
+def _is_accepted(
+    accepted: list[tuple[dict, set[str]]], what: int | str, author: str | None
+) -> bool:
+    """Whether a person other than the author accepted the pull request (a number)
+    or the commit (a SHA)."""
+    for record, people in accepted:
+        if isinstance(what, int):
+            named = record.get("found_in") == what
+        else:
+            named = what.startswith(record.get("commit") or "\0")
+        if named and people - {author}:
+            return True
+    return False
 
 
 def _main_commits(config: ProductConfig, found: Delivery) -> list[str]:
@@ -169,7 +222,7 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
 
 def _gates_passed(config: ProductConfig, host: Host, repo: str, pull: PullRequest) -> list[Finding]:
     job = gates_job(config.ci_file) or GATES_JOB
-    if job in host.passed_checks(repo, pull.head):
+    if job in host.passed_checks(repo, pull.head, before=pull.merged_at):
         return []
     return [
         Finding(
@@ -177,7 +230,8 @@ def _gates_passed(config: ProductConfig, host: Host, repo: str, pull: PullReques
             ".",
             None,
             f"{repo}#{pull.number} was merged, but its head {pull.head[:7]} has no passing "
-            f"'{job}' check: it reached the main branch with red or unfinished gates.",
+            f"'{job}' check from before the merge: it reached the main branch with red or "
+            "unfinished gates.",
         )
     ]
 
