@@ -15,6 +15,7 @@ Each rule a step could break is its gate's unit tests' to prove, and the
 resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
+import json
 import shutil
 import subprocess
 import sys
@@ -188,6 +189,15 @@ def _tag_script(root):
     return subprocess.run(["bash", "-c", script], cwd=root, capture_output=True, text=True)
 
 
+def _checked(root, capsys):
+    """The resolver's command as CI runs it: its exit code and the state it
+    prints, from one run."""
+    capsys.readouterr()
+    code = resolve_main(["--root", str(root), "--check"])
+    state = json.loads(capsys.readouterr().out)
+    return code, (state["stage"], state["status"], sorted({f["rule"] for f in state["findings"]}))
+
+
 def test_the_village_crew_has_its_method_and_rulebook(product):
     loaded = load_skills(product, STAGE)
     assert Path(loaded["plugin"]["skill_file"]).parent.name == (
@@ -207,15 +217,16 @@ def test_a_release_is_validated_and_waits_for_the_customer(product, tmp_path, mo
     _validate(product, tmp_path, monkeypatch, merged)
     results = yaml.safe_load((product / RECORD).read_text())["results"]
     assert {r["result"] for r in results} == {"pass"} and len(results) == 3
-    assert _state(product) == (STAGE, "awaiting_checkpoint", ["MISSING_CUSTOMER_DECISION"])
-    assert resolve_main(["--root", str(product), "--check"]) == 1  # the merge waits
-    capsys.readouterr()
+    # the merge waits
+    assert _checked(product, capsys) == (
+        1,
+        (STAGE, "awaiting_checkpoint", ["MISSING_CUSTOMER_DECISION"]),
+    )
     page = (product / ".qf/runs").glob(f"*/{PAGE}")
     assert any("## Validation of release 1.0.0 — staging" in p.read_text() for p in page)
 
     _decide(product, tmp_path, monkeypatch, merged)
-    assert _state(product) == (None, "complete", [])
-    assert resolve_main(["--root", str(product), "--check"]) == 0
+    assert _checked(product, capsys) == (0, (None, "complete", []))
 
     # After the merge, the release workflow tags it; the tag keeps the record.
     _merge(product, RELEASE, 2)

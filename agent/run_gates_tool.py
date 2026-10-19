@@ -1,9 +1,11 @@
 """Run gates on a product and collect their results.
 
 Each gate runs as its own command, exactly as CI runs it, and its findings.v1
-output is collected. A gate that does not exist, crashes, or prints something
-that is not findings.v1 is a failed gate (GATE_MISSING, GATE_CRASHED): the
-runner fails closed, never open.
+output is collected. The gates that run the product's own commands run first,
+one at a time, since they write and keep those runs; the others only read, so
+they run in parallel. The results come back in the order asked for. A gate
+that does not exist, crashes, or prints something that is not findings.v1 is a
+failed gate (GATE_MISSING, GATE_CRASHED): the runner fails closed, never open.
 
     python agent/run_gates_tool.py [--root PRODUCT] (--stage ID | --all)
 """
@@ -12,9 +14,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
@@ -32,14 +36,33 @@ from tools.emit_findings_tool import Finding, result  # noqa: E402
 from tools.read_product_config_tool import ConfigError, read_product_config  # noqa: E402
 from tools.validate_contract_tool import validate  # noqa: E402
 
-__all__ = ["GATES_DIR", "passed", "reached_gates", "run_gates"]
+__all__ = ["GATES_DIR", "RUN_ALONE", "passed", "reached_gates", "run_gates"]
 
 GATES_DIR = Path(__file__).resolve().parent.parent / "gates"
+
+# They run the product's commands (run_stack_commands_tool.run_command), which
+# write the commands' results and keep the runs for the tree.
+RUN_ALONE = frozenset(
+    {
+        "check_env_config_gate",
+        "check_stack_commands_gate",
+        "scan_security_gate",
+        "verify_nfr_thresholds_gate",
+        "verify_security_tests_gate",
+        "verify_test_first_gate",
+        "verify_tests_to_requirements_link_gate",
+    }
+)
 
 
 def run_gates(root: Path, gates: Sequence[str]) -> list[dict]:
     """One findings.v1 document per gate, in the given order."""
-    return [_run(Path(root), gate) for gate in gates]
+    root = Path(root)
+    done = {g: _run(root, g) for g in gates if g in RUN_ALONE}
+    rest = list(dict.fromkeys(g for g in gates if g not in RUN_ALONE))
+    with ThreadPoolExecutor(max_workers=os.cpu_count() or 1) as pool:
+        done |= dict(zip(rest, pool.map(lambda g: _run(root, g), rest), strict=True))
+    return [done[g] for g in gates]
 
 
 def reached_gates(root: Path, s: Stage) -> tuple[str, ...]:

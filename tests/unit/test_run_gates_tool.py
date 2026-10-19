@@ -9,7 +9,7 @@ from product_builder import STACK, baseline_requirements, build_product
 
 from agent.read_stages_tool import stage
 from agent.record_checkpoint_tool import record_checkpoint
-from agent.run_gates_tool import passed, reached_gates, run_gates
+from agent.run_gates_tool import GATES_DIR, RUN_ALONE, passed, reached_gates, run_gates
 from tools.validate_contract_tool import validate
 
 GATES = ("check_requirements_contract_gate", "check_glossary_gate")
@@ -19,6 +19,17 @@ def test_a_passing_product_passes(product):
     results = run_gates(product, GATES)
     assert [r["gate"] for r in results] == list(GATES)
     assert passed(results)
+
+
+def test_the_results_keep_the_order_asked_for(product):
+    gates = ("check_glossary_gate", "verify_test_first_gate", "check_requirements_contract_gate")
+    assert [r["gate"] for r in run_gates(product, gates)] == list(gates)
+
+
+def test_every_gate_that_runs_the_products_commands_runs_alone():
+    """They write the commands' results and keep the runs, so never two at once."""
+    running = {p.stem for p in GATES_DIR.glob("*/*_gate.py") if "run_command(" in p.read_text()}
+    assert running == RUN_ALONE
 
 
 def test_findings_are_collected(tmp_path):

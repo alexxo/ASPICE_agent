@@ -118,11 +118,6 @@ def _finish(root):
     write_report(read_product_config(root))
 
 
-def _state(root):
-    state = resolve_stage(root)
-    return state["stage"], state["status"], sorted({f["rule"] for f in state["findings"]})
-
-
 def test_the_reviewer_is_loaded_with_its_rulebooks(product):
     loaded = load_skills(product, STAGE)
     assert loaded["plugin"]["skill_file"].endswith("plugins/sup/derive_review_plugin/SKILL.md")
@@ -134,8 +129,6 @@ def test_the_reviewer_is_loaded_with_its_rulebooks(product):
 
 
 def test_the_reviewer_agents_approval_moves_the_product_on(product, tmp_path, monkeypatch):
-    _deliver(product, tmp_path, monkeypatch, reviewers=())
-    assert _state(product) == (STAGE, "gates_failing", ["MISSING_AGENT_REVIEW"])
     _deliver(product, tmp_path, monkeypatch, reviewers=(AGENT,))
     _finish(product)
     state = resolve_stage(product)

@@ -2028,7 +2028,7 @@ and format).
 | *agent/read_config_tool.py* | Reads *qf.yaml* and the machine's *environment.yaml*; runs the pipeline preconditions — every slot's skill found |
 | *agent/resolve_stage_tool.py* | The first stage not done — implemented gates passing and checkpoint approval matching the files; the always-on gates and every finished stage enforced, the current stage reported; every gate not run listed with its reason |
 | *agent/load_skills_tool.py* | The slot's plugin plus the stage's framework skills |
-| *agent/run_gates_tool.py* | Runs the stage's gates and collects their findings |
+| *agent/run_gates_tool.py* | Runs the stage's gates and collects their findings, in the order asked for: the gates that run the product's commands one at a time first, the others in parallel |
 | *agent/count_retries_tool.py* | Counts attempts: 3 retries in a row, then the architect; a pass starts a new round |
 | *agent/record_checkpoint_tool.py* | Writes the checkpoint decision as *approval.v1* |
 | *agent/record_stage_done_tool.py* | Writes the stage done record as *stage_done.v1*, for a stage without a closing checkpoint once its gates pass |
