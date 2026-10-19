@@ -35,8 +35,7 @@ Read before writing anything:
 - every requirement — its level, kind, acceptance criteria, and for
   non-functional ones the metric, threshold and measurement method;
 - the architecture's outside interfaces — where a test reaches the software;
-- the tech stack — the *software*, *e2e* and measuring suites, their
-  *results* and *measurements* paths, *software_test_files*;
+- the tech stack — its *test_runner* rows, the tools the suites can run with;
 - the verification plan, and the existing software-level tests under
   *paths.software_tests_dir* and definitions under *paths.observability_dir*
   — the source of truth to grow.
@@ -69,13 +68,16 @@ When in doubt, full.
 ## Steps
 
 1. **Plan** — the first time, the software section of the verification plan:
-   techniques, criteria, environment, selection, regression and the order of
-   suites. Each acceptance case is tested once, from the outside, so the suite
+   techniques, criteria, environment, selection, regression, the order of
+   suites, and the suites themselves — *software*, *e2e* and every measuring
+   suite a requirement names — each with its command, its tool (a
+   *test_runner* of the stack), results, *test_files* and, when it measures,
+   *measurements*. Each acceptance case is tested once, from the outside, so the suite
    stays within its budget (600 s by default).
 2. **Software-level tests** — per software-level requirement that is neither a
    constraint nor measured, tests of its acceptance criteria marked
    *@sdoc[&lt;REQ-UID&gt;]*, run by the *software* suite, in files matching
-   *software_test_files* under *paths.software_tests_dir*.
+   the suite's *test_files* under *paths.software_tests_dir*.
 3. **End-to-end tests** — the same for every system-level requirement, through
    the product's outside interfaces, run by the *e2e* suite.
 4. **Measurements** — per requirement with a measurement method, a test run by

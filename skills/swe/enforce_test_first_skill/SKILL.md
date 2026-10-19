@@ -26,8 +26,7 @@ first test.
 - The **detailed design** in *paths.detailed_design_dir* — the units, their
   inputs and outputs with type, range and unit of measure, and their calls.
 - The **interfaces** of the architecture, and their test doubles.
-- The **tech stack** — *test_files* and the unit suite's command, *results* and
-  *coverage*.
+- The **tech stack** — its *test_runner* rows, the tools a suite can run with.
 - **qf.yaml** — *paths.code_dir*, *paths.verification_plan_file*.
 - **Not** the code: the tester never reads *paths.code_dir* beyond the files it
   writes itself.
@@ -39,11 +38,16 @@ The verification plan: one ```yaml verification_plan block (*verification_plan.v
 in *paths.verification_plan_file*, with the unit section — techniques,
 pass/fail, entry and exit criteria, infrastructure, selection, regression,
 minimum coverage and, optionally, the *time_budget* of the unit suite and of
-each unit test (default: 120 s and 0.5 s).
+each unit test (default: 120 s and 0.5 s). Its *suites* hold the unit suite:
+the *tool* that runs it — a *test_runner* row of the stack, which gives its
+version — the *run* command, where it writes its JUnit XML *results* and its
+Cobertura XML *coverage*, the *test_files* patterns that tell a test from code,
+and optionally *run_selected* with *selected_form* (see
+*run_verification_suites_skill*).
 
 The tests and stubs follow the stack, not a schema:
 
-- A **test** is a file matching *test_files* under *paths.code_dir*; it names
+- A **test** is a file matching the unit suite's *test_files* under *paths.code_dir*; it names
   the unit it verifies with *@unit[&lt;unit-id&gt;]*. One test per acceptance
   criterion of the requirements the component meets, and one per range limit of
   every input (*min*, *max*, and just outside, which must be rejected).
@@ -68,6 +72,7 @@ The tests and stubs follow the stack, not a schema:
 | R7 | The gate reads the pull request's commits (base..HEAD), so the product is a git repository | verify_test_first_gate · NOT_A_GIT_REPOSITORY |
 | R8 | Each test asserts what its acceptance criterion or range limit says, and the techniques of the plan are the ones used | Checkpoint 4 |
 | R9 | A unit test tests one unit's logic and rules with test doubles for what it calls: no database, network, process or clock, so it stays within the unit test budget | check_time_budget_gate · TEST_OVER_BUDGET |
+| R10 | Every suite runs with a *test_runner* of the stack, and every unit-level suite a requirement names has a command in the unit section | check_verification_plan_gate · UNKNOWN_TOOL, UNKNOWN_INSTRUMENT |
 
 ## Not checkable
 
@@ -99,6 +104,15 @@ unit:
   selection: every unit test on every pull request
   regression: all unit tests run again on every change
   coverage: {metric: lines, minimum: 80}
+  suites:
+    unit:
+      tool: maven
+      run: mvn -q test
+      results: target/surefire-reports/TEST-*.xml
+      coverage: target/site/cobertura/coverage.xml
+      run_selected: mvn -q test -Dtest={tests}
+      selected_form: names
+      test_files: ["**/*Test.java"]
 ```
 
 A test and its stub, in the component's folder:

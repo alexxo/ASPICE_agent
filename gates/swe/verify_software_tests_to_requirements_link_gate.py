@@ -2,7 +2,7 @@
 
 Every requirement that is neither a constraint nor measured has a passing
 software-level test — a file under qf.yaml paths.software_tests_dir matching
-the stack's software_test_files — that names it as @sdoc[<REQ-UID>]: in the
+the software suite's test_files in the plan — that names it as @sdoc[<REQ-UID>]: in the
 e2e suite for level system, in the software suite for level software
 (decisions 3 and 4 of the software verification stage). No marker names a
 requirement that does not exist; a suite that is needed writes its results, and
@@ -66,9 +66,9 @@ def check(config: ProductConfig) -> list[Finding]:
             findings.append(
                 Finding(
                     "MISSING_RESULTS",
-                    config.relative(config.stack_file),
+                    config.relative(config.verification_plan_file),
                     None,
-                    f"The {suite} suite is not declared or wrote no readable JUnit XML "
+                    f"The {suite} suite is not in the plan or wrote no readable JUnit XML "
                     f"results, so no {LEVEL[suite]}-level requirement can be shown verified.",
                 )
             )

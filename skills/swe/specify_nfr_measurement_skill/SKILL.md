@@ -8,7 +8,7 @@ description: "Rules for non-functional requirements: a metric, a threshold with 
 **Stage:** 2 · SWE.1 Software requirements; 8 · SWE.6 (measured)
 **Loaded with:** create_requirements_plugin, create_software_tests_plugin
 **Contract:** contracts/requirement_contract.v1.schema.json
-**Gates:** check_requirements_contract_gate, check_stack_decision_gate
+**Gates:** check_requirements_contract_gate, check_verification_plan_gate
 **Replaces:** nfr-measurability (main)
 
 ## What it governs
@@ -52,7 +52,7 @@ Kind *observability* also states:
 | R1 | Every non-functional requirement has metric, threshold and measurement method; a functional, constraint or interface requirement has none | check_requirements_contract_gate · SCHEMA_VIOLATION |
 | R2 | The threshold has an operator and a number | check_requirements_contract_gate · SCHEMA_VIOLATION |
 | R3 | The instrument names a verification suite from the fixed vocabulary, never a tool | check_requirements_contract_gate · SCHEMA_VIOLATION |
-| R4 | The tech stack, once decided at SWE.2, provides a command for every suite a requirement names | check_stack_decision_gate · UNKNOWN_INSTRUMENT |
+| R4 | The verification plan, once a level's section is written, gives a command for every suite of that level a requirement names | check_verification_plan_gate · UNKNOWN_INSTRUMENT |
 | R5 | An observability requirement lists its events and what watches it | check_requirements_contract_gate · SCHEMA_VIOLATION |
 | R6 | The events include a start, an end and an error event for the feature | Checkpoint 2; verified at SWE.5 by verify_log_events_gate |
 | R7 | The threshold's unit is the unit the suite reports | Checkpoint 3 |

@@ -35,6 +35,29 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+The tech stack lists every tool the product takes from outside, area by area, each chosen or not needed with the reason; how the product is tested moved to the verification plan.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Rewrite the stack as `contract: stack.v2`: one row under `areas` per tool (`area`, `tool`, `version`, optional `purpose`), or `{area: <area>, not_needed: <reason>}`, for every area of `choose_stack_skill`; `version_control: GitHub`, `ci_cd: GitHub Actions`, `task_management: GitHub Issues`, and `requirements_engineering` / `diagram_tool` as the slots `create_requirements_plugin` / `create_diagram_plugin` name them, without a version | `paths.stack_file` | required: `check_stack_decision_gate` |
+| Move `checks.lint`, `checks.format`, `checks.static-analysis` to the rows of the areas `lint`, `format`, `static_analysis` (`run`, `version_command`), `security_scans.secrets` / `.dependencies` to `secrets_scanner` / `dependencies_scanner` (with `results`); add a `test_runner` row with its `version_command` for each tool a suite runs with; keep `code_files`, `env_read_patterns`, `decision_record` | `paths.stack_file` | required |
+| Move each suite of the stack's `suites` into the `suites` of its level's plan section — `unit` into `unit`, `integration` into `integration`, `software`/`e2e`/`bench`/`security` into `software`, `validation` into `validation` — with `tool` naming a `test_runner` row (no `version`, `version_command`), and `test_files` from `test_files`, `integration_test_files`, `software_test_files`, `validation_test_files` | `paths.verification_plan_file` | required where the plan exists: `check_verification_plan_gate` |
+| Approve the stack again at checkpoint 3 | `paths.approvals_dir` | required where the stack was approved: `verify_stack_approval_gate` |
+
+### Added
+
+- **Every area of the stack, chosen or not needed.** `stack.v2`: one row per tool in its area; every stack holds 22 areas — language to diagram tool — each chosen with an exact version or marked not needed with the reason; language, test runner, lint, format and the two scanners always name a tool (MISSING_STACK_AREA, MISSING_REASON). A product may add its own areas. `check_stack_decision_gate`, `choose_stack_skill` R3; design document § 3 *The tech stack*, § 5 stage 3, rule 10; Appendix A.3. Origin: FB-32 (wp_publisher).
+- **The areas the framework gives are rows of the stack.** Version control, CI/CD and task management name GitHub, GitHub Actions and GitHub Issues; requirements engineering and the diagram tool name the plugins of their slots (GIVEN_AREA_MISMATCH). `choose_stack_skill` R4. Origin: FB-32 (wp_publisher).
+- **The stack as a table.** `write_stack_table_tool` prints *Area · Tool · Version · Status* for the checkpoint-3 request and the pull request; `derive_architecture_plugin` step 3. Origin: FB-32 (wp_publisher).
+
+### Changed
+
+- **The suite commands live in the verification plan.** Each plan section holds its level's `suites` (`tool`, `run`, `results`, `coverage`, `measurements`, `run_selected`, `selected_form`, `test_files`), written with that level's tests and agreed at the pull request; a suite's `tool` names a test runner of the stack, which gives its version (UNKNOWN_TOOL). UNKNOWN_INSTRUMENT moved from `check_stack_decision_gate` to `check_verification_plan_gate`, once the level's section exists. Findings about a suite point at the plan. The stack-file test-file patterns moved with their suites. Design document § 5 unit stages, rule 5. Origin: FB-31 (wp_publisher).
+- **"Every suite runs in parallel" moved with the suites.** `run_verification_suites_skill` R11, judged at checkpoint 4. Origin: FB-31 (wp_publisher).
+- **A contract is found by any version.** `validate_contract_tool` reads `<name>_contract.v<N>.schema.json`. Origin: internal.
+
 ## [1.8.0] - 2026-10-19
 
 A change that reached the main branch without the delivery desk is accepted after the fact by a declared person, on the record; a re-run after the merge no longer counts.

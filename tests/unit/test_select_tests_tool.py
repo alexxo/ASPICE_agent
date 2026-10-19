@@ -4,12 +4,11 @@ import copy
 import subprocess
 
 import pytest
-import yaml
 from product_builder import (
     PLAN,
     build_python_product,
     commit_all,
-    python_stack,
+    edit_plan,
     write_all_code,
     write_all_integration_tests,
     write_all_software_tests,
@@ -20,25 +19,25 @@ from product_builder import (
 from gates.swe.check_stack_commands_gate import check as check_stack_commands
 from gates.swe.verify_tests_to_requirements_link_gate import check as check_unit_links
 from tools.read_product_config_tool import read_product_config
-from tools.run_stack_commands_tool import run_command
+from tools.run_stack_commands_tool import read_stack, run_command
 from tools.select_tests_tool import Selection, select, selected_tests_argument, trace
 
 COUNT_FAILURES = "src/auth_service/count_failures.py"
 COUNT_FAILURES_TEST = "src/auth_service/test_count_failures.py"
 
 
-def _selected_stack() -> dict:
-    stack = python_stack()
-    unit = stack["suites"]["unit"]
-    unit["run_selected"] = unit["run"].removesuffix(" src") + " {tests}"
-    unit["selected_form"] = "paths"
-    return stack
-
-
 def _plan(minimum: int = 50) -> dict:
+    """The plan whose unit suite can run only the selected tests."""
     plan = copy.deepcopy(PLAN)
     plan["unit"]["coverage"]["minimum"] = minimum
+    unit = plan["unit"]["suites"]["unit"]
+    unit["run_selected"] = unit["run"].removesuffix(" src") + " {tests}"
+    unit["selected_form"] = "paths"
     return plan
+
+
+def _stack(root) -> dict:
+    return read_stack(read_product_config(root))
 
 
 @pytest.fixture
@@ -47,7 +46,7 @@ def product(tmp_path, monkeypatch):
     in the coder's loop (QF_RUN=selected)."""
     monkeypatch.delenv("QF_BASE", raising=False)
     monkeypatch.setenv("QF_RUN", "selected")
-    root = build_python_product(tmp_path, plan=_plan(), stack=_selected_stack(), branch=None)
+    root = build_python_product(tmp_path, plan=_plan(), branch=None)
     write_all_tests_and_stubs(root)
     write_all_code(root)
     commit_all(root, "every unit built")
@@ -57,7 +56,7 @@ def product(tmp_path, monkeypatch):
 
 def _unit(root) -> Selection:
     config = read_product_config(root)
-    return select(config, _selected_stack(), "unit")
+    return select(config, _stack(root), "unit")
 
 
 def _change(root, relative: str, text: str | None = None) -> None:
@@ -95,7 +94,7 @@ def test_a_changed_test_selects_itself(product):
 def test_the_scope_grows_along_the_architecture(product):
     _change(product, COUNT_FAILURES)
 
-    scope = trace(read_product_config(product), _selected_stack()).scope
+    scope = trace(read_product_config(product), _stack(product)).scope
 
     assert scope.units == {"count-failures"}
     assert {"auth-service", "web-app"} <= scope.components  # joined by signin-request
@@ -141,7 +140,7 @@ def test_ci_runs_every_test_on_every_change(product, monkeypatch):
     monkeypatch.delenv("QF_RUN")
     config = read_product_config(product)
 
-    run = run_command(config, "suites", "unit", _selected_stack()["suites"]["unit"])
+    run = run_command(config, "suites", "unit", _stack(product)["suites"]["unit"])
 
     assert run.full and run.selection is None
     assert run.seconds is not None and run.seconds > 0
@@ -151,13 +150,15 @@ def test_a_suite_without_run_selected_runs_every_test(product):
     _change(product, COUNT_FAILURES)
     config = read_product_config(product)
 
-    chosen = select(config, python_stack(), "unit")
+    stack = _stack(product)
+    del stack["suites"]["unit"]["run_selected"]
+    chosen = select(config, stack, "unit")
 
     assert chosen.full == "suites.unit declares no run_selected"
 
 
 def test_suites_outside_the_three_levels_run_every_test(product):
-    chosen = select(read_product_config(product), _selected_stack(), "bench")
+    chosen = select(read_product_config(product), _stack(product), "bench")
 
     assert chosen.full == "the bench suite always runs in full"
 
@@ -174,7 +175,7 @@ def test_the_suite_runs_only_the_selected_tests(product):
     _change(product, COUNT_FAILURES)
     config = read_product_config(product)
 
-    run = run_command(config, "suites", "unit", _selected_stack()["suites"]["unit"])
+    run = run_command(config, "suites", "unit", _stack(product)["suites"]["unit"])
 
     assert run.exit_code == 0, run.output
     assert not run.full
@@ -186,7 +187,7 @@ def test_a_change_no_test_is_traced_to_runs_nothing(product):
     write_code(product, "auth-service", "orphan")  # a unit no test names
 
     run = run_command(
-        read_product_config(product), "suites", "unit", _selected_stack()["suites"]["unit"]
+        read_product_config(product), "suites", "unit", _stack(product)["suites"]["unit"]
     )
 
     assert run.ran_nothing
@@ -218,19 +219,20 @@ def test_a_failing_selected_test_is_reported(product):
 
 def test_coverage_is_judged_on_a_full_run_only(product):
     """A selected run that writes no coverage at all is not judged on coverage."""
-    stack = _selected_stack()
-    unit = stack["suites"]["unit"]
-    unit["run_selected"] = unit["run_selected"].replace(
-        " --cov=src --cov-report=xml:build/coverage.xml", ""
-    )
-    stack_file = product / "docs" / "architecture" / "stack.yaml"
-    stack_file.write_text(yaml.safe_dump(stack, sort_keys=False))
+
+    def no_coverage(plan):
+        unit = plan["unit"]["suites"]["unit"]
+        unit["run_selected"] = unit["run_selected"].replace(
+            " --cov=src --cov-report=xml:build/coverage.xml", ""
+        )
+
+    edit_plan(product, no_coverage)
     commit_all(product, "the selected unit run measures no coverage")
     subprocess.run(["git", "-C", str(product), "branch", "-f", "main"], check=True)
     _change(product, COUNT_FAILURES)
     config = read_product_config(product)
 
-    run = run_command(config, "suites", "unit", unit)
+    run = run_command(config, "suites", "unit", _stack(product)["suites"]["unit"])
 
     assert not run.full and run.coverage is None
     assert check_stack_commands(config) == []
@@ -242,20 +244,24 @@ def test_the_integration_and_software_levels_follow_the_scope(tmp_path, monkeypa
     the two components meet."""
     monkeypatch.delenv("QF_BASE", raising=False)
     monkeypatch.delenv("QF_RUN", raising=False)
-    stack = _selected_stack()
-    for suite in ("integration", "software"):
-        entry = stack["suites"][suite]
-        entry["run_selected"] = entry["run"].rsplit(" ", 1)[0] + " {tests}"
-        entry["selected_form"] = "paths"
-    root = build_python_product(tmp_path, plan=_plan(), stack=stack, branch=None)
+    root = build_python_product(tmp_path, plan=_plan(), branch=None)
     write_all_tests_and_stubs(root)
     write_all_code(root)
     write_all_integration_tests(root)
     write_all_software_tests(root)
+
+    def selectable(plan):
+        for section in ("integration", "software"):
+            entry = plan[section]["suites"][section]
+            entry["run_selected"] = entry["run"].rsplit(" ", 1)[0] + " {tests}"
+            entry["selected_form"] = "paths"
+
+    edit_plan(root, selectable)
     commit_all(root, "every level built")
     subprocess.run(["git", "-C", str(root), "checkout", "-q", "-b", "feature/x"], check=True)
     _change(root, COUNT_FAILURES)
     config = read_product_config(root)
+    stack = read_stack(config)
     traced = trace(config, stack)
 
     integration = select(config, stack, "integration", traced)

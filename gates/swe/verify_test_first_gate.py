@@ -58,8 +58,8 @@ GATE = "verify_test_first_gate"
 def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
     stack = read_stack(config)
     units = design_units(config)
-    if stack is None or not units:
-        return []  # the stack and detailed design gates report what is missing
+    if stack is None or "unit" not in stack["suites"] or not units:
+        return []  # the stack, plan and detailed design gates report what is missing
     findings = _present(units, scan_sources(config, stack))
     if not in_git(config.root):
         return [

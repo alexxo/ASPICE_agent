@@ -53,6 +53,31 @@ def test_a_plan_without_coverage_breaks_its_contract(tmp_path):
     assert _rules(build_python_product(tmp_path, plan=plan)) == ["SCHEMA_VIOLATION"]
 
 
+def test_a_suite_whose_tool_is_no_test_runner_is_reported(tmp_path):
+    plan = copy.deepcopy(PLAN)
+    plan["unit"]["suites"]["unit"]["tool"] = "nose"
+    findings = check(read_product_config(build_python_product(tmp_path, plan=plan)))
+    assert [f.rule for f in findings] == ["UNKNOWN_TOOL"]
+    assert "'nose'" in findings[0].message
+
+
+def test_a_suite_a_requirement_names_but_its_section_lacks_is_reported(tmp_path):
+    from product_builder import MEASURED_REQUIREMENTS, edit_plan, write_software_plan
+
+    root = build_python_product(tmp_path)
+    write_software_plan(root)
+    edit_plan(root, lambda p: p["software"]["suites"].pop("bench"))
+    findings = check(read_product_config(root))
+    assert [f.rule for f in findings] == ["UNKNOWN_INSTRUMENT"] * len(MEASURED_REQUIREMENTS)
+    assert all(f.file == "docs/requirements/login.md" for f in findings)
+
+
+def test_a_suite_is_required_only_once_its_section_exists(tmp_path):
+    """The measured requirements name bench, a software-level suite: before the
+    bridge tester writes the software section, nothing is missing."""
+    assert _rules(build_python_product(tmp_path)) == []
+
+
 # ── the integration section (stage 7) ──────────────────────────────────────
 
 

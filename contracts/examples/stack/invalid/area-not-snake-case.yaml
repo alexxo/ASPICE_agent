@@ -1,0 +1,6 @@
+contract: stack.v2
+code_files: ["**/*.py"]
+env_read_patterns: []
+decision_record: docs/decisions/0001-tech-stack.md
+areas:
+  - {area: Static-Analysis, tool: mypy, version: 1.11.2, version_command: mypy --version, run: mypy src}

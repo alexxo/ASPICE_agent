@@ -132,7 +132,10 @@ def _declared(config: ProductConfig) -> dict[str, bool]:
 
 def _validated(config: ProductConfig, stack: dict, tests: dict) -> set[str] | None:
     """The variables named by a test file with at least one passing result; None
-    on a selected run, which leaves the check to the full run (decision 32)."""
+    on a selected run, which leaves the check to the full run (decision 32), and
+    without a unit suite, which check_verification_plan_gate reports."""
+    if "unit" not in stack["suites"]:
+        return None
     run = run_command(config, "suites", "unit", stack["suites"]["unit"])
     if not run.full:
         return None

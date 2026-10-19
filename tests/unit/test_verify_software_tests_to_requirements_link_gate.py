@@ -4,7 +4,7 @@ from product_builder import (
     E2E_TEST,
     SOFTWARE_TEST,
     build_python_product,
-    python_stack,
+    edit_plan,
     write_all_code,
     write_all_software_tests,
     write_all_tests_and_stubs,
@@ -85,10 +85,9 @@ def test_a_failing_test_is_reported_and_its_requirements_unverified(tmp_path):
 
 
 def test_a_missing_e2e_suite_has_no_results(tmp_path):
-    stack = python_stack()
-    del stack["suites"]["e2e"]
-    root = _verified(tmp_path, stack=stack)
+    root = _verified(tmp_path)
+    edit_plan(root, lambda p: p["software"]["suites"].pop("e2e"))
     findings = _findings(root)
     assert sorted(f.rule for f in findings) == ["MISSING_RESULTS", *["UNVERIFIED_REQUIREMENT"] * 5]
     missing = next(f for f in findings if f.rule == "MISSING_RESULTS")
-    assert missing.file == "docs/architecture/stack.yaml" and "e2e" in missing.message
+    assert missing.file == "docs/verification-plan.md" and "e2e" in missing.message

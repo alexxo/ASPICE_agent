@@ -3,7 +3,7 @@
 from product_builder import (
     BENCH_TEST,
     build_python_product,
-    python_stack,
+    edit_plan,
     write_all_code,
     write_all_software_tests,
     write_all_tests_and_stubs,
@@ -57,9 +57,8 @@ def test_a_value_in_another_unit_is_no_measurement(tmp_path):
 
 
 def test_a_suite_without_a_measurements_path_measures_nothing(tmp_path):
-    stack = python_stack()
-    del stack["suites"]["bench"]["measurements"]
-    root = _measured(tmp_path, stack=stack)
+    root = _measured(tmp_path)
+    edit_plan(root, lambda p: p["software"]["suites"]["bench"].pop("measurements"))
     assert [f.rule for f in _findings(root)] == ["MISSING_MEASUREMENT"] * 3
 
 

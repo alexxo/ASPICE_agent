@@ -38,8 +38,8 @@ Read before writing anything:
   happen, in which order;
 - the architecture's outside interfaces — where a scenario reaches the
   product (a page, an API, a file drop), never a component inside it;
-- the tech stack — the *validation* suite, its *results* path, and
-  *validation_test_files*;
+- the tech stack — its *test_runner* rows, the tools the validation suite can
+  run with;
 - the verification plan's validation section and the existing scenarios
   under *paths.validation_scenarios_dir* — the source of truth to grow.
 
@@ -79,10 +79,12 @@ When in doubt, full.
    plan: the selection (every automated scenario at every release, and which
    scenarios run by hand), the regression rule, and per scenario, in the order
    they run, its technique, pass/fail criteria in the customer's terms, entry
-   criteria and environment.
+   criteria and environment; with the first automated scenario, the
+   *validation* suite: the command, its tool (a *test_runner* of the stack),
+   its results and its *test_files*.
 2. **Automated scenarios** — per wish the product can show without a person's
    judgement, an acceptance test through the outside interfaces, marked
-   *@wish[W-&lt;n&gt;]*, in a file matching *validation_test_files* under
+   *@wish[W-&lt;n&gt;]*, in a file matching the validation suite's *test_files* under
    *paths.validation_scenarios_dir*. It reaches the product at the address the
    deployment gives (an environment variable of the product's choosing),
    never by importing its code.

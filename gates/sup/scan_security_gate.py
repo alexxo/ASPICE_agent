@@ -1,7 +1,7 @@
 """scan_security_gate — principle #29: no leaked secret, no vulnerable dependency, merged.
 
-The stack declares two scanners under security_scans — secrets and
-dependencies — each with a pinned version (TOOL_VERSION_MISMATCH, as for the
+The stack declares two scanners, its secrets_scanner and dependencies_scanner
+rows, each with a pinned version (TOOL_VERSION_MISMATCH, as for the
 checks) and SARIF results; each runs once per tree. Both must write their
 results (SCAN_NOT_RUN): a scanner exits non-zero when it finds something, so
 the results decide, not the exit code. No result may be critical or high

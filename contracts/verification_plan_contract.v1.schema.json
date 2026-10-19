@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://quality-framework/contracts/verification_plan_contract.v1.schema.json",
   "title": "verification_plan.v1",
-  "description": "The product's verification plan (SWE.4 BP1, BP2): one section per verification level. Stored as one fenced ```yaml verification_plan block in qf.yaml paths.verification_plan_file, written by the tester before the first unit test and agreed at the pull request. The unit section is written at stage 5; the integration section by the assembler at stage 7 (SWE.5 BP1, BP3), required by check_verification_plan_gate once the product has integration tests; the software section by the bridge tester at stage 8 (SWE.6 BP1, BP2), required once the product has software-level tests; the validation section by the crew that writes the validation scenarios at stage 11 (VAL.1 BP1, BP2), required once the product has a scenario. That the measured coverage reaches the minimum is a rule of check_stack_commands_gate, not of this schema.",
+  "description": "The product's verification plan (SWE.4 BP1, BP2): one section per verification level. Stored as one fenced ```yaml verification_plan block in qf.yaml paths.verification_plan_file, written by the tester before the first unit test and agreed at the pull request. The unit section is written at stage 5; the integration section by the assembler at stage 7 (SWE.5 BP1, BP3), required by check_verification_plan_gate once the product has integration tests; the software section by the bridge tester at stage 8 (SWE.6 BP1, BP2), required once the product has software-level tests; the validation section by the crew that writes the validation scenarios at stage 11 (VAL.1 BP1, BP2), required once the product has a scenario. Each section holds the commands that run its level's suites (suites), each naming its tool, a test_runner row of the stack (UNKNOWN_TOOL), which gives the version. That every suite a requirement names has a command once its level's section exists (UNKNOWN_INSTRUMENT) is a rule of check_verification_plan_gate; that the measured coverage reaches the minimum, of check_stack_commands_gate.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -25,7 +25,8 @@
         "infrastructure",
         "selection",
         "regression",
-        "coverage"
+        "coverage",
+        "suites"
       ],
       "properties": {
         "techniques": {
@@ -82,6 +83,26 @@
               "maximum": 100
             }
           }
+        },
+        "suites": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/suite"
+          },
+          "description": "The command that runs the unit tests; it also measures coverage.",
+          "propertyNames": {
+            "enum": [
+              "unit"
+            ]
+          },
+          "properties": {
+            "unit": {
+              "$ref": "#/$defs/unit_suite"
+            }
+          },
+          "required": [
+            "unit"
+          ]
         }
       }
     },
@@ -96,7 +117,8 @@
         "exit_criteria",
         "infrastructure",
         "regression",
-        "order"
+        "order",
+        "suites"
       ],
       "properties": {
         "techniques": {
@@ -155,6 +177,22 @@
               }
             }
           }
+        },
+        "suites": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/suite"
+          },
+          "description": "The command that runs the component and integration tests.",
+          "propertyNames": {
+            "enum": [
+              "integration"
+            ]
+          },
+          "properties": {},
+          "required": [
+            "integration"
+          ]
         }
       }
     },
@@ -170,7 +208,8 @@
         "infrastructure",
         "selection",
         "regression",
-        "order"
+        "order",
+        "suites"
       ],
       "properties": {
         "techniques": {
@@ -208,8 +247,32 @@
           "minItems": 1,
           "uniqueItems": true,
           "items": {
-            "enum": ["unit", "integration", "software", "bench", "security", "e2e"]
+            "enum": [
+              "unit",
+              "integration",
+              "software",
+              "bench",
+              "security",
+              "e2e"
+            ]
           }
+        },
+        "suites": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/suite"
+          },
+          "description": "The commands that run the software-level suites a requirement can name: software, e2e, bench, security.",
+          "propertyNames": {
+            "enum": [
+              "software",
+              "e2e",
+              "bench",
+              "security"
+            ]
+          },
+          "properties": {},
+          "minProperties": 1
         }
       }
     },
@@ -217,7 +280,11 @@
       "description": "Validation (VAL.1 BP1, BP2): the product against the customer's wishes, in conditions close to the customer's. That every scenario is listed and every listed scenario exists is a rule of check_verification_plan_gate.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["selection", "regression", "scenarios"],
+      "required": [
+        "selection",
+        "regression",
+        "scenarios"
+      ],
       "properties": {
         "selection": {
           "description": "Which scenarios run before each release (VAL.1 BP2): every automated one, and which of those run by hand.",
@@ -234,7 +301,13 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["scenario", "technique", "pass_fail_criteria", "entry_criteria", "environment"],
+            "required": [
+              "scenario",
+              "technique",
+              "pass_fail_criteria",
+              "entry_criteria",
+              "environment"
+            ],
             "properties": {
               "scenario": {
                 "description": "The scenario's repository path, under qf.yaml paths.validation_scenarios_dir.",
@@ -259,6 +332,19 @@
               }
             }
           }
+        },
+        "suites": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/suite"
+          },
+          "description": "The command that runs the automated validation scenarios against the deployed release; absent when every scenario is run by a person.",
+          "propertyNames": {
+            "enum": [
+              "validation"
+            ]
+          },
+          "properties": {}
         }
       }
     }
@@ -287,7 +373,9 @@
     "suite_budget": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["suite_seconds"],
+      "required": [
+        "suite_seconds"
+      ],
       "properties": {
         "suite_seconds": {
           "description": "The longest the full suite may run, in wall-clock seconds.",
@@ -303,7 +391,9 @@
     "unit_budget": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["suite_seconds"],
+      "required": [
+        "suite_seconds"
+      ],
       "properties": {
         "suite_seconds": {
           "description": "The longest the full unit suite may run, in wall-clock seconds.",
@@ -320,6 +410,85 @@
           "$ref": "#/$defs/text"
         }
       }
+    },
+    "report": {
+      "description": "Repository-relative path or glob of a file a suite writes; a glob for tools that write one file per test class (e.g. target/surefire-reports/TEST-*.xml).",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))\\S+$"
+    },
+    "suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool",
+        "run",
+        "results",
+        "test_files"
+      ],
+      "properties": {
+        "tool": {
+          "description": "The tool that runs the suite: the name of a test_runner row of the stack, which gives its version and version command.",
+          "type": "string",
+          "minLength": 1
+        },
+        "run": {
+          "type": "string",
+          "minLength": 1
+        },
+        "results": {
+          "description": "Where the suite writes its test results, as JUnit XML.",
+          "$ref": "#/$defs/report"
+        },
+        "coverage": {
+          "description": "Where the suite writes its code coverage, as Cobertura XML.",
+          "$ref": "#/$defs/report"
+        },
+        "measurements": {
+          "description": "Where the suite writes the values it measures, as measurements.v1 JSON (SWE.6 BP3).",
+          "$ref": "#/$defs/report"
+        },
+        "run_selected": {
+          "description": "The command that runs only the given tests (decision 31 of the unit stages): run with {tests} in place of the selected tests, written as selected_form says. A suite without it runs in full on every change.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\{tests\\}"
+        },
+        "selected_form": {
+          "description": "How {tests} lists the selected tests: paths — their files, relative to the product root, separated by spaces; names — their file names without extension, separated by commas (e.g. LoginTest,LockoutTest).",
+          "enum": [
+            "paths",
+            "names"
+          ]
+        },
+        "test_files": {
+          "description": "Glob patterns of the suite's test files, relative to the folder its level's tests live in: paths.code_dir for unit (they tell a test file from code, e.g. **/*Test.java), paths.integration_tests_dir, paths.software_tests_dir, paths.validation_scenarios_dir (a scenario matching none is run by a person).",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "dependentRequired": {
+        "run_selected": [
+          "selected_form"
+        ],
+        "selected_form": [
+          "run_selected"
+        ]
+      }
+    },
+    "unit_suite": {
+      "description": "The unit suite also measures coverage: SWE.4 BP2 compares it with the minimum of the coverage section.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/suite"
+        }
+      ],
+      "required": [
+        "coverage"
+      ]
     }
   }
 }

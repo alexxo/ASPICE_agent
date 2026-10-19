@@ -19,6 +19,10 @@ def product(tmp_path, stack):
     return build_python_product(tmp_path / "product", stack=stack)
 
 
+def _row(stack, area):
+    return next(r for r in stack["areas"] if r["area"] == area)
+
+
 def _found(product, kind, results):
     (product / f"scanners/{kind}.findings.json").write_text(json.dumps(results))
     commit_all(product, f"{kind} findings")
@@ -79,13 +83,13 @@ def test_the_rules_score_counts_when_the_result_has_none():
 
 def test_a_scanner_that_writes_nothing_did_not_run(tmp_path, stack):
     broken = json.loads(json.dumps(stack))
-    broken["security_scans"]["secrets"]["run"] = "true"
+    _row(broken, "secrets_scanner")["run"] = "true"
     product = build_python_product(tmp_path / "broken", stack=broken)
     assert _rules(product) == ["SCAN_NOT_RUN"]
 
 
 def test_a_scanner_of_another_version_is_caught(tmp_path, stack):
     other = json.loads(json.dumps(stack))
-    other["security_scans"]["dependencies"]["version"] = "2.0.0"
+    _row(other, "dependencies_scanner")["version"] = "2.0.0"
     product = build_python_product(tmp_path / "other", stack=other)
     assert _rules(product) == ["TOOL_VERSION_MISMATCH"]

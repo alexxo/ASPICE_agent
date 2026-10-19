@@ -11,8 +11,8 @@ person entered for a scenario run by hand are kept while the deployed commit
 stays the same; a new deployment starts a new record.
 
 A scenario is a file under qf.yaml paths.validation_scenarios_dir that names a
-wish with @wish[W-<n>]; it is automated when it matches the stack's
-validation_test_files, run by a person otherwise (decision 5). The gates of
+wish with @wish[W-<n>]; it is automated when it matches the validation suite's
+test_files, run by a person otherwise (decision 5). The gates of
 stage 11 read the scenarios, the wishes a release affects and the records with
 the same functions.
 

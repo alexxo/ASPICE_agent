@@ -30,7 +30,7 @@ validation record is committed, and the customer accepts or rejects it
 - **The wishes** (qf.yaml *paths.wishes_file*) — every wish needs a scenario.
 - **The scenarios** under *paths.validation_scenarios_dir* — a file naming a
   wish with *@wish[W-&lt;n&gt;]*; an automated test when it matches the
-  stack's *validation_test_files*, written steps run by a person otherwise.
+  validation suite's *test_files*, written steps run by a person otherwise.
 - **The verification plan's validation section** — every scenario with its
   technique, criteria, entry criteria and environment, the selection and the
   regression.

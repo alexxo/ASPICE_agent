@@ -42,7 +42,7 @@ def check(config: ProductConfig) -> list[Finding]:
     measured = [r for r in valid_requirements(config) if proof(r.data) == "measurement"]
     if not measured:
         return []
-    shown = config.relative(config.stack_file)
+    shown = config.relative(config.verification_plan_file)
     findings: list[Finding] = []
     values: dict[str, list[Measurement]] = {}
     runs = {}
@@ -72,7 +72,7 @@ def check(config: ProductConfig) -> list[Finding]:
                     "MISSING_MEASUREMENT",
                     req.file,
                     req.line("measurement_method"),
-                    f"{uid} has no value{unit} measured by the {suite} suite; its stack entry "
+                    f"{uid} has no value{unit} measured by the {suite} suite; its plan entry "
                     "names the measurements file the suite writes.",
                 )
             )

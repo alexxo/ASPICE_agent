@@ -74,11 +74,37 @@ def test_without_the_cache_nothing_is_kept_and_stale_results_go(tmp_path):
 def test_a_missing_or_broken_stack_reads_as_none(tmp_path):
     root = build_python_product(tmp_path)
     config = read_product_config(root)
-    assert read_stack(config)["contract"] == "stack.v1"
-    config.stack_file.write_text("contract: stack.v1\n")
+    assert read_stack(config)["contract"] == "stack.v2"
+    config.stack_file.write_text("contract: stack.v2\n")
     assert read_stack(config) is None
     config.stack_file.unlink()
     assert read_stack(config) is None
+
+
+def test_the_stack_is_read_with_the_plans_suites(tmp_path):
+    """Checks and scanners come from the stack's rows; the suites from the plan,
+    each with the version of the test_runner its tool names."""
+    root = build_python_product(tmp_path)
+    stack = read_stack(read_product_config(root))
+    runner = next(r for r in stack["areas"] if r["area"] == "test_runner")
+    assert sorted(stack["checks"]) == ["format", "lint"]
+    assert sorted(stack["security_scans"]) == ["dependencies", "secrets"]
+    assert list(stack["suites"]) == ["unit"]
+    assert stack["suites"]["unit"]["version"] == runner["version"]
+    assert stack["suites"]["unit"]["version_command"] == runner["version_command"]
+    assert stack["test_files"] == ["**/test_*.py"]
+    assert "integration_test_files" not in stack
+
+
+def test_a_suite_without_its_test_runner_or_plan_is_left_out(tmp_path):
+    from product_builder import edit_plan
+
+    root = build_python_product(tmp_path)
+    config = read_product_config(root)
+    edit_plan(root, lambda p: p["unit"]["suites"]["unit"].update(tool="nose"))
+    assert read_stack(config)["suites"] == {}
+    config.verification_plan_file.unlink()
+    assert read_stack(config)["suites"] == {}
 
 
 def test_a_run_can_be_kept_under_its_own_key(tmp_path):

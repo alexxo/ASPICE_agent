@@ -57,7 +57,7 @@ def check(config: ProductConfig) -> list[Finding]:
         findings.append(
             Finding(
                 "MISSING_RESULTS",
-                config.relative(config.stack_file),
+                config.relative(config.verification_plan_file),
                 None,
                 "The integration suite wrote no readable JUnit XML results, so no "
                 "component or integration test can be shown to pass.",

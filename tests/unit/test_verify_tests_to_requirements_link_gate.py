@@ -48,9 +48,9 @@ def test_a_result_matching_no_test_file_is_reported(tmp_path):
     (root / "src" / "web_app" / "extra_check.py").write_text(
         "# @unit[signin-form]\n\n\ndef test_hidden():\n    assert True\n"
     )
-    stack_file = root / "docs" / "architecture" / "stack.yaml"
-    stack_file.write_text(
-        stack_file.read_text().replace("--cov=src", "--cov=src -o python_files=*.py")
+    plan_file = root / "docs" / "verification-plan.md"
+    plan_file.write_text(
+        plan_file.read_text().replace("--cov=src", "--cov=src -o python_files=*.py")
     )
     assert _rules(root) == ["UNMAPPED_RESULT"]
 

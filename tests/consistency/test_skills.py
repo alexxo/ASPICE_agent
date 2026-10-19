@@ -118,7 +118,7 @@ def test_skill_examples_validate_against_the_contract(repo_root):
     for f in _skills(repo_root):
         text, name = f.read_text(), f.parent.name
         contract = repo_root / _header(text, "Contract")
-        tag = contract.name[: -len("_contract.v1.schema.json")]
+        tag = contract.name.split("_contract.v")[0]
         validator = jsonschema.Draft202012Validator(json.loads(contract.read_text()))
         blocks = re.findall(rf"^```yaml {re.escape(tag)}\n(.*?)^```$", text, re.M | re.S)
         assert blocks, f"{name}: no ```yaml {tag} example"

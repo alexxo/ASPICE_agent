@@ -76,7 +76,7 @@ One component at a time, unit by unit:
 3. **Refactor** — once green, tidy the code without changing behaviour; the
    tests stay green.
 4. **Checks and suites** — run the stack's lint, format and static analysis and
-   the unit suite with its results and coverage, as the stack declares them.
+   the unit suite with its results and coverage, as the plan declares it.
 
 A unit you cannot build within the design — it needs another unit, other
 inputs, a call the design lacks — is a design change: stop, report it, and let

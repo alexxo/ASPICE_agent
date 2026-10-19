@@ -1,0 +1,6 @@
+contract: stack.v2
+code_files: ["**/*.py"]
+env_read_patterns: []
+decision_record: docs/decisions/0001-tech-stack.md
+areas:
+  - {area: lint, tool: ruff, version: 0.6.9, version_command: ruff --version}

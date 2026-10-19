@@ -1,10 +1,11 @@
 """check_stack_commands_gate — SWE.3 BP3, SWE.4 BP2: the declared checks and unit suite run clean.
 
-Every check of the stack (lint, format, static analysis) and the unit suite runs
-with the command the stack declares, after its version_command, whose output
-must contain the pinned version (decision 12). A check passes with exit code 0.
-The unit suite writes its JUnit XML results and its Cobertura XML coverage where
-the stack says; a failing test is verify_tests_to_requirements_link_gate's to
+Every check of the stack (lint, format, static analysis) runs with the command
+its stack row declares, and the unit suite with the command of the verification
+plan, each after its tool's version_command, whose output must contain the
+version the stack pins (decision 12). A check passes with exit code 0. The unit
+suite writes its JUnit XML results and its Cobertura XML coverage where the plan
+says; a failing test is verify_tests_to_requirements_link_gate's to
 report. The coverage over the whole report reaches the verification plan's
 minimum, in its metric (decision 16). The other suites run with their stages.
 Each command runs once per tree (decision 13).
@@ -51,9 +52,12 @@ def check(config: ProductConfig) -> list[Finding]:
                     f"checks.{name} ({entry['run']}) exited {run.exit_code}: {_tail(run.output)}",
                 )
             )
-    entry = stack["suites"]["unit"]
+    entry = stack["suites"].get("unit")
+    if entry is None:
+        return findings  # check_verification_plan_gate reports a plan without its unit suite
     run = run_command(config, "suites", "unit", entry)
     findings += _version(shown, "suites.unit", entry, run)
+    shown = config.relative(config.verification_plan_file)  # the suite's own findings
     if run.ran_nothing:
         return findings  # no unit test is traced to the change, so none ran
     if not run.results:

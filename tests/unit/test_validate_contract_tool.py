@@ -33,8 +33,8 @@ def test_violations_come_in_a_fixed_order():
 
 
 def test_every_contract_in_the_tree_can_be_loaded(repo_root):
-    for schema in (repo_root / "contracts").glob("*_contract.v1.schema.json"):
-        name = schema.name[: -len("_contract.v1.schema.json")]
+    for schema in (repo_root / "contracts").glob("*_contract.v*.schema.json"):
+        name = schema.name.split("_contract.v")[0]
         validate({}, name)  # must not raise
 
 

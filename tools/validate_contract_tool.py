@@ -1,6 +1,7 @@
 """Check a record against one of the framework's contracts.
 
-A contract is contracts/<name>_contract.v1.schema.json in this tree. The result
+A contract is contracts/<name>_contract.v<N>.schema.json in this tree, one version
+of each. The result
 is a list of violations — JSON path, the schema keyword that failed, and the
 message — in a fixed order, so the same record always gives the same findings.
 """
@@ -21,7 +22,7 @@ CONTRACTS = Path(__file__).resolve().parent.parent / "contracts"
 
 
 class ContractNotFound(LookupError):
-    """No contracts/<name>_contract.v1.schema.json in this tree."""
+    """No contracts/<name>_contract.v<N>.schema.json in this tree."""
 
 
 @dataclass(frozen=True, order=True)
@@ -32,7 +33,8 @@ class Violation:
 
 
 def contract_path(name: str) -> Path:
-    return CONTRACTS / f"{name}_contract.v1.schema.json"
+    found = sorted(CONTRACTS.glob(f"{name}_contract.v*.schema.json"))
+    return found[-1] if found else CONTRACTS / f"{name}_contract.v1.schema.json"
 
 
 @cache

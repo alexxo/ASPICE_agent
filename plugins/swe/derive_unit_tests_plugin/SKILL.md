@@ -35,7 +35,7 @@ Read before writing anything:
   with type, range and unit of measure, and their calls;
 - the architecture's interfaces and their test doubles, for the calls that
   leave the component;
-- the tech stack — the language, *test_files*, the unit suite's command;
+- the tech stack — the language and the *test_runner* rows;
 - the existing verification plan and unit tests, if any — the source of truth
   to grow;
 - **not** the code under *paths.code_dir*, other than the tests and stubs you
@@ -65,7 +65,10 @@ When in doubt, full.
 
 ## Steps
 
-The first time, write the unit section of the verification plan; a
+The first time, write the unit section of the verification plan, with its
+*unit* suite: the command, its tool (a *test_runner* of the stack), where it
+writes its results and coverage, and the *test_files* that tell a test from
+code; a
 *time_budget* only when the architect asks for a tighter one than the default
 (120 s for the suite, 0.5 s per test). Each unit test tests one unit's logic
 with test doubles — no database, network, process or clock. Then one

@@ -13,8 +13,8 @@ description: "Rules for software verification (SWE.6): the software section of t
 ## What it governs
 
 The tests of the whole software against every requirement of both levels.
-They live in *qf.yaml paths.software_tests_dir*, in files matching the stack's
-*software_test_files*. The bridge tester writes them, the measurements and the
+They live in *qf.yaml paths.software_tests_dir*, in files matching the
+*test_files* of the plan's software-level suites. The bridge tester writes them, the measurements and the
 plan's software section; the coder then changes the code until they pass and
 never touches a test.
 
@@ -34,8 +34,7 @@ What proves each requirement:
 - The **architecture** — the product's outside interfaces, through which the
   tests reach it.
 - The **verification plan** — its unit and integration sections, to extend.
-- The **tech stack** — the *software*, *e2e* and measuring suites, their
-  *results* and *measurements* paths, and *software_test_files*.
+- The **tech stack** — its *test_runner* rows, the tools a suite can run with.
 - On a retry: the **findings** of the previous attempt.
 
 ## Contract
@@ -43,11 +42,14 @@ What proves each requirement:
 The *software* section of the ```yaml verification_plan block
 (*verification_plan.v1*): techniques, pass/fail criteria, entry and exit
 criteria, infrastructure (the environment the software runs in), selection,
-regression, an optional *time_budget* (default 600 s) and the *order* in which
-the suites run.
+regression, an optional *time_budget* (default 600 s), the *order* in which
+the suites run, and the *suites* themselves — *software*, *e2e*, and each
+measuring suite a requirement names (*bench*, *security*) — each with its
+*tool* (a *test_runner* of the stack), *run*, *results*, *test_files* relative
+to *paths.software_tests_dir* and, for a measuring suite, *measurements*.
 
 A measuring test writes a *measurements.v1* JSON file to the path its suite's
-stack entry names as *measurements* — per requirement its *value* and, when
+plan entry names as *measurements* — per requirement its *value* and, when
 the threshold has one, its *unit* exactly as the threshold writes it:
 
     {"contract": "measurements.v1",
@@ -57,7 +59,7 @@ the threshold has one, its *unit* exactly as the threshold writes it:
 
 | # | Rule | Checked by |
 |---|---|---|
-| R1 | Once software-level tests exist, the plan has its software section | check_verification_plan_gate · MISSING_SOFTWARE_SECTION |
+| R1 | Once software-level tests exist, the plan has its software section, with a command for every software-level suite a requirement names, each run by a test runner of the stack | check_verification_plan_gate · MISSING_SOFTWARE_SECTION, UNKNOWN_INSTRUMENT, UNKNOWN_TOOL |
 | R2 | Every requirement that is neither a constraint nor measured has a passing software-level test with its @sdoc marker — a system-level one in the e2e suite, a software-level one in the software suite | verify_software_tests_to_requirements_link_gate · UNVERIFIED_REQUIREMENT |
 | R3 | Every @sdoc marker of a software-level test names an existing requirement | verify_software_tests_to_requirements_link_gate · UNKNOWN_REQUIREMENT |
 | R4 | The suites write their results, and every software-level test passes | verify_software_tests_to_requirements_link_gate · MISSING_RESULTS, FAILED_TEST |
@@ -93,6 +95,13 @@ unit:
   selection: every unit test on every pull request
   regression: all unit tests run again
   coverage: {metric: lines, minimum: 80}
+  suites:
+    unit:
+      tool: maven
+      run: mvn -q test
+      results: target/surefire-reports/TEST-*.xml
+      coverage: target/site/cobertura/coverage.xml
+      test_files: ["**/*Test.java"]
 software:
   techniques:
     - one test per acceptance criterion of every requirement, through the outside interfaces
@@ -104,4 +113,21 @@ software:
   selection: every software-level test before every release
   regression: all software-level tests run again before every release
   order: [software, bench, e2e]
+  suites:
+    software:
+      tool: maven
+      run: mvn -q verify -Psoftware
+      results: target/software-reports/TEST-*.xml
+      test_files: ["**/*ST.java"]
+    e2e:
+      tool: maven
+      run: mvn -q verify -Pe2e
+      results: target/e2e-reports/TEST-*.xml
+      test_files: ["e2e/**/*ST.java"]
+    bench:
+      tool: maven
+      run: mvn -q verify -Pbench
+      results: target/bench-reports/TEST-*.xml
+      measurements: target/bench-measurements.json
+      test_files: ["bench/**/*Bench.java"]
 ```

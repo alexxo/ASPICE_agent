@@ -10,7 +10,11 @@ integration stage). Once it has software-level tests (stage 8), the software
 section too (decision 7 of the software verification stage). Once it has a
 validation scenario (stage 11), the validation section too
 (MISSING_VALIDATION_SECTION), listing every scenario (UNSELECTED_SCENARIO) and
-none that does not exist (UNKNOWN_SCENARIO).
+none that does not exist (UNKNOWN_SCENARIO). Every section's suites name
+their tool, a test_runner row of the stack (UNKNOWN_TOOL), and once a level's
+section exists, every suite of that level a requirement names as its
+instrument has a command there (UNKNOWN_INSTRUMENT) — so every threshold can
+actually be measured.
 
     python gates/swe/check_verification_plan_gate.py [--root PRODUCT]
 """
@@ -26,6 +30,7 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_integration_tool import read_architecture  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
+from tools.read_requirements_tool import read_requirements  # noqa: E402
 from tools.read_unit_markers_tool import (  # noqa: E402
     scan_integration_tests,
     scan_software_tests,
@@ -37,6 +42,17 @@ from tools.validate_contract_tool import validate  # noqa: E402
 from tools.write_validation_record_tool import scan_scenarios  # noqa: E402
 
 GATE = "check_verification_plan_gate"
+# Without its section a level has no test_files yet: any file in its folder counts.
+ANY_FILE = {"integration_test_files": ["**/*"], "software_test_files": ["**/*"]}
+# The plan section that holds each suite a requirement can name.
+LEVEL = {
+    "unit": "unit",
+    "integration": "integration",
+    "software": "software",
+    "e2e": "software",
+    "bench": "software",
+    "security": "software",
+}
 
 
 def check(config: ProductConfig) -> list[Finding]:
@@ -84,7 +100,48 @@ def check(config: ProductConfig) -> list[Finding]:
                 f"Breaks verification_plan.v1 at '{first.path or 'the block'}': {first.message}.",
             )
         ]
-    return [*_integration(config, block), *_software(config, block), *_validation(config, block)]
+    return [
+        *_suites(config, block),
+        *_integration(config, block),
+        *_software(config, block),
+        *_validation(config, block),
+    ]
+
+
+def _suites(config: ProductConfig, block) -> list[Finding]:
+    shown = config.relative(config.verification_plan_file)
+    plan = block.data
+    findings = []
+    stack = read_stack(config)
+    if stack is not None:
+        runners = {r["tool"] for r in stack["areas"] if r["area"] == "test_runner" and "tool" in r}
+        for section in ("unit", "integration", "software", "validation"):
+            for name, entry in plan.get(section, {}).get("suites", {}).items():
+                if entry["tool"] not in runners:
+                    findings.append(
+                        Finding(
+                            "UNKNOWN_TOOL",
+                            shown,
+                            block.key_lines.get(section, block.line),
+                            f"Suite '{name}' runs with '{entry['tool']}', which is no "
+                            "test_runner of the stack; name one, or add it to the stack.",
+                        )
+                    )
+    for req in read_requirements(config):
+        method = req.data.get("measurement_method")
+        suite = method.get("instrument") if isinstance(method, dict) else None
+        section = LEVEL.get(suite) if isinstance(suite, str) else None
+        if section in plan and suite not in plan[section].get("suites", {}):
+            findings.append(
+                Finding(
+                    "UNKNOWN_INSTRUMENT",
+                    req.file,
+                    req.line("measurement_method"),
+                    f"{req.text('uid')} is measured by suite '{suite}', which the plan's "
+                    f"{section} section gives no command; add it to its suites.",
+                )
+            )
+    return findings
 
 
 def _validation(config: ProductConfig, block) -> list[Finding]:
@@ -134,7 +191,7 @@ def _software(config: ProductConfig, block) -> list[Finding]:
     if "software" in block.data:
         return []
     stack = read_stack(config)
-    if stack is None or not scan_software_tests(config, stack):
+    if stack is None or not scan_software_tests(config, {**stack, **ANY_FILE}):
         return []  # the bridge tester writes it with the first software-level test
     return [
         Finding(
@@ -152,7 +209,7 @@ def _integration(config: ProductConfig, block) -> list[Finding]:
     plan = block.data
     if "integration" not in plan:
         stack = read_stack(config)
-        if stack is None or not scan_integration_tests(config, stack):
+        if stack is None or not scan_integration_tests(config, {**stack, **ANY_FILE}):
             return []  # the assembler writes it with the first integration test
         return [
             Finding(

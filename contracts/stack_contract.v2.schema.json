@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/stack_contract.v2.schema.json",
+  "title": "stack.v2",
+  "description": "The product's tech stack: the first decision of SWE.2 architecture, proposed by the agent and approved by the architect at checkpoint 3. It lists every tool the product takes from outside, one row per tool, each in an area; an area the product does without has one row marking it not needed, with the reason. Every plugin generates code for it. How the product is tested — the suite commands — is in the verification plan. That every required area has a row (MISSING_STACK_AREA) and that the areas the framework gives match it (GIVEN_AREA_MISMATCH) are rules of check_stack_decision_gate, not of this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "areas", "code_files", "env_read_patterns", "decision_record"],
+  "properties": {
+    "contract": { "const": "stack.v2" },
+    "areas": {
+      "description": "One row per tool, in its area; an area with several tools (e.g. libraries) has several rows.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/row" }
+    },
+    "code_files": {
+      "description": "Glob patterns, relative to qf.yaml paths.code_dir, of the code files (e.g. **/*.java). A file matching code_files and not the unit suite's test_files is code and names its unit with @unit.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "env_read_patterns": {
+      "description": "Regular expressions, each with one capture group for the variable's name, that find where the code reads an environment variable (e.g. os\\.environ\\[[\"']([A-Z0-9_]+)[\"']\\]). Empty when the code reads none.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "decision_record": {
+      "description": "Repository-relative path of the decision record: the alternatives considered and why this stack fits the requirements and respects the constraint requirements.",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))\\S+\\.md$"
+    }
+  },
+  "$defs": {
+    "area": {
+      "description": "The kind of tool, e.g. language, libraries, llm, test_runner. check_stack_decision_gate names the areas every stack holds; a product may add its own.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "given": {
+      "description": "The areas the framework gives: their tool is the host's or a qf.yaml slot's, so they carry no version of their own.",
+      "enum": ["version_control", "ci_cd", "task_management", "requirements_engineering", "diagram_tool"]
+    },
+    "version": {
+      "description": "An exact version; ranges and 'latest' are not pinned.",
+      "type": "string",
+      "pattern": "^v?[0-9]+(\\.[0-9]+)*([-+][0-9A-Za-z.-]+)?$"
+    },
+    "report": {
+      "description": "Repository-relative path of a file the tool writes.",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))\\S+$"
+    },
+    "row": {
+      "oneOf": [{ "$ref": "#/$defs/chosen" }, { "$ref": "#/$defs/not_needed" }]
+    },
+    "not_needed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["area", "not_needed"],
+      "properties": {
+        "area": { "$ref": "#/$defs/area" },
+        "not_needed": {
+          "description": "Why the product does without this area. That it is not empty is a rule of check_stack_decision_gate (MISSING_REASON).",
+          "type": "string"
+        }
+      }
+    },
+    "chosen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["area", "tool"],
+      "properties": {
+        "area": { "$ref": "#/$defs/area" },
+        "tool": { "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/version" },
+        "version_command": {
+          "description": "A command that prints the tool's version (e.g. ruff --version); its output must contain the pinned version.",
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": { "type": "string", "minLength": 1 },
+        "run": {
+          "description": "The command the framework runs: a check (lint, format, static_analysis) passes with zero errors; a scanner writes its findings to results.",
+          "type": "string",
+          "minLength": 1
+        },
+        "results": { "description": "Where the scanner writes its findings, as SARIF 2.1.0 JSON.", "$ref": "#/$defs/report" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "area": { "$ref": "#/$defs/given" } } },
+          "else": { "required": ["version"] }
+        },
+        {
+          "if": { "properties": { "area": { "enum": ["test_runner", "lint", "format", "static_analysis", "secrets_scanner", "dependencies_scanner"] } } },
+          "then": { "required": ["version_command"] }
+        },
+        {
+          "if": { "properties": { "area": { "enum": ["lint", "format", "static_analysis", "secrets_scanner", "dependencies_scanner"] } } },
+          "then": { "required": ["run"] }
+        },
+        {
+          "if": { "properties": { "area": { "enum": ["secrets_scanner", "dependencies_scanner"] } } },
+          "then": { "required": ["results"] }
+        }
+      ]
+    }
+  }
+}

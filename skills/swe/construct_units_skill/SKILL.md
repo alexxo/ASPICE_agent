@@ -22,7 +22,8 @@ directions, and its folders mirror the architecture.
 - The **detailed design** in *paths.detailed_design_dir* — the units to build,
   their inputs, outputs and calls.
 - The **unit tests and stubs** of stage 5 — the tests are read, never changed.
-- The **tech stack** — language, frameworks, libraries, *test_files*.
+- The **tech stack** — language, frameworks, libraries; and the unit suite's
+  *test_files* in the verification plan.
 - The **approved requirements**, for the *@sdoc* markers.
 - The **decision records**, for the *@adr* markers of non-obvious choices.
 - On a retry: the **findings** of the previous attempt.
@@ -31,7 +32,7 @@ directions, and its folders mirror the architecture.
 
 The units are the ```yaml unit blocks of *unit.v1* in the detailed design; the
 code implements them. In every code file under *paths.code_dir* — every file not
-matching the stack's *test_files*:
+matching the unit suite's *test_files*:
 
 - **@unit[&lt;unit-id&gt;]** names the unit it implements. A unit may span
   several files (helpers, private parts), each with the same marker; a file may

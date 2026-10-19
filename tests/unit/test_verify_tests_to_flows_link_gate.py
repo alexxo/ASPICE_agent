@@ -4,7 +4,7 @@ from product_builder import (
     FLOW_TEST,
     build_python_product,
     component_test_path,
-    python_stack,
+    edit_plan,
     write_all_code,
     write_all_integration_tests,
     write_all_tests_and_stubs,
@@ -75,9 +75,11 @@ def test_a_marker_naming_no_flow_is_reported(tmp_path):
 
 
 def test_a_suite_that_writes_no_results_is_reported(tmp_path):
-    stack = python_stack()
-    stack["suites"]["integration"]["results"] = "build/nowhere.xml"
-    root = _assembled(tmp_path, stack)
+    root = _assembled(tmp_path)
+    edit_plan(
+        root,
+        lambda p: p["integration"]["suites"]["integration"].update(results="build/nowhere.xml"),
+    )
     assert _rules(root) == ["MISSING_FLOW_TEST", "MISSING_RESULTS", "UNTESTED_INTERFACE"]
 
 

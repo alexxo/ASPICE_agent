@@ -77,8 +77,8 @@ def test_an_error_on_a_stub_counts_as_red(tmp_path):
 def test_tests_that_do_not_run_are_reported(tmp_path):
     root = build_python_product(tmp_path)
     write_all_tests_and_stubs(root)
-    stack_file = root / "docs" / "architecture" / "stack.yaml"
-    stack_file.write_text(stack_file.read_text().replace("build/unit.xml", "build/nowhere.xml", 1))
+    plan_file = root / "docs" / "verification-plan.md"
+    plan_file.write_text(plan_file.read_text().replace("build/unit.xml", "build/nowhere.xml", 1))
     commit_all(root, "test: units")
     assert "RED_RUN_WITHOUT_RESULTS" in _rules(root)
 
@@ -212,9 +212,11 @@ def test_a_software_test_changed_with_code_is_reported(tmp_path):
 
 
 def test_an_uncommitted_software_test_is_reported(tmp_path):
-    from product_builder import E2E_TEST, write_e2e_test
+    from product_builder import E2E_TEST, write_e2e_test, write_software_plan
 
     root = _red(tmp_path)
+    write_software_plan(root)  # the plan's software section says which files are its tests
+    commit_all(root, "docs: the software-level plan")
     write_e2e_test(root)
     findings = check(read_product_config(root))
     assert [(f.rule, f.file) for f in findings] == [("TEST_NOT_COMMITTED", E2E_TEST)]

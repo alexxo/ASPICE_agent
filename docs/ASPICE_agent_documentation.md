@@ -240,6 +240,8 @@ the words of the glossary below, one bridge word per framework term.
 | Invariants file | rules sheet |
 | Diagram-wishes file | wish-links sheet |
 | Tech stack | materials |
+| Stack area | material kind |
+| Area marked not needed | struck off the list |
 | Decision record (ADR) | decision note |
 | Component | big piece |
 | External actor or system | outside party |
@@ -485,7 +487,10 @@ changed after planning has started sends the work back to this step.
 First the materials (tech stack): the village crew (framework plugin
 *derive_architecture_plugin*)
 proposes steel, not wood, with a decision note (decision record, ADR) of the
-options it weighed, and stops. Nothing is planned on materials without the
+options it weighed, and stops. The materials (tech stack) go kind by kind
+(area) — stone, timber, mortar, crane — and every material kind (area) is
+either chosen or struck off the list (not needed) with the reason, so none is
+forgotten; the chief architect reads it as one table. Nothing is planned on materials without the
 chief architect's (architect's) seal (checkpoint 3 approval). Then the crew
 turns every pillar and joint of the big plan (diagram) into a described big
 piece (component): what it carries (responsibility), its budget (memory,
@@ -740,7 +745,7 @@ belongs to another process group and is referenced, not repeated.
 |  | BP6: Communicate the agreed software requirements and the impact on the operating environment | Requirements are agreed and communicated through the repository:<br>• **Diagram approval** — the diagram is approved by a human before the requirements are derived from it, and that approval is recorded in the repository.<br>• **Approval of the derived requirements** — the architect approves the requirements the agent derived from the diagram, confirming they say what was meant, before any design or code starts. The approval is recorded in the repository.<br>• **What the person reads** — the diagrams are approved on their pictures, the requirements on a review page rendered from the committed files, never written by hand: the requirements as a tree with every field, what changed since the previous approval marked. Each approval covers what the person saw; that of the requirements also the diagrams they are derived from.<br>• **Agreement** — a requirement reaches the main branch only through a pull request approved by a reviewer other than its author. Merged means agreed.<br>• **Communication** — the pull request notifies the reviewers, and the report generated on every CI run (BP5) shows anyone the agreed requirements and their **Environment** impact.<br>• **Baseline** — every release tag records which requirements were agreed at that moment. | **Statement:** Diagram approved before derivation<br>**Evidence:** The recorded diagram approval + the first commit of the derived requirements<br>**Gate:** verify_diagram_approval_gate<br>**What it verifies:** The approval exists and is dated before the requirements were derived, and it covers the diagrams' pictures, each committed with its diagram<br>────────────────<br>**Statement:** Requirements approved before design<br>**Evidence:** The recorded requirements approval + the first design or code commit<br>**Gate:** verify_requirements_approval_gate<br>**What it verifies:** The architect's approval exists and is dated before any design or code commit, and it covers the review page as the requirements render it now and the diagrams they are derived from<br>────────────────<br>**Statement:** Agreed through a reviewed pull request<br>**Evidence:** Branch protection + review records<br>**Gate:** verify_delivery_reviewed_gate<br>**What it verifies:** Requirements reach the main branch only through an approved pull request<br>────────────────<br>**Relies on:** SUP.8 BP5 for the release baseline (verify_baseline_gate) — no SWE gate of its own |
 | SWE.2 | BP1: Specify the static aspects of the software architecture | The architecture is built **from the approved architecture diagram** (flowchart), and documented in one document that follows the architecture model:<br>• **Components** — each node of the diagram is a software component, with its responsibility.<br>• **Interfaces** — each labelled edge is an interface between components; the edges that cross the system boundary are the external interfaces.<br>• **Relationships** — the edges show how the components depend on and connect to each other.<br>• **Link to the wishes** — every element of the diagram names the wish it comes from (e.g. *wish: W-03*), so every wish can be followed into the architecture and every element can be justified by a wish.<br>• **Diagram as source of truth** — the document never copies or redraws the approved diagram: every component and interface names the diagram element it comes from (e.g. *derived_from: auth-flow#auth-service*), and every node and edge of the diagram is one of them. If prose and diagram disagree, the diagram wins.<br><br>Every component is justified by the software requirements, functional and non-functional, that it serves (see BP4). | **Statement:** Architecture built from the approved diagram<br>**Evidence:** The architecture document + the approved diagram source<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every diagram node is a documented component with a responsibility, every labelled edge an interface, and the boundary-crossing edges are marked as external<br>────────────────<br>**Statement:** Diagram as source of truth<br>**Evidence:** The derived_from link of every component and interface + the approved diagram source<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every component and interface comes from an element of the approved diagram, and every node and edge is one of them<br>────────────────<br>**Not checkable:** that the prose agrees with the diagram — the reviewer checks it at the pull request<br>────────────────<br>**Statement:** Linked to the wishes<br>**Evidence:** The wish link of every diagram element + the wishes document<br>**Gate:** verify_diagram_to_wishes_link_gate<br>**What it verifies:** Every diagram element names an existing wish<br>────────────────<br>**Statement:** Components justified by requirements<br>**Evidence:** Derived from fields<br>**Gate:** verify_requirements_to_diagram_link_gate<br>**What it verifies:** Every component serves at least one requirement |
 |  | BP2: Specify the dynamic aspects of the software architecture | The run-time behaviour is described **from the approved behaviour diagrams**:<br>• **Behaviour and interaction** — every relevant flow is an approved sequence diagram. Its participants are the components of the architecture diagram, and its messages show how they interact.<br>• **Software modes** — each component lists its modes and the transitions between them (e.g. *start-up → normal → degraded*).<br>• **Concurrency** — each component states what runs in parallel, which resources are shared and how access to them is coordinated (e.g. *sign-ins run in parallel; the failure counter is updated atomically*).<br><br>The document never copies or redraws the sequence diagrams. Modes and concurrency may be declared "not applicable" with a reason (e.g. *a single-threaded script with one mode*). | **Statement:** Behaviour from approved diagrams<br>**Evidence:** Sequence and state diagrams of the architecture<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every participant of every approved sequence diagram is a node of the architecture diagram, and so a component<br>────────────────<br>**Statement:** Modes and concurrency stated<br>**Evidence:** The modes and concurrency of every component<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every component states both, or declares each not applicable with a reason, and every transition goes to one of its own modes<br>────────────────<br>**Not checkable:** that the described behaviour is correct — the architect approves it at checkpoint 1 |
-|  | BP3: Analyze the software architecture | The architecture is analysed before it is agreed:<br>• **Diagram critique** — the architecture diagram is checked for missing trust boundaries, components with overlapping responsibilities, ambiguous or bidirectional flows, and missing cross-cutting concerns (observability, security).<br>• **Technical aspects** — each component states its **resource budget** (e.g. time, memory, throughput), with value and unit, inside the architecture document.<br>• **Design decisions** — every non-obvious decision is recorded in an ADR with its rationale and the alternatives rejected, and is referenced from the code it affects.<br>• **Tech stack** — the first design decision: language, runtime, frameworks, libraries and data stores with exact versions, one command per verification suite and check, and the scanners, chosen against the alternatives in a decision record and approved by the architect (checkpoint 3) before any component is designed.<br>• **Size** — each component carries a relative size (S, M, L or XL) as input for project planning, as requirements do in SWE.1 BP3. | **Statement:** Diagram critique (structural part)<br>**Evidence:** The diagram source, read through its adapter<br>**Gate:** check_diagram_contract_gate<br>**What it verifies:** No unlabelled edge, no dangling endpoint, no orphan node<br>────────────────<br>**Statement:** Budget and size per component<br>**Evidence:** The architecture document<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every component has a resource budget with value and unit, and a size from S, M, L, XL<br>────────────────<br>**Statement:** Decisions recorded<br>**Evidence:** ADR files + ADR markers in the code<br>**Gate:** verify_decision_records_gate<br>**What it verifies:** Every ADR marker resolves to an existing ADR file<br>────────────────<br>**Not checkable:** missing trust boundaries, overlapping responsibilities and missing cross-cutting concerns — the architect reviews them at checkpoint 1<br>────────────────<br>**Statement:** Tech stack decided<br>**Evidence:** The stack file + its decision record<br>**Gate:** check_stack_decision_gate<br>**What it verifies:** The stack follows *stack.v1* with exact versions, its decision record exists, and every suite a requirement names has a command<br>────────────────<br>**Statement:** Tech stack approved first<br>**Evidence:** The recorded approval of checkpoint 3 + the first component design<br>**Gate:** verify_stack_approval_gate<br>**What it verifies:** The architect approved the current stack before any component was designed |
+|  | BP3: Analyze the software architecture | The architecture is analysed before it is agreed:<br>• **Diagram critique** — the architecture diagram is checked for missing trust boundaries, components with overlapping responsibilities, ambiguous or bidirectional flows, and missing cross-cutting concerns (observability, security).<br>• **Technical aspects** — each component states its **resource budget** (e.g. time, memory, throughput), with value and unit, inside the architecture document.<br>• **Design decisions** — every non-obvious decision is recorded in an ADR with its rationale and the alternatives rejected, and is referenced from the code it affects.<br>• **Tech stack** — the first design decision: every tool the product takes from outside, one row per tool in its area (e.g. *language: Java 21*, *llm: not needed — the product generates no text*), every area either chosen with an exact version or marked not needed with the reason, chosen against the alternatives in a decision record and approved by the architect (checkpoint 3) before any component is designed.<br>• **Size** — each component carries a relative size (S, M, L or XL) as input for project planning, as requirements do in SWE.1 BP3. | **Statement:** Diagram critique (structural part)<br>**Evidence:** The diagram source, read through its adapter<br>**Gate:** check_diagram_contract_gate<br>**What it verifies:** No unlabelled edge, no dangling endpoint, no orphan node<br>────────────────<br>**Statement:** Budget and size per component<br>**Evidence:** The architecture document<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every component has a resource budget with value and unit, and a size from S, M, L, XL<br>────────────────<br>**Statement:** Decisions recorded<br>**Evidence:** ADR files + ADR markers in the code<br>**Gate:** verify_decision_records_gate<br>**What it verifies:** Every ADR marker resolves to an existing ADR file<br>────────────────<br>**Not checkable:** missing trust boundaries, overlapping responsibilities and missing cross-cutting concerns — the architect reviews them at checkpoint 1<br>────────────────<br>**Statement:** Tech stack decided<br>**Evidence:** The stack file + its decision record<br>**Gate:** check_stack_decision_gate<br>**What it verifies:** The stack follows *stack.v2* with exact versions, its decision record exists, every area has a tool or is marked not needed with its reason, and the areas the framework gives name its tools<br>────────────────<br>**Statement:** Tech stack approved first<br>**Evidence:** The recorded approval of checkpoint 3 + the first component design<br>**Gate:** verify_stack_approval_gate<br>**What it verifies:** The architect approved the current stack before any component was designed |
 |  | BP4: Ensure consistency and establish bidirectional traceability | The architecture and the software requirements are traceable in both directions through the **Derived from** links described in SWE.1 BP5 (every requirement names the diagram element it comes from, every diagram element is covered by at least one requirement, and no link points to something that does not exist). In addition:<br>• **Acceptance criteria** — the architecture states which component meets each software requirement (*meets: [REQ-0011]*), and with it every acceptance criterion of that requirement; since a requirement holds one behaviour (SWE.1), the requirement is the right grain. It is approved before implementation. | **Statement:** Requirements ↔ architecture<br>**Evidence:** Derived from fields + the diagram elements<br>**Gate:** verify_requirements_to_diagram_link_gate<br>**What it verifies:** As in SWE.1 BP5: both directions, no dangling link<br>────────────────<br>**Statement:** Acceptance criteria assigned<br>**Evidence:** The meets list of every component + the software requirements<br>**Gate:** check_design_contract_gate<br>**What it verifies:** Every software requirement, with its acceptance criteria, is met by a component, and no component meets a requirement that does not exist<br>────────────────<br>**Statement:** Approved before implementation<br>**Evidence:** The recorded diagram approval + the first code commit<br>**Gate:** verify_diagram_approval_gate<br>**What it verifies:** The architecture approval is dated before any implementation commit |
 |  | BP5: Communicate the agreed software architecture | The architecture is agreed and communicated through the repository:<br>• **Own track** — a pull request changes either the architecture or a feature, never both; architecture changes go on their own branch and are reviewed on their own.<br>• **Diagram approval** — the architecture diagrams are approved by a human before anything is derived from them, and that approval is recorded in the repository (as in SWE.1 BP6).<br>• **Agreement** — the pull request is approved by the architecture's owners. Merged means agreed.<br>• **Communication** — the merged architecture document, with its diagrams, is the reference every feature builds on.<br>• **Baseline** — every release tag records which architecture was agreed at that moment. | **Statement:** Own track<br>**Evidence:** The paths changed by each pull request + its branch<br>**Gate:** check_track_rule_gate<br>**What it verifies:** No pull request changes both architecture and feature paths; architecture changes come from an architecture branch<br>────────────────<br>**Statement:** Diagrams approved<br>**Evidence:** The recorded diagram approvals<br>**Gate:** verify_diagram_approval_gate<br>**What it verifies:** Every architecture diagram has a recorded human approval before anything is derived from it<br>────────────────<br>**Statement:** Approved by the architecture owners<br>**Evidence:** Review records + code owners of the architecture<br>**Gate:** verify_delivery_reviewed_gate<br>**What it verifies:** Every architecture pull request is approved by a person among the architecture's owners<br>────────────────<br>**Relies on:** SUP.8 BP5 for the release baseline (verify_baseline_gate) — no SWE gate of its own |
 | SWE.3 | BP1: Specify the static aspects of the detailed design | Every component has its own detailed-design document, which every feature that changes the component keeps up to date:<br>• **Units** — the software units the component is made of, each with its responsibility.<br>• **Interfaces** — the interfaces of each unit. For every input and output, its type, its **valid range** and its **unit of measure** (e.g. *temperature: number, 0 to 150, °C*).<br>• **Relationships** — how the units depend on and call each other.<br>• **From the diagrams** — every unit appears in its component's design diagram, drawn at this stage and agreed at the pull request (SWE.3 BP5: reviewer agent plus the sampled person). The document never copies or redraws the diagram: every unit names the node it comes from (e.g. *derived_from: auth-service#check-credentials*), and every node is a unit.<br><br>Inputs and outputs that are not numeric declare range and unit as "not applicable". | **Statement:** Every component has a detailed design<br>**Evidence:** The detailed-design documents + the architecture components<br>**Gate:** check_detailed_design_contract_gate<br>**What it verifies:** Every architecture component has its detailed-design document<br>────────────────<br>**Statement:** Interfaces with range and unit<br>**Evidence:** The unit interfaces<br>**Gate:** check_detailed_design_contract_gate<br>**What it verifies:** Every numeric input and output has type, valid range and unit; non-numeric ones declare not applicable<br>────────────────<br>**Statement:** Units from the design diagram<br>**Evidence:** The derived_from link of every unit + the component's design diagram<br>**Gate:** check_detailed_design_contract_gate<br>**What it verifies:** Every unit comes from a node of its component's design diagram, and every node is a unit |
@@ -1091,9 +1096,10 @@ configured (*no_host*). CI prints the list, so no pull request looks more checke
 
 ### The tech stack
 
-Before any code is written, the product's tech stack — language, frameworks,
-runtime, key libraries, data stores, and the tools that verify the code — is
-known, so every plugin generates code for it.
+Before any code is written, the product's tech stack — every tool the product
+takes from outside: language, runtime, frameworks, libraries, data stores,
+models and outside services, and the tools that test, check, scan, build and
+deliver it — is known, so every plugin generates code for it.
 
 **When.** The stack is the **first decision of SWE.2 architecture** (stage 3),
 after the requirements are approved and before the components are designed:
@@ -1117,37 +1123,59 @@ requirements. The architect approves it at **checkpoint 3**, recorded like every
 other approval (*approval.v1*). Checkpoints are numbered in the order they occur:
 1 diagram, 2 requirements, 3 tech stack, 4 sampled pull request, 5 acceptance.
 
-**Where it lives.** In its own work product, contract *stack.v1* — not in
+**Where it lives.** In its own work product, contract *stack.v2* — not in
 *qf.yaml*, which is human-owned framework configuration (paths, slots) and must
-be valid before the agent starts, when no stack exists yet. *stack.v1* holds the
-stack and, for every verification suite, the command that runs it with the tool
-and its exact version.
+be valid before the agent starts, when no stack exists yet. *stack.v2* holds the
+tools only. How the product is tested — the command that runs each verification
+suite — is a decision of the verification plan, written with each level's tests
+(decision 10 of the architecture stage).
 
-**Requirements name suites, the stack names commands.** A requirement says how it
-is verified by naming a **verification suite** from a fixed vocabulary (e.g.
-*unit*, *integration*, *software*, *bench*, *security*, *e2e*), never a tool. On
-the bridge, the card says *load test*; only after the architect chooses stone
-does the toolkit say which jack and which sensors. The requirement does not
-change whichever stack wins.
+**Every area, chosen or not needed.** The stack is a list of rows, one per
+tool, each in an **area** — on the bridge, a **material kind**: stone, timber,
+mortar, the crane. Every stack holds the same areas, so none is silently
+skipped: language, runtime, package manager, frameworks, libraries, data
+stores, LLM, external services, test runner, lint, format, static analysis,
+secrets scanner, dependencies scanner, build, deployment, version control,
+CI/CD, task management, requirements engineering, documentation, diagram tool.
+An area the product does without is **struck off the list**: one row marked
+*not needed*, with the reason. Five areas the framework gives — version
+control, CI/CD and task management (GitHub, GitHub Actions, GitHub Issues),
+requirements engineering and the diagram tool (the plugins in *qf.yaml*'s
+slots) — are rows like the others, so the architect sees one complete picture.
+The architect reads the stack as a table — *Area · Tool · Version · Status*,
+chosen or not needed — that *write_stack_table_tool* prints from it.
+
+**Requirements name suites, the plan names commands, the stack names tools.** A
+requirement says how it is verified by naming a **verification suite** from a
+fixed vocabulary (e.g. *unit*, *integration*, *software*, *bench*, *security*,
+*e2e*), never a tool. On the bridge, the card says *load test*; only after the
+architect chooses stone do the materials say which jack and which
+sensors, and the test plan how the load test is run with them. The requirement
+does not change whichever stack wins.
 
 **Gates.**
 
 | Gate | What it verifies |
 |---|---|
-| check_stack_decision_gate | The stack follows *stack.v1* with exact versions; a decision record with alternatives exists; every suite named by a requirement has a command (UNKNOWN_INSTRUMENT) |
+| check_stack_decision_gate | The stack follows *stack.v2* with exact versions; a decision record with alternatives exists; every area has a row, a tool or not needed with its reason (MISSING_STACK_AREA, MISSING_REASON); the areas the framework gives name its tools (GIVEN_AREA_MISMATCH) |
 | verify_stack_approval_gate | Checkpoint 3 is recorded, on the current stack content, before the first component design |
 
-**Not checkable:** that the stack really respects every constraint requirement
-and fits the non-functional requirements — the architect confirms it at
+**Not checkable:** that the stack really respects every constraint requirement,
+fits the non-functional requirements and can run every suite the requirements
+name, and that a *not needed* reason holds — the architect confirms it at
 checkpoint 3.
 
-**What *stack.v1* holds.** Language, runtime, frameworks, libraries, data
-stores, one command per suite (*unit* always), the coding-principle checks
-(*lint*, *format*, optional *static-analysis*), the security scanners, the file
-patterns of code and tests, and the path of the decision record — every version
-exact. A requirement's instrument is a suite from the fixed vocabulary; a
-framework test keeps the vocabulary of *requirement.v1* and *stack.v1* the same
-(the stack alone adds *validation*, which no requirement names).
+**What *stack.v2* holds.** One row per tool: its area, the tool, its exact
+version (the areas the framework gives carry none) and optionally its purpose;
+the *version_command* of every tool the framework runs (test runners, checks,
+scanners); the command of every coding-principle check (*lint*, *format*,
+*static_analysis*) and of the two scanners, with the scanners' SARIF results;
+the file patterns of the code, the environment read patterns, and the path of
+the decision record. Language, test runner, lint, format and the two scanners
+cannot be struck off: the gates run them. A requirement's instrument is a suite
+from the fixed vocabulary; a framework test keeps the vocabulary of
+*requirement.v1* and of the plan's sections the same (the plan alone adds
+*validation*, which no requirement names).
 
 **Constraints derive from wishes.** A constraint given by
 the customer (*must run on Java 21*) comes from a wish, not from a diagram
@@ -2050,7 +2078,8 @@ and format).
 | *skills/swe/choose_stack_skill*, *write_design_skill*, *record_decisions_skill* | Architecture stage: the rules of the stack, the design and the decision records |
 | *plugins/swe/derive_architecture_plugin/SKILL.md* | Architecture stage: the method — stack first, checkpoint 3, then the design |
 | *tools/check_approval_order_tool.py* | Approved before derived, from git history — shared by the approval gates |
-| *gates/swe/check_stack_decision_gate.py* | Architecture stage: the stack follows stack.v1, has its decision record and a command for every suite named |
+| *gates/swe/check_stack_decision_gate.py* | Architecture stage: the stack follows stack.v2, has its decision record, every area chosen or not needed with its reason, and the areas the framework gives as it gives them |
+| *tools/write_stack_table_tool.py* | Architecture stage: the stack as the *Area · Tool · Version · Status* table the architect reads at checkpoint 3 |
 | *gates/swe/verify_decision_records_gate.py* | Architecture stage: decision records well-formed, named after their ID, the choice among the options |
 | *gates/swe/verify_stack_approval_gate.py* | Architecture stage, after checkpoint 3: the stack approved before the first architecture file |
 | *gates/swe/check_design_contract_gate.py* | Architecture stage, after checkpoint 3: one component per node, one interface per edge, every software requirement met |
@@ -2072,9 +2101,9 @@ and format).
 | *tools/read_unit_markers_tool.py* | Code and test files under *code_dir* (decision 14), their *@unit* and *@sdoc* markers, the detailed design's units |
 | *tools/read_test_results_tool.py* | JUnit XML results, each tied to its test file (decision 11), with its time |
 | *tools/read_coverage_tool.py* | Cobertura XML coverage, the report's root rates (decision 16) |
-| *tools/run_stack_commands_tool.py* | The stack's checks and suites, each after its *version_command*, once per tree under *.qf/runs/* (decision 13); every test, with how long it ran; the coder's selection with *QF_RUN=selected* (decisions 30–32) |
+| *tools/run_stack_commands_tool.py* | The stack's checks and the plan's suites, each after its *version_command*, once per tree under *.qf/runs/* (decision 13); every test, with how long it ran; the coder's selection with *QF_RUN=selected* (decisions 30–32) |
 | *tools/select_tests_tool.py* | The coder's loop: the tests traced to a change through the markers, each with its reason, or every test and why (decisions 30–32) |
-| *gates/swe/check_verification_plan_gate.py* | Unit tests stage: one verification plan block, complete |
+| *gates/swe/check_verification_plan_gate.py* | Unit tests stage: one verification plan block, complete; every suite run by a test runner of the stack, and a command for every suite a requirement names |
 | *gates/swe/verify_test_first_gate.py* | Unit tests stage, again at unit construction: a stub and a test per unit, test-only commits, the red run, no code before its test, no test changed with code |
 | *gates/swe/verify_code_to_design_link_gate.py* | Unit construction stage: unit markers both ways, the component folder, requirement markers |
 | *gates/swe/check_stack_commands_gate.py* | Unit construction stage: pinned tool versions, clean checks, unit results and coverage against the plan |
@@ -2175,7 +2204,7 @@ where it is stored and who reads it. The core ones:
 | **invariants.v1** | The behavioural invariants of one diagram | *&lt;diagram&gt;.invariants.yaml* next to the diagram, reviewed with it at checkpoint 1 | A rule across the flow (e.g. *no session opens before the credentials are verified*). Each entry: *id* (*INV-&lt;n&gt;*), *statement*, *constrains* (the element IDs it spans). The adapter merges them into the element list, so a forgotten invariant shows up as uncovered |
 | **glossary_term.v1** | One glossary entry | A fenced *yaml glossary_term* block in the glossary | *term*, *definition* (one line), optional *examples* and *aliases* |
 | **qf.v1** | The framework configuration | *qf.yaml* | The paths of every work product, the slots, the review sample, the approvers |
-| **stack.v1** | The product's tech stack | A YAML work product of stage 3, approved at checkpoint 3 | See *The tech stack* |
+| **stack.v2** | The product's tech stack: one row per tool, in its area | A YAML work product of stage 3, approved at checkpoint 3 | See *The tech stack* |
 | **approval.v1** | One checkpoint decision | One YAML file under the approvals path | Checkpoint 1–5 with the role it needs (architect for 1–3, reviewer for 4, customer for 5); *approved* or *changes-requested* (which requires a comment, fed back as findings); **SHA-256 of every file approved**, so an approval is bound to the exact content |
 | **findings.v1** | A gate's result | JSON on the gate's stdout | *gate*, *result* (pass / fail) and *findings*: each with *gate*, *rule* (UPPER_SNAKE_CASE), *file*, *line* (or null for the whole file) and *message*. Pass has no findings; fail has at least one |
 
@@ -2324,7 +2353,7 @@ what each gate emits in its findings. For example, the requirements stage:
 | Gate | Rule IDs |
 |---|---|
 | check_requirements_contract_gate | NO_REQUIREMENTS, UNREADABLE_REQUIREMENT, SCHEMA_VIOLATION, DUPLICATE_UID, UNKNOWN_PARENT, PARENT_NOT_SYSTEM, UNREFINED_SYSTEM_REQUIREMENT, MISSING_HAPPY_CASE, MISSING_ERROR_CASE, MISSING_OBSERVABILITY |
-| check_stack_decision_gate | UNKNOWN_INSTRUMENT |
+| check_verification_plan_gate | UNKNOWN_INSTRUMENT |
 | verify_requirements_to_diagram_link_gate | UNKNOWN_DIAGRAM, UNKNOWN_ELEMENT, UNKNOWN_WISH, UNCOVERED_ELEMENT, DIAGRAM_UNREADABLE |
 | check_glossary_gate | MISSING_GLOSSARY, SCHEMA_VIOLATION, DUPLICATE_TERM, UNDEFINED_TERM, UNMARKED_TERM, ALIAS_USED, UNUSED_TERM |
 
@@ -2579,6 +2608,22 @@ architecture diagram.
    required by *check_testability_gate* (MISSING_COMPOSITION_ROOT,
    MISSING_IMPLEMENTATIONS). *Components reach each other only through these
    interfaces* needs code and stays with the reviewer.
+10. **The stack lists tools, by area.** *stack.v2* holds one row per tool the
+    product takes from outside — its area, the tool, the exact version — and
+    nothing about how the product is tested: the suite commands live in the
+    verification plan, each in its level's section, written with that level's
+    tests and agreed at the pull request (unit stages, item 5). Every stack
+    holds the areas of *write_stack_table_tool*'s *AREAS*, each with its tools
+    or one row *not needed* with the reason (MISSING_STACK_AREA,
+    MISSING_REASON); a product may add its own areas. Language, test runner,
+    lint, format and the two scanners always name a tool: the gates run them.
+    The five areas the framework gives name what it uses — GitHub, GitHub
+    Actions, GitHub Issues, and the plugins of the slots
+    *create_requirements_plugin* and *create_diagram_plugin* — compared but for
+    case, spaces and punctuation, and carry no version (GIVEN_AREA_MISMATCH).
+    The architect reads the stack as the *Area · Tool · Version · Status* table
+    *write_stack_table_tool* prints, Status *chosen* or *not needed*; the file
+    stays the source and the approval covers it.
 
 #### Detailed design stage — stage 4
 
@@ -2659,8 +2704,8 @@ construction with SWE.4 BP2–BP5) are the first stages that write code and run
 the product's own commands.
 
 1. **Where code and tests live.** *qf.v1 code_dir* is the one directory the
-   gates search for *@unit* markers; *stack.v1 test_files* (globs, e.g.
-   *\*\*/\*Test.java*) tells a test from code. The folder layout is item 6.
+   gates search for *@unit* markers; the unit suite's *test_files* in the
+   verification plan (globs, e.g. *\*\*/\*Test.java*) tells a test from code. The folder layout is item 6.
 2. **Test first, proven by an independent tester and a red run.** TDD's own
    proof that a test bites is the red step: the test fails while the code is
    missing. Two plugins work in turn, one component at a time, as two stages:
@@ -2695,11 +2740,17 @@ the product's own commands.
    run in CI. The gates only run commands the product declares, so proving
    them with pytest proves them for any stack.
 4. **Result formats.** JUnit XML for test results, Cobertura XML for
-   coverage; *stack.v1* states where each suite writes them.
+   coverage; the verification plan states where each suite writes them.
 5. **The verification plan.** A Markdown file with one fenced *yaml
    verification_plan* block (*verification_plan.v1*) at *qf.v1
    verification_plan_file*. The tester writes its unit section before the
-   first test; it is agreed at the pull request.
+   first test; it is agreed at the pull request. Each section holds the
+   commands of its level's suites (decision 10 of the architecture stage):
+   unit in *unit*, integration in *integration*, software, e2e, bench and
+   security in *software*, validation in *validation*. Each names its *tool*,
+   a test runner of the stack (UNKNOWN_TOOL); once a section exists, every
+   suite of its level a requirement names has a command there
+   (UNKNOWN_INSTRUMENT).
 6. **One folder per component, as a flexible rule.** Every file with
    *@unit[x]* — code, stub or test — has the id of x's component as one
    segment of its path under *code_dir*, at any depth; a hyphen may be written
@@ -2739,16 +2790,18 @@ the product's own commands.
     until a test file matches. A result that matches none is UNMAPPED_RESULT.
     This works as it is for Maven Surefire and pytest; other runners are
     configured to write a file attribute or a path-like classname.
-12. **A tool's version is read from the tool.** Every command of *stack.v1*
-    has a *version_command*; its output must contain the pinned version
-    (TOOL_VERSION_MISMATCH).
+12. **A tool's version is read from the tool.** Every tool the framework runs
+    — a test runner, a check, a scanner — has a *version_command* in its
+    *stack.v2* row; its output must contain the pinned version
+    (TOOL_VERSION_MISMATCH). A suite runs with the version of the test runner
+    its *tool* names.
 13. **Each command runs once per tree.** A shared run tool runs each declared
     command once per tree and keeps its exit status, output, results and
     coverage under *.qf/runs/&lt;tree-hash&gt;/* (ignored by git); every gate reads
     from it.
-14. **Code files are named by the stack.** *stack.v1 code_files* (globs
-    relative to *code_dir*); a file matching *code_files* and not *test_files*
-    is code and needs a unit marker (MISSING_UNIT_MARKER).
+14. **Code files are named by the stack.** *stack.v2 code_files* (globs
+    relative to *code_dir*); a file matching *code_files* and not the unit
+    suite's *test_files* is code and needs a unit marker (MISSING_UNIT_MARKER).
 15. **Red means fails or errors.** On the test-only commit a new test counts
     as red when its result is a failure or an error; only a pass is
     TEST_NOT_FAILING. A stub returns *0*, *false*, empty or *null*, so a test
@@ -2765,7 +2818,7 @@ the product's own commands.
     TEST_NOT_FAILING. Only those commits are checked out, each red run kept
     under its commit's SHA. A commit that mixes tests and code stays a finding
     until it is rewritten.
-19. **The environment read patterns belong to the stack.** *stack.v1
+19. **The environment read patterns belong to the stack.** *stack.v2
     env_read_patterns*: regular expressions with one capture group for the
     variable's name, e.g. `System\.getenv\("([A-Z0-9_]+)"\)` or
     `os\.environ\[["']([A-Z0-9_]+)["']\]`, applied to the code files.
@@ -2818,11 +2871,11 @@ the product's own commands.
     selects every test. Each selected test keeps its reason (the changed file
     and the marker that links them). *python .framework/tools/select_tests_tool.py --root .*
     lists it; a gate run with *QF_RUN=selected* runs it.
-31. **The stack runs a given list.** A suite of *stack.v1* may declare
-    *run_selected*, its command with *{tests}* in place of the selected tests,
-    and *selected_form*, whether *{tests}* lists file paths or test names, for
-    the coder's loop. Every suite runs in parallel by default
-    (*choose_stack_skill*).
+31. **The plan runs a given list.** A suite of the verification plan may
+    declare *run_selected*, its command with *{tests}* in place of the selected
+    tests, and *selected_form*, whether *{tests}* lists file paths or test
+    names, for the coder's loop. Every suite runs in parallel by default
+    (*run_verification_suites_skill*).
 32. **CI runs every test on every change.** Every suite runs in full on every
     CI run, so every gate judges a full run of every change, and the release
     commit is judged like any other. On a selected run of the coder's loop
@@ -2857,10 +2910,10 @@ tests the components alone and joined, and verifies the log events (principle
    coder (*create_unit_code_plugin*, *also_slots*) changes the code until they
    pass and never touches a test (TEST_CHANGED_WITH_CODE). There is no red run:
    the code exists, and the proof that tests bite was made at unit level.
-2. **Their own folder.** *qf.v1 integration_tests_dir* and *stack.v1
-   integration_test_files* (globs relative to it). The unit gates search only
+2. **Their own folder.** *qf.v1 integration_tests_dir* and the integration
+   suite's *test_files* in the plan (globs relative to it). The unit gates search only
    *code_dir*, so they never treat an integration test as a unit test.
-3. **One suite.** Component and integration tests both run in the stack's
+3. **One suite.** Component and integration tests both run in the plan's
    *integration* suite and are told apart by their markers.
 4. **Markers.** A component test names its component as *@component[&lt;id&gt;]*,
    an integration test its flow as *@flow[&lt;sequence-diagram-id&gt;]*.
@@ -2896,7 +2949,7 @@ tests the components alone and joined, and verifies the log events (principle
     erroring integration result (FAILED_INTEGRATION_TEST) and a run without
     results (MISSING_RESULTS). *verify_tests_to_requirements_link_gate* stays on
     the unit suite.
-13. **Names.** *integration_tests_dir*, *integration_test_files*, the plan's
+13. **Names.** *integration_tests_dir*, the integration suite's *test_files*, the plan's
     *integration.order*; *@component*, *@flow*; MISSING_COMPONENT_TEST,
     UNKNOWN_COMPONENT, MISSING_FLOW_TEST, UNKNOWN_FLOW, UNTESTED_INTERFACE,
     UNTESTED_EVENT, FAILED_INTEGRATION_TEST, UNTESTED_STEP; the rulebook
@@ -2919,8 +2972,8 @@ definitions (principles #37–#39).
    observability definitions in test-only commits; then the coder changes the
    code until they pass and never touches a test (TEST_CHANGED_WITH_CODE). No
    red run: the code exists.
-2. **Their own folder.** *qf.v1 software_tests_dir* and *stack.v1
-   software_test_files* (globs relative to it). The unit and integration gates
+2. **Their own folder.** *qf.v1 software_tests_dir* and the software-level
+   suites' *test_files* in the plan (globs relative to it). The unit and integration gates
    never read them.
 3. **What proves a requirement.** A constraint needs no software test: the
    materials seal (checkpoint 3) and the stack gates prove it. A requirement
@@ -2929,14 +2982,14 @@ definitions (principles #37–#39).
    naming it with *@sdoc[&lt;REQ-UID&gt;]* (UNVERIFIED_REQUIREMENT); a marker naming
    no requirement is UNKNOWN_REQUIREMENT; a failing result is FAILED_TEST.
 4. **Which suite runs them.** A system-level requirement's test passes in the
-   stack's *e2e* suite, a software-level one in the *software* suite; a
+   plan's *e2e* suite, a software-level one in the *software* suite; a
    missing suite or one without results is MISSING_RESULTS.
 5. **Its own gate.** *verify_software_tests_to_requirements_link_gate* judges
    the software level; *verify_tests_to_requirements_link_gate* stays on the
    unit suite, which runs at stage 6 before any software test exists.
 6. **Measured values in a measurements file.** A suite that measures writes
    JSON files (*measurements.v1*: per entry the requirement, the value and its
-   unit) to the path its stack entry names as *measurements*.
+   unit) to the path its plan entry names as *measurements*.
    *verify_nfr_thresholds_gate* requires a measurement from the instrument's
    suite in the threshold's unit for every requirement with a
    *measurement_method* (MISSING_MEASUREMENT), meeting the threshold
@@ -3040,9 +3093,9 @@ person reviews a sample.
    commit since the last release. The commit that started the product is
    exempt. Seal 4 is that review on the host, not a file: a file the agent can
    write cannot prove a person approved.
-8. **Security scans every pull request.** *stack.v1 security_scans*: a
-   *secrets* and a *dependencies* scanner, each with a pinned version and SARIF
-   results. *scan_security_gate* requires both results (SCAN_NOT_RUN) and no
+8. **Security scans every pull request.** The *stack.v2* rows of the areas
+   *secrets_scanner* and *dependencies_scanner*, each with its command, a
+   pinned version and SARIF results. *scan_security_gate* requires both results (SCAN_NOT_RUN) and no
    critical or high finding (SECURITY_FINDING): a result whose rule's
    *security-severity* is 7.0 or more, or any result without one — a found
    secret has no score and always blocks.
@@ -3062,7 +3115,8 @@ person reviews a sample.
     *report_framework_feedback_skill* and *track_nonconformances_skill*; the
     tools *read_host_tool* and *post_review_tool*; the *qf.v1* fields
     *framework_dir*, *ci_file*, *framework_feedback_file*, *review.agents*,
-    *review.sample_every*; the *stack.v1* field *security_scans*; the token
+    *review.sample_every*; the *stack.v2* areas *secrets_scanner* and
+    *dependencies_scanner*; the token
     *QF_HOST_TOKEN*; the rule IDs above.
 12. **A delivery accepted after the merge.** A change that reached the main
     branch without the delivery desk — a commit from no pull request
@@ -3168,10 +3222,10 @@ accepts or rejects the release (seal 5).
    validation record.
 5. **What a scenario is.** A file under *validation_scenarios_dir* that names
    at least one wish with *@wish[W-n]*; its repository path identifies it. A
-   file matching the stack's *validation_test_files* is an automated scenario
-   run by the *validation* suite; any other is written steps run by a person.
-   A file naming no wish is a helper. *validation_test_files* is optional: a
-   product validated only by hand declares none.
+   file matching the *validation* suite's *test_files* in the plan is an
+   automated scenario run by that suite; any other is written steps run by a
+   person. A file naming no wish is a helper. The *validation* suite is
+   optional: a product validated only by hand declares none.
 6. **The scenarios arrive with the deliveries.** The scenarios and the
    verification plan are configuration items, so scenarios written on a
    release pull request would make its record stale. The specification rules
@@ -3220,8 +3274,8 @@ accepts or rejects the release (seal 5).
     *name* and *commit*, *results* with *scenario*, *technique*, *result* and
     *note*); the *validation* section of *verification_plan.v1* (per scenario
     its technique, pass/fail criteria, entry criteria and environment, plus the
-    selection and the regression rule); the suite *validation* and the stack's
-    *validation_test_files*; the slot *create_validation_scenarios_plugin*,
+    selection and the regression rule); the suite *validation* and its
+    *test_files*; the slot *create_validation_scenarios_plugin*,
     the method *derive_validation_scenarios_plugin* and the rulebook
     *validate_release_skill*; the tool *write_validation_record_tool* (with
     *--environment* and *--commit*); the rule IDs MISSING_SCENARIO,
@@ -3595,6 +3649,23 @@ label together.
 - **Modes as data** (2026-10-09). *Chosen:* *modes* and *concurrency* in
   *component.v1*. *Not taken:* a state diagram, which would have to be drawn
   and approved at stage 1, before components exist.
+- **Where the suite commands live** (2026-10-19, FB-31, D1 option A).
+  *Chosen:* in the verification plan, each in its level's section, written
+  with that level's tests and agreed at the pull request; the stack holds
+  only the tools. *Not taken:* B — a file of their own written at stage 3
+  and covered by the checkpoint-3 approval, which keeps the architect
+  approving how the product is tested, a decision that is not theirs.
+- **Areas the framework gives** (2026-10-19, FB-32, D2 option A). *Chosen:*
+  version control, CI/CD, task management, requirements engineering and the
+  diagram tool are areas of the stack like any other, each checked against
+  what the framework knows (the host, the slots); documentation is an
+  ordinary area, since the framework fixes no tool for it.
+  *Not taken:* B — left out of the stack and listed once in this document,
+  which leaves the architect an incomplete picture.
+- **The stack's source** (2026-10-19, D3 option A). *Chosen:* YAML rows, one
+  per area, rendered as an *Area · Tool · Status* table for checkpoint 3 and
+  the pull request. *Not taken:* B — the Markdown table as the source, which
+  cannot hold commands and patterns and would have to be parsed.
 
 ### A.4 Detailed design stage — stage 4
 

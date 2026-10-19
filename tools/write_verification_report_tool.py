@@ -1,6 +1,6 @@
 """Write the verification report of the current tree (SWE.4 BP5, SWE.5 BP7, SWE.6 BP5).
 
-Runs every verification suite the stack declares — each once per tree, so the
+Runs every verification suite the plan declares — each once per tree, so the
 gates' runs are reused — and writes report.json and report.md under
 .qf/runs/<tree-hash>/: per unit-test file its passed and failed results; per
 component, flow and integration step of the plan; per requirement what proves

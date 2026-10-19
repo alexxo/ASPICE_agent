@@ -135,62 +135,65 @@ WISH_LINKS = {
     },
 }
 
+
+def _areas(**chosen) -> list[dict]:
+    """A row for every area every stack holds: the given ones chosen, the rest not
+    needed; the framework's areas name what the fixture's qf.yaml and host use."""
+    from tools.write_stack_table_tool import AREAS
+
+    given = {
+        "version_control": {"tool": "GitHub"},
+        "ci_cd": {"tool": "GitHub Actions"},
+        "task_management": {"tool": "GitHub Issues"},
+        "requirements_engineering": {"tool": QF["slots"]["create_requirements_plugin"]},
+        "diagram_tool": {"tool": QF["slots"]["create_diagram_plugin"]},
+    }
+    rows = []
+    for area in AREAS:
+        picked = chosen.get(area, given.get(area))
+        if picked is None:
+            rows.append({"area": area, "not_needed": "the fixture does without it"})
+        for row in picked if isinstance(picked, list) else [picked] if picked else []:
+            rows.append({"area": area, **row})
+    return rows
+
+
 STACK = {
-    "contract": "stack.v1",
-    "language": {"name": "java", "version": "21"},
-    "code_files": ["**/*.java"],
-    "test_files": ["**/*Test.java"],
-    "integration_test_files": ["**/*IT.java"],
-    "software_test_files": ["**/*ST.java"],
-    "env_read_patterns": [r'System\.getenv\("([A-Z0-9_]+)"\)'],
-    "suites": {
-        "unit": {
-            "run": "mvn -q test",
-            "tool": "maven",
-            "version": "3.9.9",
-            "version_command": "mvn -v",
-            "results": "target/surefire-reports/TEST-*.xml",
-            "coverage": "target/site/cobertura/coverage.xml",
-        },
-        "integration": {
-            "run": "mvn -q verify",
-            "tool": "maven",
-            "version": "3.9.9",
-            "version_command": "mvn -v",
-            "results": "target/failsafe-reports/TEST-*.xml",
-        },
-    },
-    "checks": {
-        "lint": {
-            "run": "mvn -q checkstyle:check",
+    "contract": "stack.v2",
+    "areas": _areas(
+        language={"tool": "java", "version": "21"},
+        frameworks={"tool": "spring-boot", "version": "3.3.4", "purpose": "HTTP API"},
+        test_runner={"tool": "maven", "version": "3.9.9", "version_command": "mvn -v"},
+        lint={
             "tool": "checkstyle",
             "version": "10.18.2",
             "version_command": "mvn -q checkstyle:help",
+            "run": "mvn -q checkstyle:check",
         },
-        "format": {
-            "run": "mvn -q spotless:check",
+        format={
             "tool": "spotless",
             "version": "2.43.0",
             "version_command": "mvn -q spotless:help",
+            "run": "mvn -q spotless:check",
         },
-    },
-    "security_scans": {
-        "secrets": {
-            "run": "gitleaks detect --no-banner --report-format sarif "
-            "--report-path build/secrets.sarif",
+        secrets_scanner={
             "tool": "gitleaks",
             "version": "8.21.2",
             "version_command": "gitleaks version",
+            "run": "gitleaks detect --no-banner --report-format sarif "
+            "--report-path build/secrets.sarif",
             "results": "build/secrets.sarif",
         },
-        "dependencies": {
-            "run": "osv-scanner --format sarif --output build/dependencies.sarif -r .",
+        dependencies_scanner={
             "tool": "osv-scanner",
             "version": "1.9.1",
             "version_command": "osv-scanner --version",
+            "run": "osv-scanner --format sarif --output build/dependencies.sarif -r .",
             "results": "build/dependencies.sarif",
         },
-    },
+    ),
+    "code_files": ["**/*.java"],
+    "env_read_patterns": [r'System\.getenv\("([A-Z0-9_]+)"\)'],
     "decision_record": "docs/decisions/0001-java-for-the-auth-service.md",
 }
 
@@ -658,6 +661,34 @@ def architecture_doc() -> dict:
 # module <unit_id>.py with run(value); its test test_<unit_id>.py sits next to it,
 # in the component's folder under src/.
 
+
+def _suite(name: str, folder: str, **extra) -> dict:
+    """A suite of the Python product: this interpreter's pytest over one folder."""
+    import shlex
+    import sys
+
+    py = shlex.quote(sys.executable)
+    return {
+        "tool": "pytest",
+        "run": f"{py} -m pytest -q -p no:cacheprovider --junitxml=build/{name}.xml {folder}",
+        "results": f"build/{name}.xml",
+        **extra,
+        "test_files": ["**/test_*.py"],
+    }
+
+
+SUITES = {
+    "unit": _suite("unit", "src", coverage="build/coverage.xml"),
+    "integration": _suite("integration", "it"),
+    "software": _suite("software", "st/software"),
+    "e2e": _suite("e2e", "st/e2e"),
+    "bench": _suite("bench", "st/bench", measurements="build/measurements/*.json"),
+    "validation": _suite("validation", "validation/scenarios"),
+}
+SUITES["unit"]["run"] = SUITES["unit"]["run"].replace(
+    " src", " --cov=src --cov-report=xml:build/coverage.xml src"
+)
+
 PLAN = {
     "contract": "verification_plan.v1",
     "unit": {
@@ -669,6 +700,7 @@ PLAN = {
         "selection": "every unit test on every pull request",
         "regression": "all unit tests run again",
         "coverage": {"metric": "lines", "minimum": 50},
+        "suites": {"unit": SUITES["unit"]},
     },
 }
 
@@ -787,92 +819,44 @@ def python_stack() -> dict:
     from importlib import metadata
 
     py = shlex.quote(sys.executable)
-    pytest_version = metadata.version("pytest")
-    ruff_version = metadata.version("ruff")
+    ruff = {"version": metadata.version("ruff"), "version_command": f"{py} -m ruff --version"}
+    scanner = {"version": "1.0.0", "version_command": f"{py} {SCANNER_PATH} --version"}
     return {
-        "contract": "stack.v1",
-        "language": {"name": "python", "version": platform.python_version()},
+        "contract": "stack.v2",
+        "areas": _areas(
+            language={"tool": "python", "version": platform.python_version()},
+            test_runner={
+                "tool": "pytest",
+                "version": metadata.version("pytest"),
+                "version_command": f"{py} -m pytest --version",
+            },
+            lint={"tool": "ruff", **ruff, "run": f"{py} -m ruff check --no-cache src"},
+            format={"tool": "ruff", **ruff, "run": f"{py} -m ruff format --check --no-cache src"},
+            **{
+                f"{kind}_scanner": {
+                    "tool": "fixture-scanner",
+                    **scanner,
+                    "run": f"{py} {SCANNER_PATH} {kind} build/{kind}.sarif",
+                    "results": f"build/{kind}.sarif",
+                }
+                for kind in ("secrets", "dependencies")
+            },
+        ),
         "code_files": ["**/*.py"],
-        "test_files": ["**/test_*.py"],
-        "integration_test_files": ["**/test_*.py"],
-        "software_test_files": ["**/test_*.py"],
-        "validation_test_files": ["**/test_*.py"],
         "env_read_patterns": [r"os\.environ\[[\"']([A-Z0-9_]+)[\"']\]"],
-        "suites": {
-            "unit": {
-                "run": f"{py} -m pytest -q -p no:cacheprovider --junitxml=build/unit.xml "
-                "--cov=src --cov-report=xml:build/coverage.xml src",
-                "tool": "pytest",
-                "version": pytest_version,
-                "version_command": f"{py} -m pytest --version",
-                "results": "build/unit.xml",
-                "coverage": "build/coverage.xml",
-            },
-            "integration": {
-                "run": f"{py} -m pytest -q -p no:cacheprovider --junitxml=build/integration.xml it",
-                "tool": "pytest",
-                "version": pytest_version,
-                "version_command": f"{py} -m pytest --version",
-                "results": "build/integration.xml",
-            },
-            "software": {
-                "run": f"{py} -m pytest -q -p no:cacheprovider --junitxml=build/software.xml "
-                "st/software",
-                "tool": "pytest",
-                "version": pytest_version,
-                "version_command": f"{py} -m pytest --version",
-                "results": "build/software.xml",
-            },
-            "e2e": {
-                "run": f"{py} -m pytest -q -p no:cacheprovider --junitxml=build/e2e.xml st/e2e",
-                "tool": "pytest",
-                "version": pytest_version,
-                "version_command": f"{py} -m pytest --version",
-                "results": "build/e2e.xml",
-            },
-            "bench": {
-                "run": f"{py} -m pytest -q -p no:cacheprovider --junitxml=build/bench.xml st/bench",
-                "tool": "pytest",
-                "version": pytest_version,
-                "version_command": f"{py} -m pytest --version",
-                "results": "build/bench.xml",
-                "measurements": "build/measurements/*.json",
-            },
-            "validation": {
-                "run": f"{py} -m pytest -q -p no:cacheprovider --junitxml=build/validation.xml "
-                "validation/scenarios",
-                "tool": "pytest",
-                "version": pytest_version,
-                "version_command": f"{py} -m pytest --version",
-                "results": "build/validation.xml",
-            },
-        },
-        "checks": {
-            "lint": {
-                "run": f"{py} -m ruff check --no-cache src",
-                "tool": "ruff",
-                "version": ruff_version,
-                "version_command": f"{py} -m ruff --version",
-            },
-            "format": {
-                "run": f"{py} -m ruff format --check --no-cache src",
-                "tool": "ruff",
-                "version": ruff_version,
-                "version_command": f"{py} -m ruff --version",
-            },
-        },
-        "security_scans": {
-            kind: {
-                "run": f"{py} {SCANNER_PATH} {kind} build/{kind}.sarif",
-                "tool": "fixture-scanner",
-                "version": "1.0.0",
-                "version_command": f"{py} {SCANNER_PATH} --version",
-                "results": f"build/{kind}.sarif",
-            }
-            for kind in ("secrets", "dependencies")
-        },
         "decision_record": "docs/decisions/0001-java-for-the-auth-service.md",
     }
+
+
+def edit_plan(root: Path, change) -> None:
+    """Change the product's verification plan in place: change(plan) edits the dict."""
+    path = Path(root) / QF["paths"]["verification_plan_file"]
+    text = path.read_text()
+    start = text.index("```yaml verification_plan\n") + len("```yaml verification_plan\n")
+    plan = yaml.safe_load(text[start : text.index("```", start)])
+    change(plan)
+    block = yaml.safe_dump(plan, sort_keys=False)
+    path.write_text(f"# Verification plan\n\n```yaml verification_plan\n{block}```\n")
 
 
 def unit_path(component: str, unit: str, test: bool = False) -> str:
@@ -1044,6 +1028,7 @@ INTEGRATION_PLAN = {
             "selection": ["web-app", "login"],
         },
     ],
+    "suites": {"integration": SUITES["integration"]},
 }
 
 COMPONENT_UNITS = {"web-app": "signin-form", "auth-service": "check-credentials"}
@@ -1135,6 +1120,7 @@ SOFTWARE_PLAN = {
     "selection": "every software-level test before every release",
     "regression": "all software-level tests run again before every release",
     "order": ["software", "bench", "e2e"],
+    "suites": {name: SUITES[name] for name in ("software", "e2e", "bench")},
 }
 
 E2E_TEST = "st/e2e/test_sign_in_end_to_end.py"
@@ -1442,6 +1428,7 @@ VALIDATION_PLAN = {
             (SCENARIO_TESTS["W-03"], "acceptance test"),
         ]
     ],
+    "suites": {"validation": SUITES["validation"]},
 }
 
 
@@ -1461,13 +1448,7 @@ def write_demo(root: Path) -> None:
 
 def write_validation_plan(root: Path) -> None:
     """Add the validation section to the product's plan."""
-    path = Path(root) / QF["paths"]["verification_plan_file"]
-    text = path.read_text()
-    start = text.index("```yaml verification_plan\n") + len("```yaml verification_plan\n")
-    plan = yaml.safe_load(text[start : text.index("```", start)])
-    plan["validation"] = copy.deepcopy(VALIDATION_PLAN)
-    block = yaml.safe_dump(plan, sort_keys=False)
-    path.write_text(f"# Verification plan\n\n```yaml verification_plan\n{block}```\n")
+    edit_plan(root, lambda plan: plan.update(validation=copy.deepcopy(VALIDATION_PLAN)))
 
 
 def write_all_scenarios(root: Path) -> None:

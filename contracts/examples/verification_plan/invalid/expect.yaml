@@ -11,3 +11,8 @@ scenario-without-criteria.md: {path: "validation/scenarios/1", keyword: required
 validation-without-regression.md: {path: "validation", keyword: required}
 test-budget-outside-unit.md: {path: "software/time_budget", keyword: additionalProperties}
 budget-not-positive.md: {path: "unit/time_budget/suite_seconds", keyword: exclusiveMinimum}
+unit-without-suites.md: {path: "unit", keyword: required}
+unit-suite-without-coverage.md: {path: "unit/suites/unit", keyword: required}
+suite-without-test-files.md: {path: "unit/suites/unit", keyword: required}
+suite-outside-its-level.md: {path: "unit/suites", keyword: enum}
+selected-run-without-form.md: {path: "unit/suites/unit", keyword: dependentRequired}

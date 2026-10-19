@@ -94,5 +94,7 @@ def test_a_passing_design_moves_the_product_to_stage_5(repo_root, product):
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("unit_tests", "in_progress")
     rules = {f["rule"] for f in state["reported"]}
-    assert {"MISSING_VERIFICATION_PLAN", "MISSING_UNIT_TEST"} <= rules  # stage 5 is due
+    # stage 5 is due: its plan first, whose unit suite says which files are the tests
+    assert "MISSING_VERIFICATION_PLAN" in rules
+    assert "MISSING_UNIT_TEST" not in rules
     assert state["done"] == ["diagram", "requirements", "architecture", "detailed_design"]

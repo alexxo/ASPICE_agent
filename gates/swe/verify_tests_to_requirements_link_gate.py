@@ -31,11 +31,11 @@ GATE = "verify_tests_to_requirements_link_gate"
 def check(config: ProductConfig) -> list[Finding]:
     stack = read_stack(config)
     units = design_units(config)
-    if stack is None or not units:
-        return []  # the stack and detailed design gates report what is missing
+    if stack is None or "unit" not in stack["suites"] or not units:
+        return []  # the stack, plan and detailed design gates report what is missing
     tests = {s.path: s for s in scan_sources(config, stack) if s.kind == "test"}
     run = run_command(config, "suites", "unit", stack["suites"]["unit"])
-    shown = config.relative(config.stack_file)
+    shown = config.relative(config.verification_plan_file)
     findings: list[Finding] = []
     try:
         results = read_results(run.result_paths)

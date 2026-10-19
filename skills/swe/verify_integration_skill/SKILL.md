@@ -16,7 +16,7 @@ The tests of the big pieces: each component on its own, through its own
 interfaces with test doubles on the other side (component tests), and the
 components joined along the approved sequence diagrams (integration tests).
 They live in *qf.yaml paths.integration_tests_dir*, in files matching the
-stack's *integration_test_files*, and run in the stack's *integration* suite.
+integration suite's *test_files*, and run in the plan's *integration* suite.
 The assembler writes them and the plan's integration section; the coder then
 changes the code until they pass and never touches a test.
 
@@ -26,7 +26,7 @@ changes the code until they pass and never touches a test.
 - The **approved sequence diagrams** (*diagrams_dir*) — the flows.
 - The **requirements** each component meets and the flows' invariants.
 - The **verification plan** — its unit section, to extend.
-- The **tech stack** — the integration suite and *integration_test_files*.
+- The **tech stack** — its *test_runner* rows, the tools a suite can run with.
 - On a retry: the **findings** of the previous attempt.
 
 ## Contract
@@ -35,7 +35,10 @@ The *integration* section of the ```yaml verification_plan block
 (*verification_plan.v1*): techniques, pass/fail criteria, entry and exit
 criteria, infrastructure, regression, an optional *time_budget* (default 300 s) and the *order* — the steps in which the
 components are integrated, each with its *components*, its *preconditions*
-and its *selection*: the flows and components whose tests run after it.
+and its *selection*: the flows and components whose tests run after it. Its
+*suites* hold the *integration* suite: its *tool* (a *test_runner* of the
+stack), *run*, *results* and *test_files*, relative to
+*paths.integration_tests_dir*.
 
 A component test names its component as *@component[&lt;component-id&gt;]*; an
 integration test names its flow as *@flow[&lt;sequence-diagram-id&gt;]*.
@@ -77,6 +80,13 @@ unit:
   selection: every unit test on every pull request
   regression: all unit tests run again
   coverage: {metric: lines, minimum: 80}
+  suites:
+    unit:
+      tool: maven
+      run: mvn -q test
+      results: target/surefire-reports/TEST-*.xml
+      coverage: target/site/cobertura/coverage.xml
+      test_files: ["**/*Test.java"]
 integration:
   techniques:
     - one component test per component, through its own interfaces
@@ -95,4 +105,10 @@ integration:
       components: [web-app]
       preconditions: [auth service healthy]
       selection: [web-app, login]
+  suites:
+    integration:
+      tool: maven
+      run: mvn -q verify -Pintegration
+      results: target/failsafe-reports/TEST-*.xml
+      test_files: ["**/*IT.java"]
 ```

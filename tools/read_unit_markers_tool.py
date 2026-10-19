@@ -1,19 +1,20 @@
 """Find the unit and requirement markers in a product's code and tests.
 
-Under qf.yaml paths.code_dir, a file matching the stack's test_files is a test
-and one matching code_files (and not test_files) is code (decision 14). Each
+Under qf.yaml paths.code_dir, a file matching the plan's unit suite test_files
+is a test and one matching the stack's code_files (and not test_files) is code
+(decision 14). Each
 names the unit it implements or verifies as @unit[<unit-id>], and code may name
 the requirement it implements as @sdoc[<REQ-UID>]; a test names the environment
 variable it validates as @env[<NAME>] (decision 21), and the security test
 template it applies as @security[<template>] (decision 28). The units are the
 ```yaml unit blocks of the detailed design, one <component-id>.md per component.
 
-Under paths.integration_tests_dir, a file matching the stack's
-integration_test_files is a component or integration test (stage 7, decision
+Under paths.integration_tests_dir, a file matching the integration suite's
+test_files is a component or integration test (stage 7, decision
 2): it names its component as @component[<id>] or its flow as @flow[<id>], and
 the observability requirement whose events it asserts as @sdoc[<REQ-UID>].
 
-Under paths.software_tests_dir, a file matching the stack's software_test_files
+Under paths.software_tests_dir, a file matching the software suite's test_files
 is a software-level test (stage 8, decision 2 of the software verification
 stage): it names the requirement it verifies as @sdoc[<REQ-UID>].
 """

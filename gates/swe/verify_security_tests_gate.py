@@ -43,8 +43,8 @@ def catalog() -> list[str]:
 
 def check(config: ProductConfig) -> list[Finding]:
     stack = read_stack(config)
-    if stack is None:
-        return []  # check_stack_decision_gate reports a missing or broken stack
+    if stack is None or "unit" not in stack["suites"]:
+        return []  # the stack and plan gates report a missing or broken stack or plan
     known = set(catalog())
     findings: list[Finding] = []
     tests = {s.path: s for s in scan_sources(config, stack) if s.kind == "test"}

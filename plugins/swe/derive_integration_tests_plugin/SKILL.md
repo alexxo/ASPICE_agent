@@ -38,7 +38,8 @@ Read before writing anything:
   flow to test — and their invariants;
 - the requirements each component meets, and every requirement of kind
   observability with its *events*;
-- the tech stack — the integration suite's command, *integration_test_files*;
+- the tech stack — its *test_runner* rows, the tools the integration suite can
+  run with;
 - the verification plan, and the existing component and integration tests
   under *paths.integration_tests_dir* — the source of truth to grow;
 - the code only through the entry points the composition roots name.
@@ -71,12 +72,14 @@ When in doubt, full.
 
 1. **Plan** — the first time, the integration section of the verification
    plan: techniques, criteria, infrastructure, regression, and the order of
-   steps, each with its components, preconditions and selection. Each test
+   steps, each with its components, preconditions and selection, and the
+   *integration* suite: the command, its tool (a *test_runner* of the stack),
+   its results and its *test_files*. Each test
    covers an interaction once, never a rule a unit test already shows, so the
    suite stays within its budget (300 s by default).
 2. **Component tests** — per component, tests through its own interfaces with
    the test doubles the architecture declares, marked
-   *@component[&lt;component-id&gt;]*, in files matching *integration_test_files*
+   *@component[&lt;component-id&gt;]*, in files matching the integration suite's *test_files*
    under *paths.integration_tests_dir*.
 3. **Integration tests** — per approved sequence diagram, tests that follow its
    messages across the real components, marked

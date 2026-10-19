@@ -1,7 +1,9 @@
 """Run the product's declared commands, once per tree, and keep what they produced.
 
-The framework knows no language: it runs only the commands of the stack
-(stack.v1) — the checks and the suites — each after its version_command. Two
+The framework knows no language: it runs only the commands the product
+declares — the checks and scanners of the stack (stack.v2) and the suites of
+the verification plan — each after the version_command of its tool's stack row
+(read_stack joins the two). Two
 gates need the same unit-suite run, so each command runs once per tree
 (decision 13): its exit status, output, version output and the files it
 wrote (JUnit XML results, Cobertura XML coverage, measurements.v1 JSON) are kept under
@@ -30,7 +32,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from tools.read_product_config_tool import ProductConfig
-from tools.read_yaml_blocks_tool import YamlReadError, read_yaml_file
+from tools.read_yaml_blocks_tool import YamlReadError, read_yaml_blocks, read_yaml_file
 from tools.validate_contract_tool import validate
 
 __all__ = [
@@ -38,6 +40,7 @@ __all__ = [
     "RUNS_DIR",
     "TIMEOUT",
     "kept_run",
+    "plan_suites",
     "read_stack",
     "run_command",
     "tree_key",
@@ -45,6 +48,16 @@ __all__ = [
 
 RUNS_DIR = ".qf/runs"
 TIMEOUT = 900  # seconds per command
+# The stack areas whose rows the framework runs, under the name a kept run carries.
+CHECKS = {"lint": "lint", "format": "format", "static_analysis": "static-analysis"}
+SCANS = {"secrets_scanner": "secrets", "dependencies_scanner": "dependencies"}
+# The plan's suites whose test_files tell each level's test files apart.
+TEST_FILES = {
+    "unit": "test_files",
+    "integration": "integration_test_files",
+    "software": "software_test_files",
+    "validation": "validation_test_files",
+}
 
 
 @dataclass
@@ -87,15 +100,66 @@ class CommandRun:
 
 
 def read_stack(config: ProductConfig) -> dict | None:
-    """The stack when it exists and follows stack.v1; otherwise None — reporting
-    a broken stack is check_stack_decision_gate's job."""
+    """What the framework runs, when the stack exists and follows stack.v2;
+    otherwise None — reporting a broken stack is check_stack_decision_gate's job.
+
+    The stack's own fields, plus: checks (lint, format, static-analysis) and
+    security_scans (secrets, dependencies) from the chosen rows of their areas;
+    suites from the sections of a valid verification plan, each given the
+    version and version_command of the test_runner row its tool names; and the
+    unit, integration, software and validation suites' test_files as
+    test_files, integration_test_files, software_test_files and
+    validation_test_files. A suite whose tool names no test_runner row is left
+    out — reporting it is check_verification_plan_gate's job (UNKNOWN_TOOL)."""
     if not config.stack_file.is_file():
         return None
     try:
         stack = read_yaml_file(config.stack_file)
     except YamlReadError:
         return None
-    return None if validate(stack, "stack") else stack
+    if validate(stack, "stack"):
+        return None
+    chosen = [row for row in stack["areas"] if "tool" in row]
+    view = dict(stack)
+    view["checks"] = {CHECKS[r["area"]]: _row_command(r) for r in chosen if r["area"] in CHECKS}
+    view["security_scans"] = {
+        SCANS[r["area"]]: {**_row_command(r), "results": r["results"]}
+        for r in chosen
+        if r["area"] in SCANS
+    }
+    runners = {row["tool"]: row for row in chosen if row["area"] == "test_runner"}
+    view["suites"] = {}
+    for name, entry in plan_suites(config).items():
+        runner = runners.get(entry["tool"])
+        if runner is None:
+            continue
+        view["suites"][name] = {
+            **entry,
+            "version": runner["version"],
+            "version_command": runner["version_command"],
+        }
+        if name in TEST_FILES:
+            view[TEST_FILES[name]] = entry["test_files"]
+    return view
+
+
+def plan_suites(config: ProductConfig) -> dict[str, dict]:
+    """Every suite of a valid verification plan, by name, whatever its section;
+    empty otherwise — the plan's form is check_verification_plan_gate's to report."""
+    path = config.verification_plan_file
+    blocks = read_yaml_blocks(path, "verification_plan") if path.is_file() else []
+    if len(blocks) != 1 or blocks[0].error or validate(blocks[0].data, "verification_plan"):
+        return {}
+    plan = blocks[0].data
+    return {
+        name: entry
+        for section in ("unit", "integration", "software", "validation")
+        for name, entry in plan.get(section, {}).get("suites", {}).items()
+    }
+
+
+def _row_command(row: dict) -> dict:
+    return {key: row[key] for key in ("run", "tool", "version", "version_command")}
 
 
 def _git(root: Path, *args: str) -> str | None:

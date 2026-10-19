@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict
 
 import pytest
-from product_builder import PLAN, build_python_product
+from product_builder import PLAN, SOFTWARE_PLAN, build_python_product
 
 from gates.swe.check_time_budget_gate import DEFAULTS, GATE, check
 from tools.read_product_config_tool import read_product_config
@@ -13,7 +13,8 @@ from tools.run_stack_commands_tool import RUNS_DIR, CommandRun, tree_key
 
 
 def _plan(**budgets) -> dict:
-    plan = copy.deepcopy(PLAN)
+    """The plan with its unit and software suites; budgets tighten or loosen a level."""
+    plan = copy.deepcopy({**PLAN, "software": SOFTWARE_PLAN})
     for level, budget in budgets.items():
         plan[level]["time_budget"] = budget
     return plan
@@ -36,7 +37,7 @@ def _rules(root):
 
 @pytest.fixture
 def product(tmp_path):
-    return build_python_product(tmp_path, branch=None)
+    return build_python_product(tmp_path, plan=_plan(), branch=None)
 
 
 def test_gate_name_follows_the_convention():

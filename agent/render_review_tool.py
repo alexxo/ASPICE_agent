@@ -49,11 +49,10 @@ from tools.read_yaml_blocks_tool import (  # noqa: E402
     read_yaml_blocks,
     read_yaml_file,
 )
-from tools.validate_contract_tool import validate  # noqa: E402
+from tools.validate_contract_tool import contract_path, validate  # noqa: E402
 
 __all__ = ["render", "render_review", "review_page", "review_page_findings"]
 
-CONTRACTS = Path(__file__).resolve().parent.parent / "contracts"
 # The requirement's columns: one field each, then the measure, then every other field.
 COLUMNS = [
     ("UID", ["uid"]),
@@ -194,7 +193,7 @@ def _block_row(file: str, block) -> dict:
 
 def _fields(contract: str, rows: list[dict]) -> list[str]:
     """The contract's fields in its own order, then any other field a row holds."""
-    schema = json.loads((CONTRACTS / f"{contract}_contract.v1.schema.json").read_text())
+    schema = json.loads(contract_path(contract).read_text())
     properties = schema["properties"]
     present = [k for row in rows for k in row["fields"]]
     return [k for k in properties if k in present] + sorted(set(present) - set(properties))

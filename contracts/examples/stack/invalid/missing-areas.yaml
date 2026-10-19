@@ -1,0 +1,4 @@
+contract: stack.v2
+code_files: ["**/*.py"]
+env_read_patterns: []
+decision_record: docs/decisions/0001-tech-stack.md

@@ -32,7 +32,7 @@
 # gates that did not run are listed in the run's summary, with the reason.
 #
 # From the unit stages on, the gates run the product's own commands — the checks
-# and the unit suite of its stack — and read the pull request's commits since the
+# of its stack and the suites of its verification plan — and read the pull request's commits since the
 # base branch: the job checks out the whole history, passes the base as QF_BASE,
 # and installs the product's toolchain before the gates run. The verification
 # report of the tree is written first — every suite runs once and the gates
@@ -85,10 +85,10 @@ jobs:
       - name: Install the framework's runtime dependencies
         run: pip install -r .framework/requirements.txt
 
-      # Replace with the product's own toolchain: the commands of its stack
+      # Replace with the product's own toolchain: the tools of its stack
       # (paths.stack_file) must run here, e.g. actions/setup-java plus Maven.
       - name: Install the product's toolchain
-        run: echo "Install the tools the stack's commands need." >&2
+        run: echo "Install the tools the stack lists." >&2
 
       - name: Write the verification report
         run: python .framework/tools/write_verification_report_tool.py --root .

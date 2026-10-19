@@ -243,7 +243,9 @@ For the other checkpoints, show the person the work product of the stage and
 ask for their decision. At checkpoint 1 that is the diagrams' pictures, at
 checkpoint 2 the review page (step 6): give them the full paths, not the raw
 files. What the page marks changed is what changed since their previous
-approval, and it names the diagrams changed since then. Then record it — never record a decision the person did
+approval, and it names the diagrams changed since then. At checkpoint 3 it is
+the stack as a table — `python <framework>/tools/write_stack_table_tool.py
+--root <product>` prints it — with the path of its decision record. Then record it — never record a decision the person did
 not give:
 
 `python <framework>/agent/record_checkpoint_tool.py --checkpoint <n> --decision approved|changes-requested --approver <name> --role <role> [--comment <text>] --root <product>`

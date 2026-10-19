@@ -29,6 +29,15 @@ unit:
   regression: all unit tests run again on every change
   coverage: {metric: lines, minimum: 80}
   time_budget: {suite_seconds: 60, test_seconds: 0.2}
+  suites:
+    unit:
+      tool: maven
+      run: mvn -q test
+      results: target/surefire-reports/TEST-*.xml
+      coverage: target/site/cobertura/coverage.xml
+      run_selected: mvn -q test -Dtest={tests}
+      selected_form: names
+      test_files: ["**/*Test.java"]
 integration:
   techniques:
     - one component test per component, through its own interfaces
@@ -51,6 +60,12 @@ integration:
       components: [web-app]
       preconditions: [auth service healthy]
       selection: [web-app, login]
+  suites:
+    integration:
+      tool: maven
+      run: mvn -q verify -Pintegration
+      results: target/failsafe-reports/TEST-*.xml
+      test_files: ["**/*IT.java"]
 software:
   techniques:
     - one test per acceptance criterion of every requirement, through the product's outside interfaces
@@ -65,9 +80,27 @@ software:
   selection: every software-level test before every release
   regression: all software-level tests run again before every release
   order: [software, bench, e2e]
+  suites:
+    software:
+      tool: maven
+      run: mvn -q verify -Psoftware
+      results: target/software-reports/TEST-*.xml
+      test_files: ["**/*ST.java"]
+    bench:
+      tool: jmh
+      run: mvn -q verify -Pbench
+      results: target/bench-reports/TEST-*.xml
+      measurements: target/bench-measurements.json
+      test_files: ["**/*Bench.java"]
 validation:
   selection: every automated scenario before every release; the market-day demo when a wish about loaded carts changes
   regression: every scenario of a wish the release touches runs again
+  suites:
+    validation:
+      tool: pytest
+      run: pytest validation/scenarios --junitxml=build/validation.xml
+      results: build/validation.xml
+      test_files: ["**/test_*.py"]
   scenarios:
     - scenario: validation/scenarios/test_loaded_cart_crosses.py
       technique: acceptance test

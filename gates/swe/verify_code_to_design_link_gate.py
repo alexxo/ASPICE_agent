@@ -36,8 +36,8 @@ GATE = "verify_code_to_design_link_gate"
 def check(config: ProductConfig) -> list[Finding]:
     stack = read_stack(config)
     units = design_units(config)
-    if stack is None or not units:
-        return []  # the stack and detailed design gates report what is missing
+    if stack is None or "unit" not in stack["suites"] or not units:
+        return []  # the stack, plan and detailed design gates report what is missing
     requirements = {r.text("uid") for r in read_requirements(config)} - {None}
     sources = scan_sources(config, stack)
     findings: list[Finding] = []

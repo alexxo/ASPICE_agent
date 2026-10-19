@@ -65,13 +65,16 @@ When in doubt, full.
 
 The stack comes first, and is approved before anything is designed on it:
 
-1. **Stack** — the language, runtime, frameworks, libraries and data stores, an
-   exact version each, respecting every constraint requirement; a command for
+1. **Stack** — one row per tool the product takes from outside, in its area,
+   an exact version each, respecting every constraint requirement: every area
+   of *choose_stack_skill* either chosen or not needed with the reason, the
+   areas the framework gives as it gives them, and test runners that can run
    every verification suite the requirements name.
 2. **Decision record** — the stack's alternatives, at least two, with pros, cons
    and the choice.
 3. **Checkpoint 3** — stop here: the stack's gates must pass and the architect
-   approve the stack before any component is designed.
+   approve the stack before any component is designed. Show the stack as the
+   table *write_stack_table_tool* prints.
 4. **Components** — one per node of the architecture diagrams, with its
    responsibility, its resource budget with value and unit, its size (S, M, L
    or XL), the software requirements it meets, its modes with their transitions
