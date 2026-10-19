@@ -22,6 +22,9 @@ import json
 import os
 import re
 import subprocess
+import urllib.error
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -151,9 +154,6 @@ class GitHubHost:
         self.api = api.rstrip("/")
 
     def _get(self, path: str):
-        import urllib.error  # only the API needs it, not every gate that imports this tool
-        import urllib.request
-
         request = urllib.request.Request(
             f"{self.api}{path}",
             headers={
@@ -233,9 +233,7 @@ class GitHubHost:
         return {t["name"]: t["commit"]["sha"] for t in self._pages(f"/repos/{repo}/tags")}
 
     def issues(self, repo: str, label: str) -> list[Issue]:
-        from urllib.parse import quote
-
-        found = self._pages(f"/repos/{repo}/issues?state=all&labels={quote(label)}")
+        found = self._pages(f"/repos/{repo}/issues?state=all&labels={urllib.parse.quote(label)}")
         issues = []
         for i in found:
             if "pull_request" in i:  # GitHub lists pull requests as issues too

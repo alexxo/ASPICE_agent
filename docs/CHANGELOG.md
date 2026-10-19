@@ -38,7 +38,6 @@ checking whether it is still current.
 ### Changed
 
 - **The gates run in parallel.** `run_gates_tool` runs the gates that only read at once and keeps the results in the order asked for; the gates that run the product's own commands (`RUN_ALONE`) run first, one at a time, since they write and keep those runs. A resolver call on a machine with 8 cores is about twice as fast. Origin: internal.
-- **A gate loads the GitHub client only when it calls the API.** `read_host_tool` imports `urllib` inside `GitHubHost`, so a gate that reads a recorded host, or none, starts faster. Origin: internal.
 
 ## [1.7.1] - 2026-10-18
 
