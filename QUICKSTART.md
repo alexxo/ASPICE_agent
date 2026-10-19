@@ -140,20 +140,52 @@ Then the person does, on GitHub:
    - *Repository permissions:* **Pull requests: read and write** and
      **Contents: read**, nothing else. It can review, but not push or merge.
 
-   Copy the token once and keep it in a password manager, never in the
-   developer's session or a file in the repository.
+   Copy the token once and save it like an SSH key, in your home folder,
+   one file per repository owner (the organization, or the bot's account).
+   `<owner>` is the part before the `/` in the repository's address, e.g.
+   `Trazodigital` for `github.com/Trazodigital/Team_repo_wp_publisher`:
+
+   macOS:
+
+   ```sh
+   mkdir -p ~/.aspice_agent_reviewer_bot_token
+   chmod 700 ~/.aspice_agent_reviewer_bot_token
+   pbpaste > ~/.aspice_agent_reviewer_bot_token/<owner>   # the token, copied
+   chmod 600 ~/.aspice_agent_reviewer_bot_token/<owner>
+   ```
+
+   Windows (PowerShell; your user folder is readable only by you):
+
+   ```powershell
+   New-Item -ItemType Directory -Force "$HOME\.aspice_agent_reviewer_bot_token"
+   Get-Clipboard | Set-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"
+   ```
+
+   Never put it in the developer's session, a `.env` or any file in the
+   repository.
 6. *Organization's repository, if item 4 asks for approval:* an organization
    owner opens the organization → Settings → Third-party Access → Personal
    access tokens → *Pending requests*, checks that the reviewer-bot's request
    asks only for the product's repository with those two permissions, and
    *Approves* it. Until then the token reads only public resources, so a
    private repository answers as if it did not exist.
-7. Check the token, in a terminal that is not the developer's session:
-   `GH_TOKEN=<token> gh api repos/<owner>/<repo> -q .full_name` prints the
-   repository's name. A 404 means item 3, 5 or 6 is missing.
+7. Check the token, in a terminal that is not the developer's session; it
+   prints the repository's name, and a 404 means item 3, 5 or 6 is missing.
+
+   macOS:
+
+   ```sh
+   GH_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)" gh api repos/<owner>/<repo> -q .full_name
+   ```
+
+   Windows (PowerShell):
+
+   ```powershell
+   $env:GH_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"; gh api repos/<owner>/<repo> -q .full_name; Remove-Item Env:GH_TOKEN
+   ```
 
 When the token expires, the reviewer-bot creates a new one (item 5), approved
-again (item 6).
+again (item 6), and you overwrite the owner's file.
 
 If GitHub does not offer the repository for a fine-grained token, a classic
 token with the `repo` scope works and needs no organization approval, but it
@@ -271,11 +303,18 @@ wishes. Tell the person how the work runs from now on:
 - **reviewer-bot**: the reviewer agent posts its reviews from this account,
   in a session of its own, never the developer's. For every pull request the
   agent asks for it, the developer opens a second session in the product
-  folder, sets `export QF_HOST_TOKEN=<reviewer-bot's token>` there only, and
-  asks it to follow `.framework/agent/run_reviewer_agent.md` for that pull
-  request.
+  folder, loads the token there only —
+  `export QF_HOST_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)"`
+  (PowerShell: `$env:QF_HOST_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"`)
+  — and asks it to follow `.framework/agent/run_reviewer_agent.md` for that
+  pull request.
 - **reviewer** approves the sampled pull requests on GitHub, and gives the
   checkpoint decisions the agent asks for.
+- **Whoever merges**: merge only when the pull request's check
+  **qf/merge** says *Ready to merge*. While it says *Wait: …* it names what
+  is still missing — the reviewer agent's approval, a person's approval, or
+  red gates — and after any push or review it starts again at *Wait: gates
+  running*. GitHub does not block the button: the sign is the rule.
 - **Everyone**: every change reaches `main` through a reviewed pull request
   with passing gates. Never push to `main` directly and never rewrite it (no
   force-push, no reset). CI flags a direct push, or a merge with red gates or

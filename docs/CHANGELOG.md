@@ -35,6 +35,18 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Copy the framework's `templates/github/quality_gates.yml` again: it adds `statuses: write`, the `concurrency` group and the two *Crossing sign* steps | `qf.yaml ci_file` (a code owner's change) | optional: without it no crossing sign is posted |
+| Save the reviewer agent's token in `~/.aspice_agent_reviewer_bot_token/<owner>` (QUICKSTART step 3, item 5) and load it from there | each reviewer's machine | optional |
+
+### Added
+
+- **The crossing sign on every pull request.** CI posts the commit status `qf/merge` on the head with `post_merge_status_tool`: *Wait: gates running*, then *Wait: <what is missing>* — the reviewer agent's approval, a person's approval when sampled, the red gates — or *Ready to merge*. One run per pull request at a time; runs on main are never cancelled. QUICKSTART tells whoever merges to merge only on *Ready to merge*. Design document § 5 stage 9, rule 13; Appendix A.8. Origin: FB-33 (wp_publisher).
+- **A home for the reviewer agent's token.** Like an SSH key: `~/.aspice_agent_reviewer_bot_token/<owner>` on macOS and Windows, one file per repository owner, readable only by the person, loaded into the reviewer's session with one line and read by no framework tool. Design document § 5 stage 9, rule 1; Appendix A.8. Origin: FB-34 (wp_publisher).
+
 ### Changed
 
 - **Every stack area is described.** `choose_stack_skill` and the design document § 3 *The tech stack* list the 22 areas one per row: what each names, whether it can be not needed, and what the framework gives. Origin: internal.

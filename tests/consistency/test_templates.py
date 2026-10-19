@@ -61,14 +61,41 @@ def test_a_review_run_knows_the_pull_requests_base(repo_root):
 
 
 def test_the_gates_read_the_host_with_the_runs_own_token(repo_root):
-    """No secret and no administrator's token: the token every run has, with read
-    permissions only (decision 6 of the quality assurance stage)."""
+    """No secret and no administrator's token: the token every run has, reading
+    the host (decision 6 of the quality assurance stage); its one write is the
+    crossing sign (rule 13)."""
     workflow = yaml.safe_load((repo_root / TEMPLATE).read_text())
     steps = workflow["jobs"]["gates"]["steps"]
     (gates,) = (s for s in steps if "resolve_stage_tool.py --root . --check" in s.get("run", ""))
     assert gates["env"]["QF_HOST_TOKEN"] == "${{ github.token }}"
-    assert set(workflow["permissions"].values()) == {"read"}
+    writes = {k for k, v in workflow["permissions"].items() if v != "read"}
+    assert writes == {"statuses"} and workflow["permissions"]["statuses"] == "write"
     assert {"pull-requests", "checks"} <= set(workflow["permissions"])
+
+
+def test_a_pull_request_shows_the_crossing_sign(repo_root):
+    """Wait while the gates run, then wait or ready from their result, on the head
+    of the pull request only (rule 13 of the quality assurance stage)."""
+    workflow = yaml.safe_load((repo_root / TEMPLATE).read_text())
+    steps = workflow["jobs"]["gates"]["steps"]
+    runs = [s.get("run", "") for s in steps]
+    signs = [s for s in steps if "post_merge_status_tool.py" in s.get("run", "")]
+    gates = next(i for i, r in enumerate(runs) if "resolve_stage_tool.py --root . --check" in r)
+    running, final = signs
+    assert "--running" in running["run"] and steps.index(running) < gates
+    assert "--stage-file .qf/stage.json" in final["run"] and steps.index(final) > gates
+    assert final["if"] == "always() && github.event.pull_request"
+    for sign in signs:
+        assert "github.event.pull_request.head.sha" in sign["run"]
+
+
+def test_runs_on_main_are_never_cancelled(repo_root):
+    """A late run of a pull request must not overwrite a newer sign, but each push
+    to main checks the commits it adds: those runs are never cancelled."""
+    workflow = yaml.safe_load((repo_root / TEMPLATE).read_text())
+    concurrency = workflow["concurrency"]
+    assert "github.event.pull_request.number || github.run_id" in concurrency["group"]
+    assert concurrency["cancel-in-progress"] == "${{ github.event_name != 'push' }}"
 
 
 def _release_steps(repo_root):

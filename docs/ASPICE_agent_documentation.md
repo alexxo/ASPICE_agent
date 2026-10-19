@@ -227,6 +227,7 @@ the words of the glossary below, one bridge word per framework term.
 | Checkpoint, approval | seal |
 | Pull request | delivery, at the delivery desk |
 | CI run | inspection round |
+| Merge status (*qf/merge*) | crossing sign |
 | Baseline (release tag) | official baseline |
 
 **Work products**
@@ -655,7 +656,10 @@ author, reviews every delivery from the first step on, with a checklist of what
 the delivery holds. The quality auditor (person) reviews every delivery that
 changes the big plan (architecture) and 1 in N of the rest, chosen by delivery
 number so the sample cannot be steered; a sampled delivery waits at the desk
-until the auditor's seal is on its latest version [verify_delivery_reviewed_gate]. A
+until the auditor's seal is on its latest version [verify_delivery_reviewed_gate].
+At the desk's gate hangs the crossing sign (the *qf/merge* status): *wait*, with
+what is still missing, or *cross* once every seal and inspector agree; the one
+who lets a delivery through reads it there. A
 remark fixed before the delivery leaves the desk stays in the review; a fault
 left unfixed becomes a fault note (non-conformance issue), followed up at the
 release. This is where the *agreed* part of SWE.2 and SWE.3 is completed.
@@ -2162,6 +2166,7 @@ and format).
 | *plugins/sup/derive_review_plugin/SKILL.md* | Quality assurance stage: the reviewer agent's method — read, judge the checklist, post from its own account |
 | *templates/FRAMEWORK_FEEDBACK.md* | The framework feedback log a product copies: the entry template, severities and classes |
 | *tools/read_host_tool.py* | The code host: pull requests and their reviews, the checks that passed on a commit, release tags; the delivery of the current branch; a recorded host for tests |
+| *tools/post_merge_status_tool.py* | The crossing sign: the commit status *qf/merge* on a pull request's head — wait, with what is missing, or ready to merge — posted by CI from the gates' result |
 | *tools/post_review_tool.py* | The reviewer agent's review of the current head, with the checklist in its fixed form: the items the pull request asks for, logging only with code |
 | *gates/sup/verify_framework_integrity_gate.py* | Always-on, from the quality assurance stage: the framework a pinned submodule, unchanged, at a released commit |
 | *gates/sup/verify_required_checks_gate.py* | Always-on, from the quality assurance stage: the CI file runs the gates |
@@ -3059,7 +3064,16 @@ person reviews a sample.
    pull request and the person starts the reviewer's own session on their
    machine (*agent/run_reviewer_agent.md*): the only session that holds the
    reviewer agent's token, a token for the product's repository that can
-   review and not push. The reviewer works from the slot
+   review and not push. Like an SSH key, the token lives in the person's home
+   folder, one file per repository owner:
+   *~/.aspice_agent_reviewer_bot_token/<owner>* (on Windows
+   *%USERPROFILE%\.aspice_agent_reviewer_bot_token\<owner>*), readable only
+   by the person, outside every product folder, so it is never committed.
+   The person loads it into the reviewer's session with one line; no
+   framework tool reads it, so the author's session cannot post as the
+   reviewer without asking the person to read a file outside its folder. A
+   program of the same user can still read it, as with an SSH key; that risk
+   is accepted (Appendix A.8). The reviewer works from the slot
    *review_pull_request_plugin* with the rulebook *review_code_skill*, and
    posts from its own account with *post_review_tool*, which writes the
    checklist in a fixed form: correctness, style, traceability, and logging
@@ -3079,7 +3093,8 @@ person reviews a sample.
 4. **GitHub, behind one host tool.** *read_host_tool* reads pull requests,
    reviews, the checks of a commit, framework tags and issues through the
    GitHub API, with the token in *QF_HOST_TOKEN* — in CI the token every run
-   has (*github.token*, with read permissions); on a person's machine e.g.
+   has (*github.token*, with read permissions, and *statuses: write* for the
+   crossing sign of rule 13); on a person's machine e.g.
    *export QF_HOST_TOKEN=$(gh auth token)*. Tests use a recorded host
    (*QF_HOST_FILE*); a host that cannot be read fails the gate closed
    (HOST_UNREADABLE), with a result, never a traceback. GitHub answers a
@@ -3160,6 +3175,18 @@ person reviews a sample.
     commit in the history, so it is accepted the same way. Before the merge
     nothing changes: a red pull request is fixed and pushed again. The risk
     analysis is Appendix A.8.
+13. **The merge signal.** The person who merges reads, on the pull request,
+    whether to wait or to merge: on every pull request CI posts the commit
+    status *qf/merge* on its head with *post_merge_status_tool* — pending
+    *Wait: gates running* when the gates start, then failure *Wait: <what
+    is missing>* (the reviewer agent's approval, a person's approval when
+    sampled, the gates that are red) or success *Ready to merge*. The
+    status belongs to the head, so every push and every review starts from
+    wait, and no status means wait. One run per pull request at a time
+    (*concurrency*), so a late run never overwrites a newer status; runs on
+    the main branch are never cancelled. The person merges only on *Ready
+    to merge*; a merge on any other status is still caught on the main
+    branch (rule 12). The risk analysis is Appendix A.8.
 
 #### Configuration management stage — stage 10
 
@@ -4062,6 +4089,50 @@ label together.
   urgent approver who is not the author, on the record. *Not taken:* D1 A,
   *fixed_by* naming the accepted pull request itself, which makes the
   record read "fixed by the faulty change". → § 5 stage 9, rule 12.
+
+- **The merge signal** (2026-10-19, Alex, D1 A, FB-33). The person who
+  merges must see, on the pull request, whether to wait or to merge, so no
+  change reaches the main branch outside the delivery desk for want of
+  knowing: five merges came in seconds after the person's approval, before
+  the reviewer agent posted or the gates finished, and each needed an
+  acceptance after the fact.
+
+  | # | Scenario | O | S | D | Risk |
+  |---|---|---|---|---|---|
+  | S1 | The person merges before the reviewer agent posted or while the gates run, not knowing to wait | 9 | 6 | 4 | 216 |
+  | S2 | A "ready" shown for an older head or before the gates finished | 3 | 8 | 7 | 168 |
+  | S3 | The person merges despite a clear "wait" | 5 | 6 | 4 | 120 |
+  | S4 | No sign is written (e.g. a fork's read-only token) | 2 | 4 | 3 | 24 |
+
+  *Chosen:* D1 A — a commit status *qf/merge* on the head, posted by CI:
+  wait with what is missing, or ready to merge. Defaults: the status
+  belongs to the head and starts at wait on every run (S2); no status
+  means wait (S4); one run per pull request at a time; S3 stays caught on
+  the main branch (rule 12). *Not taken:* D1 B, every pull request opened
+  as a draft and marked ready by CI, a speed bump one click removes, for
+  twice the write rights. → § 5 stage 9, rule 13.
+- **Where the reviewer agent's token lives** (2026-10-19, Alex, FB-34).
+  The person types the token into every reviewer session; a *.env* in the
+  product folder would sit in the author's working folder.
+
+  | # | Scenario | O | S | D | Risk |
+  |---|---|---|---|---|---|
+  | T1 | The author's session reads the token and approves its own pull request | 6 | 9 | 9 | 486 |
+  | T2 | Typing the token each time makes people skip the reviewer | 6 | 5 | 4 | 120 |
+  | T3 | The token file is committed | 2 | 9 | 3 | 54 |
+
+  *Chosen:* like an SSH key, in the person's home folder, one file per
+  repository owner (a fine-grained token belongs to one owner):
+  *~/.aspice_agent_reviewer_bot_token/<owner>*, readable only by the
+  person; loaded into the reviewer's session with one line, read by no
+  framework tool, never named in the author's guide. Outside every product
+  folder it is never committed (T3), and the author's session would have to
+  ask the person to read it (T1). *Accepted:* a program of the same user
+  can read it, as an SSH key; no file the reviewer's session can read is
+  out of reach of the same user. *Not taken:* a *.env* in the product
+  folder, in the author's working folder (T1); a framework tool that reads
+  the file, which the author's session could run to post as the reviewer.
+  → § 5 stage 9, rule 1.
 
 ### A.9 Configuration management stage — stage 10
 

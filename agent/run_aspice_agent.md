@@ -135,12 +135,15 @@ reviewer agent approves the pull request's current head. Ask the person to
 start the reviewer's own session for it: a new session, with the reviewer
 agent's token in its `QF_HOST_TOKEN`, following
 `<framework>/agent/run_reviewer_agent.md` for that pull request. That token is
-never in your session, and you never post a review. A finding the reviewer
+never in your session: never read `~/.aspice_agent_reviewer_bot_token`, and
+you never post a review. A finding the reviewer
 requests is fixed in the pull request by the crew of the stage it belongs to;
 after each push, the person starts the review of the new head.
 
 Never merge a pull request whose gates are red or still running, and never
-push to the main branch. After a merge, wait for the main branch's CI run. If
+push to the main branch. Tell the person who merges to wait for the pull
+request's **qf/merge** check to say *Ready to merge*; while it says *Wait:
+…* it names what is missing. After a merge, wait for the main branch's CI run. If
 it is red with MERGED_WITHOUT_PULL_REQUEST, GATES_NOT_PASSED or a review
 missing, tell the person at once: the change reached the main branch without
 the delivery desk, and the next release waits until it is accepted. Record it

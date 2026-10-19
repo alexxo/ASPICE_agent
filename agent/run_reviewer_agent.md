@@ -17,8 +17,13 @@ product root.
 ## 1. Preconditions
 
 `QF_HOST_TOKEN` must be set to the reviewer agent's token. If it is not, stop
-and ask the person to set it in this session
-(`export QF_HOST_TOKEN=<the reviewer agent's token>`), never a developer's.
+and ask the person to load it into this session from the owner's file in
+their home folder — never a developer's token, and never read the file
+yourself:
+`export QF_HOST_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)"`
+(PowerShell: `$env:QF_HOST_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"`),
+where `<owner>` is the owner of the product's repository. Without the file,
+send the person to the framework's `QUICKSTART.md` step 3, item 5.
 
 Check that the token reads the repository:
 `GH_TOKEN=$QF_HOST_TOKEN gh api repos/<owner>/<repo> -q .full_name` prints its
