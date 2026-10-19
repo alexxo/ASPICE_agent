@@ -35,6 +35,10 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-10-19
+
+A review's CI run reads only the pull request's commits, and the gates run in parallel.
+
 ### Migration
 
 | Edit | Where | Required |
