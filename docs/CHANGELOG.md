@@ -35,6 +35,10 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-19
+
+A change that reached the main branch without the delivery desk is accepted after the fact by a declared person, on the record; a re-run after the merge no longer counts.
+
 ### Migration
 
 | Edit | Where | Required |
