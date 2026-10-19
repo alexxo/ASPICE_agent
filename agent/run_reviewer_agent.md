@@ -33,6 +33,12 @@ organization's repository, the owner's approval. `post_review_tool` reports
 the same case as "The token cannot read <repo>", never as a missing pull
 request.
 
+Check that the token reads CI:
+`GH_TOKEN=$QF_HOST_TOKEN gh api repos/<owner>/<repo>/commits/<head>/status -q .state`
+prints a state. A 403 means it lacks *Commit statuses: read* or *Actions:
+read*, so you cannot wait for green: stop and send the person to the
+framework's `QUICKSTART.md` step 3, item 5.
+
 Run `python <framework>/agent/read_config_tool.py --root <product>`. If `ok` is
 false, stop and report every problem to the person.
 

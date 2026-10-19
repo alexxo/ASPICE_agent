@@ -57,7 +57,16 @@ When in doubt, full.
 ## Steps
 
 1. **Wait for green** — start only when CI passed every gate except the ones
-   that wait for a review.
+   that wait for a review. Read the head's crossing sign, the commit status
+   *qf/merge*
+   (*gh api repos/<owner>/<repo>/commits/<head>/status*): *Wait: the
+   reviewer agent's approval*, alone or with *a person's approval
+   (sampled)*, means everything else is green; *Wait: gates running* means
+   wait; any *gates red* means stop and report it. Without the sign (a CI
+   file older than v2.1.0), read the head's gates run
+   (*gh api "repos/<owner>/<repo>/actions/runs?head_sha=<head>"*). A 403
+   means the token cannot read CI: stop and send the person to
+   *QUICKSTART.md* step 3, item 5.
 2. **Read** — every changed file, with what its markers name.
 3. **Judge** — the checklist items of *review_code_skill* the pull request
    asks for: correctness, style, traceability, and logging when it changes

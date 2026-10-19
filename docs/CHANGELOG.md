@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-10-19
+
+The reviewer agent's token can read CI, and is saved without a command that keeps it in the shell's history.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Give the reviewer agent's token *Commit statuses: read* and *Actions: read* (and *Checks: read* where offered), then check it with QUICKSTART step 3, item 7 | the reviewer-bot's token on GitHub | required: without them the reviewer cannot wait for green |
+
+### Fixed
+
+- **The reviewer agent's token reads CI.** QUICKSTART step 3, item 5 granted only *Pull requests* and *Contents*, so every read of CI answered 403 and the method's "wait for green" could not be done; it now adds *Commit statuses: read* and *Actions: read*, item 7 checks them, and the reviewer reads the head's *qf/merge* sign to wait for green (`derive_review_plugin` step 1, `run_reviewer_agent.md` § 1). Design document § 5 stage 9, rule 1. Origin: FB-36 (wp_publisher).
+- **Saving the token needs no clipboard command.** The token is pasted into the file with an editor (`nano`, `notepad`), never typed into a command, so it never lands in the shell's history. QUICKSTART step 3, item 5. Origin: FB-35 (wp_publisher).
+
 ## [2.1.0] - 2026-10-19
 
 Whoever merges reads on the pull request whether to wait or merge, and the reviewer agent's token is kept like an SSH key.

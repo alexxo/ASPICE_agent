@@ -137,20 +137,28 @@ Then the person does, on GitHub:
      bot's own account otherwise.
    - *Repository access:* *Only select repositories* → the product's
      repository.
-   - *Repository permissions:* **Pull requests: read and write** and
-     **Contents: read**, nothing else. It can review, but not push or merge.
+   - *Repository permissions:* **Pull requests: read and write**, and to see
+     CI **Contents: read**, **Commit statuses: read** and **Actions: read**
+     (and **Checks: read** where GitHub offers it), nothing else. It can
+     review and read CI, but not push or merge.
 
    Copy the token once and save it like an SSH key, in your home folder,
    one file per repository owner (the organization, or the bot's account).
    `<owner>` is the part before the `/` in the repository's address, e.g.
    `Trazodigital` for `github.com/Trazodigital/Team_repo_wp_publisher`:
 
+   The file holds the token alone, on one line. Open it in an editor, paste
+   the token, save and close: the token is never typed into a command, so it
+   never lands in the shell's history (as `echo "<token>" > …` would, in
+   `~/.zsh_history`).
+
    macOS:
 
    ```sh
    mkdir -p ~/.aspice_agent_reviewer_bot_token
    chmod 700 ~/.aspice_agent_reviewer_bot_token
-   pbpaste > ~/.aspice_agent_reviewer_bot_token/<owner>   # the token, copied
+   nano ~/.aspice_agent_reviewer_bot_token/<owner>
+   #   paste the token, then Ctrl+O, Enter (save) and Ctrl+X (close)
    chmod 600 ~/.aspice_agent_reviewer_bot_token/<owner>
    ```
 
@@ -158,7 +166,8 @@ Then the person does, on GitHub:
 
    ```powershell
    New-Item -ItemType Directory -Force "$HOME\.aspice_agent_reviewer_bot_token"
-   Get-Clipboard | Set-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"
+   notepad "$HOME\.aspice_agent_reviewer_bot_token\<owner>"
+   #   answer Yes to create the file, paste the token, save and close
    ```
 
    Never put it in the developer's session, a `.env` or any file in the
@@ -169,19 +178,30 @@ Then the person does, on GitHub:
    asks only for the product's repository with those two permissions, and
    *Approves* it. Until then the token reads only public resources, so a
    private repository answers as if it did not exist.
-7. Check the token, in a terminal that is not the developer's session; it
-   prints the repository's name, and a 404 means item 3, 5 or 6 is missing.
+7. Check the token, in a terminal that is not the developer's session. The
+   first command prints the repository's name (a 404 means item 3, 5 or 6 is
+   missing); the second prints the main branch's commit status (a 403 means
+   item 5's *Commit statuses* or *Actions* is missing, and the reviewer could
+   not see CI).
 
    macOS:
 
    ```sh
-   GH_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)" gh api repos/<owner>/<repo> -q .full_name
+   export GH_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)"
+   gh api repos/<owner>/<repo> -q .full_name
+   gh api repos/<owner>/<repo>/commits/main/status -q .state
+   gh api "repos/<owner>/<repo>/actions/runs?per_page=1" -q .total_count
+   unset GH_TOKEN
    ```
 
    Windows (PowerShell):
 
    ```powershell
-   $env:GH_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"; gh api repos/<owner>/<repo> -q .full_name; Remove-Item Env:GH_TOKEN
+   $env:GH_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"
+   gh api repos/<owner>/<repo> -q .full_name
+   gh api repos/<owner>/<repo>/commits/main/status -q .state
+   gh api "repos/<owner>/<repo>/actions/runs?per_page=1" -q .total_count
+   Remove-Item Env:GH_TOKEN
    ```
 
 When the token expires, the reviewer-bot creates a new one (item 5), approved

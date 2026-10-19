@@ -3064,7 +3064,8 @@ person reviews a sample.
    pull request and the person starts the reviewer's own session on their
    machine (*agent/run_reviewer_agent.md*): the only session that holds the
    reviewer agent's token, a token for the product's repository that can
-   review and not push. Like an SSH key, the token lives in the person's home
+   review and read CI (pull requests, contents, commit statuses, actions),
+   and not push. Like an SSH key, the token lives in the person's home
    folder, one file per repository owner:
    *~/.aspice_agent_reviewer_bot_token/<owner>* (on Windows
    *%USERPROFILE%\.aspice_agent_reviewer_bot_token\<owner>*), readable only
