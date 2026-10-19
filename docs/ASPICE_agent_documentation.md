@@ -2722,8 +2722,10 @@ the product's own commands.
    pinned tools, JUnit and Cobertura results, every test passing, every unit
    tested).
 9. **The gates read the pull request's commits.** The history gates read only
-   the commits not yet on the main branch, *base..head*; CI passes the base,
-   outside CI it is the merge base with the main branch. Older commits were
+   the commits not yet on the main branch, *base..head*; CI passes the
+   pull request's base, on its own events and on its reviews' alike; without
+   one it is the merge base with the main branch, local or the remote's.
+   Older commits were
    proven when their pull request merged, so the cost stays bounded and a
    product that adopts the framework with code already written is not failed
    forever.

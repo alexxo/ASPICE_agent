@@ -19,6 +19,20 @@ def test_the_base_is_the_merge_base_with_main(tmp_path, monkeypatch):
     assert resolve_base(root) == _head(root, "main")
 
 
+def test_without_a_local_main_the_base_is_the_remotes(tmp_path, monkeypatch):
+    """A CI checkout of a review event has origin/main, no main and no QF_BASE (FB-28)."""
+    monkeypatch.delenv("QF_BASE", raising=False)
+    root = build_python_product(tmp_path)
+    main = _head(root, "main")
+    git = ["git", "-C", str(root)]
+    subprocess.run([*git, "update-ref", "refs/remotes/origin/main", main], check=True)
+    subprocess.run([*git, "checkout", "-q", "--detach"], check=True)
+    subprocess.run([*git, "branch", "-q", "-D", "main"], check=True)
+    (root / "a.txt").write_text("a")
+    commit_all(root, "feat: a REQ-0001")
+    assert resolve_base(root) == main
+
+
 def test_qf_base_and_an_explicit_base_win(tmp_path, monkeypatch):
     root = build_python_product(tmp_path)
     (root / "a.txt").write_text("a")

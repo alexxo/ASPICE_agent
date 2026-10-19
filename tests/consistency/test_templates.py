@@ -52,6 +52,14 @@ def test_a_review_runs_the_gates_again(repo_root):
     assert "pull_request_review" in triggers
 
 
+def test_a_review_run_knows_the_pull_requests_base(repo_root):
+    """github.base_ref is empty on a review event, so the base comes from the
+    event's pull request, which both events carry (FB-28)."""
+    workflow = yaml.safe_load((repo_root / TEMPLATE).read_text())
+    base = workflow["jobs"]["gates"]["env"]["QF_BASE"]
+    assert "github.event.pull_request.base.ref" in base and "github.base_ref" not in base
+
+
 def test_the_gates_read_the_host_with_the_runs_own_token(repo_root):
     """No secret and no administrator's token: the token every run has, with read
     permissions only (decision 6 of the quality assurance stage)."""

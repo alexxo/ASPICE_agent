@@ -61,7 +61,8 @@ jobs:
   gates:
     runs-on: ubuntu-latest
     env:
-      QF_BASE: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
+      # The pull request's base, on its own events and on its reviews' alike.
+      QF_BASE: ${{ github.event.pull_request.base.ref && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
     steps:
       - name: Check out the product and its pinned framework, with its history
         uses: actions/checkout@v4

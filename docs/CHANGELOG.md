@@ -35,6 +35,16 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Replace the `QF_BASE:` line with the template's: `QF_BASE: ${{ github.event.pull_request.base.ref && format('origin/{0}', github.event.pull_request.base.ref) \|\| '' }}` | the product's CI file (`.github/workflows/quality_gates.yml`), as in `.framework/templates/github/quality_gates.yml` | required — without it the run a review starts reads the whole history and fails on the setup commit |
+
+### Fixed
+
+- **The run a review starts reads only the pull request's commits.** `github.base_ref` is empty on a `pull_request_review` event, so the template passed no `QF_BASE` and the commit gate read the whole history, failing on the product's setup commit: an approved pull request never turned green. The template now takes the base from `github.event.pull_request.base.ref`, which both events carry, and without a base `read_commit_range_tool` also finds the remote's `main` or `master`, all a CI checkout has. Origin: FB-28 (wp_publisher).
+
 ### Changed
 
 - **The gates run in parallel.** `run_gates_tool` runs the gates that only read at once and keeps the results in the order asked for; the gates that run the product's own commands (`RUN_ALONE`) run first, one at a time, since they write and keep those runs. A resolver call on a machine with 8 cores is about twice as fast. Origin: internal.

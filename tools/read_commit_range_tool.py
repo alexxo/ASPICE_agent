@@ -4,7 +4,8 @@ The history gates read only the commits not yet on the main branch, base..HEAD
 (decision 9): older commits were proven when their pull request merged. The
 base is the one CI passes (--base, or the environment variable QF_BASE);
 without one it is the merge base with the remote's default branch, else with a
-local main or master. When none of these exists the whole history is read.
+local main or master, else with the remote's main or master. When none of these
+exists the whole history is read.
 """
 
 from __future__ import annotations
@@ -72,10 +73,10 @@ def _merge_base(root: Path, ref: str) -> str | None:
 
 def main_ref(root: Path) -> str | None:
     """The main branch as this checkout knows it: the remote's default branch,
-    else a local main or master."""
+    else a local main or master, else the remote's (a CI checkout has only those)."""
     default = _git(root, "rev-parse", "--abbrev-ref", "origin/HEAD")
     candidates = [default.stdout.strip()] if default.returncode == 0 else []
-    for ref in [*candidates, "main", "master"]:
+    for ref in [*candidates, "main", "master", "origin/main", "origin/master"]:
         if ref and _git(root, "rev-parse", "--verify", "--quiet", ref).returncode == 0:
             return ref
     return None
