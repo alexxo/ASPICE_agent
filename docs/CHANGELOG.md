@@ -35,6 +35,10 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+### Changed
+
+- **Every stack area is described.** `choose_stack_skill` and the design document § 3 *The tech stack* list the 22 areas one per row: what each names, whether it can be not needed, and what the framework gives. Origin: internal.
+
 ## [2.0.0] - 2026-10-19
 
 The tech stack lists every tool the product takes from outside, area by area, each chosen or not needed with the reason; how the product is tested moved to the verification plan; an accepted delivery that was right closes its non-conformance.

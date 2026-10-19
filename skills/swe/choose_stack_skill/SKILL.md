@@ -35,17 +35,30 @@ several tools (e.g. libraries) has several rows. An area the product does
 without has one row, *not_needed*, with the reason. Every stack holds these
 areas, and may add its own:
 
-| Area | What it names |
-|---|---|
-| *language*, *runtime*, *package_manager* | What the code is written in, runs on and installs with |
-| *frameworks*, *libraries*, *data_stores* | What the code builds on and keeps its data in |
-| *llm*, *external_services* | Models and outside services the product calls |
-| *test_runner* | The tools that run the suites, each with its *version_command* |
-| *lint*, *format*, *static_analysis* | The coding-principle checks, each with *run* and *version_command* |
-| *secrets_scanner*, *dependencies_scanner* | The scanners every pull request runs, each with *run*, *version_command* and its SARIF *results* |
-| *build*, *deployment*, *documentation* | How the product is packaged, delivered and documented |
-| *version_control*, *ci_cd*, *task_management* | Given by the framework: GitHub, GitHub Actions, GitHub Issues |
-| *requirements_engineering*, *diagram_tool* | Given by the framework: the plugin in *qf.yaml*'s slot |
+| Area | Description | Can be not needed | Given by the framework |
+|---|---|---|---|
+| *language* | What the code is written in | no | — |
+| *runtime* | What the code runs on | yes | — |
+| *package_manager* | What the code installs its dependencies with | yes | — |
+| *frameworks* | What the code is built on | yes | — |
+| *libraries* | The libraries the code uses, one row each | yes | — |
+| *data_stores* | Where the product keeps its data | yes | — |
+| *llm* | The models the product calls | yes | — |
+| *external_services* | The outside services the product calls (e.g. a REST API) | yes | — |
+| *test_runner* | The tools that run the suites, each with *version_command* | no | — |
+| *lint* | The coding-rule check, with *run* and *version_command* | no | — |
+| *format* | The formatting check, with *run* and *version_command* | no | — |
+| *static_analysis* | Deeper code checks (types, bugs), with *run* and *version_command* | yes | — |
+| *secrets_scanner* | Finds leaked secrets on every pull request, with *run*, *version_command* and its SARIF *results* | no | — |
+| *dependencies_scanner* | Finds vulnerable dependencies on every pull request, with *run*, *version_command* and its SARIF *results* | no | — |
+| *build* | How the product is packaged | yes | — |
+| *deployment* | How the product is delivered | yes | — |
+| *version_control* | Where the code and its history live | yes | GitHub |
+| *ci_cd* | What runs the gates on every push | yes | GitHub Actions |
+| *task_management* | Where faults, problems and changes are tracked | yes | GitHub Issues |
+| *requirements_engineering* | The plugin that writes the requirements | yes | the plugin in *qf.yaml*'s *create_requirements_plugin* slot |
+| *documentation* | How the product is documented | yes | — |
+| *diagram_tool* | The plugin that draws the diagrams | yes | the plugin in *qf.yaml*'s *create_diagram_plugin* slot |
 
 The areas the framework gives carry no version. Besides *areas*: the patterns
 of the code files (*code_files*), the patterns that find where the code reads an
