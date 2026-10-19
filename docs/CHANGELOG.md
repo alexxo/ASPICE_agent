@@ -35,6 +35,10 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-19
+
+Whoever merges reads on the pull request whether to wait or merge, and the reviewer agent's token is kept like an SSH key.
+
 ### Migration
 
 | Edit | Where | Required |
