@@ -35,6 +35,14 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-10-21
+
+The organization owner approves the reviewer agent's token against the permissions it really asks for.
+
+### Fixed
+
+- **QUICKSTART step 3, item 6 names the permissions of item 5.** It still asked the owner to approve "those two permissions" while item 5 grants four, or five with *Checks: read*, so a right request could be refused. Origin: FB-37 (wp_publisher).
+
 ## [2.1.1] - 2026-10-19
 
 The reviewer agent's token can read CI, and is saved without a command that keeps it in the shell's history.

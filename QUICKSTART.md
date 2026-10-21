@@ -175,8 +175,10 @@ Then the person does, on GitHub:
 6. *Organization's repository, if item 4 asks for approval:* an organization
    owner opens the organization → Settings → Third-party Access → Personal
    access tokens → *Pending requests*, checks that the reviewer-bot's request
-   asks only for the product's repository with those two permissions, and
-   *Approves* it. Until then the token reads only public resources, so a
+   asks only for the product's repository with the permissions of item 5 —
+   *Pull requests: read and write*, *Contents: read*, *Commit statuses:
+   read*, *Actions: read*, and *Checks: read* if GitHub offered it; nothing
+   else, and no other write — and *Approves* it. Until then the token reads only public resources, so a
    private repository answers as if it did not exist.
 7. Check the token, in a terminal that is not the developer's session. The
    first command prints the repository's name (a 404 means item 3, 5 or 6 is
