@@ -81,6 +81,35 @@ def test_an_invariant_naming_an_unknown_element_is_reported(tmp_path):
     )
 
 
+def _with_participant(tmp_path, diagrams):
+    sequence = copy.deepcopy(SEQUENCE)
+    sequence["participants"].append({"id": "cache", "type": "database", "label": "Cache"})
+    sequence["messages"].append(
+        {"id": "read-cache", "from": "auth-service", "to": "cache", "y": 220, "label": "read"}
+    )
+    return build_product(
+        tmp_path, diagrams={**diagrams, "login.sequence.json": sequence}, invariants={}, git=False
+    )
+
+
+def test_a_sequence_participant_that_is_no_architecture_node_is_reported(tmp_path):
+    root = _with_participant(tmp_path, {"auth-flow.architecture.json": ARCHITECTURE})
+    (finding,) = _findings(root)
+    assert (finding.rule, finding.file) == (
+        "UNKNOWN_PARTICIPANT",
+        "docs/diagrams/login.sequence.json",
+    )
+    assert "login#cache" in finding.message
+
+
+def test_without_an_architecture_diagram_participants_are_not_compared(tmp_path):
+    workflow = copy.deepcopy(ARCHITECTURE)
+    workflow["diagram_type"] = "workflow"
+    workflow["nodes"], workflow["edges"] = workflow.pop("components"), workflow.pop("connections")
+    root = _with_participant(tmp_path, {"auth-flow.workflow.json": workflow})
+    assert "UNKNOWN_PARTICIPANT" not in _rules(root)
+
+
 def test_diagrams_without_a_sequence_diagram_are_reported(tmp_path):
     diagrams = {"auth-flow.architecture.json": ARCHITECTURE}
     root = build_product(tmp_path, diagrams=diagrams, invariants={}, git=False)

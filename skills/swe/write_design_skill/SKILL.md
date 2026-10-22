@@ -8,7 +8,7 @@ description: "Rules for the software architecture of SWE.2: one component per no
 **Stage:** 3 · SWE.2 Software architecture
 **Loaded with:** create_architecture_plugin
 **Contract:** contracts/component_contract.v1.schema.json
-**Gates:** check_design_contract_gate
+**Gates:** check_design_contract_gate, check_diagram_contract_gate
 
 ## What it governs
 
@@ -47,7 +47,7 @@ Markdown files whose fenced blocks are the contract:
 | R5 | An interface connects components that exist, and is external exactly when one end is external | check_design_contract_gate · UNKNOWN_COMPONENT, EXTERNAL_MISMATCH |
 | R6 | Every software requirement is met by a component, and a component meets only requirements that exist | check_design_contract_gate · UNMET_REQUIREMENT, UNKNOWN_REQUIREMENT |
 | R7 | A component names only decision records that exist | check_design_contract_gate · UNKNOWN_DECISION |
-| R8 | Every participant of a sequence diagram is a node of an architecture diagram, so a component | check_design_contract_gate · UNKNOWN_PARTICIPANT |
+| R8 | Every participant of a sequence diagram is a node of an architecture diagram, so a component; the diagrams hold it from stage 1 (draw_diagram_skill R17) | check_diagram_contract_gate · UNKNOWN_PARTICIPANT |
 | R9 | A mode moves only to modes of the same component | check_design_contract_gate · UNKNOWN_MODE |
 | R10 | Responsibilities do not overlap, trust boundaries and cross-cutting concerns are covered, budgets are realistic | Checkpoint 4 |
 

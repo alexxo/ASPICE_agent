@@ -2,11 +2,11 @@
 
 The ```yaml component and ```yaml interface blocks under paths.architecture_dir
 follow their contracts; every node of an architecture diagram is one component
-and every edge one interface; every participant of a sequence diagram is a
-component; interfaces connect components that exist and are external exactly
-when one end is; every mode transition names a mode of its component; every
-software requirement is met by a component; and components name only
-requirements and decisions that exist.
+and every edge one interface (every participant of a sequence diagram is such a
+node: check_diagram_contract_gate, from stage 1); interfaces connect components
+that exist and are external exactly when one end is; every mode transition
+names a mode of its component; every software requirement is met by a
+component; and components name only requirements and decisions that exist.
 
     python gates/swe/check_design_contract_gate.py [--root PRODUCT]
 """
@@ -81,7 +81,6 @@ def check(config: ProductConfig) -> list[Finding]:
         ]
     findings += _ids(records)
     findings += _diagrams(config, records)
-    findings += _participants(config)
     findings += _interfaces(records)
     findings += _modes(records)
     findings += _requirements(config, records)
@@ -143,40 +142,6 @@ def _diagrams(config, records) -> list[Finding]:
                 "UNCOVERED_EDGE", folder, None, f"Edge {ref} is no interface of the architecture."
             )
         )
-    return findings
-
-
-def _participants(config) -> list[Finding]:
-    """A participant must be a node of an architecture diagram; UNCOVERED_NODE
-    already makes every such node a component, so a missing component is one
-    finding, not two."""
-    diagrams = [
-        (path, r.diagram)
-        for path, r in read_archify_diagrams(config.diagrams_dir, config.root)
-        if r.diagram is not None
-    ]
-    nodes = {
-        e["id"]
-        for _path, d in diagrams
-        if d["type"] == "architecture"
-        for e in d["elements"]
-        if e["kind"] == "node"
-    }
-    findings = []
-    for path, diagram in diagrams:
-        if diagram["type"] != "sequence":
-            continue
-        for element in diagram["elements"]:
-            if element["kind"] == "node" and element["id"] not in nodes:
-                findings.append(
-                    Finding(
-                        "UNKNOWN_PARTICIPANT",
-                        config.relative(path),
-                        element.get("line"),
-                        f"Participant {diagram['diagram']}#{element['id']} is no node of an "
-                        "architecture diagram, so no component.",
-                    )
-                )
     return findings
 
 

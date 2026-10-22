@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-22
+
+A sequence participant that is no part of the architecture diagram is found at stage 1, before the architect approves the diagrams.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Name every participant of a sequence diagram as the architecture diagram names that part, then approve the diagrams again at checkpoint 1 and the requirements at checkpoint 2 (§ 5 stages 1 and 2, rule 25) | the product's diagrams, only where *check_diagram_contract_gate* reports UNKNOWN_PARTICIPANT | required: stage 1 is a finished stage, so its finding fails CI |
+
+### Changed
+
+- **The participant check moved to stage 1.** *check_diagram_contract_gate* reports UNKNOWN_PARTICIPANT for a sequence participant that is no node of an architecture diagram, once one exists; *check_design_contract_gate* no longer checks it, so one mismatch is one finding. Before, the check waited for the first component, two stages after the diagrams were approved. `draw_diagram_skill` R17, `write_design_skill` R8; design document § 5 stages 1 and 2, rules 20 and 26. Origin: FB-38 (wp_publisher).
+
 ## [2.1.2] - 2026-10-21
 
 The organization owner approves the reviewer agent's token against the permissions it really asks for.

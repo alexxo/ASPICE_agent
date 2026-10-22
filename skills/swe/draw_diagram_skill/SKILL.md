@@ -39,7 +39,10 @@ The diagrams are drawn at two levels, set by their type:
 
 Each level is a source of requirements of its own level at SWE.1, and a step is
 derived once, at the level that details it. Draw a step in detail in the
-sequence diagram, not again in the picture.
+sequence diagram, not again in the picture. A part the architecture diagram
+draws is the same part in every sequence diagram, with the same ID (*auth-service*
+in both, not *auth* in one and *auth-service* in the other): each
+node becomes one component at stage 3, and every participant must be one.
 
 ## Contract
 
@@ -76,6 +79,7 @@ hyphens (*login.sequence.json* → *login*). An element is referenced as
 | R14 | The picture stays a picture: the parts and the main hand-overs, the steps in the sequence diagrams | Checkpoint 1 |
 | R15 | Every diagram keeps its picture, committed with the diagram's last change or after it | check_diagram_contract_gate · MISSING_PICTURE, PICTURE_OUTDATED |
 | R16 | The architect reviews the diagrams on their pictures; the approval covers the pictures with the diagrams | verify_diagram_approval_gate · APPROVAL_OUTDATED |
+| R17 | Once there is an architecture diagram, every participant of a sequence diagram is one of its nodes, named as it names that part | check_diagram_contract_gate · UNKNOWN_PARTICIPANT |
 
 ## Not checkable
 

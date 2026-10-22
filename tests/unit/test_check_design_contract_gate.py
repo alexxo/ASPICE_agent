@@ -1,8 +1,6 @@
 """gates/swe/check_design_contract_gate.py — the architecture follows diagram and requirements."""
 
-import copy
-
-from product_builder import ARCHITECTURE, SEQUENCE, STACK, architecture_doc, build_product
+from product_builder import STACK, architecture_doc, build_product
 
 from gates.swe.check_design_contract_gate import GATE, check
 from tools.read_product_config_tool import read_product_config
@@ -104,19 +102,6 @@ def test_meeting_an_unknown_requirement_is_reported(tmp_path):
 def test_naming_an_unknown_decision_is_reported(tmp_path):
     root = _arch(tmp_path, lambda d: _component(d, "web-app").update(decisions=["ADR-0042"]))
     assert _rules(root) == ["UNKNOWN_DECISION"]
-
-
-def test_a_sequence_participant_that_is_no_component_is_reported(tmp_path):
-    sequence = copy.deepcopy(SEQUENCE)
-    sequence["participants"].append({"id": "cache", "type": "database", "label": "Cache"})
-    root = build_product(
-        tmp_path,
-        diagrams={"auth-flow.architecture.json": ARCHITECTURE, "login.sequence.json": sequence},
-        architecture=architecture_doc(),
-        stack=STACK,
-        git=False,
-    )
-    assert _rules(root) == ["UNKNOWN_PARTICIPANT"]
 
 
 def test_a_component_without_modes_is_reported(tmp_path):

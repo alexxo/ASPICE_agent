@@ -4,7 +4,10 @@ Every diagram is read through its adapter, whose problems are passed on as they
 are (an element without an ID or label, an endpoint missing, an ID used twice, an
 unreadable file or invariants file). On what was read: every edge and message
 connects nodes that exist, every node takes part in a flow, and every invariant
-names only elements that exist. The diagrams hold both levels: at least one
+names only elements that exist. Once there is an architecture diagram, every
+participant of a sequence diagram is one of its nodes, so the components
+derived at stage 3 can play every part of every flow (§ 5 stages 1 and 2, rule
+26). The diagrams hold both levels: at least one
 system-level diagram (architecture, workflow, dataflow, lifecycle), the picture
 at a glance, and at least one sequence diagram, the software level in detail.
 Every diagram keeps its picture, the page the diagram plugin renders from it
@@ -57,6 +60,7 @@ def check(config: ProductConfig) -> list[Finding]:
         if not result.problems:  # an incomplete diagram would make its neighbours look orphaned
             findings.extend(_connected(result.diagram))
         findings.extend(_invariants(config, path, result.diagram))
+    findings.extend(_participants(config, results))
     return findings
 
 
@@ -178,6 +182,38 @@ def _connected(diagram: dict) -> list[Finding]:
                     "message; connect it, or remove it if it does not belong to the flow.",
                 )
             )
+    return findings
+
+
+def _participants(config: ProductConfig, results) -> list[Finding]:
+    """A participant must be a node of an architecture diagram, once there is one: a
+    product whose picture is a workflow alone draws its architecture at stage 3."""
+    diagrams = [(path, r.diagram) for path, r in results if r.diagram is not None]
+    nodes = {
+        e["id"]
+        for _path, d in diagrams
+        if d["type"] == "architecture"
+        for e in d["elements"]
+        if e["kind"] == "node"
+    }
+    if not nodes:
+        return []
+    findings = []
+    for path, diagram in diagrams:
+        if diagram["type"] != "sequence":
+            continue
+        for element in diagram["elements"]:
+            if element["kind"] == "node" and element["id"] not in nodes:
+                findings.append(
+                    Finding(
+                        "UNKNOWN_PARTICIPANT",
+                        config.relative(path),
+                        element.get("line"),
+                        f"Participant {diagram['diagram']}#{element['id']} is no node of an "
+                        "architecture diagram; name it as the architecture diagram names "
+                        "that part.",
+                    )
+                )
     return findings
 
 
