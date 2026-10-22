@@ -607,15 +607,21 @@ def record_stages_done(root: Path, *stage_ids: str) -> None:
         (folder / name).write_text(yaml.safe_dump(record, sort_keys=False))
 
 
-def commit_all(root: Path, message: str) -> None:
-    """Make root a git repository (if needed) and commit everything in it."""
+def commit_all(root: Path, message: str, env: dict[str, str] | None = None) -> None:
+    """Make root a git repository (if needed) and commit everything in it; env sets
+    e.g. GIT_AUTHOR_DATE and GIT_COMMITTER_DATE."""
+    import os
     import subprocess
 
     run = ["git", "-C", str(root), "-c", "user.name=test", "-c", "user.email=test@example.org"]
     if not (Path(root) / ".git").exists():
         subprocess.run(["git", "init", "-q", str(root)], check=True)
     subprocess.run([*run, "add", "-A"], check=True)
-    subprocess.run([*run, "commit", "-q", "--allow-empty", "-m", message], check=True)
+    subprocess.run(
+        [*run, "commit", "-q", "--allow-empty", "-m", message],
+        check=True,
+        env={**os.environ, **env} if env else None,
+    )
 
 
 def _write_architecture(root: Path, architecture, stack, decisions) -> None:

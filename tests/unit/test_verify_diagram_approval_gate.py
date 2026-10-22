@@ -55,6 +55,28 @@ def test_an_approval_given_after_the_requirements_is_reported(product):
     assert _rules(product) == ["APPROVED_TOO_LATE"]
 
 
+def test_corrected_diagrams_approved_again_pass(product):
+    """Rule 25: the first approval came before the requirements; a later one covers the fix."""
+    _approve(product)
+    spec = product / "docs/diagrams/login.sequence.json"
+    spec.write_text(spec.read_text().replace("submit", "send"))
+    commit_all(product, "correct the diagram")
+    _approve(product, when=datetime.now(timezone.utc) + timedelta(days=1))
+    assert _rules(product) == []
+
+
+def test_a_rebase_does_not_move_the_requirements_later(product):
+    """The author date counts: a rebase rewrites only the committer date."""
+    (product / "docs/requirements/early.md").write_text("# Early\n")
+    dates = {
+        "GIT_AUTHOR_DATE": "2025-06-01T09:00:00Z",
+        "GIT_COMMITTER_DATE": "2027-01-01T09:00:00Z",
+    }
+    commit_all(product, "requirements derived early, rebased late", env=dates)
+    _approve(product)
+    assert _rules(product) == ["APPROVED_TOO_LATE"]
+
+
 def test_uncommitted_requirements_count_as_derived_now(product):
     _approve(product)
     (product / "docs/requirements/more.md").write_text("# More\n")

@@ -2,8 +2,9 @@
 
 While no component is designed, nothing has to be approved yet. Once the
 architecture files exist, the latest checkpoint-3 decision must approve the
-current stack and its decision record, dated before the first architecture file
-appeared (from git history).
+current stack and its decision record, and the first approval at checkpoint 3
+must be dated before the first architecture file appeared (from git history): a
+changed stack is approved again.
 
     python gates/swe/verify_stack_approval_gate.py [--root PRODUCT]
 """

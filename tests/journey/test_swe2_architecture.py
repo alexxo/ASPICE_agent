@@ -8,6 +8,9 @@ its checkpoint inside it: the stack is written and approved at checkpoint 3
 before any component is designed.
 
 - the stack is approved, the design passes the gates, and the product moves on.
+- a diagram corrected after the design is approved again at checkpoint 1, the
+  requirements again at checkpoint 2, and the product resumes where it was
+  (§ 5 stages 1 and 2, rule 25; FB-39).
 
 Each rule a step could break is its gate's unit tests' to prove, and the
 resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
@@ -16,7 +19,7 @@ resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 import shutil
 from datetime import datetime, timezone
 
-from product_builder import commit_all
+from product_builder import commit_all, write_picture
 
 from agent.count_retries_tool import decide, record_attempt
 from agent.load_skills_tool import load_skills
@@ -102,4 +105,32 @@ def test_an_approved_stack_and_a_passing_design_move_the_product_on(repo_root, p
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("detailed_design", "in_progress")
     assert [f["rule"] for f in state["reported"]] == ["NO_DETAILED_DESIGN"]
+    assert state["done"] == ["diagram", "requirements", "architecture"]
+
+
+def test_a_corrected_diagram_is_approved_again_and_the_product_resumes(repo_root, product):
+    _stack_approved(repo_root, product)
+    assert _attempts(repo_root, product, ["correct"])["decision"] == "pass"
+    commit_all(product, "architecture designed")
+    record_stage_done(product, "architecture")
+
+    spec = product / "docs/diagrams/login.sequence.json"
+    spec.write_text(spec.read_text().replace("session opened", "session started"))
+    write_picture(spec)
+    commit_all(product, "the architect corrects the diagram")
+    state = resolve_stage(product)
+    assert (state["stage"], state["status"]) == ("diagram", "gates_failing")
+    assert [f["rule"] for f in state["findings"]] == ["APPROVAL_OUTDATED"]
+
+    record_checkpoint(product, 1, "approved", "Example Architect", "architect")
+    render_review(product)
+    commit_all(product, "diagrams approved again at checkpoint 1")
+    state = resolve_stage(product)
+    assert (state["stage"], state["status"]) == ("requirements", "gates_failing")
+    assert [f["rule"] for f in state["findings"]] == ["APPROVAL_OUTDATED"]  # not APPROVED_TOO_LATE
+
+    record_checkpoint(product, 2, "approved", "Example Architect", "architect")
+    commit_all(product, "requirements approved again at checkpoint 2")
+    state = resolve_stage(product)
+    assert (state["stage"], state["status"]) == ("detailed_design", "in_progress")
     assert state["done"] == ["diagram", "requirements", "architecture"]

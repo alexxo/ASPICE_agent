@@ -3,8 +3,9 @@
 While no design work exists, nothing has to be approved yet. Once the stack,
 an architecture file or a detailed-design file exists, the latest checkpoint-2
 decision must approve the current requirements, glossary and the diagrams they
-are derived from, dated before the first of those files appeared (from git
-history): a changed diagram withdraws the approval.
+are derived from, and the first approval at checkpoint 2 must be dated before
+the first of those files appeared (from git history): a changed diagram
+withdraws the approval, and approving again restores it.
 
 Once requirements exist, the person reviews them on the review page: it must
 exist, and while no current approval covers it, match what

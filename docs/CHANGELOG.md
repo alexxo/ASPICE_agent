@@ -35,6 +35,15 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-10-22
+
+A corrected diagram, set of requirements or stack can be approved again.
+
+### Fixed
+
+- **A re-approval is no longer "too late".** The approval gates of checkpoints 1, 2 and 3 compared the latest approval with the first commit of the work derived from it, so once that work existed no approval could pass again, and rule 25's way back through checkpoint 1 and the v2.2.0 migration could not be completed. The order is now checked against the first approval at the checkpoint; a later one needs only to cover the current content. `tools/check_approval_order_tool.py`; design document § 5 stages 1 and 2, rule 25; Appendix A.2. Origin: FB-39 (wp_publisher).
+- **A rebase no longer moves derived work later.** The order reads the commit's author date, which a rebase, amend or cherry-pick keeps, instead of the committer date, which they rewrite. Origin: found verifying FB-39.
+
 ## [2.2.0] - 2026-10-22
 
 A sequence participant that is no part of the architecture diagram is found at stage 1, before the architect approves the diagrams.
