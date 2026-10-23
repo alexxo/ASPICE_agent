@@ -4,12 +4,13 @@ Every diagram is read through its adapter, whose problems are passed on as they
 are (an element without an ID or label, an endpoint missing, an ID used twice, an
 unreadable file or invariants file). On what was read: every edge and message
 connects nodes that exist, every node takes part in a flow, and every invariant
-names only elements that exist. Once there is an architecture diagram, every
-participant of a sequence diagram is one of its nodes, so the components
-derived at stage 3 can play every part of every flow (§ 5 stages 1 and 2, rule
-26). The diagrams hold both levels: at least one
-system-level diagram (architecture, workflow, dataflow, lifecycle), the picture
-at a glance, and at least one sequence diagram, the software level in detail.
+names only elements that exist. Every participant of a sequence diagram is a
+node of an architecture diagram, so the components derived from those nodes at
+stage 3 can play every part of every flow (§ 5 stages 1 and 2, rule 26). The
+diagrams hold both levels: at least one architecture diagram, the system-level
+picture at a glance whose nodes become the components (a workflow, dataflow or
+lifecycle diagram may stand beside it), and at least one sequence diagram, the
+software level in detail.
 Every diagram keeps its picture, the page the diagram plugin renders from it
 (<id>.<type>.html next to <id>.<type>.json), committed with the diagram's last
 change or after it: git's order of commits is the check, so CI needs no plugin
@@ -77,15 +78,14 @@ def _levels(config: ProductConfig, results) -> list[Finding]:
                 "software-level requirements are derived from it.",
             )
         )
-    if not types - {"sequence", None}:
+    if "architecture" not in types:
         findings.append(
             Finding(
-                "NO_SYSTEM_DIAGRAM",
+                "NO_ARCHITECTURE_DIAGRAM",
                 config.relative(config.diagrams_dir),
                 None,
-                "No system-level diagram found (architecture, workflow, dataflow or "
-                "lifecycle); it shows the system at a glance, and the system-level "
-                "requirements are derived from it.",
+                "No architecture diagram found; its nodes become the components at stage 3, "
+                "and every sequence participant must be one of them.",
             )
         )
     return findings
@@ -186,8 +186,8 @@ def _connected(diagram: dict) -> list[Finding]:
 
 
 def _participants(config: ProductConfig, results) -> list[Finding]:
-    """A participant must be a node of an architecture diagram, once there is one: a
-    product whose picture is a workflow alone draws its architecture at stage 3."""
+    """A participant must be a node of an architecture diagram; without one,
+    NO_ARCHITECTURE_DIAGRAM is the one finding, not one per participant."""
     diagrams = [(path, r.diagram) for path, r in results if r.diagram is not None]
     nodes = {
         e["id"]

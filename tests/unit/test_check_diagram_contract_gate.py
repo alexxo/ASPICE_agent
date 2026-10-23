@@ -102,12 +102,27 @@ def test_a_sequence_participant_that_is_no_architecture_node_is_reported(tmp_pat
     assert "login#cache" in finding.message
 
 
-def test_without_an_architecture_diagram_participants_are_not_compared(tmp_path):
+def _workflow():
     workflow = copy.deepcopy(ARCHITECTURE)
     workflow["diagram_type"] = "workflow"
     workflow["nodes"], workflow["edges"] = workflow.pop("components"), workflow.pop("connections")
-    root = _with_participant(tmp_path, {"auth-flow.workflow.json": workflow})
-    assert "UNKNOWN_PARTICIPANT" not in _rules(root)
+    return workflow
+
+
+def test_a_workflow_does_not_replace_the_architecture_diagram(tmp_path):
+    """Its participants are not reported one by one: the missing diagram is the finding."""
+    root = _with_participant(tmp_path, {"auth-flow.workflow.json": _workflow()})
+    assert _rules(root) == ["NO_ARCHITECTURE_DIAGRAM"]
+
+
+def test_a_workflow_beside_the_architecture_diagram_passes(tmp_path):
+    diagrams = {
+        "auth-flow.architecture.json": ARCHITECTURE,
+        "sign-in.workflow.json": _workflow(),
+        "login.sequence.json": SEQUENCE,
+    }
+    root = build_product(tmp_path, diagrams=diagrams, invariants={}, git=False)
+    assert _rules(root) == []
 
 
 def test_diagrams_without_a_sequence_diagram_are_reported(tmp_path):
@@ -116,9 +131,9 @@ def test_diagrams_without_a_sequence_diagram_are_reported(tmp_path):
     assert _rules(root) == ["NO_SEQUENCE_DIAGRAM"]
 
 
-def test_diagrams_without_a_system_level_diagram_are_reported(tmp_path):
+def test_diagrams_without_an_architecture_diagram_are_reported(tmp_path):
     root = build_product(tmp_path, diagrams={"login.sequence.json": SEQUENCE}, git=False)
-    assert _rules(root) == ["NO_SYSTEM_DIAGRAM"]
+    assert _rules(root) == ["NO_ARCHITECTURE_DIAGRAM"]
 
 
 def test_an_unreadable_diagram_still_counts_for_its_level(tmp_path):

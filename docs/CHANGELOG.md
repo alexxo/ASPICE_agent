@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-23
+
+Stage 1 requires an architecture diagram: the parts that become the components are approved with the diagrams.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Draw an architecture diagram whose nodes are the parts the sequence diagrams name, render and commit its picture, then approve the diagrams again at checkpoint 1 and the requirements at checkpoint 2 (§ 5 stages 1 and 2, rule 25) | the product's diagrams, only where *check_diagram_contract_gate* reports NO_ARCHITECTURE_DIAGRAM | required: stage 1 is a finished stage, so its finding fails CI |
+
+### Changed
+
+- **An architecture diagram is required at stage 1.** *check_diagram_contract_gate* reports NO_ARCHITECTURE_DIAGRAM, which replaces NO_SYSTEM_DIAGRAM: a workflow, dataflow or lifecycle diagram may stand beside the architecture diagram, no longer instead of it. The participant check (UNKNOWN_PARTICIPANT) therefore always has its reference. Before, a product could pass stages 1 and 2 with a workflow alone and meet the missing architecture diagram at stage 3, two checkpoints late. `draw_diagram_skill` R12, R17; design document § 5 stages 1 and 2, rules 17, 18 and 26; Appendix A.2. Origin: found verifying FB-38.
+
 ## [2.2.2] - 2026-10-23
 
 A pull request that moves the framework pin needs a person's approval again.

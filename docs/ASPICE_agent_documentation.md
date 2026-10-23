@@ -446,7 +446,10 @@ The foreman (ASPICE Agent) hands the village wishes (wishes *W-01*, …) to the
 drawing studio (plugin Archify) together with the rulebook for drawings
 (framework skill *draw_diagram_skill*). The studio draws two kinds of drawing.
 The big plan (system-level diagram) shows the whole village at a glance: its
-pillars and how they carry each other. For every feature, a load drawing
+pillars and how they carry each other. One big plan always draws the pillars
+themselves (architecture diagram), since each becomes a big piece at step 3
+[NO_ARCHITECTURE_DIAGRAM]; a plan of the work's order (workflow) may hang
+beside it, never instead. For every feature, a load drawing
 (sequence diagram) shows each step in detail. The studio staples two sheets to
 every drawing: the rules sheet (invariants file, *INV-1*, …) and the wish-links
 sheet (diagram-wishes file), naming the village wish every pillar (node) and
@@ -2517,13 +2520,16 @@ requirements).
 17. **Two levels of diagram.** A stage 1 diagram is at one of two levels, set
     by its type. A **system-level** diagram (architecture, workflow, dataflow,
     lifecycle) is the picture people read at a glance: the parts and how they
-    hand over to each other. A **software-level** diagram is a sequence
+    hand over to each other; the architecture diagram is always one of them
+    (rule 18). A **software-level** diagram is a sequence
     diagram, one per feature: its steps in detail. Each level is a source of
     requirements of its own level (SWE.1 BP1), and a step is derived once, at
     the level that details it.
 18. **Every feature reaches the software level.** Stage 1 has at least one
-    system-level diagram and at least one sequence diagram (NO_SYSTEM_DIAGRAM,
-    NO_SEQUENCE_DIAGRAM), and every behaviour wish is realised by an element
+    architecture diagram — the system-level picture whose nodes become the
+    components at stage 3; a workflow, dataflow or lifecycle diagram may stand
+    beside it, not replace it — and at least one sequence diagram
+    (NO_ARCHITECTURE_DIAGRAM, NO_SEQUENCE_DIAGRAM), and every behaviour wish is realised by an element
     of a sequence diagram (WISH_NOT_IN_SEQUENCE). So every
     feature has a source for its software-level requirements, its
     observability requirement (rule 1) and its flows (*@flow*), and every
@@ -2584,15 +2590,14 @@ requirements).
     needs only an approval of its current content. The derived work's
     moment is its first commit's author date, which a rebase, amend or
     cherry-pick keeps.
-26. **A participant is a part of the architecture diagram.** Once there is an
-    architecture diagram, every participant of a sequence diagram is one of
-    its nodes, under the same ID (*check_diagram_contract_gate*,
-    UNKNOWN_PARTICIPANT). Every node becomes one component at stage 3, and
-    every participant must be one; checked at stage 1, a part named twice is
-    found before checkpoint 1, not after the components are written. A
-    product whose system-level picture is a workflow, dataflow or lifecycle
-    alone has no architecture diagram yet: its participants are compared
-    once one is drawn.
+26. **A participant is a part of the architecture diagram.** Every
+    participant of a sequence diagram is a node of an architecture diagram,
+    under the same ID (*check_diagram_contract_gate*, UNKNOWN_PARTICIPANT).
+    Every node becomes one component at stage 3, and every participant must
+    be one; checked at stage 1, a part named twice is found before
+    checkpoint 1, not after the components are written. Without an
+    architecture diagram the finding is NO_ARCHITECTURE_DIAGRAM alone, not
+    one per participant.
 
 #### Architecture stage — stage 3
 
@@ -3732,6 +3737,30 @@ label together.
   derived before the approval once it is touched again; the commit graph
   instead of dates, which a squash merge folds into one commit.
   → § 5 stages 1 and 2, rule 25.
+- **The architecture diagram at stage 1** (2026-10-23, following the
+  product team's FB-38). The purpose: **the parts that become the
+  components at stage 3 are on the diagrams the architect approves at
+  checkpoint 1**, so the sequence participants, the requirements and the
+  components name the same parts from the start. Any system-level picture
+  used to do at stage 1; stage 3 then found the architecture diagram
+  missing, two checkpoints late. S1–S3 rated as they were; S4–S6 the cost
+  of requiring the diagram. The architect rated S1's occurrence 7: agents
+  draw one picture.
+
+  | # | Scenario | O | S | D | Risk | Decision | Residual |
+  |---|---|---|---|---|---|---|---|
+  | S1 | The architecture diagram is first drawn at stage 3: the approved diagrams change, checkpoints 1 and 2 again | 7 | 6 | 5 | 210 | Required at stage 1 (NO_ARCHITECTURE_DIAGRAM) | low |
+  | S5 | A workflow beside the architecture diagram draws the same hand-over twice, doubling system-level requirements | 5 | 5 | 5 | 125 | Accepted: rule 20 and checkpoint 1 keep each picture to its own hand-overs | 125 |
+  | S2 | Participants named with no architecture diagram to compare against, found at stage 3 | 4 | 6 | 5 | 120 | Closed with S1: the participant check always has its reference | low |
+  | S3 | The architecture's nodes bring new system-level requirements late | 5 | 5 | 4 | 100 | Closed with S1 | low |
+  | S4 | A product of one part draws a one-node diagram to pass | 3 | 2 | 1 | 6 | Accepted | 6 |
+  | S6 | A product past stage 1 without an architecture diagram turns red | 1 | 6 | 1 | 6 | Accepted: a required migration | 6 |
+
+  *Not taken:* keeping any system-level picture enough and leaving S1 to
+  stage 3, recoverable since rule 25 works (FB-39) — rejected once S1 was
+  rated high; the architecture diagram derived from the workflow, which
+  needs a generator the diagram plugin does not have.
+  → § 5 stages 1 and 2, rules 17, 18 and 26.
 
 ### A.3 Architecture stage — stage 3
 

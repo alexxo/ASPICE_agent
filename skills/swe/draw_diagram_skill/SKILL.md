@@ -31,9 +31,12 @@ rules ask for.
 
 The diagrams are drawn at two levels, set by their type:
 
-- **System level** — an *architecture*, *workflow*, *dataflow* or *lifecycle*
-  diagram: the picture people read at a glance, the parts and how they hand
-  over to each other. Keep it a picture: the main hand-overs, not every step.
+- **System level** — an *architecture* diagram, always: the picture people
+  read at a glance, the parts and how they hand over to each other; its nodes
+  become the components at stage 3. A *workflow*, *dataflow* or *lifecycle*
+  diagram may stand beside it for what the parts do in order, never instead of
+  it, and never drawing the same hand-over again. Keep it a picture: the main
+  hand-overs, not every step.
 - **Software level** — a *sequence* diagram, one per feature: its steps in
   detail, message by message.
 
@@ -74,12 +77,12 @@ hyphens (*login.sequence.json* → *login*). An element is referenced as
 | R9 | Every wish of kind behaviour is realised by an element of some diagram; a constraint need not be | verify_diagram_to_wishes_link_gate · NO_WISHES, UNCOVERED_WISH |
 | R10 | The architect approves the diagrams at checkpoint 1 before any requirement is derived, and the approval covers their current content | verify_diagram_approval_gate · MISSING_APPROVAL, APPROVAL_OUTDATED, APPROVED_TOO_LATE, NOT_A_GIT_REPOSITORY |
 | R11 | Every flow has its error path, and no flow is ambiguous | Checkpoint 1 |
-| R12 | There is at least one system-level diagram and at least one sequence diagram | check_diagram_contract_gate · NO_SYSTEM_DIAGRAM, NO_SEQUENCE_DIAGRAM |
+| R12 | There is at least one architecture diagram and at least one sequence diagram; a workflow, dataflow or lifecycle diagram may stand beside the architecture diagram, not replace it | check_diagram_contract_gate · NO_ARCHITECTURE_DIAGRAM, NO_SEQUENCE_DIAGRAM |
 | R13 | Every wish of kind behaviour is realised by an element of a sequence diagram, so every feature reaches the software level | verify_diagram_to_wishes_link_gate · WISH_NOT_IN_SEQUENCE |
 | R14 | The picture stays a picture: the parts and the main hand-overs, the steps in the sequence diagrams | Checkpoint 1 |
 | R15 | Every diagram keeps its picture, committed with the diagram's last change or after it | check_diagram_contract_gate · MISSING_PICTURE, PICTURE_OUTDATED |
 | R16 | The architect reviews the diagrams on their pictures; the approval covers the pictures with the diagrams | verify_diagram_approval_gate · APPROVAL_OUTDATED |
-| R17 | Once there is an architecture diagram, every participant of a sequence diagram is one of its nodes, named as it names that part | check_diagram_contract_gate · UNKNOWN_PARTICIPANT |
+| R17 | Every participant of a sequence diagram is a node of an architecture diagram, named as it names that part | check_diagram_contract_gate · UNKNOWN_PARTICIPANT |
 
 ## Not checkable
 
