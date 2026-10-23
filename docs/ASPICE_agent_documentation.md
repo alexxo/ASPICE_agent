@@ -2422,7 +2422,9 @@ Its rules, numbered as the code cites them (*decision N of starting a product*):
    Archify fills the diagram slot, the framework plugins the others; one person
    in five sampled, escalation after 30 days), the two CI workflows and the
    framework feedback log copied from *templates/*, a *CODEOWNERS* naming the
-   code owners for the CI file, *.gitmodules* and the architecture folder, and
+   code owners for the CI file, the framework pin (*.framework* and
+   *.gitmodules*), *qf.yaml* and the architecture folder — what
+   *verify_delivery_reviewed_gate* guards — and
    the *.gitignore* lines for *.qf/*, *.agents/*, *.claude/* and *.archify/*
    (the diagram plugin's working folders). No work
    product — wishes, diagrams and requirements are the stages' work — and no
@@ -3141,7 +3143,9 @@ person reviews a sample.
    (MISSING_AGENT_REVIEW), its finding naming the reviewer's session, with
    the items the pull request asks for checked (INCOMPLETE_CHECKLIST),
    and on every pull request that changes the architecture or the gates' own
-   files (the CI file, the framework pin, *qf.yaml*) and every one whose number
+   files (the CI file, the framework pin — the submodule's commit at
+   *paths.framework_dir*, which a version move changes, and *.gitmodules* —
+   and *qf.yaml*) and every one whose number
    is a multiple of N, a person's approval of the current head
    (MISSING_PERSON_APPROVAL). On every push to the main branch, every commit it
    adds came from a merged pull request (MERGED_WITHOUT_PULL_REQUEST) whose

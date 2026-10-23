@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-10-23
+
+A pull request that moves the framework pin needs a person's approval again.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Add `/.framework <owners>` and `/qf.yaml <owners>` next to `/.gitmodules` | the product's `.github/CODEOWNERS` (a code owner's change) | optional: the gate already requires the person; the lines make the host ask the code owners too |
+
+### Fixed
+
+- **Moving the framework pin is sampled.** *verify_delivery_reviewed_gate* guarded `.gitmodules`, which changes only when the submodule is added or its URL moves; a version move changes the submodule's commit at `paths.framework_dir` (`.framework`), so such a pull request merged on the reviewer agent's approval alone. The gate now guards both, and the setup's `CODEOWNERS` names the pin and `qf.yaml` as the gate does. Design document § 5 stage 9; QUICKSTART. Origin: FB-40 (wp_publisher); the `CODEOWNERS` gap found verifying FB-40.
+
 ## [2.2.1] - 2026-10-22
 
 A corrected diagram, set of requirements or stack can be approved again.

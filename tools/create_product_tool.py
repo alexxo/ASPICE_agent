@@ -257,7 +257,9 @@ def create_product(root: Path, args: argparse.Namespace, framework: Path) -> lis
         "# approval (SUP.1 BP1; verify_delivery_reviewed_gate); where the host supports\n"
         "# code owners, it asks them to review.\n"
         f"/{PATHS['ci_file']} {owners}\n"
+        f"/{FRAMEWORK_DIR} {owners}\n"
         f"/.gitmodules {owners}\n"
+        f"/qf.yaml {owners}\n"
         f"/{PATHS['architecture_dir']}/ {owners}\n"
     )
     ignore = root / ".gitignore"

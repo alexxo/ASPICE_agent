@@ -151,7 +151,7 @@ def test_the_ci_files_are_the_templates(product, repo_root):
     assert gates_job(product / ".github/workflows/quality_gates.yml") == "gates"
 
 
-def test_code_owners_guard_the_ci_file_the_pin_and_the_architecture(product):
+def test_code_owners_guard_what_the_delivery_gate_guards(product):
     create_product_tool.main(args(product))
 
     lines = [
@@ -162,7 +162,9 @@ def test_code_owners_guard_the_ci_file_the_pin_and_the_architecture(product):
     owners = ["@lead-ana", "@acme/architects"]
     assert lines == [
         ["/.github/workflows/quality_gates.yml", *owners],
+        ["/.framework", *owners],
         ["/.gitmodules", *owners],
+        ["/qf.yaml", *owners],
         ["/docs/architecture/", *owners],
     ]
 

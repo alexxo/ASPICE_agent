@@ -165,7 +165,7 @@ def test_a_merge_without_its_review_is_caught_on_main(product, tmp_path, monkeyp
 
 
 @pytest.mark.parametrize(
-    "guarded", [".github/workflows/quality_gates.yml", ".gitmodules", "qf.yaml"]
+    "guarded", [".github/workflows/quality_gates.yml", ".framework", ".gitmodules", "qf.yaml"]
 )
 def test_a_change_to_the_gates_own_files_needs_a_person(product, tmp_path, monkeypatch, guarded):
     head = git_head(product)

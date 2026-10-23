@@ -80,7 +80,8 @@ keep the answers for step 5. This file calls them *reviewer*, *developer* and
 
 - **reviewer**: the person who reviews. Approves the pull requests the
   framework samples (every architecture change, every change to the CI file,
-  `.gitmodules` or `qf.yaml`, and one in five of the others), the checkpoints,
+  the framework pin — `.framework` or `.gitmodules` — or `qf.yaml`, and one
+  in five of the others), the checkpoints,
   urgent fixes and change requests.
 - **developer**: works with the agent and opens the pull requests.
 - **reviewer-bot**: the reviewer agent's own GitHub account, which posts the

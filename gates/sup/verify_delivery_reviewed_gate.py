@@ -5,7 +5,8 @@ qf.yaml review.agents, never the author — approves the current head
 (MISSING_AGENT_REVIEW) with every checklist item it asks for checked — logging
 only when it changes code (INCOMPLETE_CHECKLIST).
 Every pull request that changes paths.architecture_dir or the gates' own files
-— the CI file, the framework pin (.gitmodules) and qf.yaml — and every one whose
+— the CI file, the framework pin (the submodule at paths.framework_dir, whose
+commit a version move changes, and .gitmodules) and qf.yaml — and every one whose
 number is a multiple of review.sample_every, also has a person's approval of
 the current head (MISSING_PERSON_APPROVAL): seal 4, the person's review on the
 host, never a file the agent could write (decisions 1, 2 and 7 of the quality
@@ -241,7 +242,8 @@ def sampled(config: ProductConfig, pull: PullRequest) -> str | None:
     architecture = config.relative(config.architecture_dir).rstrip("/") + "/"
     if any(f.startswith(architecture) for f in pull.files):
         return f"changes the architecture ({architecture})"
-    guarded = {config.relative(config.ci_file), ".gitmodules", "qf.yaml"}
+    pin = config.relative(config.framework_dir).rstrip("/")
+    guarded = {config.relative(config.ci_file), pin, ".gitmodules", "qf.yaml"}
     touched = sorted(guarded & set(pull.files))
     if touched:
         return f"changes the gates' own files ({', '.join(touched)})"
