@@ -35,6 +35,25 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-10-24
+
+A person reviews what is important or risky, never a pull request chosen by number, on a review in plain words they answer item by item; a feature arrives in four pull requests.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Replace `sample_every: <N>` with `people: [<login>]`, the accounts CI mentions when a pull request needs a person's review | the product's `qf.yaml`, under `review` | required: `qf.v1` asks for `people` and no longer knows `sample_every` |
+| Set `pull-requests: write` (was `read`) under `permissions`, and add the step *Checkpoint-4 review: post it when a person must review* before *Write the verification report*, as in `templates/github/quality_gates.yml` | the product's CI file (a code owner's change) | required: without the comment, a pull request a person must review waits (REVIEW_ITEMS_UNANSWERED) |
+
+### Changed
+
+- **A person reviews what is important or risky.** *verify_delivery_reviewed_gate* no longer samples 1 in N by pull-request number — blind to risk, and moved by every issue opened, since GitHub numbers issues and pull requests together. *classify_pull_request_tool* decides from the files: a requirement rated criticality high or of kind security at checkpoint 2, reached through the links the files carry (*@sdoc*, else *@unit* → component → *meets*; a detailed design takes its component's); a trust boundary; a file that traces to nothing (it counts as touching every requirement); a test deleted, fewer or switched off, or the plan's coverage minimum or time budget loosened; a finding withdrawn or disputed; the reviewer agent's request, for one of five conditions — it may add a review, never cancel one. No random floor. Architecture pull requests and the gates' own files are reviewed as before. Design document § 5 stage 9, rule 14; Appendix A.8 "The person's review by risk, in plain words". Origin: FB-41 (wp_publisher), points 1 and 5.
+- **The person's review is in plain words, answered item by item.** Once the reviewer agent has approved, CI posts the checkpoint-4 review as a comment mentioning `review.people` (*post_checkpoint_review_tool*): why they are asked, then each changed detailed design, each test with the approved criteria next to the reviewer agent's description of it written from the test alone (*agent/describe_tests_prompt.md*), each weakened test, each dispute and the reviewer agent's request, each with a pair of boxes. The person ticks one per item, then approves or requests changes with the reason; the gate requires every item answered yes (REVIEW_ITEMS_UNANSWERED) and the comment unchanged since the approval (REVIEW_CHANGED_AFTER_APPROVAL). The author agent opens the comment on its computer. Design document § 5 stage 9, rules 13 and 14. Origin: FB-41 (wp_publisher), points 1 and 2.
+- **The reviewer agent's approval carries its review record.** *post_review_tool --record* writes a *```yaml review* block (*review.v1*): whether it asks for a person, every finding's outcome, and the tests described for the person; an approval without it, or without a reviewed test's description, is INCOMPLETE_CHECKLIST. `agent/run_reviewer_agent.md`, `derive_review_plugin`, `review_code_skill` R12–R14. Origin: FB-41 (wp_publisher).
+- **A feature arrives in four pull requests:** the detailed design; the unit tests with their code; the integration tests; the software tests. Design document § 5 stage 9, rule 15; Appendix A.8 "How big a feature pull request is"; `agent/run_aspice_agent.md`. Origin: FB-41 (wp_publisher), point 4.
+- `create_product_tool` asks for `--person`; `agent/start_product.md` and the QUICKSTART name it.
+
 ## [2.3.2] - 2026-10-24
 
 The author agent merges a pull request on *Ready to merge*; the person merges nothing.
