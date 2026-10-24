@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.5.3] - 2026-10-24
+
+The watcher says what each pull request waits for.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none |
+
+### Changed
+
+- **One line per change of a pull request's state.** `tools/watch_reviews_tool.py` no longer stays silent while CI runs or is red: it writes *waits for CI (gates running)*, *gates red (<gates>): the author fixes them, no review yet*, *waits for your review: the link is in the pull request* or *ready to merge; the agent merges*, each once per change, and warns *no crossing sign after 10 min: check that CI runs*. Design document § 5 stage 9, rule 1; QUICKSTART. Origin: internal (review of the watcher with Alex).
+
 ## [2.5.2] - 2026-10-24
 
 The watcher shows that a long review is alive, and stops a stuck one sooner.
