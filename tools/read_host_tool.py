@@ -173,6 +173,8 @@ class Host(Protocol):
     def pull_requests_for_commit(self, repo: str, sha: str) -> list[int]: ...
     def release_tags(self, repo: str) -> dict[str, str]: ...
     def issues(self, repo: str, label: str) -> list[Issue]: ...
+    def open_pull_requests(self, repo: str) -> list[int]: ...
+    def merge_sign(self, repo: str, sha: str) -> str | None: ...
 
 
 class GitHubHost:
@@ -273,6 +275,17 @@ class GitHubHost:
         pulls = self._get(f"/repos/{repo}/commits/{sha}/pulls") or []
         return [p["number"] for p in pulls if p.get("merged_at")]
 
+    def open_pull_requests(self, repo: str) -> list[int]:
+        return [p["number"] for p in self._pages(f"/repos/{repo}/pulls?state=open")]
+
+    def merge_sign(self, repo: str, sha: str) -> str | None:
+        """The description of the commit's crossing sign (qf/merge), if any."""
+        data = self._get(f"/repos/{repo}/commits/{sha}/status") or {}
+        for status in data.get("statuses") or ():
+            if status.get("context") == "qf/merge":
+                return status.get("description")
+        return None
+
     def release_tags(self, repo: str) -> dict[str, str]:
         return {t["name"]: t["commit"]["sha"] for t in self._pages(f"/repos/{repo}/tags")}
 
@@ -366,6 +379,12 @@ class FileHost:
 
     def release_tags(self, repo: str) -> dict[str, str]:
         return dict(self._repo(repo).get("tags", {}))
+
+    def open_pull_requests(self, repo: str) -> list[int]:
+        return [p["number"] for p in self._pulls(repo) if not p.get("merged", False)]
+
+    def merge_sign(self, repo: str, sha: str) -> str | None:
+        return self._repo(repo).get("signs", {}).get(sha)
 
     def issues(self, repo: str, label: str) -> list[Issue]:
         return [

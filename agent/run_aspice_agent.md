@@ -131,14 +131,17 @@ render is refused.
 request, at every stage from the first one on, and its review is not yours.
 Push the branch and open its pull request with the host's tool (e.g.
 `gh pr create`); wait for CI. CI stays red (MISSING_AGENT_REVIEW) until the
-reviewer agent approves the pull request's current head. Ask the person to
-start the reviewer's own session for it: a new session, with the reviewer
-agent's token in its `QF_HOST_TOKEN`, following
-`<framework>/agent/run_reviewer_agent.md` for that pull request. That token is
-never in your session: never read `~/.aspice_agent_reviewer_bot_token`, and
-you never post a review. A finding the reviewer
-requests is fixed in the pull request by the crew of the stage it belongs to;
-after each push, the person starts the review of the new head.
+reviewer agent approves the pull request's current head. The person's
+watcher starts the reviewer on its own, once CI waits for it
+(`<framework>/tools/watch_reviews_tool.py`, which they start once a working
+day in a terminal of their own with the reviewer agent's token). If no review
+comes, ask the person whether the watcher runs, and whether it shows a
+*REVIEW STOPPED* banner for this pull request; without the watcher, they start
+the reviewer's own session by hand, following
+`<framework>/agent/run_reviewer_agent.md`. That token is never in your
+session: never read `~/.aspice_agent_reviewer_bot_token`, and you never post
+a review. A finding the reviewer requests is fixed in the pull request by the
+crew of the stage it belongs to; the watcher reviews the new head.
 
 You merge the pull request, never the person, and only when its
 **qf/merge** check on the current head says *Ready to merge*; while it says

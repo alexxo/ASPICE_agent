@@ -326,13 +326,20 @@ wishes. Tell the person how the work runs from now on:
 - **developer** opens the agent in the product folder and asks it to follow
   `run_aspice_agent.md`.
 - **reviewer-bot**: the reviewer agent posts its reviews from this account,
-  in a session of its own, never the developer's. For every pull request the
-  agent asks for it, the developer opens a second session in the product
-  folder, loads the token there only —
+  in a session of its own, never the developer's. Once a working day, the
+  developer starts the watcher in a second terminal in the product folder,
+  with the token loaded there only —
   `export QF_HOST_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)"`
-  (PowerShell: `$env:QF_HOST_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"`)
-  — and asks it to follow `.framework/agent/run_reviewer_agent.md` for that
-  pull request.
+  (PowerShell: `$env:QF_HOST_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"`),
+  then `python .framework/tools/watch_reviews_tool.py --root .` — and leaves
+  it running. It starts a fresh reviewer session for every new pull request
+  head that waits for the reviewer, one at a time, each once, and writes one
+  line per review. When a review stops, it shows a banner, impossible to
+  miss: **REVIEW STOPPED**, why, what to do, and the log; fix the cause, then
+  type `R` and Enter to review that head again. Ctrl+C ends it with the day's
+  summary. Without the watcher, the developer starts the reviewer by hand: a
+  second session with the token, asked to follow
+  `.framework/agent/run_reviewer_agent.md` for that pull request.
 - **reviewer** reviews the pull requests that need a person: CI posts the
   review in plain words as a comment and mentions them, and the agent opens
   it on its computer. They tick one box per item, then **Review changes →

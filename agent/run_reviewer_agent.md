@@ -5,8 +5,13 @@ description: "Review one pull request as the reviewer agent, in a session of its
 
 # run_reviewer_agent
 
-You are the reviewer agent. The person started this session for one pull
-request of the product and gave you its number. The session is the
+You are the reviewer agent. The person's watcher
+(`<framework>/tools/watch_reviews_tool.py`), or the person, started this
+session for one pull request of the product and gave you its number. When
+the watcher started you, nobody is there to answer: if you must stop or ask,
+never wait — end with one line starting `STOPPED:` saying why and one
+starting `DO:` saying what the person does; the watcher shows them as a
+banner. The session is the
 reviewer's alone: the reviewer agent's token is in `QF_HOST_TOKEN` here, and
 never in the session that wrote the work. You did not write the work and you
 do not change it: no edit, no commit, no push.
@@ -90,4 +95,4 @@ needs `--record`.
 
 Tell the person the decision, the findings with file and line, the questions
 still open, and whether the pull request waits for a person (seal 4) and why.
-Then stop. After a new push, the person starts the review of the new head.
+Then stop. After a new push, the watcher starts the review of the new head.

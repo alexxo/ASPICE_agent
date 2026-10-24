@@ -208,8 +208,9 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
                 ".",
                 None,
                 f"{where} has no approval of its head {pull.head[:7]} from a reviewer agent "
-                f"({', '.join(sorted(agents))}) other than its author: start the reviewer "
-                "agent's own session for it (agent/run_reviewer_agent.md).",
+                f"({', '.join(sorted(agents))}) other than its author: the person's watcher "
+                "starts the reviewer agent (tools/watch_reviews_tool.py), or the person starts "
+                "its own session for it (agent/run_reviewer_agent.md).",
             )
         )
     elif not any(_complete(r.body, items) for r in by_agent):

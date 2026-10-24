@@ -2184,6 +2184,7 @@ and format).
 | *tools/post_merge_status_tool.py* | The crossing sign: the commit status *qf/merge* on a pull request's head — wait, with what is missing, or ready to merge — posted by CI from the gates' result |
 | *tools/post_review_tool.py* | The reviewer agent's review of the current head, with the checklist in its fixed form: the items the pull request asks for, logging only with code, and the review record (*--record*, *review.v1*) |
 | *tools/post_checkpoint_review_tool.py* | The checkpoint-4 review in plain words, posted by CI on a pull request a person must review: why they are asked, each item with a pair of boxes; rewritten only when the head or the items change (§ 5 stage 9, rule 14) |
+| *tools/watch_reviews_tool.py* | The watcher the person starts once a working day with the reviewer agent's token: a fresh reviewer session for every new head that waits for it, each once; a stopped review shown as a banner (§ 5 stage 9, rule 1) |
 | *gates/sup/verify_framework_integrity_gate.py* | Always-on, from the quality assurance stage: the framework a pinned submodule, unchanged, at a released commit |
 | *gates/sup/verify_required_checks_gate.py* | Always-on, from the quality assurance stage: the CI file runs the gates |
 | *gates/sup/scan_security_gate.py* | Quality assurance stage: both scanners ran, no critical or high finding (principle #29) |
@@ -3098,8 +3099,20 @@ and a person reviews the important or risky ones (rule 14).
 
 1. **The reviewer agent reviews every pull request, in a session of its
    own.** From the first pull request on, at every stage, the agent opens the
-   pull request and the person starts the reviewer's own session on their
-   machine (*agent/run_reviewer_agent.md*): the only session that holds the
+   pull request and the person's watcher starts the reviewer's own session on
+   their machine (*agent/run_reviewer_agent.md*). The watcher,
+   *watch_reviews_tool*, runs in a terminal of the person's own, started once
+   a working day with the reviewer agent's token: for every head of the
+   product's open pull requests whose crossing sign waits for the reviewer
+   agent and that it has not reviewed, it starts one fresh session, one at a
+   time, each head once, with the reviewer's tools only — reading, the host,
+   the framework's own commands, its record's folder; no edit of the work, no
+   commit, no push. A session that ends without a review is shown as a
+   banner — *REVIEW STOPPED*, why, what to do, the log under *.qf/reviews/* —
+   red where the terminal shows colour, with a desktop notification where the
+   system has one; the head is reviewed again only when the person types *R*.
+   Without the watcher, the person starts the session by hand. The session is
+   the only one that holds the
    reviewer agent's token, a token for the product's repository that can
    review and read CI (pull requests, contents, commit statuses, actions),
    and not push. Like an SSH key, the token lives in the person's home
@@ -3198,8 +3211,9 @@ and a person reviews the important or risky ones (rule 14).
 11. **Names.** The slot *review_pull_request_plugin* and its method
     *derive_review_plugin*; the rulebooks *review_code_skill*,
     *report_framework_feedback_skill* and *track_nonconformances_skill*; the
-    tools *read_host_tool*, *post_review_tool*, *classify_pull_request_tool*
-    and *post_checkpoint_review_tool*; the contract *review.v1* and its
+    tools *read_host_tool*, *post_review_tool*, *classify_pull_request_tool*,
+    *post_checkpoint_review_tool* and *watch_reviews_tool*, with its logs
+    *.qf/reviews/&lt;n&gt;-&lt;sha&gt;.log*; the contract *review.v1* and its
     *```yaml review* block; the prompt *agent/describe_tests_prompt.md*; the
     *qf.v1* fields *framework_dir*, *ci_file*, *framework_feedback_file*,
     *review.agents*, *review.people*; the *stack.v2* areas *secrets_scanner* and
@@ -4350,6 +4364,25 @@ label together.
   does not grow with the number, since only important or risky pull
   requests reach them. *Not taken:* D1 B, two (4 | 5–8), three levels in
   one review; D1 C, one. → § 5 stage 9, rule 15.
+- **Who starts the reviewer agent** (2026-10-24, Alex, D2 A, FB-41
+  point 3). The person started a reviewer session by hand after every push,
+  often several times per pull request: the last routine task left to them.
+  The token stays out of the author's session (T1 below).
+
+  | # | Scenario | O | S | D | Risk |
+  |---|---|---|---|---|---|
+  | W2 | The reviewer runs unattended and the pull request's content tells it to do something | 3 | 8 | 6 | 144 |
+  | W1 | A review is not started: the pull request waits for hours | 8 | 3 | 2 | 48 |
+  | W3 | An unattended reviewer is stuck on a question with nobody there | 5 | 3 | 3 | 45 |
+  | W4 | A loop reviews the same head again and again, or another repository | 2 | 4 | 2 | 16 |
+
+  *Chosen:* D2 A — a watcher the person starts once a working day, in a
+  terminal of their own with the reviewer's token (§ 5 stage 9, rule 1):
+  every head once, one at a time, this product only (W4); the reviewer's
+  tools only — reading, the host, the framework's commands (W2); a stop or a
+  question ends the session, shown as a banner, never a wait (W3; Alex: the
+  reason shown very clearly). *Not taken:* D2 B, the agent prints the
+  command to paste, one paste per push; D2 C, the review in CI (D46).
 - **Where the reviewer agent's token lives** (2026-10-19, Alex, FB-34).
   The person types the token into every reviewer session; a *.env* in the
   product folder would sit in the author's working folder.

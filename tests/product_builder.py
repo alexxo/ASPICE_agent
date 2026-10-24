@@ -1307,6 +1307,7 @@ def write_host(
     tags: dict | None = None,
     default_branch: str = "main",
     issues=(),
+    signs: dict | None = None,
 ) -> Path:
     """A recorded host for QF_HOST_FILE: the product's repository and the framework's.
     Every pull request's head passed the gates check unless checks says otherwise."""
@@ -1318,6 +1319,7 @@ def write_host(
                 "checks": checks if checks is not None else {p["head"]: ["gates"] for p in pulls},
                 "pull_requests": list(pulls),
                 "issues": list(issues),
+                "signs": dict(signs or {}),
             },
             FRAMEWORK_REPO: {"default_branch": "main", "tags": dict(tags or {})},
         }
