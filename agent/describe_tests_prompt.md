@@ -5,9 +5,13 @@ description: "Describe each test of a pull request from the test alone, never th
 
 # describe_tests_prompt
 
-The reviewer agent starts a fresh session with this prompt and the list of test
-files the person reviews — the `tests` of `classify_pull_request_tool`'s
-result — for example:
+The watcher (`tools/watch_reviews_tool.py`) starts a fresh session with this
+prompt in a temporary folder outside the product that holds only the test
+files the person would review — copied from the pull request's head — with
+the reading tool only and these instructions in the prompt, so the session
+has no path to the requirements. Without the watcher, the reviewer agent
+starts it itself with the list of test files (the `tests` of
+`classify_pull_request_tool`'s result), for example:
 
 `claude -p "Follow <framework>/agent/describe_tests_prompt.md for these files: <file> <file>"`
 

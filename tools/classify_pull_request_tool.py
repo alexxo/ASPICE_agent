@@ -84,6 +84,7 @@ class Classification:
     weakenings: tuple[Weakening, ...] = ()
     disputes: tuple[dict, ...] = ()
     request: dict | None = None  # the reviewer agent's own request
+    candidates: tuple[str, ...] = ()  # the tests a person would review, if one is called
 
     @property
     def needed(self) -> bool:
@@ -99,6 +100,7 @@ class Classification:
             "weakenings": [w.__dict__ for w in self.weakenings],
             "disputes": list(self.disputes),
             "request": self.request,
+            "candidates": list(self.candidates),
         }
 
 
@@ -162,6 +164,7 @@ def classify(
         tuple(weakenings),
         disputes,
         request,
+        tuple(tests),
     )
 
 

@@ -3303,7 +3303,10 @@ and a person reviews the important or risky ones (rule 14).
     pair of boxes — each detailed design changed; each test the person
     reviews, the approved Given / When / Then next to the reviewer agent's
     description of the test (*Prepares · Does · Checks · Not*), written in a
-    session that saw the test only (*agent/describe_tests_prompt.md*); each
+    session that saw the test only (*agent/describe_tests_prompt.md*) — the
+    watcher runs it in a temporary folder outside the product holding nothing
+    but those tests, copied from the head, the instructions in the prompt, so
+    the session has no path to the requirements; each
     weakened test, before and now; each finding closed without a change;
     the reviewer agent's request. No code. The author agent opens the comment
     on its computer (rule 13).

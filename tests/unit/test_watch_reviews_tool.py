@@ -254,3 +254,83 @@ def test_the_reviewers_own_folder_is_not_the_work(tmp_path):
     w.command = lambda prompt: [sys.executable, "-c", record]
     w.once()
     assert not w.paused and "REVIEW STOPPED" in shown[-1]
+
+
+DESCRIBER = """
+import os, sys
+seen = sorted(os.path.join(d, f) for d, _, fs in os.walk('.') for f in fs)
+assert seen == ['./src/web_app/test_signin_form.py'], seen
+print('```yaml')
+print('- file: src/web_app/test_signin_form.py')
+print('  test: test_signin_form')
+print('  prepares: the value 1')
+print('  does: runs the unit')
+print('  checks: the answer is 2')
+print('  not: nothing obvious')
+print('```')
+"""
+
+
+@pytest.fixture
+def pulled(tmp_path):
+    """A Python product whose pull request #7, a test of the web app, is on its origin."""
+    import subprocess
+
+    from product_builder import build_python_product, commit_all, git_head, write_unit_test
+
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
+    root = build_python_product(tmp_path / "product")
+    subprocess.run(["git", "-C", str(root), "remote", "add", "origin", str(origin)], check=True)
+    write_unit_test(root, "web-app", "signin-form")
+    commit_all(root, "test: the sign-in form")
+    head = git_head(root)
+    subprocess.run(["git", "-C", str(root), "push", "-q", "origin", "HEAD:refs/pull/7/head"])
+    subprocess.run(["git", "-C", str(root), "checkout", "-q", "main"], check=True)
+
+    class Host:
+        posted = []
+
+        def open_pull_requests(self, repo):
+            return [7]
+
+        def merge_sign(self, repo, sha):
+            return WAITING
+
+        def pull_request(self, repo, number):
+            from tools.read_host_tool import PullRequest
+
+            files = ("src/web_app/test_signin_form.py",)
+            return PullRequest(7, "dev-alice", head, files, tuple(self.posted))
+
+    shown = []
+    w = Watcher(read_product_config(root), Host(), HOST_REPO, out=shown.append)
+    return w, shown, head
+
+
+def test_the_watcher_describes_the_tests_in_a_folder_of_tests_only(pulled):
+    w, shown, head = pulled
+    prompts = []
+    w.describe = lambda prompt: [sys.executable, "-c", DESCRIBER]
+
+    def review(prompt):
+        prompts.append(prompt)
+        w.host.posted.append(Review(AGENT, "APPROVED", head))
+        return [sys.executable, "-c", "print('reviewed')"]
+
+    w.command = review
+    w.once()
+    described = f".qf/reviews/7-{head[:7]}.tests.yaml"
+    assert described in prompts[0] and "never describe a test yourself" in prompts[0]
+    assert "test: test_signin_form" in (w.config.root / described).read_text()
+    assert not (w.config.root / ".qf/reviews/7-head").exists()  # cleaned up
+    assert "approved" in shown[-1]
+
+
+def test_descriptions_that_fail_stop_the_review_before_it_starts(pulled):
+    w, shown, head = pulled
+    w.describe = lambda prompt: [sys.executable, "-c", "print('I looked at the requirements.')"]
+    w.command = lambda prompt: pytest.fail("the review must not start")
+    w.once()
+    said = " ".join(line.strip("# ") for line in shown[-1].splitlines())
+    assert "REVIEW STOPPED" in said and "The tests could not be described" in said

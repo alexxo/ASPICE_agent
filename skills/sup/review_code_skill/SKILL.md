@@ -88,8 +88,9 @@ a *```yaml review* block:
 
 - The quality of the review itself — the person's review checks it where it
   matters.
-- That the test descriptions were written without the requirement — left to the
-  fresh session of *agent/describe_tests_prompt.md*.
+- That the test descriptions were written without the requirement when the
+  reviewer agent is started by hand — the watcher writes them itself, in a
+  folder holding only the tests.
 - That the reviewer agent's token stays in the reviewer's own session — left to
   the person who starts it.
 

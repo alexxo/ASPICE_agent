@@ -77,11 +77,12 @@ it changes code.
   author's answer and your final position.
 - `tests` — when a person reviews the pull request: run
   `python <framework>/tools/classify_pull_request_tool.py --root .qf/reviews/<n> --pull-request <n> --record <your record> --base origin/<default branch>`.
-  If `needed` is true and `tests` is not empty, describe those test files in
-  a fresh session that sees the tests only
-  (`<framework>/agent/describe_tests_prompt.md`), and put its list under
-  `tests`. Never write the descriptions yourself: you have read the
-  requirements.
+  If `needed` is true and `tests` is not empty, the record lists those tests
+  described. When the watcher started you, they are described already, in
+  the file its prompt names: put that list under `tests` as it is. Started by
+  hand, describe them in a fresh session that sees the tests only
+  (`<framework>/agent/describe_tests_prompt.md`). Never write or change the
+  descriptions yourself: you have read the requirements.
 
 Post with
 

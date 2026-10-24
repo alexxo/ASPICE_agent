@@ -155,13 +155,30 @@ def due(host: Host, repo: str, agents: set[str], done: set[tuple[int, str]]) -> 
     return found
 
 
-def _prompt(config: ProductConfig, repo: str, number: int) -> str:
+def _prompt(config: ProductConfig, repo: str, number: int, described: str | None = None) -> str:
     framework = config.relative(config.framework_dir)
+    tests = (
+        f" The tests a person would review are described already, in {described}: if your "
+        "record needs tests, put that list under `tests` as it is; never describe a test "
+        "yourself."
+        if described
+        else ""
+    )
     return (
-        f"Follow {framework}/agent/run_reviewer_agent.md for pull request #{number} of {repo}. "
-        "You run unattended: if you must stop or ask, do not wait for an answer — end with "
-        "one line starting 'STOPPED:' saying why, and one starting 'DO:' saying what the "
+        f"Follow {framework}/agent/run_reviewer_agent.md for pull request #{number} of {repo}."
+        f"{tests} You run unattended: if you must stop or ask, do not wait for an answer — end "
+        "with one line starting 'STOPPED:' saying why, and one starting 'DO:' saying what the "
         "person does."
+    )
+
+
+def _describe_prompt(config: ProductConfig, files: list[str]) -> str:
+    """The describe instructions themselves, so the session needs no file but the tests."""
+    rules = (Path(__file__).resolve().parents[1] / "agent/describe_tests_prompt.md").read_text()
+    rules = rules.split("## You", 1)[-1]
+    return (
+        f"Describe the tests of these files, which are all this folder holds: "
+        f"{' '.join(files)}. Read nothing else.\n\n## You{rules}"
     )
 
 
@@ -174,12 +191,18 @@ def claude_command(framework: str):
     return command
 
 
+def claude_describe_command(prompt: str) -> list[str]:
+    """The describe session: Claude Code, reading only, in a folder of tests only."""
+    return ["claude", "-p", prompt, "--allowedTools", "Read"]
+
+
 @dataclass
 class Watcher:
     config: ProductConfig
     host: Host
     repo: str
     command: object = None  # prompt -> argv
+    describe: object = None  # prompt -> argv, for the describe session; None: no descriptions
     out: object = print
     colour: bool = False
     notify: object = None
@@ -243,8 +266,15 @@ class Watcher:
         (self.config.root / LOGS).mkdir(parents=True, exist_ok=True)
         env = {**os.environ, "GH_TOKEN": os.environ.get(HOST_TOKEN, "")}  # gh posts as reviewer
         before = folder_state(self.config.root)
+        described, failed = self.describe_tests(number, head, env)
+        if failed is not None:
+            self.stopped[(number, head)] = failed
+            self.out(banner(failed, self.colour))
+            if self.notify:
+                self.notify(f"Review stopped: #{number}", failed.why)
+            return
         try:
-            output, timed_out = self._run(number, head, env)
+            output, timed_out = self._run(number, head, env, described)
         except OSError as err:
             output, timed_out = f"The agent could not be started: {err}", False
         (self.config.root / log).write_text(output)
@@ -282,12 +312,82 @@ class Watcher:
         if self.notify:
             self.notify(f"Review stopped: #{number}", stop.why)
 
-    def _run(self, number: int, head: str, env: dict) -> tuple[str, bool]:
-        """The session's output, and whether it ran out of time; a line every
-        few minutes says it is still running."""
+    def describe_tests(self, number: int, head: str, env: dict) -> tuple[str | None, Stop | None]:
+        """The tests a person would review, described in a session that sees them
+        alone: the head is unpacked from the host, the tests are copied into an
+        otherwise empty folder, and the session runs there. Returns the
+        descriptions' file, or why it failed; nothing to describe gives neither. The
+        folder is a temporary one outside the product, and the instructions come
+        in the prompt, so the session has no path to the requirements."""
+        if self.describe is None:
+            return None, None
+        import shutil as _shutil
+        import tempfile
+
+        reviews = self.config.root / LOGS
+        tree = reviews / f"{number}-head"
+        alone = Path(tempfile.mkdtemp(prefix="qf-describe-"))  # outside the product
+        log = LOGS / f"{number}-{head[:7]}.tests.log"
+        try:
+            _shutil.rmtree(tree, ignore_errors=True)
+            if not _unpack(self.config.root, number, head, tree):
+                return None, None  # no copy of the head: the reviewer describes them itself
+            from tools.classify_pull_request_tool import classify
+
+            pull = self.host.pull_request(self.repo, number)
+            files = list(classify(read_product_config(tree), pull.files if pull else ()).candidates)
+            if not files:
+                return None, None
+            for name in files:
+                target = alone / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                _shutil.copyfile(tree / name, target)
+            output, timed_out = self._session(
+                self.describe(_describe_prompt(self.config, files)), alone, env, number, head
+            )
+            (self.config.root / log).write_text(output)
+            entries, why = _descriptions(output, files)
+            if timed_out or entries is None:
+                return None, Stop(
+                    number,
+                    head,
+                    "The tests could not be described: "
+                    + ("the session ran out of time." if timed_out else why),
+                    "Read the log, then type R and Enter to review this head again.",
+                    log.as_posix(),
+                )
+            import yaml
+
+            described = LOGS / f"{number}-{head[:7]}.tests.yaml"
+            (self.config.root / described).write_text(
+                yaml.safe_dump(entries, sort_keys=False, allow_unicode=True)
+            )
+            return described.as_posix(), None
+        except (ConfigError, OSError) as err:
+            return None, Stop(
+                number,
+                head,
+                f"The tests could not be described: {err}",
+                "Read the log, then type R and Enter to review this head again.",
+                log.as_posix(),
+            )
+        finally:
+            for folder in (tree, alone):
+                _shutil.rmtree(folder, ignore_errors=True)
+
+    def _run(
+        self, number: int, head: str, env: dict, described: str | None = None
+    ) -> tuple[str, bool]:
+        """The review session's output, and whether it ran out of time."""
+        argv = self.command(_prompt(self.config, self.repo, number, described))
+        return self._session(argv, self.config.root, env, number, head)
+
+    def _session(self, argv, cwd: Path, env: dict, number: int, head: str) -> tuple[str, bool]:
+        """A session's output, and whether it ran out of time; a line every few
+        minutes says it is still running."""
         process = subprocess.Popen(
-            self.command(_prompt(self.config, self.repo, number)),
-            cwd=self.config.root,
+            argv,
+            cwd=cwd,
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -319,6 +419,48 @@ class Watcher:
         lines = [f"Today: {self.reviews} review session(s), {len(self.stopped)} stopped"]
         lines += [f"  still stopped: #{s.number} ({s.why})" for s in self.stopped.values()]
         return "\n".join(lines)
+
+
+def _unpack(root: Path, number: int, head: str, into: Path) -> bool:
+    """The pull request's head, fetched from the host and unpacked into a folder."""
+    import io
+    import tarfile
+
+    fetch = subprocess.run(
+        ["git", "-C", str(root), "fetch", "-q", "origin", f"pull/{number}/head"],
+        capture_output=True,
+    )
+    if fetch.returncode != 0:
+        return False
+    archive = subprocess.run(["git", "-C", str(root), "archive", head], capture_output=True)
+    if archive.returncode != 0:
+        return False
+    into.mkdir(parents=True, exist_ok=True)
+    with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
+        tar.extractall(into, filter="data")
+    return True
+
+
+def _descriptions(output: str, files: list[str]) -> tuple[list | None, str]:
+    """The describe session's list, checked against review.v1 and complete."""
+    import yaml
+
+    from tools.validate_contract_tool import validate
+
+    text = output.strip()
+    if text.startswith("```"):
+        text = "\n".join(text.splitlines()[1:]).rsplit("```", 1)[0]
+    try:
+        entries = yaml.safe_load(text)
+    except yaml.YAMLError as err:
+        return None, f"its answer is not YAML ({err.__class__.__name__})."
+    problems = validate({"person": "none", "findings": [], "tests": entries}, "review")
+    if problems:
+        return None, f"its answer breaks review.v1 at '{problems[0].path}': {problems[0].message}"
+    missing = sorted(set(files) - {e["file"] for e in entries})
+    if missing:
+        return None, f"it describes no test of {', '.join(missing)}."
+    return entries, ""
 
 
 def folder_state(root: Path) -> tuple[str, frozenset[str]] | None:
@@ -446,6 +588,7 @@ def main(argv: list[str] | None = None) -> int:
 
     colour = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
     watcher = Watcher(config, host, repo, command, print, colour, desktop_notification)
+    watcher.describe = command if args.command else claude_describe_command
     watcher.say(f"Watching {repo} (type R and Enter to retry stopped reviews; Ctrl+C to stop)")
     retry = threading.Event()
 
