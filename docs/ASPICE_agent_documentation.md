@@ -3117,6 +3117,13 @@ and a person reviews the important or risky ones (rule 14).
    banner — *REVIEW STOPPED*, why, what to do, the log under *.qf/reviews/* —
    red where the terminal shows colour, with a desktop notification where the
    system has one; the head is reviewed again only when the person types *R*.
+   A reviewer never changes the work, and the agent's settings must prevent
+   it — Claude Code's allowed tools by default; another agent (*--command*)
+   is configured read-only by the person. Whatever the agent, the watcher
+   compares the product folder's commit and changed files (*.qf/* left out)
+   before and after each session: on any change it shows the banner
+   *REVIEWER CHANGED THE WORK* — verify the LLM settings, check the change
+   with the author — and pauses every review until the person types *R*.
    Without the watcher, the person starts the session by hand. The session is
    the only one that holds the
    reviewer agent's token, a token for the product's repository that can

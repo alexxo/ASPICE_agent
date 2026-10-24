@@ -339,7 +339,11 @@ wishes. Tell the person how the work runs from now on:
   request's state changes, naming who acts next: *waits for CI*, *gates red:
   the author fixes them*, *waits for your review*, *ready to merge* — and
   warns when a head has no crossing sign after 10 minutes, since CI may not
-  run. When a review stops, it shows a banner, impossible to
+  run. A reviewer never changes the work: the watcher runs Claude Code with
+  the reviewer's tools only; with another agent (`--command`), configure it
+  read-only. If the product folder changes during a review anyway, the
+  watcher shows **REVIEWER CHANGED THE WORK** and pauses until you have
+  verified your LLM settings and typed `R`. When a review stops, it shows a banner, impossible to
   miss: **REVIEW STOPPED**, why, what to do, and the log; fix the cause, then
   type `R` and Enter to review that head again. Ctrl+C ends it with the day's
   summary. Without the watcher, the developer starts the reviewer by hand: a

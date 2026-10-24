@@ -9,7 +9,12 @@ a fresh reviewer session following agent/run_reviewer_agent.md: this product
 only, one session at a time, every head once. The session runs with the
 reviewer's tools only — reading, the host, its own tools and its review
 record's folder; no edit of the work, no commit, no push (--command replaces
-the agent command, {prompt} standing for the prompt).
+the agent command, {prompt} standing for the prompt; that agent's settings
+must then prevent any change). A reviewer never changes the work: whatever
+the agent, the watcher compares the product folder's commit and changed files
+(.qf/ left out) before and after each session, and on any change shows the
+banner REVIEWER CHANGED THE WORK and pauses every review until the person
+types R.
 
 Every event is one line with the time, and so is every change of a pull
 request's state, naming who acts next: waits for CI, gates red (the author
@@ -107,12 +112,13 @@ class Stop:
     why: str
     do: str
     log: str
+    title: str = "REVIEW STOPPED"
 
 
 def banner(stop: Stop, colour: bool = False) -> str:
     """The stopped review, impossible to miss: why, what to do, where the log is."""
     rule = "#" * WIDTH
-    lines = [rule, f"#  REVIEW STOPPED: pull request #{stop.number}, head {stop.head[:7]}", "#"]
+    lines = [rule, f"#  {stop.title}: pull request #{stop.number}, head {stop.head[:7]}", "#"]
     for label, text in (("Why:", stop.why), ("Do:", stop.do)):
         lines += _wrapped(label, text)
         lines.append("#")
@@ -182,13 +188,16 @@ class Watcher:
     clock: object = time.monotonic
     shown: dict = field(default_factory=dict)  # number -> (head, the state last shown)
     unsigned: dict = field(default_factory=dict)  # (number, head) -> when first seen unsigned
+    paused: bool = False  # a reviewer changed the work: no review until the person types R
 
     def say(self, text: str) -> None:
         self.out(f"{datetime.now():%H:%M}  {text}")
 
     def once(self) -> None:
         agents = set(self.config.review_agents)
-        for number, head in due(self.host, self.repo, agents, self.done):
+        for number, head in [] if self.paused else due(self.host, self.repo, agents, self.done):
+            if self.paused:
+                break
             self.done.add((number, head))
             self.review(number, head)
         for number in self.host.open_pull_requests(self.repo):
@@ -230,12 +239,32 @@ class Watcher:
         log = LOGS / f"{number}-{head[:7]}.log"
         (self.config.root / LOGS).mkdir(parents=True, exist_ok=True)
         env = {**os.environ, "GH_TOKEN": os.environ.get(HOST_TOKEN, "")}  # gh posts as reviewer
+        before = folder_state(self.config.root)
         try:
             output, timed_out = self._run(number, head, env)
         except OSError as err:
             output, timed_out = f"The agent could not be started: {err}", False
         (self.config.root / log).write_text(output)
         self.reviews += 1
+        changed = _changes(before, folder_state(self.config.root))
+        if changed:
+            self.paused = True
+            stop = Stop(
+                number,
+                head,
+                f"The product folder changed during the review: {changed}. A reviewer never "
+                "changes the work, and the agent's settings must prevent it (Claude Code: the "
+                "watcher's allowed tools).",
+                "Verify your LLM settings; check the change with the author and undo it if it "
+                "is not theirs. Reviews are paused: type R to resume.",
+                log.as_posix(),
+                "REVIEWER CHANGED THE WORK",
+            )
+            self.stopped[(number, head)] = stop
+            self.out(banner(stop, self.colour))
+            if self.notify:
+                self.notify(f"Reviewer changed the work: #{number}", stop.why)
+            return
         pull = self.host.pull_request(self.repo, number)
         agents = set(self.config.review_agents)
         posted = [r for r in (pull.reviews if pull else ()) if r.author in agents]
@@ -278,13 +307,44 @@ class Watcher:
                 self.say(f"#{number} head {head[:7]}: still reviewing ({shown})")
 
     def retry(self) -> None:
+        self.paused = False
         for number, head in list(self.stopped):
-            self.review(number, head)
+            if not self.paused:
+                self.review(number, head)
 
     def summary(self) -> str:
         lines = [f"Today: {self.reviews} review session(s), {len(self.stopped)} stopped"]
         lines += [f"  still stopped: #{s.number} ({s.why})" for s in self.stopped.values()]
         return "\n".join(lines)
+
+
+def folder_state(root: Path) -> tuple[str, frozenset[str]] | None:
+    """The product folder's commit and changed files, .qf/ left out; None outside git."""
+    head = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True
+    )
+    status = subprocess.run(
+        ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=all"],
+        capture_output=True,
+        text=True,
+    )
+    if head.returncode != 0 or status.returncode != 0:
+        return None
+    lines = {line for line in status.stdout.splitlines() if not line[3:].startswith(".qf/")}
+    return head.stdout.strip(), frozenset(lines)
+
+
+def _changes(before, after) -> str:
+    """What changed in the folder between two states, in words; empty when nothing."""
+    if before is None or after is None or before == after:
+        return ""
+    found = []
+    if before[0] != after[0]:
+        found.append(f"the commit moved from {before[0][:7]} to {after[0][:7]}")
+    files = sorted({line[3:] for line in before[1] ^ after[1]})
+    if files:
+        found.append(", ".join(files[:5]) + (" …" if len(files) > 5 else "") + " changed")
+    return "; ".join(found)
 
 
 def _outcome(state: str) -> str:

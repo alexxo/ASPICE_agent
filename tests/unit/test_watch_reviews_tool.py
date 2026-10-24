@@ -209,3 +209,48 @@ def test_a_head_without_a_sign_for_10_minutes_is_a_warning(watcher):
     assert [line.split(": ", 1)[1] for line in shown] == [
         "no crossing sign after 10 min: check that CI runs"
     ]
+
+
+def test_a_reviewer_that_changes_the_work_pauses_every_review(tmp_path):
+    root = build_product(tmp_path / "product")  # a git repository
+    host = _Host(tmp_path)
+    shown, notes = [], []
+    w = Watcher(
+        read_product_config(root),
+        host,
+        HOST_REPO,
+        out=shown.append,
+        notify=lambda title, text: notes.append(title),
+    )
+    edit = "open('NOTES.md', 'w').write('changed by the reviewer')"
+    w.command = lambda prompt: [sys.executable, "-c", edit]
+    w.once()
+    assert "REVIEWER CHANGED THE WORK: pull request #7" in shown[-1]
+    said = " ".join(line.strip("# ") for line in shown[-1].splitlines())
+    assert "NOTES.md changed" in said and "Verify your LLM settings" in said
+    assert notes == ["Reviewer changed the work: #7"] and w.paused
+    host.base = _host(tmp_path, {"7" * 40: WAITING, "8" * 40: WAITING})
+    w.once()
+    assert w.reviews == 1  # paused: no review until R
+
+    (root / "NOTES.md").unlink()
+
+    def review(prompt):
+        host.posted.append(Review(AGENT, "APPROVED", "7" * 40))
+        return [sys.executable, "-c", "print('reviewed')"]
+
+    w.command = review
+    w.retry()
+    assert not w.paused and "approved" in shown[-1]
+
+
+def test_the_reviewers_own_folder_is_not_the_work(tmp_path):
+    root = build_product(tmp_path / "product")
+    host = _Host(tmp_path)
+    shown = []
+    w = Watcher(read_product_config(root), host, HOST_REPO, out=shown.append)
+    record = "import os; os.makedirs('.qf/reviews', exist_ok=True); "
+    record += "open('.qf/reviews/review.yaml', 'w').write('person: none')"
+    w.command = lambda prompt: [sys.executable, "-c", record]
+    w.once()
+    assert not w.paused and "REVIEW STOPPED" in shown[-1]
