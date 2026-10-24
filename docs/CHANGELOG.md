@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-10-24
+
+A framework bump is accounted for in the product team's own words only.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: a bump recorded in an entry's **Framework version** or a *No findings for* line, as the template asks, passes as before |
+
+### Fixed
+
+- **The framework's own answers no longer account for a bump.** *check_framework_feedback_gate* accepted a submodule bump when the new version appeared anywhere under **Log**, and every framework response quoted there names the version that resolves it: a team moving to exactly that version passed while recording nothing. The gate now reads only an entry's **Framework version** field and lines starting *No findings for*, and matches the version as a whole word, so `v2.2.1` no longer matches inside `v2.2.10` nor a short commit inside longer text. A version named in a Status or in prose ("fixed upstream in v2.2.2") no longer counts either. `report_framework_feedback_skill` R2; `templates/FRAMEWORK_FEEDBACK.md`; design document § 5 stage 9, rule 9. Origin: internal.
+
 ## [2.3.0] - 2026-10-23
 
 Stage 1 requires an architecture diagram: the parts that become the components are approved with the diagrams.
