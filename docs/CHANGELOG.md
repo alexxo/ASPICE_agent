@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.5.4] - 2026-10-24
+
+A reviewer never changes the work: the watcher checks it, whatever the agent.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none; with another agent than Claude Code (`--command`), configure it read-only |
+
+### Added
+
+- **The watcher catches a reviewer that changed the work.** The agent's settings prevent it — Claude Code's allowed tools by default — and `tools/watch_reviews_tool.py` now checks it with any agent: it compares the product folder's commit and changed files (`.qf/` left out) before and after each session. On a change it shows the banner *REVIEWER CHANGED THE WORK* — what changed, "verify your LLM settings", check the change with the author — with a desktop notification, and pauses every review until the person types `R`. Design document § 5 stage 9, rule 1; QUICKSTART. Origin: internal (review of the watcher with Alex).
+
 ## [2.5.3] - 2026-10-24
 
 The watcher says what each pull request waits for.
