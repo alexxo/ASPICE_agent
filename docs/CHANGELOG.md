@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.3.2] - 2026-10-24
+
+The author agent merges a pull request on *Ready to merge*; the person merges nothing.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: the agent's instructions change with the framework; the person stops merging |
+
+### Fixed
+
+- **Who merges is stated once.** The flow diagrams had the agent merge, while `agent/run_aspice_agent.md` and the QUICKSTART told "the person who merges" to wait for *qf/merge*: products read it as the person, who then waited on every pull request for a click that holds no judgement. The author agent now merges, only on *Ready to merge* and exactly the head that status belongs to (`gh pr merge --match-head-commit`), then waits for the main branch's run and reports a red one. The person's judgement stays their approval of a sampled pull request. Design document § 3 step 9, § 5 stage 9 rule 13, Appendix A.8 "Who merges"; QUICKSTART; `tools/post_merge_status_tool.py`; `templates/github/quality_gates.yml` (a comment). Origin: FB-41 (wp_publisher), point 3.
+
 ## [2.3.1] - 2026-10-24
 
 A framework bump is accounted for in the product team's own words only.
