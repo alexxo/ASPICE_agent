@@ -334,3 +334,30 @@ def test_descriptions_that_fail_stop_the_review_before_it_starts(pulled):
     w.once()
     said = " ".join(line.strip("# ") for line in shown[-1].splitlines())
     assert "REVIEW STOPPED" in said and "The tests could not be described" in said
+
+
+def test_the_watcher_starts_as_quickstart_says(tmp_path, monkeypatch, capsys):
+    """main() as far as its first look, on a recorded host (FB-42: a field added to
+    Watcher once shifted main()'s arguments, and the watcher crashed at start)."""
+    from product_builder import add_origin
+
+    from tools import watch_reviews_tool
+
+    root = build_product(tmp_path / "product")
+    add_origin(root)
+    monkeypatch.setenv("QF_HOST_TOKEN", "reviewer-token")
+    monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json")))
+    built = []
+    real = watch_reviews_tool.Watcher
+
+    def spy(*args, **kwargs):
+        built.append(real(*args, **kwargs))
+        return built[-1]
+
+    monkeypatch.setattr(watch_reviews_tool, "Watcher", spy)
+    assert watch_reviews_tool.main(["--root", str(root), "--once"]) == 0
+    out = capsys.readouterr().out
+    assert f"Watching {HOST_REPO}" in out and "Today: 0 review session(s)" in out
+    (w,) = built
+    assert w.out is print and callable(w.command) and callable(w.describe)
+    assert callable(w.notify) and isinstance(w.colour, bool)

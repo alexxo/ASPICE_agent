@@ -587,8 +587,16 @@ def main(argv: list[str] | None = None) -> int:
             return [part.replace("{prompt}", prompt) for part in shlex.split(template)]
 
     colour = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
-    watcher = Watcher(config, host, repo, command, print, colour, desktop_notification)
-    watcher.describe = command if args.command else claude_describe_command
+    watcher = Watcher(
+        config,
+        host,
+        repo,
+        command=command,
+        describe=command if args.command else claude_describe_command,
+        out=print,
+        colour=colour,
+        notify=desktop_notification,
+    )
     watcher.say(f"Watching {repo} (type R and Enter to retry stopped reviews; Ctrl+C to stop)")
     retry = threading.Event()
 
