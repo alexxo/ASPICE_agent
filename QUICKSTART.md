@@ -334,7 +334,8 @@ wishes. Tell the person how the work runs from now on:
   then `python .framework/tools/watch_reviews_tool.py --root .` — and leaves
   it running. It starts a fresh reviewer session for every new pull request
   head that waits for the reviewer, one at a time, each once, and writes one
-  line per review. When a review stops, it shows a banner, impossible to
+  line per review, and a line every 5 minutes while one runs; a review stuck
+  for 20 minutes is stopped. When a review stops, it shows a banner, impossible to
   miss: **REVIEW STOPPED**, why, what to do, and the log; fix the cause, then
   type `R` and Enter to review that head again. Ctrl+C ends it with the day's
   summary. Without the watcher, the developer starts the reviewer by hand: a

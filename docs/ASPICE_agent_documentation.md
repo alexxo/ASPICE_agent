@@ -3107,7 +3107,9 @@ and a person reviews the important or risky ones (rule 14).
    agent and that it has not reviewed, it starts one fresh session, one at a
    time, each head once, with the reviewer's tools only — reading, the host,
    the framework's own commands, its record's folder; no edit of the work, no
-   commit, no push. A session that ends without a review is shown as a
+   commit, no push. A line every 5 minutes says a review is still running;
+   a session longer than 20 minutes is stopped, a limit for a stuck one. A
+   session that ends without a review is shown as a
    banner — *REVIEW STOPPED*, why, what to do, the log under *.qf/reviews/* —
    red where the terminal shows colour, with a desktop notification where the
    system has one; the head is reviewed again only when the person types *R*.
@@ -4378,7 +4380,10 @@ label together.
 
   *Chosen:* D2 A — a watcher the person starts once a working day, in a
   terminal of their own with the reviewer's token (§ 5 stage 9, rule 1):
-  every head once, one at a time, this product only (W4); the reviewer's
+  every head once, one at a time, this product only (W4) — a product rarely
+  has two pull requests waiting, since each of the four builds on the one
+  before; a review may take 20 minutes, a limit for a stuck session, and a
+  line every 5 minutes says it is still running (2026-10-24, Alex); the reviewer's
   tools only — reading, the host, the framework's commands (W2); a stop or a
   question ends the session, shown as a banner, never a wait (W3; Alex: the
   reason shown very clearly). *Not taken:* D2 B, the agent prints the

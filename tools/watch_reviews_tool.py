@@ -13,9 +13,11 @@ the agent command, {prompt} standing for the prompt).
 
 Every event is one line with the time. A session that ends without a review —
 the reviewer stopped, asked a question, the token was refused, or the session
-ran out of time — is shown as a banner: why, what to do, and the session's log
-(.qf/reviews/<n>-<sha>.log), in red where the terminal shows colour (NO_COLOR
-switches it off), with a desktop notification where the system has one. The
+ran out of time (20 minutes, a limit for a stuck session; a line every 5
+minutes says a review is still running) — is shown as a banner: why, what to
+do, and the session's log (.qf/reviews/<n>-<sha>.log), in red where the
+terminal shows colour (NO_COLOR switches it off), with a desktop notification
+where the system has one. The
 watcher goes on with the other pull requests; a stopped head is not retried on
 its own: type R and Enter to review the stopped heads again. Ctrl+C ends it
 with the day's summary, the heads still stopped listed again.
@@ -53,7 +55,8 @@ __all__ = ["Stop", "Watcher", "banner", "claude_command", "due", "tools"]
 WAITS_FOR_REVIEWER = "the reviewer agent's approval"
 LOGS = Path(".qf/reviews")
 WIDTH = 72
-TIMEOUT = 45 * 60  # seconds one review session may take
+TIMEOUT = 20 * 60  # seconds one review session may take: a limit for a stuck one
+PROGRESS = 5 * 60  # seconds between the lines saying a review is still running
 # The reviewer's tools: reading, the host, the framework's own commands, its
 # record's folder — never an edit of the work, a commit or a push.
 READ_ONLY = (
@@ -168,6 +171,8 @@ class Watcher:
     done: set = field(default_factory=set)
     stopped: dict = field(default_factory=dict)  # (number, head) -> Stop
     reviews: int = 0
+    timeout: int = TIMEOUT
+    progress: int = PROGRESS
 
     def say(self, text: str) -> None:
         self.out(f"{datetime.now():%H:%M}  {text}")
@@ -184,17 +189,7 @@ class Watcher:
         (self.config.root / LOGS).mkdir(parents=True, exist_ok=True)
         env = {**os.environ, "GH_TOKEN": os.environ.get(HOST_TOKEN, "")}  # gh posts as reviewer
         try:
-            run = subprocess.run(
-                self.command(_prompt(self.config, self.repo, number)),
-                cwd=self.config.root,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=TIMEOUT,
-            )
-            output, timed_out = (run.stdout or "") + (run.stderr or ""), False
-        except subprocess.TimeoutExpired as err:
-            output, timed_out = str(err.stdout or ""), True
+            output, timed_out = self._run(number, head, env)
         except OSError as err:
             output, timed_out = f"The agent could not be started: {err}", False
         (self.config.root / log).write_text(output)
@@ -207,11 +202,38 @@ class Watcher:
             self.say(f"#{number} head {head[:7]}: {_outcome(posted[-1].state)}")
             self.stopped.pop((number, head), None)
             return
-        stop = _stop(number, head, output, timed_out, log.as_posix())
+        stop = _stop(number, head, output, timed_out, log.as_posix(), self.timeout)
         self.stopped[(number, head)] = stop
         self.out(banner(stop, self.colour))
         if self.notify:
             self.notify(f"Review stopped: #{number}", stop.why)
+
+    def _run(self, number: int, head: str, env: dict) -> tuple[str, bool]:
+        """The session's output, and whether it ran out of time; a line every
+        few minutes says it is still running."""
+        process = subprocess.Popen(
+            self.command(_prompt(self.config, self.repo, number)),
+            cwd=self.config.root,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        waited = 0
+        while True:
+            step = min(self.progress, self.timeout - waited)
+            try:
+                output, _ = process.communicate(timeout=step)
+                return output or "", False
+            except subprocess.TimeoutExpired:
+                waited += step
+                if waited >= self.timeout:
+                    process.kill()
+                    output, _ = process.communicate()
+                    return output or "", True
+                minutes = waited / 60
+                shown = f"{minutes:g} min" if minutes >= 1 else f"{waited} s"
+                self.say(f"#{number} head {head[:7]}: still reviewing ({shown})")
 
     def retry(self) -> None:
         for number, head in list(self.stopped):
@@ -230,13 +252,15 @@ def _outcome(state: str) -> str:
     }.get(state, f"reviewed ({state.lower()})")
 
 
-def _stop(number: int, head: str, output: str, timed_out: bool, log: str) -> Stop:
+def _stop(
+    number: int, head: str, output: str, timed_out: bool, log: str, timeout: int = TIMEOUT
+) -> Stop:
     """Why the session ended without a review, and what the person does."""
     if timed_out:
         return Stop(
             number,
             head,
-            f"The session ran longer than {TIMEOUT // 60} minutes.",
+            f"The session ran longer than {timeout // 60} minutes.",
             "Read the log, then type R and Enter to review this head again.",
             log,
         )

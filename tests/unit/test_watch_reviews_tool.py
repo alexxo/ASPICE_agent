@@ -136,3 +136,17 @@ def test_a_stopped_head_waits_for_r_and_the_summary_lists_it(watcher):
     w.command = review
     w.retry()
     assert w.stopped == {} and "changes requested" in shown[-1]
+
+
+def test_a_long_review_says_it_is_alive_and_a_stuck_one_stops(watcher):
+    w, host, shown, notes = watcher
+    w.progress, w.timeout = 1, 3
+    w.command = lambda prompt: [sys.executable, "-c", "import time; time.sleep(30)"]
+    w.once()
+    progress = [line for line in shown if "still reviewing" in line]
+    assert [line.split(": ", 1)[1] for line in progress] == [
+        "still reviewing (1 s)",
+        "still reviewing (2 s)",
+    ]
+    assert "The session ran longer than 0 minutes." in shown[-1]
+    assert notes == ["Review stopped: #7"]
