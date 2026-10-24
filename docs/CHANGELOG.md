@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-10-24
+
+The watcher points to the right QUICKSTART step.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none |
+
+### Fixed
+
+- **The watcher's missing-token message names QUICKSTART step 9**, where the watcher is described, not step 8. `tools/watch_reviews_tool.py`. Origin: internal.
+
 ## [2.5.0] - 2026-10-24
 
 The reviewer agent starts on its own: a watcher the person starts once a day.
