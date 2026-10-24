@@ -27,11 +27,13 @@ Ask the person, one question at a time, and wait for each answer:
 
 1. **The reviewer agent** — the code host account the reviewer agent posts its
    reviews from (`--reviewer-agent`).
-2. **The urgent approvers** — the accounts that may authorize an urgent fix
+2. **The people** — the accounts CI calls in when a pull request needs a
+   person's review: the review comment mentions them (`--person`).
+3. **The urgent approvers** — the accounts that may authorize an urgent fix
    (`--urgent-approver`).
-3. **The change approvers** — the accounts that may approve a change request
+4. **The change approvers** — the accounts that may approve a change request
    (`--change-approver`).
-4. **The code owners** — who must approve a change to the gates, the framework
+5. **The code owners** — who must approve a change to the gates, the framework
    pin and the architecture: `@login`, `@org/team` or an e-mail
    (`--code-owner`).
 
@@ -43,7 +45,7 @@ did not give is a question you ask again.
 
 Show the person the command with their answers, then run it:
 
-`python <framework>/tools/create_product_tool.py --root <product> --reviewer-agent <login> --urgent-approver <login> --change-approver <login> --code-owner <owner>`
+`python <framework>/tools/create_product_tool.py --root <product> --reviewer-agent <login> --person <login> --urgent-approver <login> --change-approver <login> --code-owner <owner>`
 
 - **Exit 0** — go to step 4.
 - **Exit 2** — nothing was changed. Report every problem it printed, word for

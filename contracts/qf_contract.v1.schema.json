@@ -178,12 +178,12 @@
       }
     },
     "review": {
-      "description": "Who reviews a pull request (SUP.1 BP1, SWE.3 BP5): a reviewer agent always, a person on every architecture pull request and on 1 in sample_every of the others, chosen by pull-request number.",
+      "description": "Who reviews a pull request (SUP.1 BP1, SWE.3 BP5): a reviewer agent always; a person on every pull request that changes the architecture or the gates' own files, and on every one that is important or risky (classify_pull_request_tool).",
       "type": "object",
       "additionalProperties": false,
       "required": [
         "agents",
-        "sample_every"
+        "people"
       ],
       "properties": {
         "agents": {
@@ -196,10 +196,15 @@
             "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(\\[bot\\])?$"
           }
         },
-        "sample_every": {
-          "description": "N of '1 in N': a pull request whose number is a multiple of N needs a person's approval.",
-          "type": "integer",
-          "minimum": 1
+        "people": {
+          "description": "The host accounts of the people CI calls in when a pull request needs a person's review: the checkpoint-4 review comment mentions them, so the host notifies them. Any person may approve; these are the ones asked.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$"
+          }
         }
       }
     },

@@ -80,8 +80,8 @@ the next gate runs the command again.
 
 ## Not checkable
 
-The reviewer agent confirms at the pull request, and a person on the sampled
-pull requests (checkpoint 4):
+The reviewer agent confirms at the pull request, and a person on the
+important or risky pull requests (checkpoint 4):
 
 - The commands run the tests the plan selects, and nothing is skipped to make a
   run pass.

@@ -14,7 +14,7 @@
   ],
   "properties": {
     "checkpoint": {
-      "description": "1 diagram (architect) · 2 requirements (architect) · 3 tech stack (architect) · 4 sampled pull request (reviewer) · 5 acceptance (customer).",
+      "description": "1 diagram (architect) · 2 requirements (architect) · 3 tech stack (architect) · 4 important or risky pull request (reviewer) · 5 acceptance (customer).",
       "enum": [
         1,
         2,

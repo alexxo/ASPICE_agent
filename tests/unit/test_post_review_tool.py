@@ -3,6 +3,7 @@
 import json
 
 import pytest
+import yaml
 from product_builder import AUTHOR, add_origin, build_product
 
 from tools import post_review_tool
@@ -60,9 +61,38 @@ def test_a_request_for_changes_needs_the_items_and_the_findings():
         main(["--pull-request", "1", "--decision", "request_changes"])
 
 
-def test_without_its_own_token_the_reviewer_posts_nothing(capsys):
-    assert main(["--pull-request", "1", "--decision", "approve"]) == 2
+def _record(tmp_path, record=None) -> str:
+    path = tmp_path / "review.yaml"
+    path.write_text(yaml.safe_dump(record or {"person": "none", "findings": []}))
+    return str(path)
+
+
+def test_without_its_own_token_the_reviewer_posts_nothing(tmp_path, capsys):
+    argv = ["--pull-request", "1", "--decision", "approve", "--record", _record(tmp_path)]
+    assert main(argv) == 2
     assert "QF_HOST_TOKEN" in capsys.readouterr().err
+
+
+def test_an_approval_carries_the_review_record():
+    with pytest.raises(SystemExit) as exit_:
+        main(["--pull-request", "1", "--decision", "approve"])
+    assert exit_.value.code == 2
+
+
+def test_a_record_that_breaks_review_v1_is_refused(tmp_path, capsys):
+    bad = _record(tmp_path, {"person": {"condition": 6, "reason": "risky"}, "findings": []})
+    with pytest.raises(SystemExit):
+        main(["--pull-request", "1", "--decision", "approve", "--record", bad])
+    assert "review.v1" in capsys.readouterr().err
+
+
+def test_the_record_travels_as_a_review_block():
+    from tools.classify_pull_request_tool import review_record
+
+    record = {"person": {"condition": 2, "reason": "REQ-0014 reads two ways"}, "findings": []}
+    body = render(set(), "", CHECKLIST, record)
+    assert review_record(body) == (record, None)
+    assert checklist(body) == dict.fromkeys(CHECKLIST, True)
 
 
 def _host(monkeypatch, files):
@@ -109,7 +139,8 @@ def reviewed(tmp_path, monkeypatch):
 def test_the_review_is_posted_on_the_current_head(reviewed, monkeypatch, files, items):
     root, sent = reviewed
     _host(monkeypatch, files)
-    assert main(["--root", str(root), "--pull-request", "4", "--decision", "approve"]) == 0
+    argv = ["--root", str(root), "--pull-request", "4", "--decision", "approve"]
+    assert main([*argv, "--record", _record(root.parent)]) == 0
     (request,) = sent
     assert request.full_url.endswith("/repos/acme/login/pulls/4/reviews")
     assert request.get_header("Authorization") == "Bearer reviewer-token"

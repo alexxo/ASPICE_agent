@@ -146,7 +146,17 @@ You merge the pull request, never the person, and only when its
 the check belongs to, then merge exactly that head:
 `gh pr merge <n> --merge --match-head-commit <sha>`, which the host refuses
 if anything was pushed after you read it. Never merge on any other status,
-and never push to the main branch. After a merge, wait for the main branch's CI run. If
+and never push to the main branch.
+
+When the check waits for *a person's review*, CI has posted the review in
+plain words as a comment on the pull request (the one starting
+`<!-- qf-checkpoint-4-review -->`). Open it in the browser of this computer,
+once per head: find its link (`html_url`) with
+`gh api repos/<owner>/<repo>/issues/<n>/comments`, open it with
+`gh pr view <n> --web` or Python's `webbrowser.open(<link>)`, and print the
+link. Tell the person why they are asked (the comment's first lines): they
+tick one box per item, then approve, or request changes with the reason.
+Never tick a box yourself. After a merge, wait for the main branch's CI run. If
 it is red with MERGED_WITHOUT_PULL_REQUEST, GATES_NOT_PASSED or a review
 missing, tell the person at once: the change reached the main branch without
 the delivery desk, and the next release waits until it is accepted. Record it
@@ -155,7 +165,11 @@ as an issue labelled *non-conformance* whose block names the pull request
 *qf.yaml urgent_approvers*, not its author, to comment `/accept-delivery` on
 it. A revert does not clear it on its own.
 
-**Stage 9, the delivery desk.** The stage's pull request is reviewed as every
+**Stage 9, the delivery desk.** Stages 4 to 8 deliver in four pull
+requests: the detailed design (stage 4); the unit tests with the code that
+makes them pass (stages 5 and 6 together — stage 5 alone would leave failing
+tests on the main branch); the integration tests with their code changes
+(stage 7); the software tests with theirs (stage 8). Each is reviewed as every
 other one. A finding the architect defers becomes an issue labelled
 *non-conformance*, its block naming the pull request
 (`track_nonconformances_skill`). Throughout, a framework weakness you meet
@@ -236,9 +250,10 @@ initiator for `/confirm-change`; then close the issue.
 
 ## 8. Checkpoint
 
-Seal 4 is not recorded here: a sampled pull request waits for a person's
-approval of its current head on the code host. Tell the person which pull
-request waits and why (`reason`), and stop; once they approve, CI runs again and
+Seal 4 is not recorded here: an important or risky pull request waits for a
+person's review of its current head on the code host. Open CI's review comment
+for them (step 6, *Every pull request*), tell them which pull request waits and
+why (`reason`), and stop; once they approve, CI runs again and
 step 3 finds the stage done.
 
 Seal 5 is recorded here, with `--role customer`, and only the customer gives

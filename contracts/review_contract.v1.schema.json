@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/review_contract.v1.schema.json",
+  "title": "review.v1",
+  "description": "What the reviewer agent hands to the person's review (SUP.1 BP1, SWE.3 BP5): whether it asks for a person, what became of each finding over the review rounds, and, when a person reviews, each test described from the test alone. A fenced ```yaml review block in the reviewer agent's review, written by post_review_tool --record. That an approval carries one, and which pull requests a person reviews, are rules of verify_delivery_reviewed_gate (classify_pull_request_tool); the person's review is posted by post_checkpoint_review_tool.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["person", "findings"],
+  "properties": {
+    "person": {
+      "description": "none, or why a person must review: one of the five conditions no file shows — 1 the rating looks too low, 2 the meaning is unclear, 3 beyond what was approved, 4 cannot be undone, 5 cannot be verified (or the same finding after three rounds) — and what it concerns.",
+      "oneOf": [
+        {"const": "none"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["condition", "reason"],
+          "properties": {
+            "condition": {"type": "integer", "minimum": 1, "maximum": 5},
+            "reason": {"type": "string", "minLength": 1}
+          }
+        }
+      ]
+    },
+    "findings": {
+      "description": "Every finding of every round on this pull request: fixed by a change (re-checked by the reviewer), withdrawn by the reviewer, or disputed by the author and left without a change.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["finding", "outcome"],
+        "properties": {
+          "finding": {"type": "string", "minLength": 1},
+          "outcome": {"enum": ["fixed", "withdrawn", "disputed"]},
+          "author_answer": {"type": "string"},
+          "reviewer_position": {"type": "string"}
+        },
+        "if": {"properties": {"outcome": {"const": "disputed"}}},
+        "then": {"required": ["author_answer", "reviewer_position"]}
+      }
+    },
+    "tests": {
+      "description": "Each test the person reviews, described in a session that saw the test only, never the requirement (agent/describe_tests_prompt.md): what it prepares, does and checks, and what a reader would expect that it leaves out.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "test", "prepares", "does", "checks", "not"],
+        "properties": {
+          "file": {"type": "string", "minLength": 1},
+          "test": {"type": "string", "minLength": 1},
+          "prepares": {"type": "string", "minLength": 1},
+          "does": {"type": "string", "minLength": 1},
+          "checks": {"type": "string", "minLength": 1},
+          "not": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

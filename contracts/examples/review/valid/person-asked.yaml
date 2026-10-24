@@ -1,0 +1,15 @@
+person:
+  condition: 4
+  reason: "publishes posts to the live site; the test uses a simulated site only"
+findings:
+  - finding: "REQ-0014 says 'publish at once'; the code publishes on the next hourly run"
+    outcome: disputed
+    author_answer: "The hourly run is how the site publishes; at once was never possible"
+    reviewer_position: "The requirement says at once; the architect decides"
+tests:
+  - file: src/test/java/auth_service/LoginTest.java
+    test: refusesAWrongPassword
+    prepares: "a user alice with the password secret"
+    does: "logs in as alice with the password wrong"
+    checks: "the answer is 'access refused'"
+    not: "a locked account after several attempts"

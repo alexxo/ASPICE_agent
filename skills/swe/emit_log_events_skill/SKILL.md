@@ -51,8 +51,8 @@ every event of the requirement literally.
 
 ## Not checkable
 
-The reviewer agent at the pull request, and a person on the sampled pull
-requests (checkpoint 4), confirm:
+The reviewer agent at the pull request, and a person on the important or
+risky pull requests (checkpoint 4), confirm:
 
 - The test really captures the emitted events and checks them — not merely
   that their names appear in the test.

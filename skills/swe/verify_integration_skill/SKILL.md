@@ -59,8 +59,8 @@ integration test names its flow as *@flow[&lt;sequence-diagram-id&gt;]*.
 
 ## Not checkable
 
-The reviewer agent at the pull request, and a person on the sampled pull
-requests (checkpoint 4), confirm:
+The reviewer agent at the pull request, and a person on the important or
+risky pull requests (checkpoint 4), confirm:
 
 - A component test reaches the component only through its interfaces, with
   the declared test doubles on the other side.

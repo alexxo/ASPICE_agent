@@ -55,7 +55,7 @@ QF = {
             "quality-framework/derive_validation_scenarios_plugin"
         ),
     },
-    "review": {"agents": ["qf-reviewer-bot"], "sample_every": 5},
+    "review": {"agents": ["qf-reviewer-bot"], "people": ["lead-bob"]},
     "urgent_approvers": ["lead-bob"],
     "change_approvers": ["lead-bob"],
     "escalate_after_days": 30,
@@ -1236,15 +1236,40 @@ def add_origin(root: Path, repo: str = HOST_REPO) -> None:
     subprocess.run(["git", "-C", str(root), "remote", "add", "origin", url], check=True)
 
 
+NO_PERSON = {"person": "none", "findings": []}
+
+
 def review(
-    author: str, commit: str, state: str = "APPROVED", failing=(), bot=False, items=None
+    author: str,
+    commit: str,
+    state: str = "APPROVED",
+    failing=(),
+    bot=False,
+    items=None,
+    record: dict | None = NO_PERSON,
+    submitted: str | None = None,
 ) -> dict:
     """A review as the host records it; the agent's carries the checklist (every
-    item, or the items given)."""
+    item, or the items given) and its review record (none when None)."""
     from tools.post_review_tool import CHECKLIST, render
 
-    body = render(set(failing), items=items or CHECKLIST) if author == AGENT else "Looks right."
-    return {"author": author, "state": state, "commit": commit, "body": body, "bot": bot}
+    if author == AGENT:
+        body = render(set(failing), items=items or CHECKLIST, record=record)
+    else:
+        body = "Looks right."
+    return {
+        "author": author,
+        "state": state,
+        "commit": commit,
+        "body": body,
+        "bot": bot,
+        "submitted": submitted,
+    }
+
+
+def note(body: str, updated: str, *, author: str = "github-actions[bot]", bot=True, id=1) -> dict:
+    """A comment on a pull request's conversation, as the host records it."""
+    return {"id": id, "author": author, "body": body, "updated": updated, "bot": bot}
 
 
 def pull_request(
@@ -1258,8 +1283,10 @@ def pull_request(
     commits=(),
     author: str = AUTHOR,
     merged_at: str | None = None,
+    notes=(),
 ) -> dict:
     return {
+        "notes": list(notes),
         "number": number,
         "author": author,
         "head": head,

@@ -5,10 +5,13 @@ its session — never the author's: GitHub forbids approving one's own pull
 request, and verify_delivery_reviewed_gate counts only approvals from the accounts in
 qf.yaml review.agents. The review is given on the pull request's current head.
 An approval needs every checklist item the pull request asks for checked
-(required_items: logging only when it changes code); a request for changes names
-the items that fail (--failing) and the findings (--findings, a text file).
+(required_items: logging only when it changes code) and the review record
+(--record, a review.v1 YAML file): whether the reviewer asks for a person, what
+became of every finding, and the tests described for the person's review; it
+goes into the body as a ```yaml review block. A request for changes names the
+items that fail (--failing) and the findings (--findings, a text file).
 
-    python tools/post_review_tool.py --pull-request N --decision approve
+    python tools/post_review_tool.py --pull-request N --decision approve --record review.yaml
     python tools/post_review_tool.py --pull-request N --decision request_changes \\
         --failing correctness --findings findings.md
 """
@@ -50,11 +53,23 @@ def required_items(config: ProductConfig, files) -> tuple[str, ...]:
     return tuple(item for item in CHECKLIST if item != "logging")
 
 
-def render(failing: set[str], findings: str = "", items: tuple[str, ...] = CHECKLIST) -> str:
-    """The review body: the checklist, then the findings."""
+def render(
+    failing: set[str],
+    findings: str = "",
+    items: tuple[str, ...] = CHECKLIST,
+    record: dict | None = None,
+) -> str:
+    """The review body: the checklist, the findings, then the review record."""
     lines = [MARK] + [f"- [{' ' if item in failing else 'x'}] {item}" for item in items]
-    text = "\n".join(lines)
-    return f"{text}\n\n{findings.strip()}\n" if findings.strip() else f"{text}\n"
+    text = "\n".join(lines) + "\n"
+    if findings.strip():
+        text += f"\n{findings.strip()}\n"
+    if record is not None:
+        import yaml
+
+        dumped = yaml.safe_dump(record, sort_keys=False, allow_unicode=True)
+        text += f"\n```yaml review\n{dumped}```\n"
+    return text
 
 
 def checklist(body: str) -> dict[str, bool] | None:
@@ -97,10 +112,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--decision", choices=["approve", "request_changes"], required=True)
     parser.add_argument("--failing", nargs="*", default=[], choices=CHECKLIST)
     parser.add_argument("--findings", type=Path, help="text file with the findings")
+    parser.add_argument("--record", type=Path, help="the review record, a review.v1 YAML file")
     args = parser.parse_args(argv)
     findings = args.findings.read_text() if args.findings else ""
     if args.decision == "approve" and args.failing:
         parser.error("an approval needs every checklist item checked")
+    if args.decision == "approve" and not args.record:
+        parser.error("an approval carries the review record (--record)")
+    record = None
+    if args.record:
+        import yaml
+
+        from tools.validate_contract_tool import validate
+
+        record = yaml.safe_load(args.record.read_text())
+        problems = validate(record, "review")
+        if problems:
+            where = problems[0].path or "the record"
+            parser.error(f"{args.record} breaks review.v1 at '{where}': {problems[0].message}")
     if args.decision == "request_changes" and not (args.failing and findings.strip()):
         parser.error("a request for changes names the failing items and the findings")
     token = os.environ.get(HOST_TOKEN)
@@ -128,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 2
         event = "APPROVE" if args.decision == "approve" else "REQUEST_CHANGES"
-        body = render(set(args.failing), findings, items)
+        body = render(set(args.failing), findings, items, record)
         _post(token, repo, pull.number, pull.head, event, body)
     except HostError as err:
         print(err, file=sys.stderr)

@@ -62,8 +62,8 @@ workshop standards and coverage must pass (run_verification_suites_skill).
 
 ## Not checkable
 
-The reviewer agent confirms at the pull request, and a person on the sampled
-pull requests (checkpoint 4):
+The reviewer agent confirms at the pull request, and a person on the
+important or risky pull requests (checkpoint 4):
 
 - The code does what the unit's responsibility says and respects its ranges.
 - Helpers stay inside their unit; a unit is not split across components.

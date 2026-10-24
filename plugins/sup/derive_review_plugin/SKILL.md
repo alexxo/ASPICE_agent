@@ -1,6 +1,6 @@
 ---
 name: derive_review_plugin
-description: "Reviews one pull request as the reviewer agent: in a session of its own, from its own declared account, never the author's, after every gate passes; checks what no gate can — correctness, style, traceability, and logging for a change with code — and posts its decision with the checklist; findings left unfixed become non-conformance issues."
+description: "Reviews one pull request as the reviewer agent: in a session of its own, from its own declared account, never the author's, after every gate passes; checks what no gate can — correctness, style, traceability, and logging for a change with code — and posts its decision with the checklist and the review record (whether a person is needed, every finding's outcome, the tests described from the test alone); findings left unfixed become non-conformance issues."
 ---
 
 # plugin: derive_review_plugin
@@ -21,7 +21,9 @@ it: you read it, and you say what is wrong and where.
 
 Not this method's job: running the gates (CI did, and they must pass before you
 start), writing or changing code or tests (the crews of stages 1–8), the
-person's approval (seal 4, on a sample).
+person's approval (seal 4, on the important or risky pull requests), deciding
+that a person is not needed (the files decide that; you can only add a
+request).
 
 ## Explore
 
@@ -60,8 +62,8 @@ When in doubt, full.
    that wait for a review. Read the head's crossing sign, the commit status
    *qf/merge*
    (*gh api repos/<owner>/<repo>/commits/<head>/status*): *Wait: the
-   reviewer agent's approval*, alone or with *a person's approval
-   (sampled)*, means everything else is green; *Wait: gates running* means
+   reviewer agent's approval*, alone or with *a person's review*, means
+   everything else is green; *Wait: gates running* means
    wait; any *gates red* means stop and report it. Without the sign (a CI
    file older than v2.1.0), read the head's gates run
    (*gh api "repos/<owner>/<repo>/actions/runs?head_sha=<head>"*). A 403
@@ -73,12 +75,30 @@ When in doubt, full.
    code. Each finding names the file, the line and what must change.
 4. **Decide** — approve only when every item holds; otherwise request
    changes.
-5. **Post** — from your own account, in your own session
+5. **Ask for a person, or not** — only for one of five conditions no file
+   shows, with its reason in one line: 1 the rating looks too low (the change
+   handles passwords, personal data, payments, permissions or deleting data,
+   and its requirements are rated medium or low, or none covers it); 2 the
+   meaning is unclear (a requirement reads two ways, and the code chose one);
+   3 beyond what was approved; 4 cannot be undone (it deletes, rewrites or
+   migrates stored data, or publishes, sends or pays); 5 cannot be verified
+   (an outside service is only simulated, timing), or the same finding came
+   back after three rounds. Never for size, style or taste. A *no* cancels
+   nothing the files call for.
+6. **Record** — the review record (*review.v1*): your answer to step 5;
+   every finding of every round with its outcome (*fixed*, *withdrawn*, or
+   *disputed* with the author's answer and your final position); and, when
+   *classify_pull_request_tool* says a person reviews the pull request, its
+   tests described in a fresh session that sees the tests only
+   (*agent/describe_tests_prompt.md*) — never by you, who read the
+   requirements.
+7. **Post** — from your own account, in your own session
    (*agent/run_reviewer_agent.md*; its token in *QF_HOST_TOKEN* there only):
-   *python tools/post_review_tool.py --pull-request N --decision approve*
-   (or *request_changes*, with *--failing* and *--findings FILE*). The tool
-   writes the items the pull request asks for in their fixed form.
-6. **Follow up** — a finding the author fixes in the pull request needs
+   *python tools/post_review_tool.py --pull-request N --decision approve
+   --record FILE* (or *request_changes*, with *--failing* and *--findings
+   FILE*). The tool writes the items the pull request asks for in their fixed
+   form, and the record as a *```yaml review* block.
+8. **Follow up** — a finding the author fixes in the pull request needs
    nothing more; one the architect defers becomes an issue labelled
    *non-conformance* whose *nonconformance* block names the pull request
    (*found_in*; *track_nonconformances_skill*).
@@ -94,11 +114,12 @@ finding fixed since the last review is not repeated; one still open is.
 ## Done
 
 *verify_delivery_reviewed_gate* finds your approval of the current head with the
-checklist complete; on a sampled pull request it then waits for the person.
+checklist complete and the record valid, every reviewed test described; on an
+important or risky pull request it then waits for the person.
 
 Size budgets: at most 3 questions per round; one finding per problem.
 Completeness wins over a budget: never leave a changed file unread or a
 finding unsaid to stay within one.
 
 Report: the decision, the findings with file and line, the questions still
-open, and whether the pull request waits for a person (seal 4).
+open, and whether the pull request waits for a person (seal 4) and why.

@@ -45,7 +45,7 @@ def test_the_framework_is_the_products_pinned_submodule(repo_root):
 
 
 def test_a_review_runs_the_gates_again(repo_root):
-    """A sampled pull request waits for a person (seal 4): their review must
+    """A pull request a person reviews waits for them (seal 4): their review must
     re-run the gates, or it would stay red after the approval."""
     workflow = yaml.safe_load((repo_root / TEMPLATE).read_text())
     triggers = workflow.get("on", workflow.get(True))
@@ -62,15 +62,28 @@ def test_a_review_run_knows_the_pull_requests_base(repo_root):
 
 def test_the_gates_read_the_host_with_the_runs_own_token(repo_root):
     """No secret and no administrator's token: the token every run has, reading
-    the host (decision 6 of the quality assurance stage); its one write is the
-    crossing sign (rule 13)."""
+    the host (decision 6 of the quality assurance stage); its writes are the
+    crossing sign (rule 13) and the checkpoint-4 review comment (rule 14)."""
     workflow = yaml.safe_load((repo_root / TEMPLATE).read_text())
     steps = workflow["jobs"]["gates"]["steps"]
     (gates,) = (s for s in steps if "resolve_stage_tool.py --root . --check" in s.get("run", ""))
     assert gates["env"]["QF_HOST_TOKEN"] == "${{ github.token }}"
     writes = {k for k, v in workflow["permissions"].items() if v != "read"}
-    assert writes == {"statuses"} and workflow["permissions"]["statuses"] == "write"
-    assert {"pull-requests", "checks"} <= set(workflow["permissions"])
+    assert writes == {"statuses", "pull-requests"}
+    assert {k: workflow["permissions"][k] for k in writes} == dict.fromkeys(writes, "write")
+    assert "checks" in workflow["permissions"]
+
+
+def test_a_pull_request_a_person_reviews_gets_the_review_comment(repo_root):
+    """Posted before the gates run, so the gate finds it in the same run
+    (rule 14 of the quality assurance stage)."""
+    workflow = yaml.safe_load((repo_root / TEMPLATE).read_text())
+    steps = workflow["jobs"]["gates"]["steps"]
+    runs = [s.get("run", "") for s in steps]
+    (post,) = (i for i, r in enumerate(runs) if "post_checkpoint_review_tool.py" in r)
+    (gates,) = (i for i, r in enumerate(runs) if "resolve_stage_tool.py --root . --check" in r)
+    assert post < gates and steps[post]["if"] == "github.event.pull_request"
+    assert steps[post]["env"]["QF_HOST_TOKEN"] == "${{ github.token }}"
 
 
 def test_a_pull_request_shows_the_crossing_sign(repo_root):

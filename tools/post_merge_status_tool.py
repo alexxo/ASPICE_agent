@@ -39,7 +39,9 @@ LIMIT = 140  # GitHub's longest status description
 WAITS_FOR = {
     "MISSING_AGENT_REVIEW": "the reviewer agent's approval",
     "INCOMPLETE_CHECKLIST": "the reviewer agent's approval",
-    "MISSING_PERSON_APPROVAL": "a person's approval (sampled)",
+    "MISSING_PERSON_APPROVAL": "a person's review",
+    "REVIEW_ITEMS_UNANSWERED": "a person's review",
+    "REVIEW_CHANGED_AFTER_APPROVAL": "a person's review",
 }
 
 

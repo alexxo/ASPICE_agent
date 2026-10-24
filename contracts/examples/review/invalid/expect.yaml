@@ -1,0 +1,3 @@
+no-person.yaml: {path: "", keyword: required}
+condition-six.yaml: {path: "person", keyword: oneOf}
+dispute-without-answer.yaml: {path: "findings/0", keyword: required}

@@ -60,7 +60,7 @@ class ProductConfig:
     validation_records_dir: Path
     slots: dict[str, str]
     review_agents: tuple[str, ...] = ()
-    sample_every: int = 1
+    review_people: tuple[str, ...] = ()  # the people CI calls in for a person's review
     config_items: tuple[str, ...] = ()  # the product's own, added to the framework's
     urgent_approvers: tuple[str, ...] = ()
     change_approvers: tuple[str, ...] = ()
@@ -118,7 +118,7 @@ def read_product_config(root: Path) -> ProductConfig:
         validation_records_dir=root / paths["validation_records_dir"],
         slots=dict(data["slots"]),
         review_agents=tuple(data["review"]["agents"]),
-        sample_every=data["review"]["sample_every"],
+        review_people=tuple(data["review"]["people"]),
         config_items=tuple(data.get("config_items") or ()),
         urgent_approvers=tuple(data["urgent_approvers"]),
         change_approvers=tuple(data["change_approvers"]),

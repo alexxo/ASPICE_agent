@@ -76,8 +76,8 @@ The tests and stubs follow the stack, not a schema:
 
 ## Not checkable
 
-The reviewer agent confirms at the pull request, and a person on the sampled
-pull requests (checkpoint 4):
+The reviewer agent confirms at the pull request, and a person on the
+important or risky pull requests (checkpoint 4):
 
 - Each test asserts the right thing: the *Then* of its acceptance criterion,
   or the rejection at a range limit — not merely that something was returned.

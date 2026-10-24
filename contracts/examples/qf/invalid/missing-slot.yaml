@@ -34,7 +34,7 @@ slots:
 
 review:
   agents: [qf-reviewer-bot]
-  sample_every: 5
+  people: [lead-bob]
 
 urgent_approvers: [lead-bob]
 change_approvers: [lead-bob]

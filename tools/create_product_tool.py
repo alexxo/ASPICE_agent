@@ -7,7 +7,8 @@ framework exists once (decisions 1 and 3 of starting a product):
 
     git clone --branch v2.3.2 <framework repository> my-product/.framework
     python my-product/.framework/tools/create_product_tool.py --root my-product \\
-        --reviewer-agent LOGIN --urgent-approver LOGIN --change-approver LOGIN \\
+        --reviewer-agent LOGIN --person LOGIN --urgent-approver LOGIN \\
+        --change-approver LOGIN \\
         --code-owner @LOGIN-OR-@ORG/TEAM
 
 The setup makes the folder a git repository if it is none, and adopts the clone
@@ -103,7 +104,6 @@ checked out at a release; clone it into the product folder and run the setup fro
   git clone --branch v<version> <framework repository> <product>/.framework
   python <product>/.framework/tools/create_product_tool.py --root <product> ..."""
 
-SAMPLE_EVERY = 5
 ESCALATE_AFTER_DAYS = 30
 _RELEASE = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 _OWNER = re.compile(
@@ -127,7 +127,7 @@ def product_config(args: argparse.Namespace) -> dict:
         "contract": "qf.v1",
         "paths": dict(PATHS),
         "slots": dict(SLOTS),
-        "review": {"agents": args.reviewer_agent, "sample_every": SAMPLE_EVERY},
+        "review": {"agents": args.reviewer_agent, "people": args.person},
         "urgent_approvers": args.urgent_approver,
         "change_approvers": args.change_approver,
         "escalate_after_days": ESCALATE_AFTER_DAYS,
@@ -282,6 +282,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=Path.cwd())
     for flag, what in (
         ("--reviewer-agent", "a host account the reviewer agent posts from"),
+        ("--person", "a host account of a person CI calls in for a person's review"),
         ("--urgent-approver", "a host account that may authorize an urgent fix"),
         ("--change-approver", "a host account that may approve a change request"),
         ("--code-owner", "an owner of the CI file, the framework pin and the architecture"),

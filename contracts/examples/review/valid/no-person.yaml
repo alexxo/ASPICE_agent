@@ -1,0 +1,4 @@
+person: none
+findings:
+  - finding: "src/auth_service/Login.java:42 logs the password"
+    outcome: fixed

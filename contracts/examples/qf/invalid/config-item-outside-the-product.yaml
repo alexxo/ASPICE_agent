@@ -37,7 +37,7 @@ slots:
 
 review:
   agents: [qf-reviewer-bot]
-  sample_every: 5
+  people: [lead-bob]
 
 config_items:
   - ../shared/runbooks

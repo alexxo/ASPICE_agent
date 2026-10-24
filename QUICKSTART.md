@@ -78,21 +78,23 @@ Explain the roles. Ask the person which GitHub account plays each one, and
 keep the answers for step 5. This file calls them *reviewer*, *developer* and
 *reviewer-bot*:
 
-- **reviewer**: the person who reviews. Approves the pull requests the
-  framework samples (every architecture change, every change to the CI file,
-  the framework pin — `.framework` or `.gitmodules` — or `qf.yaml`, and one
-  in five of the others), the checkpoints,
-  urgent fixes and change requests.
+- **reviewer**: the person who reviews. Approves the pull requests that need
+  a person (every architecture change, every change to the CI file, the
+  framework pin — `.framework` or `.gitmodules` — or `qf.yaml`, and every one
+  that is important or risky), the checkpoints, urgent fixes and change
+  requests. The setup names them as `--person`, so CI's review comments
+  mention them and GitHub notifies them.
 - **developer**: works with the agent and opens the pull requests.
 - **reviewer-bot**: the reviewer agent's own GitHub account, which posts the
   agent's reviews. Its approvals never count as a person's.
 
-**Three accounts are enough.** The setup in step 5 asks for four values, but
+**Three accounts are enough.** The setup in step 5 asks for five values, but
 one account can fill several of them:
 
 | The setup asks for | Filled by |
 |---|---|
 | reviewer agent | the **reviewer-bot** account |
+| person | the **reviewer** account |
 | code owner | the **reviewer** account |
 | urgent approver | the **reviewer** account |
 | change approver | the **reviewer** account |
@@ -331,12 +333,15 @@ wishes. Tell the person how the work runs from now on:
   (PowerShell: `$env:QF_HOST_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"`)
   — and asks it to follow `.framework/agent/run_reviewer_agent.md` for that
   pull request.
-- **reviewer** approves the sampled pull requests on GitHub, and gives the
+- **reviewer** reviews the pull requests that need a person: CI posts the
+  review in plain words as a comment and mentions them, and the agent opens
+  it on its computer. They tick one box per item, then **Review changes →
+  Approve** — or **Request changes** with the reason. They also give the
   checkpoint decisions the agent asks for.
 - **The agent merges**, never a person: only when the pull request's check
   **qf/merge** on its current head says *Ready to merge*, and exactly that
   head (`--match-head-commit`). While it says *Wait: …* it names what
-  is still missing — the reviewer agent's approval, a person's approval, or
+  is still missing — the reviewer agent's approval, a person's review, or
   red gates — and after any push or review it starts again at *Wait: gates
   running*. GitHub does not block the button: the sign is the rule.
 - **Everyone**: every change reaches `main` through a reviewed pull request

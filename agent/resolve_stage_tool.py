@@ -68,8 +68,10 @@ from tools.write_release_tool import pending  # noqa: E402
 __all__ = ["CUSTOMER_DECISION", "HOST_APPROVAL", "needs_record", "resolve_stage"]
 
 HOST_APPROVAL = "MISSING_PERSON_APPROVAL"  # verify_delivery_reviewed_gate: seal 4 not given yet
+# the person's review of seal 4 not answered, or changed after their approval: still seal 4
+PERSON_REVIEW = {HOST_APPROVAL, "REVIEW_ITEMS_UNANSWERED", "REVIEW_CHANGED_AFTER_APPROVAL"}
 CUSTOMER_DECISION = "MISSING_CUSTOMER_DECISION"  # verify_release_evidence_gate: seal 5 not yet
-SEALS = {HOST_APPROVAL, CUSTOMER_DECISION}
+SEALS = PERSON_REVIEW | {CUSTOMER_DECISION}
 
 
 def resolve_stage(root: Path) -> dict:
@@ -95,8 +97,8 @@ def resolve_stage(root: Path) -> dict:
     if not findings:
         return state
     rules = {f["rule"] for f in findings}
-    if rules == {HOST_APPROVAL} and state["status"] != "gates_failing":
-        status, why = "awaiting_checkpoint", "a person's approval of the pull request on the host"
+    if rules and rules <= PERSON_REVIEW and state["status"] != "gates_failing":
+        status, why = "awaiting_checkpoint", "a person's review of the pull request on the host"
     else:
         status, why = "gates_failing", f"{len(findings)} finding(s) of the always-on gates"
     return {

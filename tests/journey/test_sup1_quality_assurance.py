@@ -3,9 +3,10 @@
 The product starts where stage 8 ends, with what its first delivery needs: the
 framework pinned as a released submodule, the CI file, the code owners and the
 framework feedback log. The foreman opens the pull request; the reviewer agent
-approves its head from its own account with the checklist; on a sampled pull
-request a person approves too (decisions 1, 2 and 7 of the quality assurance
-stage). The host is a recorded one (QF_HOST_FILE), as in the gates' tests.
+approves its head from its own account with the checklist and its review
+record; on an important or risky pull request a person approves too (rules 1,
+2, 7 and 14 of the quality assurance stage). The host is a recorded one
+(QF_HOST_FILE), as in the gates' tests.
 
 - the reviewer is loaded with its rulebooks;
 - the reviewer agent's approval moves the product through stages 10 and 11, every wish

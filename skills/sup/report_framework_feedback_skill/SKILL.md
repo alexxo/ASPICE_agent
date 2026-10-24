@@ -94,7 +94,7 @@ slots:
   create_validation_scenarios_plugin: quality-framework/derive_validation_scenarios_plugin
 review:
   agents: [qf-reviewer-bot]
-  sample_every: 5
+  people: [lead-bob]
 urgent_approvers: [lead-bob]
 change_approvers: [lead-bob]
 escalate_after_days: 30

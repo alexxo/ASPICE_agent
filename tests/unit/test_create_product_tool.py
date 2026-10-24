@@ -78,6 +78,8 @@ def args(root):
         str(root),
         "--reviewer-agent",
         "qf-reviewer-bot",
+        "--person",
+        "lead-ana",
         "--urgent-approver",
         "lead-ana",
         "--change-approver",
@@ -97,6 +99,7 @@ def test_a_new_product_gets_a_valid_configuration(product):
     qf = yaml.safe_load((product / "qf.yaml").read_text())
     assert validate(qf, "qf") == []
     assert qf["review"]["agents"] == ["qf-reviewer-bot"]
+    assert qf["review"]["people"] == ["lead-ana"]
     assert qf["urgent_approvers"] == ["lead-ana"]
     assert qf["change_approvers"] == ["lead-ana", "lead-ben"]
     assert "mirror" not in qf
@@ -255,7 +258,7 @@ def test_a_code_owner_must_be_a_person_or_team(product, capsys):
 
 @pytest.mark.parametrize(
     "flag",
-    ["--reviewer-agent", "--urgent-approver", "--change-approver", "--code-owner"],
+    ["--reviewer-agent", "--person", "--urgent-approver", "--change-approver", "--code-owner"],
 )
 def test_every_person_value_is_required(product, flag):
     argv = args(product)

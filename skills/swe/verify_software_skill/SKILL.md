@@ -72,8 +72,8 @@ the threshold has one, its *unit* exactly as the threshold writes it:
 
 ## Not checkable
 
-The reviewer agent at the pull request, and a person on the sampled pull
-requests (checkpoint 4), confirm:
+The reviewer agent at the pull request, and a person on the important or
+risky pull requests (checkpoint 4), confirm:
 
 - A test checks every acceptance criterion of the requirement it names, not
   just the happy case.

@@ -43,6 +43,7 @@ __all__ = [
     "Host",
     "HostError",
     "Issue",
+    "Note",
     "PullRequest",
     "Review",
     "delivery",
@@ -86,6 +87,18 @@ class Review:
     commit: str  # the head the review was given on
     body: str = ""
     bot: bool = False
+    submitted: str | None = None  # ISO 8601
+
+
+@dataclass(frozen=True)
+class Note:
+    """A comment on a pull request's conversation, which its author may edit."""
+
+    id: int
+    author: str
+    body: str
+    updated: str  # ISO 8601: the last edit, a ticked box included
+    bot: bool = False
 
 
 @dataclass(frozen=True)
@@ -97,6 +110,7 @@ class PullRequest:
     reviews: tuple[Review, ...] = ()
     merged: bool = False
     merged_at: str | None = None  # ISO 8601
+    notes: tuple[Note, ...] = ()
 
     def approvals(self) -> list[Review]:
         """The approvals that count: each reviewer's latest decision, when it
@@ -232,11 +246,22 @@ class GitHubHost:
                     commit=r.get("commit_id") or "",
                     body=r.get("body") or "",
                     bot=(r.get("user") or {}).get("type") == "Bot",
+                    submitted=r.get("submitted_at"),
                 )
                 for r in reviews
             ),
             merged=bool(data.get("merged")),
             merged_at=data.get("merged_at"),
+            notes=tuple(
+                Note(
+                    id=n["id"],
+                    author=(n.get("user") or {}).get("login", ""),
+                    body=n.get("body") or "",
+                    updated=n.get("updated_at") or n["created_at"],
+                    bot=(n.get("user") or {}).get("type") == "Bot",
+                )
+                for n in self._pages(f"/repos/{repo}/issues/{number}/comments")
+            ),
         )
 
     def pull_requests_for_branch(self, repo: str, branch: str) -> list[int]:
@@ -321,6 +346,7 @@ class FileHost:
                     reviews=tuple(Review(**r) for r in p.get("reviews", ())),
                     merged=p.get("merged", False),
                     merged_at=p.get("merged_at"),
+                    notes=tuple(Note(**n) for n in p.get("notes", ())),
                 )
         return None
 

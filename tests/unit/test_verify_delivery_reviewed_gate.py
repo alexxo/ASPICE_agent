@@ -1,4 +1,4 @@
-"""gates/sup/verify_delivery_reviewed_gate.py — every delivery reviewed, the sample by a person."""
+"""gates/sup/verify_delivery_reviewed_gate.py — deliveries reviewed, what matters by a person."""
 
 import json
 import subprocess
@@ -7,6 +7,7 @@ import pytest
 from product_builder import (
     AGENT,
     AUTHOR,
+    HOST_REPO,
     PERSON,
     add_origin,
     build_product,
@@ -14,12 +15,15 @@ from product_builder import (
     commit_all,
     git_head,
     issue,
+    note,
     pull_request,
     review,
     write_host,
 )
 
-from gates.sup.verify_delivery_reviewed_gate import check
+from gates.sup.verify_delivery_reviewed_gate import check, person_review
+from tools.post_checkpoint_review_tool import render
+from tools.read_host_tool import FileHost
 from tools.read_product_config_tool import read_product_config
 
 BRANCH = "feature/REQ-0047-lockout"
@@ -242,13 +246,112 @@ def test_a_missing_review_names_the_reviewer_session(product, tmp_path, monkeypa
     assert "agent/run_reviewer_agent.md" in finding.message
 
 
-def test_a_sampled_pull_request_waits_for_a_person(product, tmp_path, monkeypatch):
+DISPUTED = {
+    "person": "none",
+    "findings": [
+        {
+            "finding": "the limit is 10, the requirement says 5",
+            "outcome": "disputed",
+            "author_answer": "5 locks out users on a typo",
+            "reviewer_position": "the requirement says 5",
+        }
+    ],
+}
+APPROVED_AT = "2026-10-24T10:00:00Z"
+
+
+def test_no_pull_request_is_chosen_by_number(product, tmp_path, monkeypatch):
     head = git_head(product)
-    agent = review(AGENT, head)
-    sampled = pull_request(5, head, reviews=[agent])  # 5 is a multiple of sample_every
-    assert _rules(product, tmp_path, monkeypatch, sampled) == ["MISSING_PERSON_APPROVAL"]
-    approved = pull_request(5, head, reviews=[agent, review(PERSON, head)])
-    assert _rules(product, tmp_path, monkeypatch, approved) == []
+    pull = pull_request(5, head, reviews=[review(AGENT, head)])
+    assert _rules(product, tmp_path, monkeypatch, pull) == []
+
+
+def test_an_approval_without_its_review_record_is_incomplete(product, tmp_path, monkeypatch):
+    head = git_head(product)
+    pull = pull_request(1, head, reviews=[review(AGENT, head, record=None)])
+    assert _rules(product, tmp_path, monkeypatch, pull) == ["INCOMPLETE_CHECKLIST"]
+
+
+def _review_comment(product, tmp_path, pull, record, answer="yes"):
+    """CI's checkpoint-4 review comment for the pull request, each item answered."""
+    path = write_host(tmp_path / "rendered.json", pulls=[pull])
+    found = FileHost(path).pull_request(HOST_REPO, pull["number"])
+    config = read_product_config(product)
+    body = render(config, HOST_REPO, found, person_review(config, found, record), record)
+    lines, seen = [], 0
+    for line in body.splitlines():
+        if line.startswith("### "):
+            seen = 0
+        if line.startswith("- [ ] "):
+            seen += 1
+            wanted = {"yes": (1,), "no": (2,), "both": (1, 2)}.get(answer, ())
+            if seen in wanted:
+                line = "- [x] " + line[6:]
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _disputed(product, tmp_path, *, answer="yes", updated="2026-10-24T09:00:00Z", person=True):
+    head = git_head(product)
+    reviews = [review(AGENT, head, record=DISPUTED)]
+    if person:
+        reviews.append(review(PERSON, head, submitted=APPROVED_AT))
+    pull = pull_request(1, head, reviews=reviews)
+    body = _review_comment(product, tmp_path, pull, DISPUTED, answer)
+    return pull_request(1, head, reviews=reviews, notes=[note(body, updated)])
+
+
+def test_a_disputed_finding_waits_for_a_persons_review(product, tmp_path, monkeypatch):
+    head = git_head(product)
+    pull = pull_request(1, head, reviews=[review(AGENT, head, record=DISPUTED)])
+    rules = _rules(product, tmp_path, monkeypatch, pull)
+    assert rules == ["MISSING_PERSON_APPROVAL", "REVIEW_ITEMS_UNANSWERED"]
+
+
+def test_every_item_answered_yes_then_approved_passes(product, tmp_path, monkeypatch):
+    assert _rules(product, tmp_path, monkeypatch, _disputed(product, tmp_path)) == []
+
+
+@pytest.mark.parametrize("answer", ["no", "both", "none"])
+def test_an_item_not_answered_yes_waits(product, tmp_path, monkeypatch, answer):
+    pull = _disputed(product, tmp_path, answer=answer)
+    assert _rules(product, tmp_path, monkeypatch, pull) == ["REVIEW_ITEMS_UNANSWERED"]
+
+
+def test_ticks_changed_after_the_approval_make_it_outdated(product, tmp_path, monkeypatch):
+    pull = _disputed(product, tmp_path, updated="2026-10-24T11:00:00Z")
+    assert _rules(product, tmp_path, monkeypatch, pull) == ["REVIEW_CHANGED_AFTER_APPROVAL"]
+
+
+def test_only_cis_comment_for_this_head_and_these_items_counts(product, tmp_path, monkeypatch):
+    pull = _disputed(product, tmp_path)
+    forged = {**pull["notes"][0], "bot": False, "author": AUTHOR}
+    assert _rules(product, tmp_path, monkeypatch, {**pull, "notes": [forged]}) == [
+        "REVIEW_ITEMS_UNANSWERED"
+    ]
+    older = {**pull["notes"][0], "body": pull["notes"][0]["body"].replace(pull["head"], "0" * 40)}
+    assert _rules(product, tmp_path, monkeypatch, {**pull, "notes": [older]}) == [
+        "REVIEW_ITEMS_UNANSWERED"
+    ]
+
+
+def test_a_merged_pull_request_keeps_its_records_request(product, tmp_path, monkeypatch):
+    head = _on_main(product)
+    final = "f" * 40
+    asked = {"person": {"condition": 4, "reason": "publishes posts"}, "findings": []}
+    merged = pull_request(
+        1, final, merged=True, commits=[head], reviews=[review(AGENT, final, record=asked)]
+    )
+    assert "MISSING_PERSON_APPROVAL" in _rules(product, tmp_path, monkeypatch, merged)
+
+
+def test_a_pull_request_merged_before_the_review_record_needs_none(product, tmp_path, monkeypatch):
+    head = _on_main(product)
+    final = "f" * 40
+    merged = pull_request(
+        1, final, merged=True, commits=[head], reviews=[review(AGENT, final, record=None)]
+    )
+    assert _rules(product, tmp_path, monkeypatch, merged) == []
 
 
 def test_an_architecture_pull_request_always_needs_a_person(product, tmp_path, monkeypatch):
@@ -269,5 +372,6 @@ def test_an_architecture_pull_request_always_needs_a_person(product, tmp_path, m
 def test_only_a_person_on_the_current_head_counts(product, tmp_path, monkeypatch, person):
     head = git_head(product)
     person = {**person, "commit": head if person["commit"] == "HEAD" else person["commit"]}
-    pull = pull_request(5, head, reviews=[review(AGENT, head), person])
+    files = ["docs/architecture/architecture.md"]
+    pull = pull_request(5, head, files=files, reviews=[review(AGENT, head), person])
     assert _rules(product, tmp_path, monkeypatch, pull) == ["MISSING_PERSON_APPROVAL"]

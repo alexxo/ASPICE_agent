@@ -50,17 +50,44 @@ method) and each of the `framework_skills` (the rules).
 
 ## 3. Review
 
-Review the pull request by the method, from waiting for green to posting.
+Review the pull request's current head by the method, from waiting for green
+to posting. Read it as it is on the host, never the author's working folder:
+fetch the head into a folder of your own under `.qf/reviews/`, which git
+ignores —
+`git -C <product> fetch origin pull/<n>/head` then
+`git -C <product> worktree add --detach .qf/reviews/<n> FETCH_HEAD` —
+and remove it when you are done (`git -C <product> worktree remove .qf/reviews/<n>`).
+
 The checklist holds the items the pull request asks for: *logging* only when
-it changes code. Post with
+it changes code.
 
-`python <framework>/tools/post_review_tool.py --root <product> --pull-request <n> --decision approve|request_changes [--failing <item>...] [--findings <file>]`
+**The review record** (`review.v1`) goes with every approval, as a YAML file:
 
-which writes those items in their fixed form, on the pull request's current
-head.
+- `person` — `none`, or the condition you ask a person for, with its reason
+  in one line: 1 the rating looks too low, 2 the meaning is unclear, 3 beyond
+  what was approved, 4 cannot be undone, 5 cannot be verified (or the same
+  finding after three rounds). Size, style or taste are never a reason.
+- `findings` — every finding of every round on this pull request (read your
+  earlier reviews on it), each `fixed`, `withdrawn`, or `disputed` with the
+  author's answer and your final position.
+- `tests` — when a person reviews the pull request: run
+  `python <framework>/tools/classify_pull_request_tool.py --root .qf/reviews/<n> --pull-request <n> --record <your record> --base origin/<default branch>`.
+  If `needed` is true and `tests` is not empty, describe those test files in
+  a fresh session that sees the tests only
+  (`<framework>/agent/describe_tests_prompt.md`), and put its list under
+  `tests`. Never write the descriptions yourself: you have read the
+  requirements.
+
+Post with
+
+`python <framework>/tools/post_review_tool.py --root <product> --pull-request <n> --decision approve|request_changes [--failing <item>...] [--findings <file>] [--record <file>]`
+
+which writes the items in their fixed form and the record as a
+` ```yaml review ` block, on the pull request's current head. An approval
+needs `--record`.
 
 ## 4. Report
 
 Tell the person the decision, the findings with file and line, the questions
-still open, and whether the pull request waits for a person (seal 4). Then
-stop. After a new push, the person starts the review of the new head.
+still open, and whether the pull request waits for a person (seal 4) and why.
+Then stop. After a new push, the person starts the review of the new head.

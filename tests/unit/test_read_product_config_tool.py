@@ -41,7 +41,7 @@ def test_paths_resolve_under_the_product_root(product):
 def test_the_review_section_is_available(product):
     config = read_product_config(product)
     assert config.review_agents == ("qf-reviewer-bot",)
-    assert config.sample_every == 5
+    assert config.review_people == ("lead-bob",)
 
 
 def test_the_issue_rules_are_available(product):

@@ -29,7 +29,7 @@ def test_the_sign_says_what_is_missing():
     }
     assert sign(state) == (
         "failure",
-        "Wait: the reviewer agent's approval; a person's approval (sampled); "
+        "Wait: the reviewer agent's approval; a person's review; "
         "gates red: check_stack_commands_gate",
     )
 

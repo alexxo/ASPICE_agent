@@ -3,15 +3,25 @@
 The work travels in a pull request (NO_PULL_REQUEST). A reviewer agent — one of
 qf.yaml review.agents, never the author — approves the current head
 (MISSING_AGENT_REVIEW) with every checklist item it asks for checked — logging
-only when it changes code (INCOMPLETE_CHECKLIST).
-Every pull request that changes paths.architecture_dir or the gates' own files
-— the CI file, the framework pin (the submodule at paths.framework_dir, whose
-commit a version move changes, and .gitmodules) and qf.yaml — and every one whose
-number is a multiple of review.sample_every, also has a person's approval of
-the current head (MISSING_PERSON_APPROVAL): seal 4, the person's review on the
-host, never a file the agent could write (decisions 1, 2 and 7 of the quality
-assurance stage). A person is an approver that is no declared agent, no bot and
-not the author.
+only when it changes code — and its review record, a ```yaml review block
+(review.v1), describing every test the person reviews (INCOMPLETE_CHECKLIST).
+A person reviews the pull request when classify_pull_request_tool finds it
+important or risky — a requirement of criticality high or of kind security, a
+trust boundary, a file that traces to nothing, a weakened test, a finding
+closed without a change, or the reviewer agent's request — and always when it
+changes paths.architecture_dir or the gates' own files: the CI file, the
+framework pin (the submodule at paths.framework_dir, whose commit a version
+move changes, and .gitmodules) and qf.yaml. Then a person approves the current
+head (MISSING_PERSON_APPROVAL): seal 4, the person's review on the host, never a
+file the agent could write (rules 1, 2, 7 and 14 of the quality assurance
+stage). When there is something to judge, CI's checkpoint-4 review comment for
+that head (post_checkpoint_review_tool) has every item answered yes
+(REVIEW_ITEMS_UNANSWERED), and was not changed after the approval
+(REVIEW_CHANGED_AFTER_APPROVAL). A person is an approver that is no declared
+agent, no bot and not the author. After the merge, the files are not classified
+again — the gates check before the merge proved them (GATES_NOT_PASSED) — so a
+merged pull request needs a person for the architecture, the gates' own files,
+or its review record's request and disputes.
 
 No host setting is read (decision 6): on every push to the main branch, every
 commit it adds came from a merged pull request (MERGED_WITHOUT_PULL_REQUEST)
@@ -42,6 +52,12 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
 from dataclasses import replace
 
 from gates.sup.verify_required_checks_gate import GATES_JOB, gates_job  # noqa: E402
+from tools.classify_pull_request_tool import (  # noqa: E402
+    Classification,
+    always,
+    classify,
+    review_record,
+)
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.post_review_tool import checklist, required_items  # noqa: E402
 from tools.read_commit_range_tool import (  # noqa: E402
@@ -49,6 +65,7 @@ from tools.read_commit_range_tool import (  # noqa: E402
     is_ancestor,
     main_push,
     main_ref,
+    resolve_base,
 )
 from tools.read_host_tool import Delivery, Host, PullRequest, delivery, read_host  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
@@ -183,6 +200,7 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
     by_agent = [r for r in approvals if r.author in agents]
     items = required_items(config, pull.files)
     findings = []
+    record = None
     if not by_agent:
         findings.append(
             Finding(
@@ -206,19 +224,114 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
                 f"({', '.join(open_items)}); post it with tools/post_review_tool.py.",
             )
         )
-    why = sampled(config, pull)
+    else:
+        record, why = review_record(by_agent[-1].body)
+        if record is None and not pull.merged:
+            findings.append(
+                Finding(
+                    "INCOMPLETE_CHECKLIST",
+                    ".",
+                    None,
+                    f"The reviewer agent's approval of {where} carries no valid review record: "
+                    f"{why}; post it with tools/post_review_tool.py --record.",
+                )
+            )
+    review = person_review(config, pull, record)
     people = [r for r in approvals if r.author not in agents and not r.bot]
-    if why and not people:
+    if review.needed and record is not None and not pull.merged:
+        described = {t["file"] for t in record.get("tests", [])}
+        missing = [t for t in review.tests if t not in described]
+        if missing:
+            findings.append(
+                Finding(
+                    "INCOMPLETE_CHECKLIST",
+                    ".",
+                    None,
+                    f"The reviewer agent's review record of {where} describes no test of "
+                    f"{', '.join(missing)}, which the person reviews; describe them "
+                    "(agent/describe_tests_prompt.md) and post again with --record.",
+                )
+            )
+    if review.needed and not people:
         findings.append(
             Finding(
                 "MISSING_PERSON_APPROVAL",
                 ".",
                 None,
-                f"{where} {why}, so a person must approve its head {pull.head[:7]} (seal 4); "
-                "it waits at the delivery desk until they do.",
+                f"{where} {'; '.join(review.reasons)}, so a person must approve its head "
+                f"{pull.head[:7]} (seal 4); it waits at the delivery desk until they do.",
+            )
+        )
+    if review.needed and record is not None:
+        findings += _answers(config, repo, pull, review, record, people)
+    return findings
+
+
+def person_review(config: ProductConfig, pull: PullRequest, record: dict | None):
+    """Whether a person reviews the pull request, why and on what: classified from
+    its files while it is open; once merged, from what cannot have changed."""
+    if not pull.merged:
+        return classify(config, pull.files, record, resolve_base(config.root))
+    reasons = [r for r in [always(config, pull.files)] if r]
+    if record is not None:
+        base = classify(config, (), record)
+        reasons += list(base.reasons)
+    return Classification(tuple(reasons))
+
+
+def _answers(config, repo, pull, review, record, people) -> list[Finding]:
+    """The person's answers in CI's checkpoint-4 review comment for the head."""
+    from tools.post_checkpoint_review_tool import answers, find_note, render
+
+    where = f"{repo}#{pull.number}"
+    expected = render(config, repo, pull, review, record)
+    if expected is None:  # nothing to judge: the approval alone is the review
+        return []
+    note = find_note(pull, expected)
+    if note is None:
+        return [
+            Finding(
+                "REVIEW_ITEMS_UNANSWERED",
+                ".",
+                None,
+                f"{where} has no checkpoint-4 review comment for its head {pull.head[:7]} "
+                "yet; CI posts it (tools/post_checkpoint_review_tool.py).",
+            )
+        ]
+    open_items = [title for title, answer in answers(note.body) if answer != "yes"]
+    findings = []
+    if open_items:
+        findings.append(
+            Finding(
+                "REVIEW_ITEMS_UNANSWERED",
+                ".",
+                None,
+                f"The checkpoint-4 review of {where} has items not answered yes: "
+                f"{'; '.join(open_items)}. Tick one box per item, then approve — or request "
+                "changes with the reason.",
+            )
+        )
+    stale = [r.author for r in people if r.submitted and _later(note.updated, r.submitted)]
+    if people and len(stale) == len(people):
+        findings.append(
+            Finding(
+                "REVIEW_CHANGED_AFTER_APPROVAL",
+                ".",
+                None,
+                f"The checkpoint-4 review of {where} changed after {', '.join(stale)} approved "
+                "it; approve again once the answers are as meant.",
             )
         )
     return findings
+
+
+def _later(one: str, other: str) -> bool:
+    from datetime import datetime
+
+    def instant(stamp: str):
+        return datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+
+    return instant(one) > instant(other)
 
 
 def _gates_passed(config: ProductConfig, host: Host, repo: str, pull: PullRequest) -> list[Finding]:
@@ -235,21 +348,6 @@ def _gates_passed(config: ProductConfig, host: Host, repo: str, pull: PullReques
             "unfinished gates.",
         )
     ]
-
-
-def sampled(config: ProductConfig, pull: PullRequest) -> str | None:
-    """Why a person must review the pull request, or None."""
-    architecture = config.relative(config.architecture_dir).rstrip("/") + "/"
-    if any(f.startswith(architecture) for f in pull.files):
-        return f"changes the architecture ({architecture})"
-    pin = config.relative(config.framework_dir).rstrip("/")
-    guarded = {config.relative(config.ci_file), pin, ".gitmodules", "qf.yaml"}
-    touched = sorted(guarded & set(pull.files))
-    if touched:
-        return f"changes the gates' own files ({', '.join(touched)})"
-    if pull.number % config.sample_every == 0:
-        return f"is in the sample (1 in {config.sample_every}, by number)"
-    return None
 
 
 def _complete(body: str, items: tuple[str, ...]) -> bool:

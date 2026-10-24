@@ -6,6 +6,6 @@ wrong-contract-version.yaml: {path: "contract", keyword: const}
 missing-code-dir.yaml: {path: "paths", keyword: required}
 combined-unit-slot.yaml: {path: "slots", keyword: additionalProperties}
 review-without-agents.yaml: {path: "review", keyword: required}
-sample-every-zero.yaml: {path: "review/sample_every", keyword: minimum}
+no-people.yaml: {path: "review", keyword: required}
 config-item-outside-the-product.yaml: {path: "config_items/0", keyword: pattern}
 no-urgent-approvers.yaml: {path: "urgent_approvers", keyword: minItems}

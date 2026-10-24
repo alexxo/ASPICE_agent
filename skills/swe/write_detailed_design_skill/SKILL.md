@@ -63,8 +63,8 @@ input or output has a range *{min, max}* and a real unit of measure (e.g.
 
 ## Not checkable
 
-The reviewer agent confirms at the pull request, and a person on the sampled
-pull requests (checkpoint 4):
+The reviewer agent confirms at the pull request, and a person on the
+important or risky pull requests (checkpoint 4):
 
 - The interactions agree with the architecture's flows and the component's
   responsibility — no unit does work that belongs to another component.

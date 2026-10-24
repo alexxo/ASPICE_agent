@@ -55,8 +55,8 @@ required variable names it as *@env[&lt;NAME&gt;]*.
 
 ## Not checkable
 
-The reviewer agent confirms at the pull request, and a person on the sampled
-pull requests (checkpoint 4):
+The reviewer agent confirms at the pull request, and a person on the
+important or risky pull requests (checkpoint 4):
 
 - A test named with *@env* really shows the software stops at start-up when the
   variable is missing or invalid — not merely that it reads it.

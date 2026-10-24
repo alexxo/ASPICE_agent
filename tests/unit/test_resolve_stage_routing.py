@@ -137,11 +137,18 @@ def test_a_passing_stage_without_its_record_asks_for_it(world, tmp_path):
     assert "record_stage_done_tool.py --stage detailed_design" in state["reason"]
 
 
-def test_a_sampled_pull_request_waits_for_a_person(world, tmp_path):
+def test_a_pull_request_a_person_reviews_waits_for_them(world, tmp_path):
     world.failing = {"verify_delivery_reviewed_gate": [resolver.HOST_APPROVAL]}
     state = _resolve(tmp_path)
     assert state["status"] == "awaiting_checkpoint"
     assert [f["rule"] for f in state["findings"]] == [resolver.HOST_APPROVAL]
+
+
+def test_unanswered_review_items_still_wait_for_the_person(world, tmp_path):
+    world.failing = {
+        "verify_delivery_reviewed_gate": [resolver.HOST_APPROVAL, "REVIEW_ITEMS_UNANSWERED"]
+    }
+    assert _resolve(tmp_path)["status"] == "awaiting_checkpoint"
 
 
 def test_a_missing_review_beside_the_person_fails(world, tmp_path):

@@ -61,7 +61,7 @@ The catalog — what the tests of each template must show:
 
 The architect confirms at checkpoint 1 that no trust boundary is missing from
 the diagram; the reviewer agent at the pull request, and a person on the
-sampled pull requests (checkpoint 4), confirm:
+important or risky pull requests (checkpoint 4), confirm:
 
 - The templates named fit what crosses the interface — e.g. a form read from a
   browser needs *input-validation*.
