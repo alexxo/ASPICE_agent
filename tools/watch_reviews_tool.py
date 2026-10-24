@@ -296,7 +296,7 @@ def main(argv: list[str] | None = None) -> int:
     if not os.environ.get(HOST_TOKEN):
         print(
             f"No {HOST_TOKEN}: load the reviewer agent's token into this terminal first "
-            "(QUICKSTART step 8).",
+            "(QUICKSTART step 9).",
             file=sys.stderr,
         )
         return 2
