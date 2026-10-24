@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.5.7] - 2026-10-24
+
+The watcher starts again.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v2.5.7 |
+
+### Fixed
+
+- **The watcher crashed at start** with `TypeError: 'bool' object is not callable`. v2.5.6 added the field *describe* to *Watcher* before *out*, while `main()` built it by position: `print` landed in *describe* and the colour flag in *out*. `main()` now builds it by keyword, and a test runs `main()` to its first look on a recorded host, so a field order change breaks a test instead of the start. The watcher's other tests built *Watcher* by keyword and never ran `main()`. `tools/watch_reviews_tool.py`. Origin: FB-42 (wp_publisher).
+
 ## [2.5.6] - 2026-10-24
 
 The tests are described blind by construction: the watcher writes the descriptions itself.
