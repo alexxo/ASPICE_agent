@@ -5,8 +5,11 @@ two checks (decision 9 of the quality assurance stage). Every ### FB-<n> entry
 under its ## Log heading has every field of the template, a known severity and
 class, and no placeholder left (INCOMPLETE_FEEDBACK_ENTRY). A pull request that
 moves the framework submodule (paths.framework_dir) between its base and HEAD
-names the new version — its short commit or a release tag on it — in the log,
-as an entry's version or a no-findings line (UNACCOUNTED_FRAMEWORK_BUMP).
+names the new version — its short commit or a release tag on it, as a whole
+word — in the log, in the team's own words only: an entry's Framework version
+field or a line starting "No findings for". The framework's answers quoted in
+the log, and a version named anywhere else, do not account for a bump
+(UNACCOUNTED_FRAMEWORK_BUMP).
 Whether a weakness was noticed at all is not decidable: an empty log, or none,
 passes.
 
@@ -48,6 +51,7 @@ SEVERITIES = ("critical", "high", "medium", "low")
 CLASSES = ("C1", "C2", "C3", "C4", "C5", "C6")
 PLACEHOLDERS = ("FB-<n>", "YYYY-MM-DD", "<one-line summary>", "<tag> @ <submodule SHA>")
 _ENTRY = re.compile(r"^### (FB-\S+)", re.M)
+_ACCOUNT = re.compile(r"^(?:- \*\*Framework version:\*\*|(?:- )?\*?No findings for)(.*)$", re.M)
 
 
 def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
@@ -61,14 +65,15 @@ def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
     ]
     if in_git(config.root):
         bump = _bump(config, base)
-        if bump is not None and not any(name in body for name in bump):
+        if bump is not None and not _accounted(body, bump):
             findings.append(
                 Finding(
                     "UNACCOUNTED_FRAMEWORK_BUMP",
                     shown,
                     None,
                     f"The framework moved to {' / '.join(sorted(bump))} in this pull request, "
-                    "but the log does not name it; record what you found, or a line such as "
+                    "but no entry's Framework version or no-findings line under ## Log names "
+                    "it; record what you found, or a line such as "
                     f"'No findings for {sorted(bump)[-1]}'.",
                 )
             )
@@ -81,6 +86,13 @@ def _log_section(text: str) -> tuple[int, str]:
     if not found:
         return 0, text
     return text[: found.end()].count("\n"), text[found.end() :]
+
+
+def _accounted(body: str, bump: set[str]) -> bool:
+    """Whether the team's own words name the new version: an entry's Framework
+    version field or a no-findings line, never a quoted answer or other prose."""
+    said = " ".join(found.group(1) for found in _ACCOUNT.finditer(body))
+    return any(re.search(rf"(?<![\w.]){re.escape(name)}(?!\w|\.\w)", said) for name in bump)
 
 
 def _problems(body: str, start: int) -> list[tuple[str, int, str]]:

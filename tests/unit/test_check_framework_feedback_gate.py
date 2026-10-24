@@ -105,11 +105,35 @@ def test_a_silent_framework_bump_is_caught(bumped):
     assert _rules(root, base="main") == ["UNACCOUNTED_FRAMEWORK_BUMP"]
 
 
-@pytest.mark.parametrize("line", ["- No findings for v6.1.0", "- No findings for {short}"])
+@pytest.mark.parametrize(
+    "line",
+    [
+        "- No findings for v6.1.0",
+        "- No findings for {short}",
+        "*No findings for v6.1.0 ({short}).*",
+        ENTRY.replace("v6.0.0 @ 1a2b3c4", "v6.1.0 @ {short}"),
+    ],
+)
 def test_a_bump_named_in_the_log_is_accounted_for(bumped, line):
     root, sha = bumped
     _log(root, line.format(short=sha[:7]) + "\n")
     assert _rules(root, base="main") == []
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "> **Framework response, 2026-10-23 — FB-1, resolved in v6.1.0 ({short}).**",
+        ENTRY.replace("- **Status:** reported", "- **Status:** fixed upstream in v6.1.0"),
+        "- No findings for v6.1.0.1",
+        "- No findings for x{short}",
+    ],
+)
+def test_a_version_named_elsewhere_does_not_account_for_a_bump(bumped, line):
+    """A quoted answer, another field, a longer version: none is the team's account."""
+    root, sha = bumped
+    _log(root, line.format(short=sha[:7]) + "\n")
+    assert _rules(root, base="main") == ["UNACCOUNTED_FRAMEWORK_BUMP"]
 
 
 def test_without_a_bump_the_log_need_not_name_a_version(bumped):

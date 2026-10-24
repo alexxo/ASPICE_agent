@@ -15,9 +15,11 @@ other product built on the framework. If you must unblock, name exactly what you
 did in **Workaround applied** and mark it for removal.
 
 **On every framework version bump** — a change of the submodule at
-*paths.framework_dir* — record what you found, or a line naming the new
-version: *No findings for v6.1.0 (a1b2c3d)*. Silence is indistinguishable from
-having forgotten.
+*paths.framework_dir* — record under **Log** what you found, in an entry whose
+**Framework version** is the new version, or a line starting with it:
+*No findings for v6.1.0 (a1b2c3d)*. Silence is indistinguishable from having
+forgotten. Only these count: the framework's answers quoted here, and a version
+named anywhere else, do not account for a bump.
 
 ## How to use this file
 

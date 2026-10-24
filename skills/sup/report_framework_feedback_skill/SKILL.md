@@ -46,7 +46,7 @@ product and Workaround applied.
 | # | Rule | Checked by |
 |---|---|---|
 | R1 | Every entry has every field of the template, a known severity and class, and no placeholder text left | check_framework_feedback_gate · INCOMPLETE_FEEDBACK_ENTRY |
-| R2 | A pull request that moves the framework submodule names the new version in the log — in an entry or a no-findings line | check_framework_feedback_gate · UNACCOUNTED_FRAMEWORK_BUMP |
+| R2 | A pull request that moves the framework submodule names the new version in the log, in the team's own words: an entry's **Framework version** or a line starting *No findings for*; the framework's quoted answers and other prose do not count | check_framework_feedback_gate · UNACCOUNTED_FRAMEWORK_BUMP |
 | R3 | A framework weakness is recorded before the work moves on, and never fixed inside the framework's folder or worked around without an entry naming the files | Checkpoint 4 |
 | R4 | A finding states whether it was run or only read | Checkpoint 4 |
 

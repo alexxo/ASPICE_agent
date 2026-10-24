@@ -3168,7 +3168,10 @@ person reviews a sample.
 9. **Framework feedback.** *qf.v1 framework_feedback_file*.
    *check_framework_feedback_gate* requires every entry complete
    (INCOMPLETE_FEEDBACK_ENTRY), and a submodule bump in the pull request
-   accounted for with findings or a no-findings line
+   accounted for in the team's own words: an entry whose *Framework version*
+   names the new version, or a line *No findings for* it. The framework's
+   answers quoted in the log, a version named in any other field or prose,
+   and a longer version containing it do not count
    (UNACCOUNTED_FRAMEWORK_BUMP).
 10. **What waits for the release.** *check_nonconformances_gate*,
     *check_escalations_gate*, *report_quality_trends_gate* and
