@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.5.6] - 2026-10-24
+
+The tests are described blind by construction: the watcher writes the descriptions itself.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none |
+
+### Changed
+
+- **The watcher runs the describe session, in a folder of tests only.** Before each review, `tools/watch_reviews_tool.py` fetches the pull request's head, asks *classify_pull_request_tool* which tests a person would review (its new *candidates*), copies those files alone into an empty temporary folder outside the product, and runs the describe session there with the reading tool only and the instructions in its prompt — the session has no path to the requirements, whatever the agent. The answer is checked against *review.v1* and every test file must be described; otherwise the review does not start and the *REVIEW STOPPED* banner says why. The reviewer agent copies the list into its record unchanged and never describes a test itself. Before, the separation rested on the reviewer agent's instructions alone. `agent/run_reviewer_agent.md`, `agent/describe_tests_prompt.md`, `review_code_skill`; design document § 5 stage 9, rule 14. Origin: internal (review of the watcher with Alex).
+
 ## [2.5.5] - 2026-10-24
 
 The reviewer's token is given to the watcher alone.
