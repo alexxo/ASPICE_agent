@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.5.2] - 2026-10-24
+
+The watcher shows that a long review is alive, and stops a stuck one sooner.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none |
+
+### Changed
+
+- **A review session says it is still running, and may take 20 minutes.** `tools/watch_reviews_tool.py` prints `#<n> head <sha>: still reviewing (<m> min)` every 5 minutes, so the person sees a long review is alive, and stops a session after 20 minutes instead of 45 — a limit for a stuck one, shown as the *REVIEW STOPPED* banner. Reviews stay one at a time: a product rarely has two pull requests waiting. Design document § 5 stage 9, rule 1; Appendix A.8 "Who starts the reviewer agent"; QUICKSTART. Origin: internal (review of the watcher with Alex).
+
 ## [2.5.1] - 2026-10-24
 
 The watcher points to the right QUICKSTART step.
