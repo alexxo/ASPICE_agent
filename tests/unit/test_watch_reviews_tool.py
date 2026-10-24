@@ -150,3 +150,62 @@ def test_a_long_review_says_it_is_alive_and_a_stuck_one_stops(watcher):
     ]
     assert "The session ran longer than 0 minutes." in shown[-1]
     assert notes == ["Review stopped: #7"]
+
+
+class _Signs:
+    """A host whose pull request #9 moves through the crossing signs."""
+
+    def __init__(self):
+        self.sign = None
+        self.head = "9" * 40
+
+    def open_pull_requests(self, repo):
+        return [9]
+
+    def merge_sign(self, repo, sha):
+        return self.sign
+
+    def pull_request(self, repo, number):
+        from tools.read_host_tool import PullRequest
+
+        return PullRequest(9, "dev-alice", self.head)
+
+
+def test_every_change_of_state_is_one_line_naming_who_acts(watcher):
+    w, _, shown, _ = watcher
+    host = w.host = _Signs()
+    now = [0.0]
+    w.clock = lambda: now[0]
+    states = []
+    for sign in [
+        None,
+        "Wait: gates running",
+        "Wait: gates running",
+        "Wait: gates red: verify_test_first_gate",
+        "Wait: a person's review",
+        "Ready to merge",
+    ]:
+        host.sign = sign
+        w.once()
+    states = [line.split(": ", 1)[1] for line in shown]
+    assert states == [
+        "waits for CI (gates running)",
+        "gates red (verify_test_first_gate): the author fixes them, no review yet",
+        "waits for your review: the link is in the pull request",
+        "ready to merge; the agent merges",
+    ]
+
+
+def test_a_head_without_a_sign_for_10_minutes_is_a_warning(watcher):
+    w, _, shown, _ = watcher
+    w.host = _Signs()
+    now = [0.0]
+    w.clock = lambda: now[0]
+    w.once()
+    assert shown == []
+    now[0] = 600
+    w.once()
+    w.once()
+    assert [line.split(": ", 1)[1] for line in shown] == [
+        "no crossing sign after 10 min: check that CI runs"
+    ]

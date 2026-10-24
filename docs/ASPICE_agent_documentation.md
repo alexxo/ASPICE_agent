@@ -3107,7 +3107,11 @@ and a person reviews the important or risky ones (rule 14).
    agent and that it has not reviewed, it starts one fresh session, one at a
    time, each head once, with the reviewer's tools only — reading, the host,
    the framework's own commands, its record's folder; no edit of the work, no
-   commit, no push. A line every 5 minutes says a review is still running;
+   commit, no push. Every change of a pull request's state is one line naming
+   who acts next — waits for CI, gates red (the author fixes them), waits for
+   your review, ready to merge — and a head without a crossing sign after 10
+   minutes is a warning, since CI may not run. A line every 5 minutes says a
+   review is still running;
    a session longer than 20 minutes is stopped, a limit for a stuck one. A
    session that ends without a review is shown as a
    banner — *REVIEW STOPPED*, why, what to do, the log under *.qf/reviews/* —

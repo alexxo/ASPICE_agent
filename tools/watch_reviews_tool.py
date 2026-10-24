@@ -11,7 +11,12 @@ reviewer's tools only — reading, the host, its own tools and its review
 record's folder; no edit of the work, no commit, no push (--command replaces
 the agent command, {prompt} standing for the prompt).
 
-Every event is one line with the time. A session that ends without a review —
+Every event is one line with the time, and so is every change of a pull
+request's state, naming who acts next: waits for CI, gates red (the author
+fixes them), waits for your review, ready to merge — and a warning when a head
+has no crossing sign after 10 minutes, since CI may not run at all.
+
+A session that ends without a review —
 the reviewer stopped, asked a question, the token was refused, or the session
 ran out of time (20 minutes, a limit for a stuck session; a line every 5
 minutes says a review is still running) — is shown as a banner: why, what to
@@ -53,6 +58,7 @@ from tools.read_product_config_tool import (  # noqa: E402
 __all__ = ["Stop", "Watcher", "banner", "claude_command", "due", "tools"]
 
 WAITS_FOR_REVIEWER = "the reviewer agent's approval"
+NO_SIGN_AFTER = 10 * 60  # seconds a head may go without a crossing sign before a warning
 LOGS = Path(".qf/reviews")
 WIDTH = 72
 TIMEOUT = 20 * 60  # seconds one review session may take: a limit for a stuck one
@@ -173,6 +179,9 @@ class Watcher:
     reviews: int = 0
     timeout: int = TIMEOUT
     progress: int = PROGRESS
+    clock: object = time.monotonic
+    shown: dict = field(default_factory=dict)  # number -> (head, the state last shown)
+    unsigned: dict = field(default_factory=dict)  # (number, head) -> when first seen unsigned
 
     def say(self, text: str) -> None:
         self.out(f"{datetime.now():%H:%M}  {text}")
@@ -182,6 +191,39 @@ class Watcher:
         for number, head in due(self.host, self.repo, agents, self.done):
             self.done.add((number, head))
             self.review(number, head)
+        for number in self.host.open_pull_requests(self.repo):
+            pull = self.host.pull_request(self.repo, number)
+            if pull is not None:
+                reviewed = any(r.author in agents and r.commit == pull.head for r in pull.reviews)
+                self.report(number, pull.head, self.host.merge_sign(self.repo, pull.head), reviewed)
+
+    def report(self, number: int, head: str, sign: str | None, reviewed: bool) -> None:
+        """One line when a pull request's state changes, naming who acts next."""
+        state = self.state(number, head, sign, reviewed)
+        if state is None or self.shown.get(number) == (head, state):
+            return
+        self.shown[number] = (head, state)
+        self.say(f"#{number} head {head[:7]}: {state}")
+
+    def state(self, number: int, head: str, sign: str | None, reviewed: bool) -> str | None:
+        if sign is None:
+            first = self.unsigned.setdefault((number, head), self.clock())
+            if self.clock() - first >= NO_SIGN_AFTER:
+                return f"no crossing sign after {NO_SIGN_AFTER // 60} min: check that CI runs"
+            return None
+        if sign == "Ready to merge":
+            return "ready to merge; the agent merges"
+        if "gates running" in sign:
+            return "waits for CI (gates running)"
+        if "gates red" in sign:
+            gates = sign.split("gates red", 1)[1].lstrip(": ").strip() or "see CI"
+            return f"gates red ({gates}): the author fixes them, no review yet"
+        if WAITS_FOR_REVIEWER in sign:
+            started = reviewed or (number, head) in self.done  # its own line, or a banner
+            return None if started else "waits for the reviewer agent"
+        if "a person's review" in sign:
+            return "waits for your review: the link is in the pull request"
+        return None
 
     def review(self, number: int, head: str) -> None:
         self.say(f"#{number} head {head[:7]}: review started")
