@@ -3102,7 +3102,9 @@ and a person reviews the important or risky ones (rule 14).
    pull request and the person's watcher starts the reviewer's own session on
    their machine (*agent/run_reviewer_agent.md*). The watcher,
    *watch_reviews_tool*, runs in a terminal of the person's own, started once
-   a working day with the reviewer agent's token: for every head of the
+   a working day with the reviewer agent's token given to it alone, in the
+   same command line — the terminal never holds the token, and it is gone
+   when the watcher stops: for every head of the
    product's open pull requests whose crossing sign waits for the reviewer
    agent and that it has not reviewed, it starts one fresh session, one at a
    time, each head once, with the reviewer's tools only — reading, the host,

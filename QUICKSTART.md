@@ -328,11 +328,15 @@ wishes. Tell the person how the work runs from now on:
 - **reviewer-bot**: the reviewer agent posts its reviews from this account,
   in a session of its own, never the developer's. Once a working day, the
   developer starts the watcher in a second terminal in the product folder,
-  with the token loaded there only —
-  `export QF_HOST_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)"`
-  (PowerShell: `$env:QF_HOST_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"`),
-  then `python .framework/tools/watch_reviews_tool.py --root .` — and leaves
-  it running. It starts a fresh reviewer session for every new pull request
+  giving the token to the watcher only, in one line — macOS (zsh or bash)
+  and Linux:
+  `QF_HOST_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)" python .framework/tools/watch_reviews_tool.py --root .`
+  — Windows (PowerShell):
+  `try { $env:QF_HOST_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"; python .framework\tools\watch_reviews_tool.py --root . } finally { Remove-Item Env:QF_HOST_TOKEN }`
+  — and leaves it running. The token then lives in the watcher and its
+  reviewer sessions only: the terminal itself never holds it, the shell's
+  history keeps the command, not the token, and it is gone when the watcher
+  stops. It starts a fresh reviewer session for every new pull request
   head that waits for the reviewer, one at a time, each once, and writes one
   line per review, and a line every 5 minutes while one runs; a review stuck
   for 20 minutes is stopped. It also writes one line whenever a pull

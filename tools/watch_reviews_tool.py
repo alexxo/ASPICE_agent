@@ -32,8 +32,11 @@ watcher goes on with the other pull requests; a stopped head is not retried on
 its own: type R and Enter to review the stopped heads again. Ctrl+C ends it
 with the day's summary, the heads still stopped listed again.
 
-    export QF_HOST_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)"
-    python .framework/tools/watch_reviews_tool.py --root .
+    QF_HOST_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)" \\
+        python .framework/tools/watch_reviews_tool.py --root .
+
+The token is given to the watcher alone, for its life: the terminal never
+holds it (PowerShell: QUICKSTART step 9).
 """
 
 from __future__ import annotations
@@ -421,7 +424,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if not os.environ.get(HOST_TOKEN):
         print(
-            f"No {HOST_TOKEN}: load the reviewer agent's token into this terminal first "
+            f"No {HOST_TOKEN}: start the watcher with the reviewer agent's token, in one line "
             "(QUICKSTART step 9).",
             file=sys.stderr,
         )
