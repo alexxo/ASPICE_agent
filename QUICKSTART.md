@@ -333,8 +333,9 @@ wishes. Tell the person how the work runs from now on:
   pull request.
 - **reviewer** approves the sampled pull requests on GitHub, and gives the
   checkpoint decisions the agent asks for.
-- **Whoever merges**: merge only when the pull request's check
-  **qf/merge** says *Ready to merge*. While it says *Wait: …* it names what
+- **The agent merges**, never a person: only when the pull request's check
+  **qf/merge** on its current head says *Ready to merge*, and exactly that
+  head (`--match-head-commit`). While it says *Wait: …* it names what
   is still missing — the reviewer agent's approval, a person's approval, or
   red gates — and after any push or review it starts again at *Wait: gates
   running*. GitHub does not block the button: the sign is the rule.

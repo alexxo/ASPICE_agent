@@ -662,8 +662,9 @@ changes the big plan (architecture) and 1 in N of the rest, chosen by delivery
 number so the sample cannot be steered; a sampled delivery waits at the desk
 until the auditor's seal is on its latest version [verify_delivery_reviewed_gate].
 At the desk's gate hangs the crossing sign (the *qf/merge* status): *wait*, with
-what is still missing, or *cross* once every seal and inspector agree; the one
-who lets a delivery through reads it there. A
+what is still missing, or *cross* once every seal and inspector agree; the
+foreman reads it there and lets a delivery through only on *cross*, never a
+person. A
 remark fixed before the delivery leaves the desk stays in the review; a fault
 left unfixed becomes a fault note (non-conformance issue), followed up at the
 release. This is where the *agreed* part of SWE.2 and SWE.3 is completed.
@@ -3204,8 +3205,8 @@ person reviews a sample.
     commit in the history, so it is accepted the same way. Before the merge
     nothing changes: a red pull request is fixed and pushed again. The risk
     analysis is Appendix A.8.
-13. **The merge signal.** The person who merges reads, on the pull request,
-    whether to wait or to merge: on every pull request CI posts the commit
+13. **The merge signal.** The author agent merges, never the person; it
+    reads, on the pull request, whether to wait or to merge: on every pull request CI posts the commit
     status *qf/merge* on its head with *post_merge_status_tool* — pending
     *Wait: gates running* when the gates start, then failure *Wait: <what
     is missing>* (the reviewer agent's approval, a person's approval when
@@ -3213,9 +3214,13 @@ person reviews a sample.
     status belongs to the head, so every push and every review starts from
     wait, and no status means wait. One run per pull request at a time
     (*concurrency*), so a late run never overwrites a newer status; runs on
-    the main branch are never cancelled. The person merges only on *Ready
-    to merge*; a merge on any other status is still caught on the main
-    branch (rule 12). The risk analysis is Appendix A.8.
+    the main branch are never cancelled. The agent merges only on *Ready
+    to merge*, and exactly the head that status belongs to (*gh pr merge
+    --match-head-commit*, refused by the host after a newer push); then it
+    waits for the main branch's run and reports a red one at once. A merge
+    on any other status is still caught on the main branch (rule 12). The
+    person's judgement is their approval of a sampled pull request, never
+    the merge. The risk analysis is Appendix A.8.
 
 #### Configuration management stage — stage 10
 
@@ -4188,6 +4193,27 @@ label together.
   the main branch (rule 12). *Not taken:* D1 B, every pull request opened
   as a draft and marked ready by CI, a speed bump one click removes, for
   twice the write rights. → § 5 stage 9, rule 13.
+- **Who merges** (2026-10-24, Alex, D1 A, FB-41). The flow diagrams had
+  the agent merge, the agent's instructions and the QUICKSTART "the person
+  who merges": products read it as the person, who then waited on every
+  pull request for a click that holds no judgement. The person's judgement
+  is their approval of a sampled pull request, which the gate requires
+  before *Ready to merge*.
+
+  | # | Scenario | O | S | D | Risk |
+  |---|---|---|---|---|---|
+  | M1 | The agent merges a head other than the one that is ready (a push after it read the status) | 3 | 6 | 2 | 36 |
+  | M2 | The agent merges on *Wait* ("the gate is flaky") | 3 | 6 | 3 | 54 |
+  | M3 | A ready shown for an older head or before the gates finished | 3 | 8 | 7 | 168 |
+  | M4 | The agent merges and does not watch the main branch's run | 4 | 5 | 4 | 80 |
+  | M5 | The person loses track of what reached the main branch | 3 | 3 | 3 | 27 |
+
+  *Chosen:* D1 A — the author agent merges, only on *Ready to merge*, with
+  *gh pr merge --match-head-commit* on the head the status belongs to (M1),
+  then waits for the main branch's run and reports a red one (M4). M2 stays
+  caught on the main branch (rule 12); M3 is the merge signal's S2, the
+  same whoever merges. *Not taken:* D1 B, the person merges, a wait on
+  every pull request that adds no control. → § 5 stage 9, rule 13.
 - **Where the reviewer agent's token lives** (2026-10-19, Alex, FB-34).
   The person types the token into every reviewer session; a *.env* in the
   product folder would sit in the author's working folder.

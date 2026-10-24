@@ -22,7 +22,7 @@
 # (seal 4). release.yml tags an accepted release after its merge.
 #
 # On a pull request the run posts the crossing sign, the commit status qf/merge
-# on its head, which the person who merges reads next to the merge button:
+# on its head, which the author agent reads before it merges:
 # "Wait: gates running", then "Wait: <what is missing>" or "Ready to merge"
 # (rule 13 of the quality assurance stage). Its only write permission is
 # statuses: write. One run per pull request at a time, so a late run never

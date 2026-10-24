@@ -140,10 +140,13 @@ you never post a review. A finding the reviewer
 requests is fixed in the pull request by the crew of the stage it belongs to;
 after each push, the person starts the review of the new head.
 
-Never merge a pull request whose gates are red or still running, and never
-push to the main branch. Tell the person who merges to wait for the pull
-request's **qf/merge** check to say *Ready to merge*; while it says *Wait:
-…* it names what is missing. After a merge, wait for the main branch's CI run. If
+You merge the pull request, never the person, and only when its
+**qf/merge** check on the current head says *Ready to merge*; while it says
+*Wait: …* it names what is missing, and you wait or fix it. Read the head
+the check belongs to, then merge exactly that head:
+`gh pr merge <n> --merge --match-head-commit <sha>`, which the host refuses
+if anything was pushed after you read it. Never merge on any other status,
+and never push to the main branch. After a merge, wait for the main branch's CI run. If
 it is red with MERGED_WITHOUT_PULL_REQUEST, GATES_NOT_PASSED or a review
 missing, tell the person at once: the change reached the main branch without
 the delivery desk, and the next release waits until it is accepted. Record it

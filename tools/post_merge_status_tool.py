@@ -1,8 +1,9 @@
 """Post the crossing sign on a pull request's head: wait, or ready to merge.
 
 The product's CI posts the commit status qf/merge (CONTEXT) on the pull
-request's head, so the person who merges reads it in the pull request's checks,
-next to the merge button (rule 13 of the quality assurance stage): pending
+request's head, so the author agent, which merges, reads it in the pull
+request's checks, as anyone can next to the merge button (rule 13 of the
+quality assurance stage): pending
 "Wait: gates running" when the gates start (--running), then, from the gates'
 result (--stage-file, resolve_stage_tool's JSON), failure "Wait: <what is
 missing>" or success "Ready to merge". A status belongs to one commit, so a new
