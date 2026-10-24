@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-10-24
+
+The reviewer agent starts on its own: a watcher the person starts once a day.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: start `python .framework/tools/watch_reviews_tool.py --root .` once a working day, in a terminal with the reviewer agent's token, instead of starting each review by hand |
+
+### Added
+
+- **The watcher, `tools/watch_reviews_tool.py`.** Started once a working day in a terminal of the person's own, with the reviewer agent's token, it starts a fresh reviewer session for every head of the product's open pull requests whose crossing sign waits for the reviewer agent and that it has not reviewed: one at a time, each head once, with the reviewer's tools only — reading, the host, the framework's own commands, its record's folder. Every event is one line; a session that ends without a review is a banner — *REVIEW STOPPED*, why, what to do, and its log under `.qf/reviews/` — red where the terminal shows colour, with a desktop notification on Windows, macOS and Linux; `R` reviews the stopped heads again, and Ctrl+C ends with the day's summary. `--command` replaces the agent command. Design document § 5 stage 9, rule 1; Appendix A.8 "Who starts the reviewer agent"; QUICKSTART; `agent/run_aspice_agent.md`, `agent/run_reviewer_agent.md`. Origin: FB-41 (wp_publisher), point 3.
+
 ## [2.4.0] - 2026-10-24
 
 A person reviews what is important or risky, never a pull request chosen by number, on a review in plain words they answer item by item; a feature arrives in four pull requests.
