@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.5.5] - 2026-10-24
+
+The reviewer's token is given to the watcher alone.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: start the watcher with the one-line command of QUICKSTART step 9 instead of exporting the token first |
+
+### Changed
+
+- **The token lives in the watcher only.** QUICKSTART step 9 starts the watcher in one line that hands it the reviewer agent's token — macOS (zsh or bash) and Linux `QF_HOST_TOKEN="$(cat …)" python …`, PowerShell `try { … } finally { Remove-Item Env:QF_HOST_TOKEN }` — instead of exporting it into the terminal for the day: later commands in that terminal never inherit it, the shell's history keeps the command and not the token, and it is gone when the watcher stops. No framework tool reads the token file, as before. `tools/watch_reviews_tool.py` (its usage and missing-token message); design document § 5 stage 9, rule 1. Origin: internal (review of the watcher with Alex).
+
 ## [2.5.4] - 2026-10-24
 
 A reviewer never changes the work: the watcher checks it, whatever the agent.
