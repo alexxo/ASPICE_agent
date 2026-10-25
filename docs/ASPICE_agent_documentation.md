@@ -3151,11 +3151,15 @@ and a person approves the results and answers the questions of what is wanted
    system has one; the head is reviewed again only when the person types *R*.
    A reviewer never changes the work, and the agent's settings must prevent
    it — Claude Code's allowed tools by default; another agent (*--command*)
-   is configured read-only by the person. Whatever the agent, the watcher
-   compares the product folder's commit and changed files (*.qf/* left out)
-   before and after each session: on any change it shows the banner
-   *REVIEWER CHANGED THE WORK* — verify the LLM settings, check the change
-   with the author — and pauses every review until the person types *R*.
+   is configured read-only by the person. The session runs in a copy of the
+   head of its own, a git worktree the watcher makes under *.qf/reviews/*,
+   never in the author's folder, where the author and the framework go on
+   working. Whatever the agent, the watcher compares that copy's commit and
+   changed files (*.qf/* left out) before and after each session: on any
+   change it shows the banner *REVIEWER CHANGED THE WORK* — verify the LLM
+   settings, see the change in the copy, which is kept — and pauses every
+   review until the person types *R*. After a review the session's records
+   go to the product's *.qf/reviews/* and the copy is removed.
    Without the watcher, the person starts the session by hand. The session is
    the only one that holds the
    reviewer agent's token, a token for the product's repository that can

@@ -82,8 +82,15 @@ def watcher(tmp_path):
         HOST_REPO,
         out=shown.append,
         notify=lambda title, text: notes.append(title),
+        copy=_folder,
     )
     return w, host, shown, notes
+
+
+def _folder(root, number, head, into):
+    """A copy of the head without git, for a host whose heads are made up."""
+    into.mkdir(parents=True, exist_ok=True)
+    return True
 
 
 def _speaks(text):
@@ -224,49 +231,66 @@ def test_a_head_without_a_sign_for_10_minutes_is_a_warning(watcher):
     ]
 
 
-def test_a_reviewer_that_changes_the_work_pauses_every_review(tmp_path):
-    root = build_product(tmp_path / "product")  # a git repository
-    host = _Host(tmp_path)
-    shown, notes = [], []
-    w = Watcher(
-        read_product_config(root),
-        host,
-        HOST_REPO,
-        out=shown.append,
-        notify=lambda title, text: notes.append(title),
-    )
+def test_a_reviewer_that_changes_the_work_pauses_every_review(changed):
+    w, shown, head = changed
+    notes = []
+    w.notify = lambda title, text: notes.append(title)
     edit = "open('NOTES.md', 'w').write('changed by the reviewer')"
     w.command = lambda prompt: [sys.executable, "-c", edit]
     w.once()
     assert "REVIEWER CHANGED THE WORK: pull request #7" in shown[-1]
     said = " ".join(line.strip("# ") for line in shown[-1].splitlines())
     assert "NOTES.md changed" in said and "Verify your LLM settings" in said
+    copy = w.config.root / f".qf/reviews/7-{head[:7]}"
+    assert "copy is kept" in said and (copy / "NOTES.md").read_text() == "changed by the reviewer"
     assert notes == ["Reviewer changed the work: #7"] and w.paused
-    host.base = _host(tmp_path, {"7" * 40: WAITING, "8" * 40: WAITING})
     w.once()
     assert w.reviews == 1  # paused: no review until R
 
-    (root / "NOTES.md").unlink()
-
     def review(prompt):
-        host.posted.append(Review(AGENT, "APPROVED", "7" * 40))
+        w.host.posted.append(Review(AGENT, "APPROVED", head))
         return [sys.executable, "-c", "print('reviewed')"]
 
     w.command = review
-    w.retry()
+    w.retry()  # on a fresh copy
     assert not w.paused and "approved" in shown[-1]
+    assert not copy.exists()  # removed after the review
 
 
-def test_the_reviewers_own_folder_is_not_the_work(tmp_path):
-    root = build_product(tmp_path / "product")
-    host = _Host(tmp_path)
-    shown = []
-    w = Watcher(read_product_config(root), host, HOST_REPO, out=shown.append)
+def test_the_authors_work_during_a_review_is_not_the_reviewers(changed):
+    """FB-46: the author and the framework go on working in the product folder."""
+    w, shown, head = changed
+    author = f"open({str(w.config.root / 'NOTES.md')!r}, 'w').write('the author goes on')"
+
+    def review(prompt):
+        assert "make no copy of your own" in prompt
+        w.host.posted.append(Review(AGENT, "APPROVED", head))
+        return [sys.executable, "-c", author]
+
+    w.command = review
+    w.once()
+    assert not w.paused and "approved" in shown[-1]
+    assert (w.config.root / "NOTES.md").read_text() == "the author goes on"
+
+
+def test_the_reviewers_own_folder_is_not_the_work(changed):
+    w, shown, head = changed
     record = "import os; os.makedirs('.qf/reviews', exist_ok=True); "
     record += "open('.qf/reviews/review.yaml', 'w').write('person: none')"
     w.command = lambda prompt: [sys.executable, "-c", record]
     w.once()
     assert not w.paused and "REVIEW STOPPED" in shown[-1]
+    assert (w.config.root / ".qf/reviews/review.yaml").read_text() == "person: none"
+
+
+def test_a_head_that_cannot_be_fetched_stops_the_review(tmp_path):
+    root = build_product(tmp_path / "product")  # no origin
+    shown = []
+    w = Watcher(read_product_config(root), _Host(tmp_path), HOST_REPO, out=shown.append)
+    w.command = lambda prompt: pytest.fail("the review must not start")
+    w.once()
+    said = " ".join(line.strip("# ") for line in shown[-1].splitlines())
+    assert "REVIEW STOPPED" in said and "could not be fetched" in said
 
 
 DESCRIBER = """
@@ -330,6 +354,16 @@ def pulled(tmp_path):
         write_software_test(root)
 
     return _on_origin(tmp_path, change, [SOFTWARE_TEST])
+
+
+@pytest.fixture
+def changed(tmp_path):
+    """Pull request #7 adds a note."""
+
+    def change(root):
+        (root / "NOTES.md").write_text("a note")
+
+    return _on_origin(tmp_path, change, ["NOTES.md"])
 
 
 @pytest.fixture

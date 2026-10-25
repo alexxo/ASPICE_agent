@@ -10,11 +10,15 @@ only, one session at a time, every head once. The session runs with the
 reviewer's tools only — reading, the host, its own tools and its review
 record's folder; no edit of the work, no commit, no push (--command replaces
 the agent command, {prompt} standing for the prompt; that agent's settings
-must then prevent any change). A reviewer never changes the work: whatever
-the agent, the watcher compares the product folder's commit and changed files
-(.qf/ left out) before and after each session, and on any change shows the
-banner REVIEWER CHANGED THE WORK and pauses every review until the person
-types R.
+must then prevent any change). The session runs in a copy of the pull
+request's head of its own, a git worktree the watcher makes at
+.qf/reviews/<n>-<sha>/, never in the author's folder, where the author and the
+framework go on working. A reviewer never changes the work: whatever the
+agent, the watcher compares that copy's commit and changed files (.qf/ left
+out) before and after each session, and on any change shows the banner
+REVIEWER CHANGED THE WORK, keeps the copy, and pauses every review until the
+person types R. After a review the session's records go to the product's
+.qf/reviews/ and the copy is removed; a stopped review keeps it.
 
 Before each review it describes, for the person's review, the tests a person
 would review (agent/describe_tests_prompt.md) and tells the changed designs as
@@ -170,10 +174,21 @@ def due(host: Host, repo: str, agents: set[str], done: set[tuple[int, str]]) -> 
 
 
 def _prompt(
-    config: ProductConfig, repo: str, number: int, described: dict[str, str] | None = None
+    config: ProductConfig,
+    repo: str,
+    number: int,
+    described: dict[str, str] | None = None,
+    copy: Path | None = None,
 ) -> str:
-    framework = config.relative(config.framework_dir)
+    framework = config.framework_dir.resolve().as_posix()
     described = described or {}
+    here = (
+        f" You are in a copy of the pull request's head the watcher made, {copy}: review "
+        "there and make no copy of your own; write your record under .qf/reviews/ of this "
+        f"folder. The product is {config.root.resolve()}."
+        if copy is not None
+        else ""
+    )
     tests = (
         f" The tests a person would review are described already, in {described['tests']}: if "
         "your record needs tests, put that list under `tests` as it is; never describe a test "
@@ -190,7 +205,7 @@ def _prompt(
     )
     return (
         f"Follow {framework}/agent/run_reviewer_agent.md for pull request #{number} of {repo}."
-        f"{tests}{stories} You run unattended: if you must stop or ask, do not wait for an "
+        f"{here}{tests}{stories} You run unattended: if you must stop or ask, do not wait for an "
         "answer — end "
         "with one line starting 'STOPPED:' saying why, and one starting 'DO:' saying what the "
         "person does."
@@ -244,6 +259,7 @@ class Watcher:
     shown: dict = field(default_factory=dict)  # number -> (head, the state last shown)
     unsigned: dict = field(default_factory=dict)  # (number, head) -> when first seen unsigned
     paused: bool = False  # a reviewer changed the work: no review until the person types R
+    copy: object = None  # (root, number, head, folder) -> bool; None: a git worktree of the head
 
     def say(self, text: str) -> None:
         self.out(f"{datetime.now():%H:%M}  {text}")
@@ -307,7 +323,6 @@ class Watcher:
         log = LOGS / f"{number}-{head[:7]}.log"
         (self.config.root / LOGS).mkdir(parents=True, exist_ok=True)
         env = {**os.environ, "GH_TOKEN": os.environ.get(HOST_TOKEN, "")}  # gh posts as reviewer
-        before = folder_state(self.config.root)
         described, failed = self.describe_work(number, head)
         if failed is not None:
             self.stopped[(number, head)] = failed
@@ -315,23 +330,43 @@ class Watcher:
             if self.notify:
                 self.notify(f"Review stopped: #{number}", failed.why)
             return
+        copy = self.config.root / LOGS / f"{number}-{head[:7]}"
+        if not (self.copy or _copy_head)(self.config.root, number, head, copy):
+            stop = Stop(
+                number,
+                head,
+                "The pull request's head could not be fetched into a copy of the reviewer's "
+                "own.",
+                "Check that the product folder reaches its origin (git fetch), then type R and "
+                "Enter to review this head again.",
+                log.as_posix(),
+            )
+            self.stopped[(number, head)] = stop
+            self.out(banner(stop, self.colour))
+            if self.notify:
+                self.notify(f"Review stopped: #{number}", stop.why)
+            return
+        before = folder_state(copy)
+        described = {k: str(self.config.root / v) for k, v in described.items()}
         try:
-            output, timed_out = self._run(number, head, env, described)
+            output, timed_out = self._run(number, head, env, described, copy)
         except OSError as err:
             output, timed_out = f"The agent could not be started: {err}", False
         (self.config.root / log).write_text(output)
         self.reviews += 1
-        changed = _changes(before, folder_state(self.config.root))
+        _keep_records(copy, self.config.root / LOGS)
+        changed = _changes(before, folder_state(copy))
         if changed:
             self.paused = True
             stop = Stop(
                 number,
                 head,
-                f"The product folder changed during the review: {changed}. A reviewer never "
-                "changes the work, and the agent's settings must prevent it (Claude Code: the "
-                "watcher's allowed tools).",
-                "Verify your LLM settings; check the change with the author and undo it if it "
-                "is not theirs. Reviews are paused: type R to resume.",
+                f"The reviewer's copy of the head changed during the review: {changed}. A "
+                "reviewer never changes the work, and the agent's settings must prevent it "
+                "(Claude Code: the watcher's allowed tools).",
+                f"Verify your LLM settings; the copy is kept, to see the change, at "
+                f"{copy.relative_to(self.config.root).as_posix()}. Reviews are paused: type R "
+                "to resume.",
                 log.as_posix(),
                 "REVIEWER CHANGED THE WORK",
             )
@@ -345,6 +380,7 @@ class Watcher:
         posted = [r for r in (pull.reviews if pull else ()) if r.author in agents]
         posted = [r for r in posted if r.commit == head]
         if posted:
+            _remove_copy(self.config.root, copy)
             self.say(f"#{number} head {head[:7]}: {_outcome(posted[-1].state)}")
             self.stopped.pop((number, head), None)
             return
@@ -450,11 +486,17 @@ class Watcher:
         return kept.as_posix(), None
 
     def _run(
-        self, number: int, head: str, env: dict, described: str | None = None
+        self,
+        number: int,
+        head: str,
+        env: dict,
+        described: dict[str, str] | None = None,
+        copy: Path | None = None,
     ) -> tuple[str, bool]:
-        """The review session's output, and whether it ran out of time."""
-        argv = self.command(_prompt(self.config, self.repo, number, described))
-        return self._session(argv, self.config.root, env, number, head)
+        """The review session's output, and whether it ran out of time; the session
+        runs in the head's copy."""
+        argv = self.command(_prompt(self.config, self.repo, number, described, copy))
+        return self._session(argv, copy or self.config.root, env, number, head)
 
     def _session(self, argv, cwd: Path, env: dict, number: int, head: str) -> tuple[str, bool]:
         """A session's output, and whether it ran out of time; a line every few
@@ -563,6 +605,42 @@ def _stories(output: str, config: ProductConfig, files: list[str]) -> tuple[list
     if wrong:
         return None, f"a step names a source the design does not have: {wrong[0]}."
     return entries, ""
+
+
+def _copy_head(root: Path, number: int, head: str, into: Path) -> bool:
+    """The pull request's head, fetched from the host, as a git worktree of its own:
+    the reviewer's folder, never the author's. A copy left from an earlier session
+    is replaced."""
+    _remove_copy(root, into)
+    fetch = subprocess.run(
+        ["git", "-C", str(root), "fetch", "-q", "origin", f"pull/{number}/head"],
+        capture_output=True,
+    )
+    if fetch.returncode != 0:
+        return False
+    add = subprocess.run(
+        ["git", "-C", str(root), "worktree", "add", "-q", "--detach", str(into), head],
+        capture_output=True,
+    )
+    return add.returncode == 0
+
+
+def _remove_copy(root: Path, copy: Path) -> None:
+    """The head's copy removed, and git told so."""
+    if copy.exists():
+        subprocess.run(
+            ["git", "-C", str(root), "worktree", "remove", "--force", str(copy)],
+            capture_output=True,
+        )
+        shutil.rmtree(copy, ignore_errors=True)
+    subprocess.run(["git", "-C", str(root), "worktree", "prune"], capture_output=True)
+
+
+def _keep_records(copy: Path, logs: Path) -> None:
+    """The records the session wrote in its copy, kept in the product's .qf/reviews/."""
+    records = copy / LOGS
+    if records.is_dir():
+        shutil.copytree(records, logs, dirs_exist_ok=True)
 
 
 def folder_state(root: Path) -> tuple[str, frozenset[str]] | None:
@@ -681,7 +759,7 @@ def main(argv: list[str] | None = None) -> int:
     except (ConfigError, HostError) as err:
         print(err, file=sys.stderr)
         return 2
-    command = claude_command(config.relative(config.framework_dir))
+    command = claude_command(config.framework_dir.resolve().as_posix())  # the copy has none
     if args.command:
         template = args.command
 

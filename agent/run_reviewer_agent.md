@@ -57,8 +57,10 @@ method) and each of the `framework_skills` (the rules).
 
 Review the pull request's current head by the method, from waiting for green
 to posting. Read it as it is on the host, never the author's working folder:
-fetch the head into a folder of your own under `.qf/reviews/`, which git
-ignores —
+work in a copy of the head of your own under `.qf/reviews/`, which git
+ignores. Started by the watcher, you are in that copy already: its prompt
+names it, so make none, and write your record under its `.qf/reviews/`.
+Started by hand, make it —
 `git -C <product> fetch origin pull/<n>/head` then
 `git -C <product> worktree add --detach .qf/reviews/<n> FETCH_HEAD` —
 and remove it when you are done (`git -C <product> worktree remove .qf/reviews/<n>`).
