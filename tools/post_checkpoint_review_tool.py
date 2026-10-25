@@ -95,7 +95,7 @@ def render(config: ProductConfig, repo: str, pull: PullRequest, review, record: 
         lines.append(
             "**How to answer:** tick one box per question — GitHub saves each tick at once — "
             "then **Review changes → Approve**, or **Request changes** and write why, for any "
-            "*no*."
+            "*no*. Only an approval reads the ticks: after changing a tick, approve again."
         )
     else:
         lines.append(

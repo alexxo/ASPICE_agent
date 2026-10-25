@@ -46,7 +46,7 @@ WAITS_FOR = {
     "INCOMPLETE_CHECKLIST": "the reviewer agent's approval",
     "REVIEW_STORY_UNSOURCED": "the reviewer agent's approval",
     "MISSING_PERSON_APPROVAL": "{review}{why}: approve on GitHub",
-    "REVIEW_ITEMS_UNANSWERED": "{review}: tick every item of its comment",
+    "REVIEW_ITEMS_UNANSWERED": "{review}: tick every item of its comment, then approve again",
     "REVIEW_CHANGED_AFTER_APPROVAL": "{review}: approve again",
 }
 _WHY = re.compile(r"\(why: ([^)]*)\)")  # verify_delivery_reviewed_gate's short reason

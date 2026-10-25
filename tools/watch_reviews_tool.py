@@ -41,7 +41,9 @@ do, and the session's log (.qf/reviews/<n>-<sha>.log), in red where the
 terminal shows colour (NO_COLOR switches it off), with a desktop notification
 where the system has one. The
 watcher goes on with the other pull requests; a stopped head is not retried on
-its own: type R and Enter to review the stopped heads again. Ctrl+C ends it
+its own: type R and Enter to review the stopped heads again. A session stopped
+by the agent's usage limit is the exception: the watcher tries that head again
+every 10 minutes, one line each time, until the limit resets. Ctrl+C ends it
 with the day's summary, the heads still stopped listed again.
 
     QF_HOST_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)" \\
@@ -55,6 +57,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -84,13 +87,15 @@ LOGS = Path(".qf/reviews")
 WIDTH = 72
 TIMEOUT = 20 * 60  # seconds one review session may take: a limit for a stuck one
 PROGRESS = 5 * 60  # seconds between the lines saying a review is still running
+LIMIT_RETRY = 10 * 60  # seconds between tries of a head stopped by the agent's usage limit
+LIMITED = re.compile(r"hit your (?:\w+ )?limit|usage limit", re.IGNORECASE)
 # The reviewer's tools: reading, the host, the framework's own commands, its
 # record's folder — never an edit of the work, a commit or a push.
 READ_ONLY = (
     "Read",
     "Grep",
     "Glob",
-    "Write(.qf/reviews/**)",
+    "Edit(.qf/reviews/**)",  # Edit rules cover every file-writing tool
     "Bash(git fetch:*)",
     "Bash(git worktree:*)",
     "Bash(git log:*)",
@@ -129,6 +134,7 @@ class Stop:
     do: str
     log: str
     title: str = "REVIEW STOPPED"
+    limit: bool = False  # the agent's usage limit: tried again on its own
 
 
 def banner(stop: Stop, colour: bool = False) -> str:
@@ -260,12 +266,22 @@ class Watcher:
     unsigned: dict = field(default_factory=dict)  # (number, head) -> when first seen unsigned
     paused: bool = False  # a reviewer changed the work: no review until the person types R
     copy: object = None  # (root, number, head, folder) -> bool; None: a git worktree of the head
+    limited: dict = field(default_factory=dict)  # (number, head) -> when the usage limit stopped it
 
     def say(self, text: str) -> None:
         self.out(f"{datetime.now():%H:%M}  {text}")
 
     def once(self) -> None:
         agents = set(self.config.review_agents)
+        for (number, head), since in [] if self.paused else list(self.limited.items()):
+            if self.clock() - since < LIMIT_RETRY:
+                continue
+            pull = self.host.pull_request(self.repo, number)
+            if pull is None or pull.head != head:  # closed, or a newer head is due instead
+                self.limited.pop((number, head), None)
+                self.stopped.pop((number, head), None)
+                continue
+            self.review(number, head)
         for number, head in [] if self.paused else due(self.host, self.repo, agents, self.done):
             if self.paused:
                 break
@@ -383,9 +399,21 @@ class Watcher:
             _remove_copy(self.config.root, copy)
             self.say(f"#{number} head {head[:7]}: {_outcome(posted[-1].state)}")
             self.stopped.pop((number, head), None)
+            self.limited.pop((number, head), None)
             return
         stop = _stop(number, head, output, timed_out, log.as_posix(), self.timeout)
+        again = stop.limit and (number, head) in self.limited
         self.stopped[(number, head)] = stop
+        if stop.limit:
+            self.limited[(number, head)] = self.clock()
+        else:
+            self.limited.pop((number, head), None)
+        if again:
+            self.say(
+                f"#{number} head {head[:7]}: usage limit still reached; "
+                f"trying again in {LIMIT_RETRY // 60} min"
+            )
+            return
         self.out(banner(stop, self.colour))
         if self.notify:
             self.notify(f"Review stopped: #{number}", stop.why)
@@ -698,6 +726,17 @@ def _stop(
         for k in ("STOPPED", "DO")
         if line.upper().startswith(k + ":")
     }
+    limited = next((line for line in lines if LIMITED.search(line)), None)
+    if limited:
+        return Stop(
+            number,
+            head,
+            f"The agent's usage limit was reached: {limited}",
+            f"Nothing: the watcher tries this head again every {LIMIT_RETRY // 60} minutes "
+            "until the limit resets; type R and Enter to try now.",
+            log,
+            limit=True,
+        )
     if any(code in output for code in ("HTTP 401", "Bad credentials")):
         return Stop(
             number,

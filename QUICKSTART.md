@@ -352,7 +352,8 @@ wishes. Tell the person how the work runs from now on:
   WORK**, keeps the copy, and pauses until you have verified your LLM
   settings and typed `R`. When a review stops, it shows a banner, impossible to
   miss: **REVIEW STOPPED**, why, what to do, and the log; fix the cause, then
-  type `R` and Enter to review that head again. Ctrl+C ends it with the day's
+  type `R` and Enter to review that head again. A review stopped by the
+  agent's usage limit is tried again on its own every 10 minutes. Ctrl+C ends it with the day's
   summary. Without the watcher, the developer starts the reviewer by hand: a
   second session with the token, asked to follow
   `.framework/agent/run_reviewer_agent.md` for that pull request.
@@ -365,7 +366,8 @@ wishes. Tell the person how the work runs from now on:
   requirement answers, a weakened test, a disagreement between the agents —
   and every change of `qf.yaml` or `.gitmodules`. They tick one box per
   question, then **Review changes → Approve** — or **Request changes** with
-  the reason. With nothing to tick, the comment says so: they only approve.
+  the reason. Only an approval reads the ticks: after changing a tick, they
+  approve again. With nothing to tick, the comment says so: they only approve.
   They also give the checkpoint decisions the agent asks for.
 - **The agent merges**, never a person: only when the pull request's check
   **qf/merge** on its current head says *Ready to merge*, and exactly that

@@ -43,8 +43,10 @@ Read before writing anything:
 
 ## Ask
 
-Ask the round in one message: 3–5 questions whose answer would change what a
-test asserts, each with the assumption you will write from if it is skipped:
+Ask no person: from stage 4 on the build is the agents' and the gates', and
+the person approves the results (checkpoint 4). Settle each question below
+yourself, write the choice as an assumption in the test's docstring and the
+verification plan, and go on; the reviewer agent judges every assumption:
 
 - what *just outside* a range must do — reject with an error, clamp, or ignore;
 - an acceptance criterion whose *Then* can be observed in more than one way;
@@ -52,6 +54,11 @@ test asserts, each with the assumption you will write from if it is skipped:
 
 Never invent an expected value: a result nobody gave you is an assumption,
 stated as one.
+
+A question no requirement answers whose answer changes what the user sees or
+gets is a question of what is wanted: never ask it in the session. Write it
+in the report and the pull request: the reviewer agent sends it to the
+person, whose answer changes the requirements (a change request).
 
 ## Depth
 

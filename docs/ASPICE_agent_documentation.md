@@ -2370,7 +2370,7 @@ and the title.
 |---|---|
 | Goal | From which inputs to which work product; behaviour, not implementation; one line on what is not this method's job (the form, the checks, the approval) |
 | Explore | What to read before writing: the inputs, the existing work product, earlier findings |
-| Ask | The question areas of this stage; one round in one message — 3–5 questions, each with the assumption used if it is skipped; never invent an answer |
+| Ask | The question areas of this stage; never invent an answer. Up to stage 3: one round to the person in one message — 3–5 questions, each with the assumption used if it is skipped. From stage 4 on: no person is asked — the agent settles each question as a stated assumption in the work, which the reviewer agent judges; a question of what is wanted (no requirement answers it, and it changes what the user sees or gets) reaches the person only through the reviewer agent — a design's gap (⚠), or a change request |
 | Depth | When the work is lite and when it is full, by risk |
 | Steps | The work task by task, edge and error cases included; which gates are the evidence that a task is done |
 | Changes | How an existing work product grows — add, modify, remove, rename — instead of being rewritten |
@@ -3148,7 +3148,9 @@ and a person approves the results and answers the questions of what is wanted
    session that ends without a review is shown as a
    banner — *REVIEW STOPPED*, why, what to do, the log under *.qf/reviews/* —
    red where the terminal shows colour, with a desktop notification where the
-   system has one; the head is reviewed again only when the person types *R*.
+   system has one; the head is reviewed again only when the person types *R*,
+   except after the agent's usage limit: the watcher then tries it again
+   every 10 minutes, one line each time, until the limit resets.
    A reviewer never changes the work, and the agent's settings must prevent
    it — Claude Code's allowed tools by default; another agent (*--command*)
    is configured read-only by the person. The session runs in a copy of the
@@ -3393,8 +3395,10 @@ and a person approves the results and answers the questions of what is wanted
     for the results, once the tree's verification report exists — with every
     question answered yes — the first box alone; both ticked is unanswered
     (REVIEW_ITEMS_UNANSWERED) — and the comment not changed after the approval
-    (REVIEW_CHANGED_AFTER_APPROVAL). Who ticked does not matter: the person
-    approved what the comment showed. The comment names the head and a digest
+    (REVIEW_CHANGED_AFTER_APPROVAL). Only an approval reads the ticks — an
+    edit of the comment runs no gates — so a tick changed after it needs a new
+    approval; the comment and the crossing sign say so. Who ticked does not
+    matter: the person approved what the comment showed. The comment names the head and a digest
     of its questions, and is rewritten only when either changes. With nothing
     to tick — a change of the product's settings — the comment still says who
     is asked and why, and the approval alone is the review. After the merge
@@ -4445,6 +4449,21 @@ label together.
   alone as the record, read from the comment's edit history — fragile, a
   new trigger, and the reason for a *no* in a separate reply; D2 A, a floor
   of 1 in 10 by number. → § 5 stage 9, rule 14.
+- **A tick changed after the approval** (2026-10-25, FB-48). A person who
+  corrects a tick after approving waits on a crossing sign that never moves.
+  Risk: S 3 (a delay, no wrong merge), O 6, D 7 (nothing said it) — 126.
+  Taken: the comment and the sign say *approve again*; D falls to 3 — 54.
+  *Not taken:* a run on every edit of the comment (*issue_comment*) — the
+  rule that an approval covers the ticks it saw stays (H5), so that run could
+  only say *approve again* too, for a new trigger, a write token on comment
+  events and a CI file change in every product.
+- **No person is asked during the build** (2026-10-25, FB-49). Each plugin
+  of stages 4 to 8 asked the person a round of build questions, against the
+  split of v3.0.0. Risk of the agent settling them: a choice that was the
+  person's — S 6, O 4, D 3 (the reviewer agent judges every stated
+  assumption; a design's gap shows as ⚠) — 72. Taken: the agent settles them
+  as stated assumptions in the work; a question of what is wanted reaches the
+  person only through the reviewer agent. → § 3, method sections (*Ask*).
 - **The design in the person's review, told as stories** (2026-10-25, Alex,
   D1 A and D2 A, FB-43 and FB-44). The checkpoint-4 comment asked the
   person whether a design "fits" 45 bare requirement IDs, through links to

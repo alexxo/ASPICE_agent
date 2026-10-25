@@ -39,8 +39,10 @@ Read before writing anything:
 
 ## Ask
 
-Ask the round in one message, only if an answer would change the code: 1–3
-questions, each with the assumption you will write from if it is skipped:
+Ask no person: from stage 4 on the build is the agents' and the gates', and
+the person approves the results (checkpoint 4). Settle each question below
+yourself, write the choice as an assumption in a comment at the choice and the
+commit message, and go on; the reviewer agent judges every assumption:
 
 - a library or existing helper the unit should use rather than reimplement;
 - a choice the design leaves open and no test decides — concurrency, error
@@ -48,6 +50,11 @@ questions, each with the assumption you will write from if it is skipped:
 
 Never resolve a doubt about what a test means by changing it: a test you think
 wrong is a finding for the tester.
+
+A question no requirement answers whose answer changes what the user sees or
+gets is a question of what is wanted: never ask it in the session. Write it
+in the report and the pull request: the reviewer agent sends it to the
+person, whose answer changes the requirements (a change request).
 
 ## Depth
 

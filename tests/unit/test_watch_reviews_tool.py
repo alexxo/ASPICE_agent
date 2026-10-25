@@ -46,7 +46,9 @@ def test_the_banner_says_why_what_to_do_and_where_the_log_is():
 def test_the_reviewer_runs_with_its_own_tools_only():
     allowed = tools(".framework")
     assert "Bash(python .framework/tools/post_review_tool.py:*)" in allowed
-    assert not any(t.startswith(("Edit", "Bash(git push", "Bash(git commit")) for t in allowed)
+    edits = [t for t in allowed if t.startswith(("Edit", "Write"))]
+    assert edits == ["Edit(.qf/reviews/**)"]  # its record's folder only
+    assert not any(t.startswith(("Bash(git push", "Bash(git commit")) for t in allowed)
     assert not any(t in ("Bash(python:*)", "Bash", "Write") for t in allowed)
     argv = claude_command(".framework")("review #7")
     assert argv[:3] == ["claude", "-p", "review #7"]
@@ -157,6 +159,40 @@ def test_a_long_review_says_it_is_alive_and_a_stuck_one_stops(watcher):
     ]
     assert "The session ran longer than 0 minutes." in shown[-1]
     assert notes == ["Review stopped: #7"]
+
+
+def test_the_reviewer_writes_its_record_by_an_edit_rule():
+    """FB-47: Claude Code matches file permissions by Edit rules only."""
+    allowed = tools(".framework")
+    assert "Edit(.qf/reviews/**)" in allowed and "Write(.qf/reviews/**)" not in allowed
+
+
+def test_a_usage_limit_is_tried_again_on_its_own(watcher):
+    """FB-47: the limit resets; the head is reviewed then, without the person."""
+    w, host, shown, notes = watcher
+    now = [0.0]
+    w.clock = lambda: now[0]
+    w.command = _speaks("You've hit your session limit · resets 1:50pm (Europe/Berlin)")
+    w.once()
+    said = " ".join(line.strip("# ") for line in shown[-1].splitlines())
+    assert "usage limit was reached" in said and "tries this head again" in said
+    now[0] = 9 * 60
+    w.once()
+    assert w.reviews == 1  # not before 10 minutes
+    now[0] = 10 * 60
+    w.once()
+    assert w.reviews == 2
+    assert shown[-1].endswith("usage limit still reached; trying again in 10 min")
+    assert notes == ["Review stopped: #7"]  # one banner, then one line per try
+
+    def review(prompt):
+        host.posted.append(Review(AGENT, "APPROVED", "7" * 40))
+        return [sys.executable, "-c", "print('reviewed')"]
+
+    w.command = review
+    now[0] = 20 * 60
+    w.once()
+    assert "approved" in shown[-1] and w.stopped == {} and w.limited == {}
 
 
 class _Signs:

@@ -111,7 +111,10 @@ diagram plugin at stage 4, or the crew that works in turn with it, e.g. the
 coder after the assembler at stage 7 and after the bridge tester at stage 8) and each of the `framework_skills` (the
 form and the rules). Do the stage's work by the
 method — explore, ask, then the steps task by task — and write the result **in
-the framework's form**, to the files the framework skills name. When a plugin's
+the framework's form**, to the files the framework skills name. From stage 4
+on, ask no person during the build: settle the method's questions yourself as
+stated assumptions (its *Ask* says where); a question of what is wanted reaches
+the person only through the reviewer agent. When a plugin's
 own format disagrees with a framework skill, the framework skill wins.
 
 On a retry, also read the findings of the previous attempt and fix exactly what

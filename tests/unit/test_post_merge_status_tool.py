@@ -52,7 +52,7 @@ def test_a_persons_review_names_who_why_and_what_to_do_once():
     ticks = {"findings": [_finding("verify_delivery_reviewed_gate", "REVIEW_ITEMS_UNANSWERED")]}
     assert sign(ticks, ("alexxo", "bob")) == (
         "failure",
-        "Wait: a review by alexxo or bob: tick every item of its comment",
+        "Wait: a review by alexxo or bob: tick every item of its comment, then approve again",
     )
 
 

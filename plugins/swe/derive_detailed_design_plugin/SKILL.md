@@ -40,9 +40,11 @@ Read before writing anything:
 
 ## Ask
 
-Ask the round in one message: 3–5 questions whose answer would change a unit's
-boundary or interface, each with the assumption you will write from if it is
-skipped:
+Ask no person: from stage 4 on the build is the agents' and the gates', and
+the person approves the results (checkpoint 4). Settle each question below
+yourself, write the choice as an assumption in the design, as a decision of
+its own (`D<n> — assumed: …`), and go on; the reviewer agent judges every
+assumption:
 
 - the limits the requirements leave open — sizes, counts, durations, the
   range of every numeric input;
@@ -51,6 +53,11 @@ skipped:
 - reuse — an existing unit or library the design should call rather than build.
 
 Never invent a range: a limit nobody gave you is an assumption, stated as one.
+
+A question no requirement answers whose answer changes what the user sees or
+gets is a question of what is wanted: never ask it in the session. Write it
+as a step the design leaves open, so its story shows it as a gap (⚠): the
+reviewer agent sends a gap no requirement answers to the person.
 
 ## Depth
 
