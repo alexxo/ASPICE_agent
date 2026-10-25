@@ -16,9 +16,17 @@ the agent, the watcher compares the product folder's commit and changed files
 banner REVIEWER CHANGED THE WORK and pauses every review until the person
 types R.
 
+Before each review it describes, for the person's review, the tests a person
+would review (agent/describe_tests_prompt.md) and tells the changed designs as
+stories (agent/describe_design_prompt.md), each in a session that sees those
+files only, in a temporary folder outside the product, without the token; the
+results go to .qf/reviews/<n>-<sha>.tests.yaml and .stories.yaml, and the
+reviewer copies them into its record unchanged.
+
 Every event is one line with the time, and so is every change of a pull
 request's state, naming who acts next: waits for CI, gates red (the author
-fixes them), waits for your review, ready to merge — and a warning when a head
+fixes them), waits for a review by the people of qf.yaml review.people with
+the address where they act, ready to merge — and a warning when a head
 has no crossing sign after 10 minutes, since CI may not run at all.
 
 A session that ends without a review —
@@ -63,9 +71,10 @@ from tools.read_product_config_tool import (  # noqa: E402
     read_product_config,
 )
 
-__all__ = ["Stop", "Watcher", "banner", "claude_command", "due", "tools"]
+__all__ = ["Stop", "Watcher", "banner", "claude_command", "due", "tools", "waits_for_person"]
 
 WAITS_FOR_REVIEWER = "the reviewer agent's approval"
+WAITS_FOR_PERSON = ("a review by ", "a person's review")  # post_merge_status_tool's words
 NO_SIGN_AFTER = 10 * 60  # seconds a head may go without a crossing sign before a warning
 LOGS = Path(".qf/reviews")
 WIDTH = 72
@@ -139,6 +148,11 @@ def _wrapped(label: str, text: str) -> list[str]:
     return [first] + [f"#         {line}" for line in body[1:]]
 
 
+def waits_for_person(sign: str) -> bool:
+    """Whether the crossing sign waits for a person's review."""
+    return any(words in sign for words in WAITS_FOR_PERSON)
+
+
 def due(host: Host, repo: str, agents: set[str], done: set[tuple[int, str]]) -> list[tuple]:
     """The heads to review now: open, the crossing sign waiting for the reviewer
     agent, no review of that head by it yet, and not tried in this run."""
@@ -155,29 +169,43 @@ def due(host: Host, repo: str, agents: set[str], done: set[tuple[int, str]]) -> 
     return found
 
 
-def _prompt(config: ProductConfig, repo: str, number: int, described: str | None = None) -> str:
+def _prompt(
+    config: ProductConfig, repo: str, number: int, described: dict[str, str] | None = None
+) -> str:
     framework = config.relative(config.framework_dir)
+    described = described or {}
     tests = (
-        f" The tests a person would review are described already, in {described}: if your "
-        "record needs tests, put that list under `tests` as it is; never describe a test "
+        f" The tests a person would review are described already, in {described['tests']}: if "
+        "your record needs tests, put that list under `tests` as it is; never describe a test "
         "yourself."
-        if described
+        if "tests" in described
+        else ""
+    )
+    stories = (
+        f" The changed designs are told as stories already, in {described['stories']}: if your "
+        "record needs stories, put that list under `stories` as it is; never write or change a "
+        "story yourself."
+        if "stories" in described
         else ""
     )
     return (
         f"Follow {framework}/agent/run_reviewer_agent.md for pull request #{number} of {repo}."
-        f"{tests} You run unattended: if you must stop or ask, do not wait for an answer — end "
+        f"{tests}{stories} You run unattended: if you must stop or ask, do not wait for an "
+        "answer — end "
         "with one line starting 'STOPPED:' saying why, and one starting 'DO:' saying what the "
         "person does."
     )
 
 
-def _describe_prompt(config: ProductConfig, files: list[str]) -> str:
-    """The describe instructions themselves, so the session needs no file but the tests."""
-    rules = (Path(__file__).resolve().parents[1] / "agent/describe_tests_prompt.md").read_text()
+def _describe_prompt(config: ProductConfig, files: list[str], what: str = "tests") -> str:
+    """The describe instructions themselves, so the session needs no file but the
+    tests, or the designs."""
+    name = "describe_tests_prompt.md" if what == "tests" else "describe_design_prompt.md"
+    rules = (Path(__file__).resolve().parents[1] / "agent" / name).read_text()
     rules = rules.split("## You", 1)[-1]
+    task = "Describe the tests of" if what == "tests" else "Tell as stories the designs of"
     return (
-        f"Describe the tests of these files, which are all this folder holds: "
+        f"{task} these files, which are all this folder holds: "
         f"{' '.join(files)}. Read nothing else.\n\n## You{rules}"
     )
 
@@ -192,7 +220,8 @@ def claude_command(framework: str):
 
 
 def claude_describe_command(prompt: str) -> list[str]:
-    """The describe session: Claude Code, reading only, in a folder of tests only."""
+    """The describe session: Claude Code, reading only, in a folder of tests or
+    designs only."""
     return ["claude", "-p", prompt, "--allowedTools", "Read"]
 
 
@@ -202,7 +231,7 @@ class Watcher:
     host: Host
     repo: str
     command: object = None  # prompt -> argv
-    describe: object = None  # prompt -> argv, for the describe session; None: no descriptions
+    describe: object = None  # prompt -> argv, for the describe sessions; None: none
     out: object = print
     colour: bool = False
     notify: object = None
@@ -230,17 +259,20 @@ class Watcher:
             pull = self.host.pull_request(self.repo, number)
             if pull is not None:
                 reviewed = any(r.author in agents and r.commit == pull.head for r in pull.reviews)
-                self.report(number, pull.head, self.host.merge_sign(self.repo, pull.head), reviewed)
+                sign = self.host.merge_sign(self.repo, pull.head)
+                self.report(number, pull.head, sign, reviewed, pull)
 
-    def report(self, number: int, head: str, sign: str | None, reviewed: bool) -> None:
+    def report(self, number: int, head: str, sign: str | None, reviewed: bool, pull=None) -> None:
         """One line when a pull request's state changes, naming who acts next."""
-        state = self.state(number, head, sign, reviewed)
+        state = self.state(number, head, sign, reviewed, pull)
         if state is None or self.shown.get(number) == (head, state):
             return
         self.shown[number] = (head, state)
         self.say(f"#{number} head {head[:7]}: {state}")
 
-    def state(self, number: int, head: str, sign: str | None, reviewed: bool) -> str | None:
+    def state(
+        self, number: int, head: str, sign: str | None, reviewed: bool, pull=None
+    ) -> str | None:
         if sign is None:
             first = self.unsigned.setdefault((number, head), self.clock())
             if self.clock() - first >= NO_SIGN_AFTER:
@@ -256,9 +288,19 @@ class Watcher:
         if WAITS_FOR_REVIEWER in sign:
             started = reviewed or (number, head) in self.done  # its own line, or a banner
             return None if started else "waits for the reviewer agent"
-        if "a person's review" in sign:
-            return "waits for your review: the link is in the pull request"
+        if waits_for_person(sign):
+            people = " or ".join(self.config.review_people) or "a person"
+            return f"waits for a review by {people}: {self.address(number, pull)}"
         return None
+
+    def address(self, number: int, pull) -> str:
+        """Where the person acts: CI's checkpoint-4 comment, else the changes,
+        where Review changes → Approve is."""
+        from tools.post_checkpoint_review_tool import MARK
+
+        page = f"https://github.com/{self.repo}/pull/{number}"
+        notes = [n for n in (pull.notes if pull else ()) if n.bot and MARK in n.body]
+        return f"{page}#issuecomment-{notes[-1].id}" if notes else f"{page}/files"
 
     def review(self, number: int, head: str) -> None:
         self.say(f"#{number} head {head[:7]}: review started")
@@ -266,7 +308,7 @@ class Watcher:
         (self.config.root / LOGS).mkdir(parents=True, exist_ok=True)
         env = {**os.environ, "GH_TOKEN": os.environ.get(HOST_TOKEN, "")}  # gh posts as reviewer
         before = folder_state(self.config.root)
-        described, failed = self.describe_tests(number, head, env)
+        described, failed = self.describe_work(number, head)
         if failed is not None:
             self.stopped[(number, head)] = failed
             self.out(banner(failed, self.colour))
@@ -312,68 +354,100 @@ class Watcher:
         if self.notify:
             self.notify(f"Review stopped: #{number}", stop.why)
 
-    def describe_tests(self, number: int, head: str, env: dict) -> tuple[str | None, Stop | None]:
-        """The tests a person would review, described in a session that sees them
-        alone: the head is unpacked from the host, the tests are copied into an
-        otherwise empty folder, and the session runs there. Returns the
-        descriptions' file, or why it failed; nothing to describe gives neither. The
-        folder is a temporary one outside the product, and the instructions come
-        in the prompt, so the session has no path to the requirements."""
+    def describe_work(self, number: int, head: str) -> tuple[dict[str, str], Stop | None]:
+        """The tests a person would review, described, and the changed designs, told
+        as stories — each in a session that sees those files alone: the head is
+        unpacked from the host, the files are copied into an otherwise empty
+        folder, and the session runs there, without the reviewer's token. Returns
+        each result's file by kind (tests, stories), or why one failed; nothing to
+        describe gives neither. The folders are temporary ones outside the product,
+        and the instructions come in the prompt, so no session has a path to the
+        requirements."""
         if self.describe is None:
-            return None, None
+            return {}, None
         import shutil as _shutil
-        import tempfile
 
-        reviews = self.config.root / LOGS
-        tree = reviews / f"{number}-head"
-        alone = Path(tempfile.mkdtemp(prefix="qf-describe-"))  # outside the product
-        log = LOGS / f"{number}-{head[:7]}.tests.log"
+        tree = self.config.root / LOGS / f"{number}-head"
+        env = {k: v for k, v in os.environ.items() if k not in ("GH_TOKEN", HOST_TOKEN)}
         try:
             _shutil.rmtree(tree, ignore_errors=True)
             if not _unpack(self.config.root, number, head, tree):
-                return None, None  # no copy of the head: the reviewer describes them itself
+                return {}, None  # no copy of the head: the reviewer describes them itself
             from tools.classify_pull_request_tool import classify
 
+            config = read_product_config(tree)
             pull = self.host.pull_request(self.repo, number)
-            files = list(classify(read_product_config(tree), pull.files if pull else ()).candidates)
-            if not files:
-                return None, None
+            found = classify(config, pull.files if pull else ())
+            design_dir = config.relative(config.detailed_design_dir).rstrip("/")
+            designs = [
+                f"{design_dir}/{d}{suffix}"
+                for d in found.designs
+                for suffix in (".md", ".sequence.json")
+                if (tree / design_dir / f"{d}{suffix}").is_file()
+            ]
+            described: dict[str, str] = {}
+            for what, files in (("tests", list(found.candidates)), ("stories", designs)):
+                if not files:
+                    continue
+                kept, stop = self._describe(number, head, env, tree, config, what, files)
+                if stop is not None:
+                    return {}, stop
+                described[what] = kept
+            return described, None
+        except (ConfigError, OSError) as err:
+            return {}, Stop(
+                number,
+                head,
+                f"The work could not be described: {err}",
+                "Read the log, then type R and Enter to review this head again.",
+                (LOGS / f"{number}-{head[:7]}.log").as_posix(),
+            )
+        finally:
+            _shutil.rmtree(tree, ignore_errors=True)
+
+    def _describe(self, number, head, env, tree, config, what, files) -> tuple[str, Stop | None]:
+        """One describe session in a folder of these files only; its checked
+        result's file, or why it failed."""
+        import shutil as _shutil
+        import tempfile
+
+        import yaml
+
+        alone = Path(tempfile.mkdtemp(prefix="qf-describe-"))  # outside the product
+        log = LOGS / f"{number}-{head[:7]}.{what}.log"
+        try:
             for name in files:
                 target = alone / name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 _shutil.copyfile(tree / name, target)
             output, timed_out = self._session(
-                self.describe(_describe_prompt(self.config, files)), alone, env, number, head
+                self.describe(_describe_prompt(self.config, files, what)), alone, env, number, head
             )
-            (self.config.root / log).write_text(output)
+        finally:
+            _shutil.rmtree(alone, ignore_errors=True)
+        (self.config.root / log).write_text(output)
+        if what == "tests":
             entries, why = _descriptions(output, files)
-            if timed_out or entries is None:
-                return None, Stop(
-                    number,
-                    head,
-                    "The tests could not be described: "
-                    + ("the session ran out of time." if timed_out else why),
-                    "Read the log, then type R and Enter to review this head again.",
-                    log.as_posix(),
-                )
-            import yaml
-
-            described = LOGS / f"{number}-{head[:7]}.tests.yaml"
-            (self.config.root / described).write_text(
-                yaml.safe_dump(entries, sort_keys=False, allow_unicode=True)
+        else:
+            entries, why = _stories(output, config, files)
+        if timed_out or entries is None:
+            failed = (
+                "The tests could not be described: "
+                if what == "tests"
+                else ("The designs could not be told as stories: ")
             )
-            return described.as_posix(), None
-        except (ConfigError, OSError) as err:
-            return None, Stop(
+            return "", Stop(
                 number,
                 head,
-                f"The tests could not be described: {err}",
+                failed + ("the session ran out of time." if timed_out else why),
                 "Read the log, then type R and Enter to review this head again.",
                 log.as_posix(),
             )
-        finally:
-            for folder in (tree, alone):
-                _shutil.rmtree(folder, ignore_errors=True)
+        kept = LOGS / f"{number}-{head[:7]}.{what}.yaml"
+        (self.config.root / kept).write_text(
+            yaml.safe_dump(entries, sort_keys=False, allow_unicode=True)
+        )
+        return kept.as_posix(), None
 
     def _run(
         self, number: int, head: str, env: dict, described: str | None = None
@@ -460,6 +534,34 @@ def _descriptions(output: str, files: list[str]) -> tuple[list | None, str]:
     missing = sorted(set(files) - {e["file"] for e in entries})
     if missing:
         return None, f"it describes no test of {', '.join(missing)}."
+    return entries, ""
+
+
+def _stories(output: str, config: ProductConfig, files: list[str]) -> tuple[list | None, str]:
+    """The storyteller's list, checked against review.v1, a story for every design,
+    and every step's source in its design."""
+    import yaml
+
+    from tools.classify_pull_request_tool import unsourced
+    from tools.validate_contract_tool import validate
+
+    text = output.strip()
+    if text.startswith("```"):
+        text = "\n".join(text.splitlines()[1:]).rsplit("```", 1)[0]
+    try:
+        entries = yaml.safe_load(text)
+    except yaml.YAMLError as err:
+        return None, f"its answer is not YAML ({err.__class__.__name__})."
+    problems = validate({"person": "none", "findings": [], "stories": entries}, "review")
+    if problems:
+        return None, f"its answer breaks review.v1 at '{problems[0].path}': {problems[0].message}"
+    designs = {Path(f).name.split(".")[0] for f in files}
+    missing = sorted(designs - {e["design"] for e in entries})
+    if missing:
+        return None, f"it tells no story of {', '.join(missing)}."
+    wrong = unsourced(config, entries)
+    if wrong:
+        return None, f"a step names a source the design does not have: {wrong[0]}."
     return entries, ""
 
 

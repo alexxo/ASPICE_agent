@@ -355,14 +355,18 @@ wishes. Tell the person how the work runs from now on:
   `.framework/agent/run_reviewer_agent.md` for that pull request.
 - **reviewer** reviews the pull requests that need a person: CI posts the
   review in plain words as a comment and mentions them, and the agent opens
-  it on its computer. They tick one box per item, then **Review changes →
-  Approve** — or **Request changes** with the reason. They also give the
+  it on its computer. The comment says what the pull request does and why
+  they are asked; each question tells, in plain words, what a design or a
+  test makes happen next to what the approved requirement asks. They tick one
+  box per question, then **Review changes → Approve** — or **Request changes**
+  with the reason. With nothing to tick, the comment says so: they only
+  approve. They also give the
   checkpoint decisions the agent asks for.
 - **The agent merges**, never a person: only when the pull request's check
   **qf/merge** on its current head says *Ready to merge*, and exactly that
   head (`--match-head-commit`). While it says *Wait: …* it names what
-  is still missing — the reviewer agent's approval, a person's review, or
-  red gates — and after any push or review it starts again at *Wait: gates
+  is still missing — the reviewer agent's approval, a review by the people
+  of `review.people` with why they are asked, or red gates — and after any push or review it starts again at *Wait: gates
   running*. GitHub does not block the button: the sign is the rule.
 - **Everyone**: every change reaches `main` through a reviewed pull request
   with passing gates. Never push to `main` directly and never rewrite it (no

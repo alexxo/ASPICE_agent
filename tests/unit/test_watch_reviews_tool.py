@@ -182,7 +182,7 @@ def test_every_change_of_state_is_one_line_naming_who_acts(watcher):
         "Wait: gates running",
         "Wait: gates running",
         "Wait: gates red: verify_test_first_gate",
-        "Wait: a person's review",
+        "Wait: a review by lead-bob (it changes the quality gates' own files): approve on GitHub",
         "Ready to merge",
     ]:
         host.sign = sign
@@ -191,9 +191,22 @@ def test_every_change_of_state_is_one_line_naming_who_acts(watcher):
     assert states == [
         "waits for CI (gates running)",
         "gates red (verify_test_first_gate): the author fixes them, no review yet",
-        "waits for your review: the link is in the pull request",
+        f"waits for a review by lead-bob: https://github.com/{HOST_REPO}/pull/9/files",
         "ready to merge; the agent merges",
     ]
+
+
+def test_the_person_is_sent_to_cis_comment_when_there_is_one(watcher):
+    """FB-43: the line pointed to "the link in the pull request", which did not exist."""
+    from tools.post_checkpoint_review_tool import MARK
+    from tools.read_host_tool import Note, PullRequest
+
+    w, *_ = watcher
+    ours = Note(4242, "github-actions[bot]", f"{MARK}\n…", "2026-10-25T09:00:00Z", bot=True)
+    pull = PullRequest(9, "dev-alice", "9" * 40, notes=(ours,))
+    assert w.state(9, pull.head, "Wait: a review by lead-bob: approve again", True, pull) == (
+        f"waits for a review by lead-bob: https://github.com/{HOST_REPO}/pull/9#issuecomment-4242"
+    )
 
 
 def test_a_head_without_a_sign_for_10_minutes_is_a_warning(watcher):
@@ -271,19 +284,19 @@ print('```')
 """
 
 
-@pytest.fixture
-def pulled(tmp_path):
-    """A Python product whose pull request #7, a test of the web app, is on its origin."""
+def _on_origin(tmp_path, change, files):
+    """A Python product whose pull request #7, the change of these files, is on
+    its origin."""
     import subprocess
 
-    from product_builder import build_python_product, commit_all, git_head, write_unit_test
+    from product_builder import build_python_product, commit_all, git_head
 
     origin = tmp_path / "origin.git"
     subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
     root = build_python_product(tmp_path / "product")
     subprocess.run(["git", "-C", str(root), "remote", "add", "origin", str(origin)], check=True)
-    write_unit_test(root, "web-app", "signin-form")
-    commit_all(root, "test: the sign-in form")
+    change(root)
+    commit_all(root, "the change of pull request #7")
     head = git_head(root)
     subprocess.run(["git", "-C", str(root), "push", "-q", "origin", "HEAD:refs/pull/7/head"])
     subprocess.run(["git", "-C", str(root), "checkout", "-q", "main"], check=True)
@@ -300,12 +313,80 @@ def pulled(tmp_path):
         def pull_request(self, repo, number):
             from tools.read_host_tool import PullRequest
 
-            files = ("src/web_app/test_signin_form.py",)
-            return PullRequest(7, "dev-alice", head, files, tuple(self.posted))
+            return PullRequest(7, "dev-alice", head, tuple(files), tuple(self.posted))
 
     shown = []
     w = Watcher(read_product_config(root), Host(), HOST_REPO, out=shown.append)
     return w, shown, head
+
+
+@pytest.fixture
+def pulled(tmp_path):
+    """Pull request #7 adds a test of the web app."""
+    from product_builder import write_unit_test
+
+    def change(root):
+        write_unit_test(root, "web-app", "signin-form")
+
+    return _on_origin(tmp_path, change, ["src/web_app/test_signin_form.py"])
+
+
+@pytest.fixture
+def redesigned(tmp_path):
+    """Pull request #7 changes the detailed design of auth-service."""
+
+    def change(root):
+        design = root / "docs/design/auth-service.md"
+        design.write_text("- **D1 — failures are counted per account.**\n\n" + design.read_text())
+
+    return _on_origin(tmp_path, change, ["docs/design/auth-service.md"])
+
+
+STORYTELLER = """
+import os
+seen = sorted(os.path.join(d, f) for d, _, fs in os.walk('.') for f in fs)
+assert seen == ['./docs/design/auth-service.md', './docs/design/auth-service.sequence.json'], seen
+assert 'QF_HOST_TOKEN' not in os.environ and 'GH_TOKEN' not in os.environ
+print('- design: auth-service')
+print('  story: A wrong password')
+print('  steps:')
+print('    - text: The credentials are checked; failures are counted per account.')
+print('      source: [unit:check-credentials, decision:D1]')
+print('    - text: The design does not say what happens after five failures.')
+print('      source: [unit:count-failures]')
+print('      gap: true')
+"""
+
+
+def test_the_watcher_tells_the_design_as_stories_in_a_folder_of_designs_only(
+    redesigned, monkeypatch
+):
+    w, shown, head = redesigned
+    monkeypatch.setenv("QF_HOST_TOKEN", "reviewer-token")
+    prompts = []
+    w.describe = lambda prompt: [sys.executable, "-c", STORYTELLER]
+
+    def review(prompt):
+        prompts.append(prompt)
+        w.host.posted.append(Review(AGENT, "APPROVED", head))
+        return [sys.executable, "-c", "print('reviewed')"]
+
+    w.command = review
+    w.once()
+    told = f".qf/reviews/7-{head[:7]}.stories.yaml"
+    assert told in prompts[0] and "never write or change a story yourself" in prompts[0]
+    assert "gap: true" in (w.config.root / told).read_text()
+    assert "approved" in shown[-1]
+
+
+def test_a_story_with_an_invented_source_stops_the_review(redesigned):
+    w, shown, head = redesigned
+    invented = STORYTELLER.replace("decision:D1", "unit:send-email")
+    w.describe = lambda prompt: [sys.executable, "-c", invented]
+    w.command = lambda prompt: pytest.fail("the review must not start")
+    w.once()
+    said = " ".join(line.strip("# ") for line in shown[-1].splitlines())
+    assert "The designs could not be told as stories" in said and "unit:send-email" in said
 
 
 def test_the_watcher_describes_the_tests_in_a_folder_of_tests_only(pulled):

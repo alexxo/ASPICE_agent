@@ -22,6 +22,7 @@ from product_builder import (
 )
 
 from gates.sup.verify_delivery_reviewed_gate import check, person_review
+from tools.classify_pull_request_tool import classify
 from tools.post_checkpoint_review_tool import render
 from tools.read_host_tool import FileHost
 from tools.read_product_config_tool import read_product_config
@@ -248,6 +249,7 @@ def test_a_missing_review_names_the_reviewer_session(product, tmp_path, monkeypa
 
 DISPUTED = {
     "person": "none",
+    "summary": "It locks an account after failed sign-ins.",
     "findings": [
         {
             "finding": "the limit is 10, the requirement says 5",
@@ -375,3 +377,61 @@ def test_only_a_person_on_the_current_head_counts(product, tmp_path, monkeypatch
     files = ["docs/architecture/architecture.md"]
     pull = pull_request(5, head, files=files, reviews=[review(AGENT, head), person])
     assert _rules(product, tmp_path, monkeypatch, pull) == ["MISSING_PERSON_APPROVAL"]
+
+
+def test_a_person_is_asked_with_a_short_reason_and_the_records_summary(
+    product, tmp_path, monkeypatch
+):
+    head = git_head(product)
+    silent = {"person": "none", "findings": []}
+    pull = pull_request(2, head, files=["qf.yaml"], reviews=[review(AGENT, head, record=silent)])
+    monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json", pulls=[pull])))
+    found = {f.rule: f.message for f in check(read_product_config(product))}
+    assert "(why: it changes the quality gates' own files)" in found["MISSING_PERSON_APPROVAL"]
+    assert "says nothing of what the pull request does" in found["INCOMPLETE_CHECKLIST"]
+
+
+@pytest.fixture
+def designed(tmp_path):
+    """A product with its detailed design, on a feature branch with an origin."""
+    from product_builder import build_python_product
+
+    root = build_python_product(tmp_path / "product")  # already on BRANCH
+    subprocess.run(["git", "-C", str(root), "checkout", "-q", "-B", BRANCH], check=True)
+    add_origin(root)
+    return root
+
+
+STORY = {
+    "design": "auth-service",
+    "story": "A wrong password",
+    "steps": [{"text": "The credentials are checked.", "source": ["unit:check-credentials"]}],
+}
+
+
+def test_a_changed_design_is_reviewed_as_its_stories(designed, tmp_path, monkeypatch):
+    """FB-44: the design item was file links and bare IDs; now stories, told from
+    the design alone, with the story of every asked requirement named."""
+    head = git_head(designed)
+    files = ["docs/design/auth-service.md"]
+    asked = classify(read_product_config(designed), files).asked["auth-service"]
+    assert asked  # the design serves a requirement of criticality high or of kind security
+    summary = {"person": "none", "findings": [], "summary": "It designs the sign-in."}
+    told = {**summary, "stories": [STORY], "covers": {u: STORY["story"] for u in asked}}
+
+    def rules(record):
+        reviews = [review(AGENT, head, record=record)]
+        pull = pull_request(1, head, files=files, reviews=reviews)
+        return _rules(designed, tmp_path, monkeypatch, pull)
+
+    untold = ["INCOMPLETE_CHECKLIST", "MISSING_PERSON_APPROVAL", "REVIEW_ITEMS_UNANSWERED"]
+    assert rules(summary) == untold
+    assert rules({**told, "covers": {}}) == untold
+    assert rules(told) == ["MISSING_PERSON_APPROVAL", "REVIEW_ITEMS_UNANSWERED"]
+    step = {"text": "An email is sent.", "source": ["unit:send-email"]}
+    invented = {**told, "stories": [{**STORY, "steps": [step]}]}
+    assert rules(invented) == [
+        "MISSING_PERSON_APPROVAL",
+        "REVIEW_ITEMS_UNANSWERED",
+        "REVIEW_STORY_UNSOURCED",
+    ]

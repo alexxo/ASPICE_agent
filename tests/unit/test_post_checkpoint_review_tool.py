@@ -23,6 +23,7 @@ from tools.read_product_config_tool import read_product_config
 
 ASKED = {
     "person": {"condition": 4, "reason": "publishes posts to the live site"},
+    "summary": "It publishes the approved posts.",
     "findings": [
         {
             "finding": "the limit is 10, the requirement says 5",
@@ -53,21 +54,69 @@ def _render(product, pull, record=ASKED):
     return render(config, HOST_REPO, pull, person_review(config, pull, record), record)
 
 
-def test_the_review_says_why_and_mentions_the_people(product, tmp_path):
+def test_the_review_reads_without_code_what_why_how_then_the_questions(product, tmp_path):
     _, pull = _pull(product, tmp_path)
     body = _render(product, pull)
     assert body.startswith(MARK)
     assert "@lead-bob" in body and "publishes posts to the live site" in body
+    what, why, how = (body.index(f"**{part}") for part in ("What this", "Why you", "How to"))
+    assert what < why < how < body.index("### 1.")
+    assert "It publishes the approved posts." in body
+    assert body.rstrip().endswith("</details>")  # the head and the files, folded at the end
     assert [title for title, _ in answers(body)] == [
         "1. Disagreement (disputed)",
         "2. The reviewer agent asks for a person",
     ]
 
 
-def test_nothing_to_judge_needs_no_comment(product, tmp_path):
+def test_no_person_needed_no_comment(product, tmp_path):
     record = {"person": "none", "findings": []}
     _, pull = _pull(product, tmp_path, record)
     assert _render(product, pull, record) is None
+
+
+def test_a_person_with_nothing_to_tick_is_still_told_who_and_why(product, tmp_path):
+    """FB-43: a change of the gates' own files got no comment at all."""
+    record = {"person": "none", "findings": [], "summary": "It moves the framework pin."}
+    head = git_head(product)
+    data = pull_request(25, head, files=["qf.yaml"], reviews=[review(AGENT, head, record=record)])
+    pull = FileHost(write_host(tmp_path / "host.json", pulls=[data])).pull_request(HOST_REPO, 25)
+    body = _render(product, pull, record)
+    assert "@lead-bob" in body and "It changes the quality gates' own files." in body
+    assert "nothing to tick" in body and answers(body) == []
+
+
+def test_a_design_is_asked_as_stories_next_to_the_requirements(tmp_path):
+    """FB-44: one question per story that shows an asked requirement, the
+    requirement's text above the steps, a gap marked; one per requirement no
+    story shows."""
+    from product_builder import build_python_product
+
+    from tools.classify_pull_request_tool import classify
+
+    root = build_python_product(tmp_path / "product")
+    files = ["docs/design/auth-service.md"]
+    config = read_product_config(root)
+    first, *rest = classify(config, files).asked["auth-service"]
+    steps = [
+        {"text": "The credentials are checked.", "source": ["unit:check-credentials"]},
+        {"text": "The design does not say how long.", "source": ["unit:open-session"], "gap": True},
+    ]
+    story = {"design": "auth-service", "story": "A wrong password", "steps": steps}
+    record = {"person": "none", "findings": [], "summary": "It designs the sign-in."}
+    covers = {first: "A wrong password", **dict.fromkeys(rest, "none")}
+    record |= {"stories": [story], "covers": covers}
+    head = git_head(root)
+    data = pull_request(26, head, files=files, reviews=[review(AGENT, head, record=record)])
+    pull = FileHost(write_host(tmp_path / "host.json", pulls=[data])).pull_request(HOST_REPO, 26)
+    body = render(config, HOST_REPO, pull, person_review(config, pull, record), record)
+    titles = [title for title, _ in answers(body)]
+    assert titles[0] == "1. A wrong password"
+    assert len(titles) == 1 + len(rest)  # one more per requirement no story shows
+    question = body.split("### 1.")[1].split("###")[0]
+    assert question.index("**What must happen**") < question.index("1. The credentials")
+    assert "2. ⚠ The design does not say how long." in question
+    assert "docs/design/auth-service.sequence.json" not in body.split("<details>")[0]
 
 
 @pytest.mark.parametrize(

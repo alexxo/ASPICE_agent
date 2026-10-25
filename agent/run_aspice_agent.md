@@ -151,14 +151,16 @@ the check belongs to, then merge exactly that head:
 if anything was pushed after you read it. Never merge on any other status,
 and never push to the main branch.
 
-When the check waits for *a person's review*, CI has posted the review in
-plain words as a comment on the pull request (the one starting
-`<!-- qf-checkpoint-4-review -->`). Open it in the browser of this computer,
+When the check waits for a person's review (*a review by <people>*, or *a
+person's review* without `review.people`), CI has posted the review in plain
+words as a comment on the pull request (the one starting
+`<!-- qf-checkpoint-4-review -->`), also when there is nothing to tick. Open it in the browser of this computer,
 once per head: find its link (`html_url`) with
 `gh api repos/<owner>/<repo>/issues/<n>/comments`, open it with
 `gh pr view <n> --web` or Python's `webbrowser.open(<link>)`, and print the
 link. Tell the person why they are asked (the comment's first lines): they
-tick one box per item, then approve, or request changes with the reason.
+tick one box per question, then approve, or request changes with the reason;
+with nothing to tick, they only approve.
 Never tick a box yourself. After a merge, wait for the main branch's CI run. If
 it is red with MERGED_WITHOUT_PULL_REQUEST, GATES_NOT_PASSED or a review
 missing, tell the person at once: the change reached the main branch without

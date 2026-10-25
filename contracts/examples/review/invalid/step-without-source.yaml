@@ -1,0 +1,8 @@
+person: none
+findings: []
+stories:
+  - design: publisher-script
+    story: The LLM does not answer
+    steps:
+      - text: "The publisher sends the row's brief to the LLM."
+        source: []

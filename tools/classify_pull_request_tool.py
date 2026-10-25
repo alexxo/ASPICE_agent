@@ -55,7 +55,7 @@ from tools.read_product_config_tool import (  # noqa: E402
 from tools.read_yaml_blocks_tool import yaml_blocks_in_text  # noqa: E402
 from tools.validate_contract_tool import validate  # noqa: E402
 
-__all__ = ["Classification", "Weakening", "classify", "review_record"]
+__all__ = ["Classification", "Weakening", "classify", "headline", "review_record", "unsourced"]
 
 # A test switched off, in the languages the framework meets.
 SWITCHED_OFF = re.compile(
@@ -85,6 +85,8 @@ class Classification:
     disputes: tuple[dict, ...] = ()
     request: dict | None = None  # the reviewer agent's own request
     candidates: tuple[str, ...] = ()  # the tests a person would review, if one is called
+    brief: tuple[str, ...] = ()  # the reasons in plain words, for the page and the status
+    asked: dict[str, list[str]] = field(default_factory=dict)  # design → its high/security REQs
 
     @property
     def needed(self) -> bool:
@@ -101,6 +103,8 @@ class Classification:
             "disputes": list(self.disputes),
             "request": self.request,
             "candidates": list(self.candidates),
+            "brief": list(self.brief),
+            "asked": self.asked,
         }
 
 
@@ -119,6 +123,44 @@ def review_record(body: str) -> tuple[dict | None, str | None]:
             first.message
         )
     return blocks[0].data, None
+
+
+def unsourced(config: ProductConfig, stories) -> list[str]:
+    """Each story step whose source is not in its design, in words: a message of
+    the design's sequence diagram, a unit of the design, or a decision its
+    document names (D3, ADR-0002)."""
+    from adapters.read_archify_diagram_adapter import read_archify_diagrams
+    from tools.read_unit_markers_tool import design_units
+
+    units: dict[str, set[str]] = {}
+    for unit, (component, _design) in design_units(config).items():
+        units.setdefault(component, set()).add(unit)
+    messages: dict[str, set[str]] = {}
+    for _path, result in read_archify_diagrams(config.detailed_design_dir, config.root):
+        diagram = result.diagram
+        if diagram is not None and diagram["type"] == "sequence":
+            messages[diagram["diagram"]] = {
+                e["id"] for e in diagram["elements"] if e["kind"] == "message"
+            }
+    found = []
+    for story in stories:
+        design = story["design"]
+        document = config.detailed_design_dir / f"{design}.md"
+        text = document.read_text(encoding="utf-8") if document.is_file() else ""
+        known = {
+            "message": messages.get(design, set()),
+            "unit": units.get(design, set()),
+        }
+        for number, step in enumerate(story["steps"], 1):
+            for ref in step["source"]:
+                kind, _, name = ref.partition(":")
+                if kind == "decision":
+                    ok = re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", text) is not None
+                else:
+                    ok = name in known.get(kind, set())
+                if not ok:
+                    found.append(f"'{story['story']}' step {number}: {ref} is not in {design}")
+    return found
 
 
 def always(config: ProductConfig, files) -> str | None:
@@ -140,21 +182,28 @@ def classify(
     """Whether a person reviews the change of these files, why, and on what."""
     files = sorted(set(files))
     reasons: list[str] = []
+    brief: list[str] = []
     first = always(config, files)
     if first:
         reasons.append(first)
+        brief.append(_ALWAYS_BRIEF[first.split(" (")[0]])
     traced = _trace(config, files)
     reasons += traced.reasons
+    brief += traced.brief
     weakenings = _weakenings(config, files, traced.stack, base) if base else []
     for w in weakenings:
         reasons.append(f"weakens a test: {w.file} ({w.now})")
+    if weakenings:
+        brief.append("a test got weaker")
     record = record or {}
     disputes = tuple(f for f in record.get("findings", []) if f["outcome"] != "fixed")
     if disputes:
         reasons.append(f"{len(disputes)} reviewer finding(s) closed without a change")
+        brief.append("the reviewer agent and the author disagree")
     request = record.get("person") if isinstance(record.get("person"), dict) else None
     if request:
         reasons.append(f"the reviewer agent asks for a person: {request['reason']}")
+        brief.append("the reviewer agent asks for a person")
     tests = traced.important_tests if traced.important_tests else traced.tests
     return Classification(
         tuple(reasons),
@@ -165,7 +214,22 @@ def classify(
         disputes,
         request,
         tuple(tests),
+        tuple(brief),
+        dict(traced.asked),
     )
+
+
+_ALWAYS_BRIEF = {
+    "changes the architecture": "it changes the architecture",
+    "changes the gates' own files": "it changes the quality gates' own files",
+}
+
+
+def headline(brief) -> str:
+    """The reasons in one short line: the first two, and how many more."""
+    shown = list(brief[:2])
+    more = len(brief) - len(shown)
+    return "; ".join(shown) + (f"; {more} more" if more else "")
 
 
 @dataclass
@@ -176,6 +240,8 @@ class _Traced:
     important_tests: list[str] = field(default_factory=list)
     links: dict[str, list[str]] = field(default_factory=dict)
     stack: dict | None = None
+    brief: list[str] = field(default_factory=list)
+    asked: dict[str, list[str]] = field(default_factory=dict)
 
 
 def _documentation(config: ProductConfig) -> list[str]:
@@ -280,7 +346,9 @@ def _trace(config: ProductConfig, files: list[str]) -> _Traced:
 
     hits: list[str] = []
     crossing: list[str] = []
+    owned: set[str] = set()  # the components the change itself is in
     for path, (reqs, components, security) in per_file.items():
+        owned |= components
         found = sorted(filter(None, (important(r) for r in reqs)))
         crosses = boundaries(components)
         if security:
@@ -290,10 +358,28 @@ def _trace(config: ProductConfig, files: list[str]) -> _Traced:
             crossing += [c for c in crosses if c not in crossing]
             if path in out.links:
                 out.important_tests.append(path)
+    for component in out.designs:
+        out.asked[component] = [
+            u for u in architecture.meets.get(component, ()) if important(u) is not None
+        ]
     if hits:
         out.reasons.append("touches " + ", ".join(hits))
+        high = sum(1 for h in hits if h.endswith("(criticality high)"))
+        counted = [
+            _count(high, "high-criticality requirement"),
+            _count(len(hits) - high, "security requirement"),
+        ]
+        out.brief.append("it touches " + " and ".join(c for c in counted if c))
     if crossing:
         out.reasons.append("crosses a trust boundary: " + ", ".join(crossing))
+        outside = sorted(
+            {end for c in crossing if " → " in c for end in c.split(" → ")} - set(owned)
+        )
+        out.brief.append(
+            "it handles data crossing to or from " + ", ".join(outside)
+            if outside
+            else "it handles data crossing a trust boundary"
+        )
     if everything:
         every = sorted(filter(None, (important(u) for u in ratings)))
         if every or boundaries(set(), every=True):
@@ -301,7 +387,12 @@ def _trace(config: ProductConfig, files: list[str]) -> _Traced:
                 f"changes {', '.join(everything)}, which traces to no requirement, so it "
                 "counts as touching all of them"
             )
+            out.brief.append(f"it changes {', '.join(everything)}, which traces to no requirement")
     return out
+
+
+def _count(n: int, what: str) -> str:
+    return "" if n == 0 else f"{n} {what}" + ("s" if n > 1 else "")
 
 
 def _weakenings(

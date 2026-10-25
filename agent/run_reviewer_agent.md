@@ -83,6 +83,20 @@ it changes code.
   hand, describe them in a fresh session that sees the tests only
   (`<framework>/agent/describe_tests_prompt.md`). Never write or change the
   descriptions yourself: you have read the requirements.
+- `summary` — when a person reviews: what the pull request does, in one plain
+  sentence for a person who does not read code ("It designs how the
+  publisher asks the LLM for a text and saves the draft on WordPress.").
+- `stories` — when a person reviews and `designs` is not empty: each changed
+  design told as stories. When the watcher started you, they are told
+  already, in the file its prompt names: put that list under `stories` as it
+  is. Started by hand, tell them in a fresh session that sees the design files
+  only (`<framework>/agent/describe_design_prompt.md`). Never write or change
+  a story yourself.
+- `covers` — for every requirement under `asked` of the classification: the
+  title of the story that shows what the requirement asks, or `none` when no
+  story does. Choose by what the story's steps make happen, never by its
+  title; a story that shows only the normal run never covers a requirement
+  about a failure.
 
 Post with
 

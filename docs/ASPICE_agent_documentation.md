@@ -663,9 +663,11 @@ or risky: it touches what the chief architect rated critical or security at
 seal 2, crosses the site's boundary, weakens a test, holds a remark the author
 disputed, or the fellow craftsman asks for the auditor — never one chosen by
 lot, so what matters is always seen and nothing else costs the auditor's time.
-At the desk the auditor finds the delivery explained in plain words — each test
-described by the fellow craftsman from the test alone, next to the approved
-condition — ticks one answer per item and gives the seal; a delivery that needs
+At the desk the auditor finds the delivery explained in plain words — what it
+does, why the auditor is called, each plan told as what happens step by step
+and each test as given, when, then, both from the work alone and next to the
+approved condition, a gap in the plan marked ⚠ — ticks one answer per question
+and gives the seal; a delivery that needs
 it waits until the seal is on its latest version [verify_delivery_reviewed_gate].
 At the desk's gate hangs the crossing sign (the *qf/merge* status): *wait*, with
 what is still missing, or *cross* once every seal and inspector agree; the
@@ -2105,6 +2107,7 @@ and format).
 | *agent/render_review_tool.py* | Renders the requirements' review page for checkpoint 2 from the committed files, what changed since the previous approval marked; the approval gate renders it again to compare, and record_checkpoint_tool refuses an approval on a page the files no longer render |
 | *agent/run_aspice_agent.md* | The orchestrator: the only LLM part; holds ODD's common steps — Authorize, Classify, Track before write, Close |
 | *agent/describe_tests_prompt.md* | The prompt of the session that describes each test from the test alone, never the requirement, for the person's review (§ 5 stage 9, rule 14) |
+| *agent/describe_design_prompt.md* | The prompt of the session that tells each changed detailed design as stories from the design alone, never the requirements, a gap marked ⚠, for the person's review (§ 5 stage 9, rule 14) |
 | *agent/run_reviewer_agent.md* | The reviewer's own session: the only one holding the reviewer agent's token; loads the reviewer's method and rules, reviews one pull request's head, posts, changes nothing |
 | *agent/start_product.md* | The start rulebook: asks the person the setup's values, runs the construction site setup, relays the host steps, then hands over to the orchestrator (starting a product) |
 | *examples/login-product/* | The example product: approved diagrams with their pictures, wishes, glossary, configuration |
@@ -3229,7 +3232,10 @@ and a person reviews the important or risky ones (rule 14).
     tools *read_host_tool*, *post_review_tool*, *classify_pull_request_tool*,
     *post_checkpoint_review_tool* and *watch_reviews_tool*, with its logs
     *.qf/reviews/&lt;n&gt;-&lt;sha&gt;.log*; the contract *review.v1* and its
-    *```yaml review* block; the prompt *agent/describe_tests_prompt.md*; the
+    *```yaml review* block with its *summary*, *stories* and *covers*; the
+    prompts *agent/describe_tests_prompt.md* and
+    *agent/describe_design_prompt.md*, with the watcher's files
+    *.qf/reviews/&lt;n&gt;-&lt;sha&gt;.tests.yaml* and *.stories.yaml*; the
     *qf.v1* fields *framework_dir*, *ci_file*, *framework_feedback_file*,
     *review.agents*, *review.people*; the *stack.v2* areas *secrets_scanner* and
     *dependencies_scanner*; the token
@@ -3255,8 +3261,11 @@ and a person reviews the important or risky ones (rule 14).
     reads, on the pull request, whether to wait or to merge: on every pull request CI posts the commit
     status *qf/merge* on its head with *post_merge_status_tool* — pending
     *Wait: gates running* when the gates start, then failure *Wait: <what
-    is missing>* (the reviewer agent's approval, a person's review when rule
-    14 asks for one, the gates that are red) or success *Ready to merge*. The
+    is missing>* (the reviewer agent's approval; a person's review when rule
+    14 asks for one, naming *qf.yaml review.people*, why in a few words and
+    what to do — *Wait: a review by alexxo (it changes the quality gates'
+    own files): approve on GitHub*; the gates that are red) or success
+    *Ready to merge*. The
     status belongs to the head, so every push and every review starts from
     wait, and no status means wait. One run per pull request at a time
     (*concurrency*), so a late run never overwrites a newer status; runs on
@@ -3269,7 +3278,9 @@ and a person reviews the important or risky ones (rule 14).
     request, never the merge. When the sign waits for a person's review, the
     agent opens CI's review comment in the browser of the computer it runs
     on, once per head (*gh pr view <n> --web*, or Python's *webbrowser*), and
-    prints the link. The risk analysis is Appendix A.8.
+    prints the link; the watcher prints it too, with the people's names:
+    the comment, else the pull request's changes. The risk analysis is
+    Appendix A.8.
 
 14. **A person reviews what is important or risky, in plain words.** Never a
     pull request chosen by number: *classify_pull_request_tool* decides from
@@ -3299,29 +3310,53 @@ and a person reviews the important or risky ones (rule 14).
     *What the person sees.* Once the reviewer agent has approved the head,
     CI posts the checkpoint-4 review as a comment on the pull request
     (*post_checkpoint_review_tool*), mentioning *qf.yaml review.people* so
-    the host notifies them: why they are asked, then the items, each with a
-    pair of boxes — each detailed design changed; each test the person
-    reviews, the approved Given / When / Then next to the reviewer agent's
-    description of the test (*Prepares · Does · Checks · Not*), written in a
-    session that saw the test only (*agent/describe_tests_prompt.md*) — the
-    watcher runs it in a temporary folder outside the product holding nothing
-    but those tests, copied from the head, the instructions in the prompt, so
-    the session has no path to the requirements; each
-    weakened test, before and now; each finding closed without a change;
-    the reviewer agent's request. No code. The author agent opens the comment
-    on its computer (rule 13).
+    the host notifies them, readable without code: what the pull request
+    does (the record's *summary*), why they are asked in one plain sentence
+    with counts, never a list of IDs, and how to answer; then the questions,
+    each with a pair of boxes; IDs, the head and the files folded at the end
+    under *Details for the record*. A person judges behaviour told as a
+    story, never how parts are wired, so every question is *here is what
+    happens — is that what must happen?*:
+    - *Each changed detailed design, as stories.* A session that saw the
+      design only (*agent/describe_design_prompt.md*) tells it as
+      situations, step by step in plain words with the design's values; at
+      every step that waits or receives it asks what if no answer comes, the
+      answer is wrong, a limit is exceeded — and where the design does not
+      say, it writes so as a step marked ⚠, never a guess. Each step names
+      its sources (a message of the sequence diagram, a unit, a decision of
+      the design; REVIEW_STORY_UNSOURCED rejects one the design does not
+      have). The reviewer agent, which saw both, names the story that shows
+      each requirement of criticality high or of kind security the design
+      serves (*covers*). One question per such story, the requirements' text
+      and acceptance criteria above its steps; one per such requirement no
+      story shows.
+    - *Each test the person reviews.* The approved criteria next to the test
+      told as *Given · When · Then it checks · It does not check*, written in
+      a session that saw the test only (*agent/describe_tests_prompt.md*).
+    - Each weakened test, before and now; each finding closed without a
+      change; the reviewer agent's request.
+
+    The watcher runs both sessions in temporary folders outside the product,
+    each holding nothing but those files, copied from the head, without the
+    reviewer's token, the instructions in the prompt, so no session has a
+    path to the requirements. The author agent opens the comment on its
+    computer (rule 13).
     *How the person answers.* One tick per item — the host saves each at
     once, on any device — then *Approve*, or *Request changes* with the
     reason. *verify_delivery_reviewed_gate* requires the reviewer agent's
-    record with every reviewed test described (INCOMPLETE_CHECKLIST), a
+    record with the summary, every reviewed test described, every changed
+    design told and the story of every asked requirement named
+    (INCOMPLETE_CHECKLIST), every story step's source in its design
+    (REVIEW_STORY_UNSOURCED), a
     person's approval of the head (MISSING_PERSON_APPROVAL), the comment for
     that head and those items with every item answered yes — the first box
     alone; both ticked is unanswered (REVIEW_ITEMS_UNANSWERED) — and the
     comment not changed after the approval (REVIEW_CHANGED_AFTER_APPROVAL).
     Who ticked does not matter: the person approved what the comment showed.
     The comment names the head and a digest of its items, and is rewritten
-    only when either changes. With nothing to judge — an architecture pull
-    request without tests — the approval alone is the review. After the
+    only when either changes. With nothing to tick — a change of the gates'
+    own files — the comment still says who is asked and why, and the
+    approval alone is the review. After the
     merge the files are not classified again: the gates check before the
     merge proved them (rule 7); a merged pull request needs the person for
     the architecture, the gates' own files, or its record's request and
@@ -4367,6 +4402,35 @@ label together.
   alone as the record, read from the comment's edit history — fragile, a
   new trigger, and the reason for a *no* in a separate reply; D2 A, a floor
   of 1 in 10 by number. → § 5 stage 9, rule 14.
+- **The design in the person's review, told as stories** (2026-10-25, Alex,
+  D1 A and D2 A, FB-43 and FB-44). The checkpoint-4 comment asked the
+  person whether a design "fits" 45 bare requirement IDs, through links to
+  JSON and HTML source; the reasons were lists of IDs and arrows. A person
+  who reads no code could not judge it, and "the unit receives the
+  confirmation" is a claim they cannot check either: a person judges
+  behaviour told as a story, never how parts are wired.
+
+  | # | Scenario | O | S | D | Risk |
+  |---|---|---|---|---|---|
+  | S5 | Too many questions, one per asked requirement, so the person ticks without reading | 7 | 7 | 8 | 392 |
+  | S2 | The design is vague and the storyteller fills the gap, so a gap reads like a feature | 6 | 7 | 7 | 294 |
+  | S1 | The storyteller invents or drops a step | 4 | 8 | 5 | 160 |
+  | S3 | The reviewer agent maps a happy-path story to a requirement about failure | 5 | 7 | 4 | 140 |
+  | S4 | A requirement no story shows is hidden | 5 | 8 | 3 | 120 |
+  | S7 | The comment exceeds the host's length | 3 | 6 | 2 | 36 |
+  | S6 | The storyteller fails or runs out of time | 3 | 4 | 2 | 24 |
+
+  *Chosen:* the design told as stories by a session that sees the design
+  only, the reviewer agent naming the story of each asked requirement, CI
+  only copying. D1 A for S5: one question per situation, every asked
+  requirement it must satisfy above it, so fewer questions and related
+  requirements seen together. D2 A for S2: a gap is a step marked ⚠ where it
+  happens, never filled. S1 by sources CI checks; S3 and S4 by the
+  requirement's text next to the story, and a question of its own for a
+  requirement no story shows. *Not taken:* D1 B, one question per
+  requirement — the same story repeated; D2 B, gaps listed apart at the end —
+  the step they belong to lost; diagrams as images in the comment — the
+  stories carry their content. → § 5 stage 9, rules 13 and 14.
 - **How big a feature pull request is** (2026-10-24, Alex, D1 A, FB-41
   point 4). Stages 4 to 8 could arrive as one pull request or five.
 

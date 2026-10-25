@@ -1,0 +1,17 @@
+person: none
+findings: []
+summary: "It designs the publisher script: how it asks the LLM for a text and saves the draft on WordPress."
+stories:
+  - design: publisher-script
+    story: The LLM does not answer
+    steps:
+      - text: "The publisher sends the row's brief to the LLM."
+        source: [message:ask-llm]
+      - text: "The design does not say how long the publisher waits for the answer."
+        source: [unit:request-text]
+        gap: true
+      - text: "If the LLM replies with an error, the publisher writes a failure report in the row and stops the run."
+        source: [unit:write-input-file, decision:D3]
+covers:
+  REQ-0140: The LLM does not answer
+  REQ-0145: none

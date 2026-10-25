@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://quality-framework/contracts/review_contract.v1.schema.json",
   "title": "review.v1",
-  "description": "What the reviewer agent hands to the person's review (SUP.1 BP1, SWE.3 BP5): whether it asks for a person, what became of each finding over the review rounds, and, when a person reviews, each test described from the test alone. A fenced ```yaml review block in the reviewer agent's review, written by post_review_tool --record. That an approval carries one, and which pull requests a person reviews, are rules of verify_delivery_reviewed_gate (classify_pull_request_tool); the person's review is posted by post_checkpoint_review_tool.",
+  "description": "What the reviewer agent hands to the person's review (SUP.1 BP1, SWE.3 BP5): whether it asks for a person, what became of each finding over the review rounds, and, when a person reviews, what the pull request does, each test described from the test alone, each changed design told as stories from the design alone, and which story shows each requirement the person is asked about. A fenced ```yaml review block in the reviewer agent's review, written by post_review_tool --record. That an approval carries one, and which pull requests a person reviews, are rules of verify_delivery_reviewed_gate (classify_pull_request_tool); the person's review is posted by post_checkpoint_review_tool.",
   "type": "object",
   "additionalProperties": false,
   "required": ["person", "findings"],
@@ -55,6 +55,47 @@
           "not": {"type": "string", "minLength": 1}
         }
       }
+    },
+    "summary": {
+      "description": "What the pull request does, in one plain sentence for a person who does not read code: written by the reviewer agent, shown first on the person's review.",
+      "type": "string",
+      "minLength": 1
+    },
+    "stories": {
+      "description": "Each changed detailed design told as stories, in a session that saw the design only, never the requirements (agent/describe_design_prompt.md): one situation per story, step by step in plain words. Each step names its sources — a message of the design's sequence diagram, a unit of the design, or a decision its document names — and a step where the design does not say what happens is a gap, shown with ⚠. Copied unchanged from that session.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["design", "story", "steps"],
+        "properties": {
+          "design": {"type": "string", "minLength": 1},
+          "story": {"type": "string", "minLength": 1},
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["text", "source"],
+              "properties": {
+                "text": {"type": "string", "minLength": 1},
+                "source": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {"type": "string", "pattern": "^(message|unit|decision):\\S+$"}
+                },
+                "gap": {"type": "boolean"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "covers": {
+      "description": "For each requirement of criticality high or of kind security that a changed design serves — the ones the person is asked about — the title of the story that shows it, or none when no story does. Chosen by the reviewer agent, which saw both.",
+      "type": "object",
+      "additionalProperties": {"type": "string", "minLength": 1}
     }
   }
 }

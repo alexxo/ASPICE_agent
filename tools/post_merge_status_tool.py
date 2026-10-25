@@ -6,9 +6,12 @@ request's checks, as anyone can next to the merge button (rule 13 of the
 quality assurance stage): pending
 "Wait: gates running" when the gates start (--running), then, from the gates'
 result (--stage-file, resolve_stage_tool's JSON), failure "Wait: <what is
-missing>" or success "Ready to merge". A status belongs to one commit, so a new
-push starts with no sign, and no sign means wait. Merging on a sign other than
-"Ready to merge" is caught on the main branch, as before (rule 12).
+missing>" or success "Ready to merge". A person's review names qf.yaml
+review.people, why they are asked and what to do, e.g. "Wait: a review by
+alexxo (it changes the quality gates' own files): approve on GitHub". A
+status belongs to one commit, so a new push starts with no sign, and no sign
+means wait. Merging on a sign other than "Ready to merge" is caught on the
+main branch, as before (rule 12).
 
     python tools/post_merge_status_tool.py --sha HEAD_SHA --running
     python tools/post_merge_status_tool.py --sha HEAD_SHA --stage-file .qf/stage.json
@@ -19,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -35,19 +39,23 @@ CONTEXT = "qf/merge"
 RUNNING = "Wait: gates running"
 READY = "Ready to merge"
 LIMIT = 140  # GitHub's longest status description
-# What a finding means the pull request still waits for, by rule.
+# What a finding means the pull request still waits for, by rule; {review} is
+# the person's review, named.
 WAITS_FOR = {
     "MISSING_AGENT_REVIEW": "the reviewer agent's approval",
     "INCOMPLETE_CHECKLIST": "the reviewer agent's approval",
-    "MISSING_PERSON_APPROVAL": "a person's review",
-    "REVIEW_ITEMS_UNANSWERED": "a person's review",
-    "REVIEW_CHANGED_AFTER_APPROVAL": "a person's review",
+    "REVIEW_STORY_UNSOURCED": "the reviewer agent's approval",
+    "MISSING_PERSON_APPROVAL": "{review}{why}: approve on GitHub",
+    "REVIEW_ITEMS_UNANSWERED": "{review}: tick every item of its comment",
+    "REVIEW_CHANGED_AFTER_APPROVAL": "{review}: approve again",
 }
+_WHY = re.compile(r"\(why: ([^)]*)\)")  # verify_delivery_reviewed_gate's short reason
 
 
-def sign(state: dict | None) -> tuple[str, str]:
+def sign(state: dict | None, people=()) -> tuple[str, str]:
     """The commit status (state, description) for the gates' result; None when
-    the gates did not finish."""
+    the gates did not finish. A person's review names the people."""
+    review = f"a review by {' or '.join(people)}" if people else "a person's review"
     if state is None:
         return "failure", "Wait: gates red: the gates did not finish"
     findings = state.get("findings") or []
@@ -55,8 +63,16 @@ def sign(state: dict | None) -> tuple[str, str]:
         return "success", READY
     missing: list[str] = []
     red: list[str] = []
-    for finding in findings:
+    order = list(WAITS_FOR)  # the person's review named once, by its first missing step
+    for finding in sorted(
+        findings, key=lambda f: order.index(f["rule"]) if f["rule"] in order else 0
+    ):
         waits = WAITS_FOR.get(finding["rule"])
+        if waits is not None:
+            why = _WHY.search(finding.get("message", ""))
+            waits = waits.format(review=review, why=f" ({why.group(1)})" if why else "")
+            if waits.startswith(review) and any(m.startswith(review) for m in missing):
+                continue
         if waits is None and finding["gate"] not in red:
             red.append(finding["gate"])
         elif waits is not None and waits not in missing:
@@ -65,6 +81,16 @@ def sign(state: dict | None) -> tuple[str, str]:
         missing.append(f"gates red: {', '.join(red)}")
     text = "Wait: " + "; ".join(missing)
     return "failure", text if len(text) <= LIMIT else text[: LIMIT - 1] + "…"
+
+
+def _people(root: Path) -> tuple[str, ...]:
+    """qf.yaml review.people; none when the configuration cannot be read."""
+    from tools.read_product_config_tool import ConfigError, read_product_config
+
+    try:
+        return tuple(read_product_config(root).review_people)
+    except ConfigError:
+        return ()
 
 
 def _read(path: Path) -> dict | None:
@@ -105,7 +131,9 @@ def main(argv: list[str] | None = None) -> int:
     if not token:
         print(f"No {HOST_TOKEN}: CI sets it to the run's own token.", file=sys.stderr)
         return 2
-    state, description = ("pending", RUNNING) if args.running else sign(_read(args.stage_file))
+    state, description = (
+        ("pending", RUNNING) if args.running else sign(_read(args.stage_file), _people(args.root))
+    )
     repo = os.environ.get("GITHUB_REPOSITORY") or repository(args.root)
     try:
         _post(token, repo, args.sha, state, description)

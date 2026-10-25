@@ -12,7 +12,7 @@ from product_builder import (
     write_unit_test,
 )
 
-from tools.classify_pull_request_tool import classify
+from tools.classify_pull_request_tool import classify, headline, unsourced
 from tools.read_product_config_tool import read_product_config
 
 DISPUTE = {
@@ -98,6 +98,31 @@ def test_a_detailed_design_is_its_components(product):
     review = _classify(product, ["docs/design/auth-service.md"])
     assert review.designs == ("auth-service",)
     assert review.reasons == ("touches REQ-0047 (security)",)
+    assert review.asked == {"auth-service": ["REQ-0047"]}  # what its stories must show
+    assert review.brief == ("it touches 1 security requirement",)  # plain words, no IDs
+
+
+def test_the_reasons_in_one_short_line():
+    brief = ("it changes the quality gates' own files", "a test got weaker", "the agents disagree")
+    assert headline(brief) == "it changes the quality gates' own files; a test got weaker; 1 more"
+
+
+def test_a_story_step_must_name_what_its_design_has(product):
+    design = product / "docs/design/auth-service.md"
+    design.write_text("- **D1 — failures are counted per account.**\n\n" + design.read_text())
+    step = {"text": "The credentials are checked.", "source": []}
+    story = {"design": "auth-service", "story": "A wrong password", "steps": [step]}
+    step["source"] = [
+        "message:check-credentials-to-count-failures",
+        "unit:open-session",
+        "decision:D1",
+    ]
+    assert unsourced(read_product_config(product), [story]) == []
+    step["source"] = ["unit:send-email", "message:check-credentials-to-open-session", "decision:D2"]
+    assert unsourced(read_product_config(product), [story]) == [
+        "'A wrong password' step 1: unit:send-email is not in auth-service",
+        "'A wrong password' step 1: decision:D2 is not in auth-service",
+    ]
 
 
 def test_the_tests_to_describe_are_those_of_what_made_it_important(product):
@@ -107,6 +132,7 @@ def test_the_tests_to_describe_are_those_of_what_made_it_important(product):
     files += [unit_path("web-app", "signin-form", test=True)]
     review = _classify(product, files)
     assert set(review.tests) == set(files)  # both: security and a trust boundary
+    assert any(b.startswith("it handles data crossing") for b in review.brief)
     assert review.requirements[files[0]] == ["REQ-0047", "REQ-0048", "REQ-0050", "REQ-0051"]
 
 

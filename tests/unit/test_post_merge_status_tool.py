@@ -8,8 +8,8 @@ from tools import post_merge_status_tool
 from tools.post_merge_status_tool import CONTEXT, LIMIT, READY, RUNNING, main, sign
 
 
-def _finding(gate, rule):
-    return {"gate": gate, "rule": rule, "file": ".", "line": None, "message": "m"}
+def _finding(gate, rule, message="m"):
+    return {"gate": gate, "rule": rule, "file": ".", "line": None, "message": message}
 
 
 def test_green_gates_say_ready_to_merge():
@@ -29,8 +29,30 @@ def test_the_sign_says_what_is_missing():
     }
     assert sign(state) == (
         "failure",
-        "Wait: the reviewer agent's approval; a person's review; "
+        "Wait: the reviewer agent's approval; a person's review: approve on GitHub; "
         "gates red: check_stack_commands_gate",
+    )
+
+
+def test_a_persons_review_names_who_why_and_what_to_do_once():
+    """FB-43: "a person's review" named neither who nor why."""
+    why = "acme/login#25 needs a person's review (why: it changes the quality gates' own files)"
+    state = {
+        "findings": [
+            _finding("verify_delivery_reviewed_gate", "REVIEW_ITEMS_UNANSWERED"),
+            _finding("verify_delivery_reviewed_gate", "MISSING_PERSON_APPROVAL", why),
+            _finding("verify_delivery_reviewed_gate", "REVIEW_STORY_UNSOURCED"),
+        ]
+    }
+    assert sign(state, ("alexxo",)) == (
+        "failure",
+        "Wait: the reviewer agent's approval; "
+        "a review by alexxo (it changes the quality gates' own files): approve on GitHub",
+    )
+    ticks = {"findings": [_finding("verify_delivery_reviewed_gate", "REVIEW_ITEMS_UNANSWERED")]}
+    assert sign(ticks, ("alexxo", "bob")) == (
+        "failure",
+        "Wait: a review by alexxo or bob: tick every item of its comment",
     )
 
 

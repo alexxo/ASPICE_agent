@@ -62,7 +62,8 @@ When in doubt, full.
    that wait for a review. Read the head's crossing sign, the commit status
    *qf/merge*
    (*gh api repos/<owner>/<repo>/commits/<head>/status*): *Wait: the
-   reviewer agent's approval*, alone or with *a person's review*, means
+   reviewer agent's approval*, alone or with *a review by …* (a person's
+review), means
    everything else is green; *Wait: gates running* means
    wait; any *gates red* means stop and report it. Without the sign (a CI
    file older than v2.1.0), read the head's gates run
@@ -88,10 +89,13 @@ When in doubt, full.
 6. **Record** — the review record (*review.v1*): your answer to step 5;
    every finding of every round with its outcome (*fixed*, *withdrawn*, or
    *disputed* with the author's answer and your final position); and, when
-   *classify_pull_request_tool* says a person reviews the pull request, its
-   tests described in a fresh session that sees the tests only
-   (*agent/describe_tests_prompt.md*) — never by you, who read the
-   requirements.
+   *classify_pull_request_tool* says a person reviews the pull request: what
+   it does in one plain sentence (*summary*); its tests described in a fresh
+   session that sees the tests only (*agent/describe_tests_prompt.md*); its
+   changed designs told as stories in a fresh session that sees the designs
+   only (*agent/describe_design_prompt.md*) — never by you, who read the
+   requirements; and, for each requirement under *asked*, the story whose
+   steps show it, or *none* (*covers*).
 7. **Post** — from your own account, in your own session
    (*agent/run_reviewer_agent.md*; its token in *QF_HOST_TOKEN* there only):
    *python tools/post_review_tool.py --pull-request N --decision approve

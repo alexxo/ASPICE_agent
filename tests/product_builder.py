@@ -1236,7 +1236,7 @@ def add_origin(root: Path, repo: str = HOST_REPO) -> None:
     subprocess.run(["git", "-C", str(root), "remote", "add", "origin", url], check=True)
 
 
-NO_PERSON = {"person": "none", "findings": []}
+NO_PERSON = {"person": "none", "findings": [], "summary": "It adds the sign-in form."}
 
 
 def review(

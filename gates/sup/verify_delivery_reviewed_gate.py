@@ -4,7 +4,11 @@ The work travels in a pull request (NO_PULL_REQUEST). A reviewer agent — one o
 qf.yaml review.agents, never the author — approves the current head
 (MISSING_AGENT_REVIEW) with every checklist item it asks for checked — logging
 only when it changes code — and its review record, a ```yaml review block
-(review.v1), describing every test the person reviews (INCOMPLETE_CHECKLIST).
+(review.v1) — when a person reviews, saying what the pull request does,
+describing every test the person reviews, telling every changed design as
+stories and naming the story of every requirement the person is asked about
+(INCOMPLETE_CHECKLIST); every story step names a source its design has
+(REVIEW_STORY_UNSOURCED).
 A person reviews the pull request when classify_pull_request_tool finds it
 important or risky — a requirement of criticality high or of kind security, a
 trust boundary, a file that traces to nothing, a weakened test, a finding
@@ -56,7 +60,9 @@ from tools.classify_pull_request_tool import (  # noqa: E402
     Classification,
     always,
     classify,
+    headline,
     review_record,
+    unsourced,
 )
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.post_review_tool import checklist, required_items  # noqa: E402
@@ -240,32 +246,73 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
     review = person_review(config, pull, record)
     people = [r for r in approvals if r.author not in agents and not r.bot]
     if review.needed and record is not None and not pull.merged:
-        described = {t["file"] for t in record.get("tests", [])}
-        missing = [t for t in review.tests if t not in described]
-        if missing:
+        gaps = _record_gaps(review, record)
+        if gaps:
             findings.append(
                 Finding(
                     "INCOMPLETE_CHECKLIST",
                     ".",
                     None,
-                    f"The reviewer agent's review record of {where} describes no test of "
-                    f"{', '.join(missing)}, which the person reviews; describe them "
-                    "(agent/describe_tests_prompt.md) and post again with --record.",
+                    f"The reviewer agent's review record of {where} {'; it '.join(gaps)}; post "
+                    "it again with --record.",
                 )
             )
+    if record is not None and not pull.merged:
+        findings += [
+            Finding(
+                "REVIEW_STORY_UNSOURCED",
+                ".",
+                None,
+                f"The review record of {where} tells a story the design does not support: "
+                f"{wrong}. Tell the design again (agent/describe_design_prompt.md).",
+            )
+            for wrong in unsourced(config, record.get("stories", []))
+        ]
     if review.needed and not people:
+        why = f" (why: {headline(review.brief)})" if review.brief else ""
         findings.append(
             Finding(
                 "MISSING_PERSON_APPROVAL",
                 ".",
                 None,
-                f"{where} {'; '.join(review.reasons)}, so a person must approve its head "
-                f"{pull.head[:7]} (seal 4); it waits at the delivery desk until they do.",
+                f"{where} needs a person's review{why}: it {'; '.join(review.reasons)}, so a "
+                f"person must approve its head {pull.head[:7]} (seal 4); it waits at the "
+                "delivery desk until they do.",
             )
         )
     if review.needed and record is not None:
         findings += _answers(config, repo, pull, review, record, people)
     return findings
+
+
+def _record_gaps(review: Classification, record: dict) -> list[str]:
+    """What a person's review needs that the reviewer agent's record leaves out."""
+    gaps = []
+    if not record.get("summary"):
+        gaps.append("says nothing of what the pull request does (summary)")
+    described = {t["file"] for t in record.get("tests", [])}
+    missing = [t for t in review.tests if t not in described]
+    if missing:
+        gaps.append(
+            f"describes no test of {', '.join(missing)}, which the person reviews "
+            "(agent/describe_tests_prompt.md)"
+        )
+    stories = record.get("stories", [])
+    untold = [d for d in review.designs if d not in {s["design"] for s in stories}]
+    if untold:
+        gaps.append(
+            f"tells no story of the design of {', '.join(untold)} "
+            "(agent/describe_design_prompt.md)"
+        )
+    covers = record.get("covers", {})
+    asked = [u for d in review.designs for u in review.asked.get(d, []) if u not in covers]
+    if asked:
+        gaps.append(f"names no story for {', '.join(asked)} (covers: a story's title, or none)")
+    titles = {s["story"] for s in stories}
+    unknown = sorted({t for t in covers.values() if t != "none" and t not in titles})
+    if unknown:
+        gaps.append(f"names stories it does not tell in covers: {', '.join(unknown)}")
+    return gaps
 
 
 def person_review(config: ProductConfig, pull: PullRequest, record: dict | None):
@@ -286,7 +333,7 @@ def _answers(config, repo, pull, review, record, people) -> list[Finding]:
 
     where = f"{repo}#{pull.number}"
     expected = render(config, repo, pull, review, record)
-    if expected is None:  # nothing to judge: the approval alone is the review
+    if expected is None or not answers(expected):  # nothing to tick: the approval is the review
         return []
     note = find_note(pull, expected)
     if note is None:

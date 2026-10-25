@@ -80,9 +80,10 @@ a *```yaml review* block:
 | R9 | **Logging** — the events the observability requirements list are emitted where the sequence diagrams say | Checkpoint 4 |
 | R10 | A finding is fixed in the same pull request, or recorded as an issue labelled *non-conformance* that links the pull request; a remark fixed before merge stays in the review | Checkpoint 4 |
 | R11 | A change that reached the main branch without the delivery desk — a commit from no pull request, a pull request merged before its reviews or without a gates check that passed before the merge — blocks the release until a non-conformance names it and a person in *qf.yaml urgent_approvers*, not its author, comments */accept-delivery* on it; a re-run after the merge or a revert alone does not clear it | verify_delivery_reviewed_gate · MERGED_WITHOUT_PULL_REQUEST, GATES_NOT_PASSED |
-| R12 | The agent's approval carries a valid review record, with every test the person reviews described from the test alone | verify_delivery_reviewed_gate · INCOMPLETE_CHECKLIST |
+| R12 | The agent's approval carries a valid review record; when a person reviews, it says what the pull request does, describes every test the person reviews from the test alone, tells every changed design as stories from the design alone, and names the story of every asked requirement | verify_delivery_reviewed_gate · INCOMPLETE_CHECKLIST |
 | R13 | When the person's review has items, CI's review comment for the head has every item answered yes, and it did not change after the approval | verify_delivery_reviewed_gate · REVIEW_ITEMS_UNANSWERED, REVIEW_CHANGED_AFTER_APPROVAL |
 | R14 | The agent asks for a person only for one of five conditions, with its reason; its *none* cancels no review the files call for | Checkpoint 4 |
+| R15 | Every story step names a source its design has: a message of its sequence diagram, a unit, or a decision its document names | verify_delivery_reviewed_gate · REVIEW_STORY_UNSOURCED |
 
 ## Not checkable
 

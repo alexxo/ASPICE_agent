@@ -2,22 +2,29 @@
 
 CI posts it as a comment on the pull request once the reviewer agent has
 approved the head with its review record (review.v1), when
-classify_pull_request_tool finds the pull request important or risky and
-there is something a person can judge (rule 14 of the quality assurance
-stage). Never written by the author. It mentions qf.yaml review.people, so the
-host notifies them, says why they are asked, and lists the items, each with a
-pair of boxes, the first the answer yes:
+classify_pull_request_tool finds the pull request important or risky (rule 14
+of the quality assurance stage). Never written by the author, and readable
+without code: it mentions qf.yaml review.people, so the host notifies them,
+says what the pull request does (the record's summary), why they are asked in
+one plain sentence, and how to answer, then lists the questions, each with a
+pair of boxes, the first the answer yes; IDs, the head and the files are
+folded under "Details for the record":
 
-- each detailed design changed: fits the requirements it serves, or not;
-- each test the person reviews: the approved criteria next to the reviewer
-  agent's description of the test, written from the test alone;
+- each changed detailed design, as stories: one question per story that shows
+  a requirement of criticality high or of kind security the design serves —
+  the requirements' text next to the story's steps, told from the design
+  alone, a gap marked ⚠ — and one per such requirement no story shows;
+- each test the person reviews: the approved criteria next to the test told
+  as given, when, then, from the test alone;
 - each weakened test: before and now;
 - each finding closed without a change: the finding, the author's answer and
   the reviewer's final position;
 - the reviewer agent's own request, if any.
 
-The person ticks one box per item — the host saves each tick at once — then
-approves, or requests changes with the reason. The comment names the head and a
+With nothing to tick, the comment still says who is asked and why, and that
+the approval alone is the review. The person ticks one box per question — the
+host saves each tick at once — then approves, or requests changes with the
+reason. The comment names the head and a
 digest of its items: one comment per pull request, rewritten when the head or
 the items change, never otherwise, so an approval stays valid while nothing it
 covered changed. verify_delivery_reviewed_gate reads the answers.
@@ -47,6 +54,7 @@ __all__ = ["MARK", "answers", "find_note", "render"]
 
 MARK = "<!-- qf-checkpoint-4-review -->"
 _STAMP = re.compile(r"<!-- head: ([0-9a-f]+) items: ([0-9a-f]+) -->")
+LONGEST = 65_000  # characters, under the host's longest comment (65,536)
 _BOX = re.compile(r"^\s*- \[([ xX])\] (.+?)\s*$")
 CONDITIONS = {
     1: "the rating looks too low",
@@ -58,26 +66,59 @@ CONDITIONS = {
 
 
 def render(config: ProductConfig, repo: str, pull: PullRequest, review, record: dict) -> str | None:
-    """The comment for the pull request's head, or None when there is nothing a
-    person can judge (the approval alone is then the review)."""
-    items = _items(config, repo, pull, review, record)
-    if not review.needed or not items:
+    """The comment for the pull request's head, or None when no person reviews it.
+    With nothing to tick, it still says who is asked, why, and that the approval
+    alone is the review."""
+    if not review.needed:
         return None
+    items = _items(config, repo, pull, review, record)
     body = "\n\n".join(
         f"### {i}. {title}\n\n{text}\n\n- [ ] {yes}\n- [ ] {no}"
         for i, (title, text, yes, no) in enumerate(items, 1)
     )
     people = " ".join(f"@{p}" for p in config.review_people)
-    head = (
-        f"{people} — **a person's review is needed** for head `{pull.head[:7]}`.\n\n"
-        f"**Why you are asked:** {'; '.join(review.reasons)}.\n\n"
-        f"**{len(items)} item(s), about {max(1, len(items))} min.** Tick one box per item: "
-        "GitHub saves each tick at once. Then **Review changes → Approve** — or **Request "
-        "changes** and write why, for a *no*."
-    )
-    content = f"{head}\n\n{body}\n"
+    minutes = max(1, sum(2 if text.startswith(_STORY) else 1 for _, text, _, _ in items))
+    why = "; ".join(review.brief or review.reasons)
+    lines = [f"{people} — **your review is needed** (about {minutes} min)."]
+    if record.get("summary"):
+        lines.append(f"**What this pull request does:** {record['summary']}")
+    lines.append(f"**Why you are asked:** {why[:1].upper()}{why[1:]}.")
+    if items:
+        lines.append(
+            "**How to answer:** tick one box per question — GitHub saves each tick at once — "
+            "then **Review changes → Approve**, or **Request changes** and write why, for any "
+            "*no*."
+        )
+    else:
+        lines.append(
+            "**How to answer:** nothing to tick. Look at the changes, then **Review changes → "
+            "Approve**, or **Request changes** and write why."
+        )
+    shown = lines + ([body] if body else [])
+    content = "\n\n".join(shown + [_details(pull, review, record)]) + "\n"
+    if len(content) > LONGEST:
+        details = (
+            f"*Details for the record left out: the comment would exceed {LONGEST} characters.*"
+        )
+        content = "\n\n".join(shown + [details]) + "\n"
     digest = hashlib.sha256(content.encode()).hexdigest()[:16]
     return f"{MARK}\n<!-- head: {pull.head} items: {digest} -->\n{content}"
+
+
+def _details(pull: PullRequest, review, record: dict) -> str:
+    """What a machine reads and a person rarely needs, folded."""
+    lines = [f"- Head: `{pull.head}`", f"- Why, in full: {'; '.join(review.reasons)}"]
+    for story in record.get("stories", []):
+        sources = "; ".join(
+            f"step {i}: {', '.join(step['source'])}" for i, step in enumerate(story["steps"], 1)
+        )
+        lines.append(f"- Story *{story['story']}* ({story['design']}): {sources}")
+    lines.append(f"- Files: {', '.join(pull.files)}")
+    return (
+        "<details><summary>Details for the record</summary>\n\n"
+        + "\n".join(lines)
+        + ("\n\n</details>")
+    )
 
 
 def _stamp(body: str) -> tuple[str, str] | None:
@@ -108,35 +149,22 @@ def answers(body: str) -> list[tuple[str, str | None]]:
     return found
 
 
+_STORY = "**What must happen**"
+
+
 def _items(
     config: ProductConfig, repo: str, pull: PullRequest, review, record: dict
 ) -> list[tuple]:
-    from tools.read_integration_tool import read_architecture
     from tools.read_requirements_tool import read_requirements
-
-    def link(path: str) -> str:
-        return f"[{path}](https://github.com/{repo}/blob/{pull.head}/{path})"
 
     ratings = {
         r.data["uid"]: r.data
         for r in read_requirements(config)
         if isinstance(r.data.get("uid"), str)
     }
-    meets = read_architecture(config).meets
-    design_dir = config.relative(config.detailed_design_dir).rstrip("/") + "/"
     items = []
     for component in review.designs:
-        files = [f for f in pull.files if f.startswith(design_dir + component + ".")]
-        serves = ", ".join(meets.get(component, [])) or "none named"
-        items.append(
-            (
-                f"Detailed design: {component}",
-                f"Read {', '.join(link(f) for f in files)}. Does it fit the requirements it "
-                f"serves ({serves})?",
-                "fits the requirements",
-                "does not",
-            )
-        )
+        items += _design_items(component, review.asked.get(component, []), record, ratings)
     for test in record.get("tests", []):
         if test["file"] not in review.tests:
             continue
@@ -152,12 +180,12 @@ def _items(
         )
         items.append(
             (
-                f"Test: {test['test']} ({test['file']})",
-                f"**Approved criteria**\n{criteria}\n\n**What the test does**, described from "
-                f"the test alone:\n- *Prepares:* {test['prepares']}\n- *Does:* {test['does']}\n"
-                f"- *Checks:* {test['checks']}\n- *Not:* {test['not']}",
-                "checks it",
-                "does not",
+                f"Test: {test['test']}",
+                f"{_STORY}\n{criteria}\n\n**What the test does**, told from the test alone:\n"
+                f"- *Given* {test['prepares']}\n- *When* {test['does']}\n"
+                f"- *Then it checks* {test['checks']}\n- *It does not check:* {test['not']}",
+                "the test checks what must happen",
+                "it does not",
             )
         )
     for w in review.weakenings:
@@ -193,9 +221,64 @@ def _items(
     return items
 
 
+def _design_items(component: str, asked: list[str], record: dict, ratings: dict) -> list[tuple]:
+    """One question per story that shows a requirement the person is asked about,
+    with those requirements; one per asked requirement no story shows. Without
+    such requirements, one question with all the design's stories."""
+    stories = [s for s in record.get("stories", []) if s["design"] == component]
+    covers = record.get("covers", {})
+    told = "**What the design makes happen**, told from the design alone:\n"
+    if not asked:
+        text = "\n\n".join(f"*{s['story']}*\n{_steps(s)}" for s in stories) or (
+            "The reviewer agent's record tells no story of this design."
+        )
+        return [
+            (
+                f"The design of {component}",
+                f"{told}\n{text}",
+                "this is what must happen",
+                "it is not",
+            )
+        ]
+    items = []
+    for story in stories:
+        uids = [u for u in asked if covers.get(u) == story["story"]]
+        if uids:
+            criteria = "\n".join(_criteria(u, ratings.get(u, {})) for u in uids)
+            items.append(
+                (
+                    story["story"],
+                    f"{_STORY}\n{criteria}\n\n{told}{_steps(story)}",
+                    "this is what must happen",
+                    "it is not",
+                )
+            )
+    titles = {s["story"] for s in stories}
+    for uid in asked:
+        if covers.get(uid) not in titles:
+            items.append(
+                (
+                    f"No story of {component} shows this requirement",
+                    f"{_STORY}\n{_criteria(uid, ratings.get(uid, {}))}\n\nThe reviewer agent "
+                    "found no situation of the design that shows it.",
+                    "acceptable: not this design's work",
+                    "the design must show it",
+                )
+            )
+    return items
+
+
+def _steps(story: dict) -> str:
+    return "\n".join(
+        f"{i}. {'⚠ ' if step.get('gap') else ''}{step['text']}"
+        for i, step in enumerate(story["steps"], 1)
+    )
+
+
 def _criteria(uid: str, data: dict) -> str:
     rating = ", ".join(x for x in (data.get("criticality"), data.get("kind")) if x)
-    lines = [f"- **{uid}** ({rating}): {data.get('statement', '')}".rstrip()]
+    statement = data.get("statement", "")
+    lines = [f"- “{statement}” ({rating}, {uid})" if statement else f"- {uid} ({rating})"]
     for c in data.get("acceptance_criteria", []):
         if isinstance(c, dict):
             lines.append(
@@ -251,7 +334,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     expected = render(config, repo, pull, person_review(config, pull, record), record)
     if expected is None:
-        print("No person's review with items to judge: nothing to post.")
+        print("No person's review is needed: nothing to post.")
         return 0
     if find_note(pull, expected) is not None:
         print("The checkpoint-4 review for this head is posted already.")
