@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-10-25
+
+The author goes on working while the watcher reviews.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v3.0.1 |
+
+### Fixed
+
+- **The watcher blamed the reviewer for the author's and the framework's own edits, and paused every review.** It compared the whole product folder before and after each session, while the author and the framework's answers to feedback wrote into it. The session now runs in a copy of the pull request's head of its own, a git worktree the watcher makes at `.qf/reviews/<n>-<sha>/`, and only that copy is compared: a change there is the reviewer's, shown as *REVIEWER CHANGED THE WORK* with the copy kept to see it. After a review the session's records go to the product's `.qf/reviews/` and the copy is removed; a head that cannot be fetched stops its review. The framework is reached by its full path, since the copy has no `.framework`. `tools/watch_reviews_tool.py`, `agent/run_reviewer_agent.md` § 3, design document (the watcher), `QUICKSTART.md`. Origin: FB-46 (wp_publisher).
+
 ## [3.0.0] - 2026-10-25
 
 The person decides what is wanted and whether it was achieved; the build in between is the agents' and the gates'. Checkpoint 4 becomes the approval of the results.
