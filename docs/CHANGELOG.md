@@ -35,6 +35,26 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-25
+
+The person is asked nothing during the build, a usage limit no longer stops a review for good, and a tick changed after the approval says what to do.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v3.1.0 |
+
+### Changed
+
+- **No person is asked during the build.** The *Ask* section of every plugin of stages 4 to 8 asked the person a round of build questions, against v3.0.0's split. The agent now settles them itself, writes each choice as a stated assumption in the work (the design as a decision `D<n> — assumed: …`, a test's docstring and the verification plan, a comment in the code and the commit message), and goes on; the reviewer agent judges every assumption. A question of what is wanted — no requirement answers it, and it changes what the user sees or gets — reaches the person only through the reviewer agent: a design's gap (⚠), or a change request. `plugins/swe/derive_{detailed_design,unit_tests,unit_code,integration_tests,software_tests}_plugin/SKILL.md`, `agent/run_aspice_agent.md` § 6, design document § 3 (method sections), Appendix A.8. Origin: FB-49 (wp_publisher).
+
+### Fixed
+
+- **The reviewer's record rule was ignored.** Claude Code matches file permissions by `Edit` rules only, so `Write(.qf/reviews/**)` allowed nothing; the watcher now allows `Edit(.qf/reviews/**)`. `tools/watch_reviews_tool.py`. Origin: FB-47 (wp_publisher).
+- **A review stopped by the agent's usage limit was never tried again.** The watcher recognises the limit and tries that head again every 10 minutes, one line each time, until a review is posted; a closed pull request or a newer head ends the tries. `tools/watch_reviews_tool.py`, design document (the watcher), `QUICKSTART.md`. Origin: FB-47 (wp_publisher).
+- **A tick changed after the approval waited without a word.** Only an approval reads the ticks, and an edit of the comment runs no gates; the comment's *How to answer* and the crossing sign for unanswered items now say *approve again*. A run on the comment's edits was not taken (Appendix A.8). `tools/post_checkpoint_review_tool.py`, `tools/post_merge_status_tool.py`, design document (stage 9), `QUICKSTART.md`. Origin: FB-48 (wp_publisher).
+
 ## [3.0.1] - 2026-10-25
 
 The author goes on working while the watcher reviews.
