@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.1.2] - 2026-10-25
+
+A built unit's tests change test-first again.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v3.1.2 |
+
+### Fixed
+
+- **The red run judged a test file, not a test.** Once a unit's code existed, a test-only commit that added or changed one test of its file met TEST_NOT_FAILING for every unchanged test of that file, so no review finding or change request on a built unit could be fixed test-first. *verify_test_first_gate* now judges each test at the last test-only commit that changed it: a test is found in its file by its name (parameters left out), and it changed when its lines — up to the next test, trailing comments, blank lines and annotations left out — differ from the commit's parent. A change before the first test (imports, fixtures, helpers) judges every test of the file; a test whose name is not in its file is judged at the file's last test-only commit, as before. A test left as it was is no longer judged at a later commit that changes its file, but at its own. `gates/swe/verify_test_first_gate.py`, `skills/swe/enforce_test_first_skill/SKILL.md` R4, design document § 5 unit stages rule 18, Appendix A.5. Origin: FB-51 (wp_publisher).
+
 ## [3.1.1] - 2026-10-25
 
 The composition root and a package's `__init__.py` pass stage 6.
