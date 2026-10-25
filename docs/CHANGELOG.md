@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.1.1] - 2026-10-25
+
+The composition root and a package's `__init__.py` pass stage 6.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v3.1.1 |
+
+### Fixed
+
+- **Two code files that implement no unit could not pass stage 6.** Every code file needed a unit marker, so the composition root, where the architecture puts it, met either MISSING_UNIT_MARKER or, with a marker, UNIT_OUTSIDE_COMPONENT; a package's `__init__.py` met MISSING_UNIT_MARKER. *verify_code_to_design_link_gate* now asks no marker of the file a component's `composition_root` names (its path ends with the root's module, e.g. `pkg/__main__.py` for `pkg.__main__.main`) nor of a file that holds no code (empty, or Python with a docstring alone); a marker in either is still checked as before. The coder's method places the composition root where the architecture names it and keeps logic out of it. `gates/swe/verify_code_to_design_link_gate.py`, `skills/swe/construct_units_skill/SKILL.md` R1, `plugins/swe/derive_unit_code_plugin/SKILL.md` *Steps*, design document § 5 unit stages rule 14, Appendix A.5. Origin: FB-50 (wp_publisher).
+
 ## [3.1.0] - 2026-10-25
 
 The person is asked nothing during the build, a usage limit no longer stops a review for good, and a tick changed after the approval says what to do.
