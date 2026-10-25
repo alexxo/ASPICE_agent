@@ -35,6 +35,30 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-10-25
+
+The person decides what is wanted and whether it was achieved; the build in between is the agents' and the gates'. Checkpoint 4 becomes the approval of the results.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Copy the step *Checkpoint-4 review: post it when a person must review* to right after *Write the verification report*, and keep every step that runs a framework command as the template has it | `.github/workflows/quality_gates.yml` (from `templates/github/quality_gates.yml`) | required: CI_FILE_NOT_TEMPLATE fails until the CI file keeps the template's steps, order, triggers and permissions |
+| Move the pin to v3.0.0; a pull request reviewed at an earlier version needs the reviewer agent's review again | the framework submodule | required |
+
+### Changed
+
+- **No person's review of the build.** A changed detailed design, unit and integration tests, code and build files merge on the reviewer agent and the gates, whatever the requirements' ratings; the importance triggers (high or security requirement, trust boundary, untraced file) no longer call a person. `tools/classify_pull_request_tool.py`. Origin: FB-45 (wp_publisher).
+- **Checkpoint 4 is the approval of the results**, closing stage 8 (`agent/stages.yaml`): on the pull request that adds or changes software-level tests, CI posts the results from the verification report — one line per requirement of criticality high or of kind security it proves and per requirement that did not pass, with its tests described from the test alone, the measured value next to its threshold and the result — answered *achieved* or *not achieved*; the rest only counted. The review comment is posted after the verification report; without one, the gate waits (REVIEW_ITEMS_UNANSWERED). `tools/post_checkpoint_review_tool.py`, `templates/github/quality_gates.yml`. Origin: FB-45 (wp_publisher).
+- **During the build the person is asked only a question of what is wanted:** a gap (⚠) of a design's story that the reviewer agent approved — no requirement answers it — answered *keep the requirements* or *change them*; a weakened test; a finding closed without a change; the reviewer agent's request. Every changed design is told as stories whether or not a person is called; the reviewer agent turns a gap a requirement answers into a finding. *covers* left *review.v1*. `agent/run_reviewer_agent.md`, `plugins/sup/derive_review_plugin/SKILL.md`, `skills/sup/review_code_skill/SKILL.md` (R4, R12, R16). Origin: FB-45 (wp_publisher).
+- **The gates' own files:** a framework pin moved to a released tag and a CI file kept to the template need no person; *qf.yaml* and *.gitmodules* still do. Origin: FB-45 (wp_publisher).
+- **"Checked by: Checkpoint 4" became "Checked by: Review"** in the rulebooks: the reviewer agent's judgement at the pull request. Origin: FB-45 (wp_publisher).
+- **The example product's CI file** matches the template again; it lacked the crossing sign and the review comment. Origin: internal.
+
+### Added
+
+- **CI_FILE_NOT_TEMPLATE** (*verify_required_checks_gate*): the product's CI file departs from the framework's template in a step that runs a framework command (missing, changed, out of order, allowed to fail silently), or in its triggers or permissions. Origin: FB-45 (wp_publisher).
+
 ## [2.6.0] - 2026-10-25
 
 The person's review reads without code: what the pull request does, why the person is asked, and each design told as a story next to the requirement it must satisfy.
