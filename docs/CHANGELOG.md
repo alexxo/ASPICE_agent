@@ -35,6 +35,28 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-10-25
+
+The person's review reads without code: what the pull request does, why the person is asked, and each design told as a story next to the requirement it must satisfy.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v2.6.0; a pull request a person reviews needs the reviewer agent's review again at this version, since its record now carries the summary, the stories and *covers* |
+
+### Changed
+
+- **The checkpoint-4 comment is readable without code.** It opens with what the pull request does (the record's new *summary*), why the person is asked in one plain sentence with counts — "It touches 12 high-criticality requirements and 1 security requirement" — instead of lists of IDs and arrows, and how to answer; IDs, the head and the files are folded at the end under *Details for the record*. A test is told as *Given · When · Then it checks · It does not check*. `tools/post_checkpoint_review_tool.py`, `tools/classify_pull_request_tool.py` (*brief*, *asked*, *headline*). Origin: FB-44 (wp_publisher).
+- **A changed detailed design is asked as stories, not "does it fit REQ-0101 … REQ-0145?".** A session that sees the design files only, never the requirements, tells it as situations step by step in plain words, with the design's values; at every step that waits or receives it asks what if no answer comes, the answer is wrong, a limit is exceeded, and where the design does not say, it writes so as a step marked ⚠ instead of a guess. Each step names its sources — `message:<id>`, `unit:<id>`, `decision:<label>`. The reviewer agent, which saw both, names the story that shows each requirement of criticality high or of kind security the design serves (*covers*). The person gets one question per such story, the requirements' text above its steps, and one per such requirement no story shows. The watcher runs the session like the test describer, in a temporary folder of the design files only, and checks every source. New `agent/describe_design_prompt.md`; *review.v1* gains *summary*, *stories* and *covers*; `tools/watch_reviews_tool.py`, `agent/run_reviewer_agent.md`, `plugins/sup/derive_review_plugin/SKILL.md`. Origin: FB-44 (wp_publisher).
+- **The crossing sign and the watcher name the person, the reason and the address.** *qf/merge* reads, for example, `Wait: a review by alexxo (it changes the quality gates' own files): approve on GitHub`, and the watcher `waits for a review by alexxo: <the comment's address>`, else the pull request's changes. `tools/post_merge_status_tool.py`, `tools/watch_reviews_tool.py`. Origin: FB-43 (wp_publisher).
+- **A person with nothing to tick still gets the comment**, saying who is asked, why, and that the approval alone is the review; before, CI posted nothing and the status was the only trace. Origin: FB-43 (wp_publisher).
+- **The describe sessions run without the reviewer's token.** They read copied files only; the token was inherited but unused. `tools/watch_reviews_tool.py`. Origin: internal.
+
+### Added
+
+- **REVIEW_STORY_UNSOURCED** (*verify_delivery_reviewed_gate*): a story step whose source its design does not have; *INCOMPLETE_CHECKLIST* also covers a record without the summary, a changed design without stories, or an asked requirement without its story. `skills/sup/review_code_skill/SKILL.md` R12 and R15. Origin: FB-44 (wp_publisher).
+
 ## [2.5.7] - 2026-10-24
 
 The watcher starts again.
