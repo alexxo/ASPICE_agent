@@ -2,25 +2,34 @@
 
 Every unit of the detailed design has a stub and a test under qf.yaml
 paths.code_dir, both naming it with @unit. Over the pull request's commits,
-base..HEAD (decision 9): a commit that adds or changes tests changes no existing
-code — it may only add stubs (decision 10); no unit's code is committed before
-its test; and every test, at the last test-only commit that added or changed
-it, must fail or error there, never pass: that commit is checked out on its own
-and its unit suite run, which must write its results (the red run, decisions 2
-and 15). A test fixed on a retry is judged as fixed; a weakened one as
-weakened. Because the commits are found in the history, not at the head, the
-gate keeps holding — and keeps catching a test changed with code — at stage 6
-and when the pull request re-runs every gate. Component and integration tests,
-under paths.integration_tests_dir, have no stub and no red run: a commit that
-changes one only must not change code (decision 1 of the integration stage);
-so must software-level tests, under paths.software_tests_dir (decision 1 of
-the software verification stage).
+base..HEAD (decision 9): a commit that adds or changes tests changes no
+existing code — it may only add stubs (decision 10); no unit's code is
+committed before its test; and every test, at the last test-only commit that
+added or changed it, must fail or error there, never pass: that commit is
+checked out on its own and its unit suite run, which must write its results
+(the red run, decisions 2 and 15). A test fixed on a retry is judged as fixed;
+a weakened one as weakened. The gate judges tests, not files: a commit that
+adds or changes one test of a built unit's file judges that test alone, since
+the file's other tests pass on the code they already have. A test is found in
+its file by its name; it changed when its lines differ from the commit's parent
+— up to the next test, trailing comments, blank lines and annotations left out
+— or when the lines before the first test changed (imports, fixtures, helpers),
+which judges every test of the file. A test whose name is not found in its file
+is judged at the file's last test-only commit, as before. Because the commits
+are found in the history, not at the head, the gate keeps holding — and keeps
+catching a test changed with code — at stage 6 and when the pull request
+re-runs every gate. Component and integration tests, under
+paths.integration_tests_dir, have no stub and no red run: a commit that changes
+one only must not change code (decision 1 of the integration stage); so must
+software-level tests, under paths.software_tests_dir (decision 1 of the
+software verification stage).
 
     python gates/swe/verify_test_first_gate.py [--root PRODUCT] [--base REF]
 """
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -152,13 +161,97 @@ def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
                 )
             )
     # A test is judged at the last test-only commit that changed it: a test fixed
-    # on a retry replaces its earlier red run, and a weakened one is judged as weakened.
-    last = {path: commit.sha for commit, changed in test_commits for path in changed}
-    for commit, changed in test_commits:
-        latest = [path for path in changed if last[path] == commit.sha]
-        if latest:
-            findings += _red_run(config, stack, commit, latest, kind)
+    # on a retry replaces its earlier red run, a weakened one is judged as weakened,
+    # and a test the commit left as it was is not judged there (FB-51).
+    findings += _judge_tests(config, stack, test_commits, kind)
     return findings
+
+
+def _judge_tests(config: ProductConfig, stack: dict, test_commits: list, kind) -> list[Finding]:
+    touched: dict[str, list[Commit]] = {}
+    for commit, changed in test_commits:
+        for path in changed:
+            touched.setdefault(path, []).append(commit)
+    runs: dict[str, tuple] = {}
+
+    def red(commit: Commit) -> tuple:
+        if commit.sha not in runs:
+            runs[commit.sha] = _red_run(config, stack, commit, kind)
+        return runs[commit.sha]
+
+    wanted: dict[str, dict[str, set[str] | None]] = {}  # commit -> file -> tests (None: all)
+    for path, touching in touched.items():
+        latest = touching[-1]
+        names = _names(*red(latest), path)
+        if not names:  # no results, or none for this file: the red run's finding says so
+            wanted.setdefault(latest.sha, {})[path] = None
+            continue
+        changes = {c.sha: _changed_tests(config.root, c, path, names) for c in touching}
+        for name in sorted(names):
+            if name in changes[latest.sha][1]:  # not found in the file: judged at its latest
+                wanted.setdefault(latest.sha, {}).setdefault(path, set()).add(name)
+                continue
+            at = next((c for c in reversed(touching) if name in changes[c.sha][0]), None)
+            if at is not None:  # None: older than the pull request, judged before
+                wanted.setdefault(at.sha, {}).setdefault(path, set()).add(name)
+    findings = []
+    for commit, _ in test_commits:
+        if commit.sha in wanted:
+            findings += _judge(commit, wanted[commit.sha], *red(commit))
+    return findings
+
+
+def _base_name(result) -> str:
+    """A result's test name without its parameters: test_x[1] and testX() are test_x, testX."""
+    return re.split(r"[\[(]", result.name, maxsplit=1)[0]
+
+
+def _names(run, test_files: list[str], path: str) -> set[str] | None:
+    """The names of a test file's tests in a red run, or None without results."""
+    try:
+        results = read_results(run.result_paths) if run.results else None
+    except ResultsError:
+        results = None
+    if results is None:
+        return None
+    return {_base_name(r) for r in results if map_to_file(r, test_files) == path}
+
+
+TRAILING = re.compile(r"^\s*($|@|#|//|/\*|\*)")  # blank, annotation or comment lines
+
+
+def _chunks(text: str, names: set[str]) -> tuple[dict[str, str], set[str]]:
+    """Each found test's lines, up to the next test, trailing comments, blank lines
+    and annotations left out (they belong to the next test); "" holds the lines
+    before the first test. Also the names not found."""
+    lines = text.splitlines()
+    starts = {}
+    for name in names:
+        word = re.compile(rf"\b{re.escape(name)}\b")
+        found = next((i for i, line in enumerate(lines) if word.search(line)), None)
+        if found is not None:
+            starts[name] = found
+    order = sorted(starts, key=starts.get)
+    bounds = [starts[n] for n in order] + [len(lines)]
+    chunks = {"": "\n".join(lines[: bounds[0]])}
+    for name, start, end in zip(order, bounds, bounds[1:], strict=False):
+        block = lines[start:end]
+        while len(block) > 1 and TRAILING.match(block[-1]):
+            block.pop()
+        chunks[name] = "\n".join(block)
+    return chunks, set(names) - set(starts)
+
+
+def _changed_tests(root: Path, commit: Commit, path: str, names: set[str]):
+    """The tests a commit added or changed in a file, and the names not found in it."""
+    now, missing = _chunks(file_at(root, commit.sha, path) or "", names)
+    before = file_at(root, f"{commit.sha}^", path)
+    if before is None:
+        return set(now) - {""}, missing
+    then, _ = _chunks(before, names)
+    if now[""] != then[""]:  # imports, fixtures or helpers changed: every test
+        return set(now) - {""}, missing
+    return {n for n in now if n and now[n] != then.get(n)}, missing
 
 
 def _present(units: dict, sources: list) -> list[Finding]:
@@ -222,12 +315,13 @@ def _units_tested_at(root: Path, rev: str, kind) -> set[str]:
     return {u for f in files_at(root, rev) if kind(f) == "test" for u in _units_in(root, rev, f)}
 
 
-def _red_run(config: ProductConfig, stack: dict, commit: Commit, changed: list[str], kind):
+def _red_run(config: ProductConfig, stack: dict, commit: Commit, kind) -> tuple:
+    """A commit's red run, and its test files."""
     tests = [f for f in files_at(config.root, commit.sha) if kind(f) == "test"]
     key = f"commit-{commit.sha}"  # a commit never changes, so its red run is kept
     run = kept_run(config, key, "suites", "unit")
     if run is not None:
-        return _judge(commit, changed, run, tests)
+        return run, tests
     work = Path(tempfile.mkdtemp(prefix="qf-red-run-"))
     tree = work / "tree"
     git = ["git", "-C", str(config.root)]
@@ -239,13 +333,16 @@ def _red_run(config: ProductConfig, stack: dict, commit: Commit, changed: list[s
         )
         entry = stack["suites"]["unit"]
         run = run_command(config, "suites", "unit", entry, cwd=tree, key=key)
-        return _judge(commit, changed, run, tests)
+        return run, tests
     finally:
         subprocess.run([*git, "worktree", "remove", "--force", str(tree)], capture_output=True)
         shutil.rmtree(work, ignore_errors=True)
 
 
-def _judge(commit: Commit, changed: list[str], run, test_files: list[str]) -> list[Finding]:
+def _judge(
+    commit: Commit, changed: dict[str, set[str] | None], run, test_files: list[str]
+) -> list[Finding]:
+    """The red run's findings for the tests the commit added or changed, by file."""
     try:
         results = read_results(run.result_paths) if run.results else None
     except ResultsError:
@@ -254,7 +351,7 @@ def _judge(commit: Commit, changed: list[str], run, test_files: list[str]) -> li
         return [
             Finding(
                 "RED_RUN_WITHOUT_RESULTS",
-                changed[0],
+                next(iter(changed)),
                 None,
                 f"On commit {commit.short} the unit suite exited {run.exit_code} and wrote no "
                 "results — the tests and stubs must compile and run there.",
@@ -277,7 +374,10 @@ def _judge(commit: Commit, changed: list[str], run, test_files: list[str]) -> li
                     f"On commit {commit.short} no result belongs to this test file.",
                 )
             )
+        only = changed[file]
         for result in mine:
+            if only is not None and _base_name(result) not in only:
+                continue  # left as it was: judged at the commit that last changed it
             if result.outcome == "passed":
                 findings.append(
                     Finding(

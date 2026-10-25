@@ -6,6 +6,7 @@ import pytest
 from product_builder import (
     build_python_product,
     commit_all,
+    unit_path,
     write_all_code,
     write_all_tests_and_stubs,
     write_code,
@@ -175,6 +176,57 @@ def test_a_test_fixed_in_a_later_test_only_commit_is_judged_as_fixed(tmp_path):
     write_unit_test(root, "auth-service", "count-failures")
     commit_all(root, "test: count-failures fixed")
     assert _rules(root) == []
+
+
+def _add_test(root, body):
+    """A second test in count-failures' test file, after its code exists."""
+    path = root / unit_path("auth-service", "count-failures", test=True)
+    path.write_text(
+        path.read_text() + f"\n\n# the reviewer's finding 1\ndef test_more():\n    {body}\n"
+    )
+
+
+def test_a_new_test_in_a_built_units_file_is_judged_alone(tmp_path):
+    """FB-51: the file's other tests pass on the code they already have."""
+    root = _red(tmp_path)
+    write_all_code(root)
+    commit_all(root, "feat: the units")
+    _add_test(root, "assert run(2) == 4")
+    commit_all(root, "test: a reviewer's finding on count-failures")
+    assert _rules(root) == []
+
+
+def test_a_new_test_passing_on_the_built_code_is_reported_alone(tmp_path):
+    root = _red(tmp_path)
+    write_all_code(root)
+    commit_all(root, "feat: the units")
+    _add_test(root, "assert run(2) == 3")
+    commit_all(root, "test: a test that already passes")
+    findings = check(read_product_config(root))
+    assert [f.rule for f in findings] == ["TEST_NOT_FAILING"]
+    assert "test_more passes" in findings[0].message
+
+
+def test_a_test_is_judged_at_its_own_commit_when_a_later_one_changes_the_file(tmp_path):
+    root = _red(tmp_path)
+    write_all_code(root)
+    commit_all(root, "feat: the units")
+    _add_test(root, "assert run(2) == 3")  # passes: reported at this commit
+    commit_all(root, "test: a test that already passes")
+    path = root / unit_path("auth-service", "count-failures", test=True)
+    path.write_text(path.read_text() + "\n\ndef test_last():\n    assert run(3) == 0\n")
+    commit_all(root, "test: one more, red")
+    assert _rules(root) == ["TEST_NOT_FAILING"]
+
+
+def test_a_changed_helper_before_the_tests_judges_every_test_of_the_file(tmp_path):
+    root = _red(tmp_path)
+    write_all_code(root)
+    commit_all(root, "feat: the units")
+    path = root / unit_path("auth-service", "count-failures", test=True)
+    path.write_text(path.read_text().replace("import run\n", "import run\n\nLIMIT = 5\n"))
+    commit_all(root, "test: a helper for the tests")
+    assert _rules(root) == ["TEST_NOT_FAILING"]
 
 
 def test_an_integration_test_changed_with_code_is_reported(tmp_path):

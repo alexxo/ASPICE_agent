@@ -2908,9 +2908,17 @@ the product's own commands.
 18. **A test is judged at the last test-only commit that changed it.** A test
     fixed in a later test-only commit is judged as fixed; one loosened in a
     later test-only commit runs against the real code and passes, which is
-    TEST_NOT_FAILING. Only those commits are checked out, each red run kept
-    under its commit's SHA. A commit that mixes tests and code stays a finding
-    until it is rewritten.
+    TEST_NOT_FAILING. The gate judges tests, not files: a test-only commit
+    that adds or changes one test of a built unit's file judges that test
+    alone, since the file's other tests pass on the code they already have.
+    A test is found in its file by its name, and it changed when its lines —
+    up to the next test, trailing comments, blank lines and annotations left
+    out — differ from the commit's parent; a change before the first test
+    (imports, fixtures, helpers) judges every test of the file, and a test
+    whose name is not in its file is judged at the file's last test-only
+    commit. Only those commits are checked out, each red run kept under its
+    commit's SHA. A commit that mixes tests and code stays a finding until it
+    is rewritten.
 19. **The environment read patterns belong to the stack.** *stack.v2
     env_read_patterns*: regular expressions with one capture group for the
     variable's name, e.g. `System\.getenv\("([A-Z0-9_]+)"\)` or
@@ -4204,6 +4212,20 @@ label together.
   detailed design — a unit with no behaviour of its own to design or test,
   still outside its component's folder, so a second exception to the folder
   rule instead of this one. → § 5 unit stages, rule 14.
+- **Tests judged one by one** (2026-10-25, FB-51). The red run judged a
+  whole test file, so once a unit's code existed a new or changed test of
+  that file failed the gate through its unchanged neighbours: no review
+  finding or change request could be fixed test-first. Taken: a test is
+  judged at the last test-only commit that changed its lines, found by its
+  name. Risks kept: a changed test taken for unchanged — its behaviour
+  changed through a helper inside another test's lines — S 7, O 2, D 4 (that
+  other test is judged instead, and a change before the first test judges
+  all) — 56; an unchanged test taken for changed, a false TEST_NOT_FAILING —
+  S 4, O 3, D 2 (the finding names the test) — 24. *Not taken:* comparing
+  the red runs of the commit and its parent — a second run per commit, and
+  a test that passes on both is still not told apart from a new one; a new
+  test file per change — a removed or changed test stays in the old file,
+  and one unit's tests spread over files. → § 5 unit stages, rule 18.
 
 ### A.6 Integration verification stage — stage 7
 
