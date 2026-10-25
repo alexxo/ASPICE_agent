@@ -42,6 +42,32 @@ def test_a_code_file_without_a_marker_is_reported(tmp_path):
     assert _rules(root) == ["MISSING_UNIT_MARKER"]
 
 
+def test_the_composition_root_needs_no_unit_marker(tmp_path):
+    """FB-50: the architecture names it; it wires the units and implements none."""
+    root = _built(tmp_path)
+    (root / "src" / "WebappApp.py").write_text("def main():\n    pass\n")
+    assert _rules(root) == []
+
+
+def test_a_composition_root_in_a_package_needs_no_marker_outside_its_component(tmp_path):
+    root = _built(tmp_path)
+    for doc in (root / "docs" / "architecture").glob("*.md"):
+        doc.write_text(doc.read_text().replace("WebappApp.main", "shop.__main__.main"))
+    (root / "src" / "shop").mkdir()
+    (root / "src" / "shop" / "__main__.py").write_text("def main():\n    pass\n")
+    (root / "src" / "shop" / "other.py").write_text("X = 1\n")
+    assert _rules(root) == ["MISSING_UNIT_MARKER"]  # other.py alone
+
+
+def test_a_package_init_with_a_docstring_alone_needs_no_marker(tmp_path):
+    root = _built(tmp_path)
+    (root / "src" / "auth_service" / "__init__.py").write_text('"""The auth service."""\n')
+    (root / "src" / "web_app" / "__init__.py").write_text("")
+    assert _rules(root) == []
+    (root / "src" / "web_app" / "__init__.py").write_text("from os import path\n")
+    assert _rules(root) == ["MISSING_UNIT_MARKER"]
+
+
 def test_a_marker_naming_no_unit_is_reported_in_code_and_tests(tmp_path):
     root = _built(tmp_path)
     (root / "src" / "auth_service" / "extra.py").write_text("# @unit[ghost]\n")

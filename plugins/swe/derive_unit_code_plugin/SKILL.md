@@ -85,6 +85,12 @@ One component at a time, unit by unit:
 4. **Checks and suites** — run the stack's lint, format and static analysis and
    the unit suite with its results and coverage, as the plan declares it.
 
+**The composition root** — the file the architecture's *composition_root*
+names, at the place it names, even outside the component's folder: it only
+creates the concrete implementations and wires them, and needs no *@unit*
+marker. Logic in it belongs in a unit. A package's `__init__.py` with a
+docstring alone needs no marker either.
+
 A unit you cannot build within the design — it needs another unit, other
 inputs, a call the design lacks — is a design change: stop, report it, and let
 it go back to stage 4. After each component, run the stage's gates: a component

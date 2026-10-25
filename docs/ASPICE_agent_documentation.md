@@ -2890,7 +2890,11 @@ the product's own commands.
     from it.
 14. **Code files are named by the stack.** *stack.v2 code_files* (globs
     relative to *code_dir*); a file matching *code_files* and not the unit
-    suite's *test_files* is code and needs a unit marker (MISSING_UNIT_MARKER).
+    suite's *test_files* is code and needs a unit marker (MISSING_UNIT_MARKER),
+    except two files that implement no unit: the file of a component's
+    *composition_root*, where the architecture approved at checkpoint 3 puts
+    it, and a file that holds no code — empty, or a Python package's
+    *__init__.py* with a docstring alone.
 15. **Red means fails or errors.** On the test-only commit a new test counts
     as red when its result is a failure or an error; only a pass is
     TEST_NOT_FAILING. A stub returns *0*, *false*, empty or *null*, so a test
@@ -4187,6 +4191,19 @@ label together.
   machines differ about 1.8 times in speed, and a 300 s budget failed a run of
   312 s whose tests all passed.
   → § 5 unit stages, rules 30–33.
+- **Code files that implement no unit** (2026-10-25, FB-50). The
+  composition root, where the architecture puts it, and a package's
+  *__init__.py* could meet no rule: without a marker MISSING_UNIT_MARKER,
+  with one UNIT_OUTSIDE_COMPONENT, and stage 6 could not pass. Taken: both
+  need no marker — the composition root's file, resolved from the
+  architecture's *composition_root*, and a file with no code (empty, or a
+  docstring alone). Risk kept: logic hidden in the composition root, no unit
+  tracing it — S 6, O 4, D 4 (the coverage of the unit suite still counts
+  it, the reviewer agent reads it, the coder's method says logic belongs in a
+  unit) — 96. *Not taken:* the composition root as a unit of its own in the
+  detailed design — a unit with no behaviour of its own to design or test,
+  still outside its component's folder, so a second exception to the folder
+  rule instead of this one. → § 5 unit stages, rule 14.
 
 ### A.6 Integration verification stage — stage 7
 

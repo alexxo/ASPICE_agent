@@ -50,7 +50,7 @@ stage 4, and the tester adds its stub and tests at stage 5.
 
 | # | Rule | Checked by |
 |---|---|---|
-| R1 | Every code file names at least one unit | verify_code_to_design_link_gate · MISSING_UNIT_MARKER |
+| R1 | Every code file names at least one unit — except the file of a component's *composition_root*, where the architecture puts it, and a file that holds no code (a package's `__init__.py` with a docstring alone) | verify_code_to_design_link_gate · MISSING_UNIT_MARKER |
 | R2 | Every unit marker, in code or tests, names a unit of the detailed design | verify_code_to_design_link_gate · UNKNOWN_UNIT |
 | R3 | Every unit of the detailed design is implemented by at least one code file | verify_code_to_design_link_gate · UNIMPLEMENTED_UNIT |
 | R4 | Every file with a unit marker lies in a folder named after the unit's component | verify_code_to_design_link_gate · UNIT_OUTSIDE_COMPONENT |
