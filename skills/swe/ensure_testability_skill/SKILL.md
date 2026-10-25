@@ -46,7 +46,7 @@ The schema checks their shape; the gate checks they are there.
 | R1 | There is an architecture to check | check_testability_gate · NO_ARCHITECTURE |
 | R2 | Every component declares its composition root | check_testability_gate · MISSING_COMPOSITION_ROOT |
 | R3 | Every interface, external ones included, declares the real implementation of its *to* end and a test double | check_testability_gate · MISSING_IMPLEMENTATIONS |
-| R4 | Components reach each other only through these interfaces, and concrete implementations are created only in the composition root | Checkpoint 4 |
+| R4 | Components reach each other only through these interfaces, and concrete implementations are created only in the composition root | Review |
 
 ## Not checkable
 

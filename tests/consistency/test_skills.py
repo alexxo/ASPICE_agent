@@ -102,8 +102,8 @@ def test_every_rule_names_what_checks_it(repo_root):
         rules = _rules(text)
         assert rules, f"{name}: no rules"
         for rid, checked in rules:
-            if checked.startswith("Checkpoint"):
-                continue
+            if checked.startswith("Checkpoint") or checked == "Review":
+                continue  # a person's checkpoint, or the reviewer agent's judgement
             gate, _, ids = checked.partition("·")
             gate = gate.strip()
             assert gate in gates, f"{name} {rid}: '{gate}' not declared in **Gates:**"

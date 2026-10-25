@@ -78,10 +78,11 @@ Explain the roles. Ask the person which GitHub account plays each one, and
 keep the answers for step 5. This file calls them *reviewer*, *developer* and
 *reviewer-bot*:
 
-- **reviewer**: the person who reviews. Approves the pull requests that need
-  a person (every architecture change, every change to the CI file, the
-  framework pin — `.framework` or `.gitmodules` — or `qf.yaml`, and every one
-  that is important or risky), the checkpoints, urgent fixes and change
+- **reviewer**: the person who decides what is wanted and whether it was
+  achieved, never the build in between. Approves the results of each feature
+  (checkpoint 4), answers the questions of what is wanted the build raises,
+  approves every architecture change and every change to `qf.yaml` or
+  `.gitmodules`, and gives the checkpoints, urgent fixes and change
   requests. The setup names them as `--person`, so CI's review comments
   mention them and GitHub notifies them.
 - **developer**: works with the agent and opens the pull requests.
@@ -353,15 +354,17 @@ wishes. Tell the person how the work runs from now on:
   summary. Without the watcher, the developer starts the reviewer by hand: a
   second session with the token, asked to follow
   `.framework/agent/run_reviewer_agent.md` for that pull request.
-- **reviewer** reviews the pull requests that need a person: CI posts the
-  review in plain words as a comment and mentions them, and the agent opens
-  it on its computer. The comment says what the pull request does and why
-  they are asked; each question tells, in plain words, what a design or a
-  test makes happen next to what the approved requirement asks. They tick one
-  box per question, then **Review changes → Approve** — or **Request changes**
-  with the reason. With nothing to tick, the comment says so: they only
-  approve. They also give the
-  checkpoint decisions the agent asks for.
+- **reviewer** is called only where they can judge: CI posts the review in
+  plain words as a comment and mentions them, and the agent opens it on its
+  computer. On each feature's last pull request (the software tests) it is
+  the results, checkpoint 4: each requirement that matters, its test told in
+  plain words, and its result — *achieved* or *not achieved*. During the
+  build it is only a question of what is wanted — a gap in a design that no
+  requirement answers, a weakened test, a disagreement between the agents —
+  and every change of `qf.yaml` or `.gitmodules`. They tick one box per
+  question, then **Review changes → Approve** — or **Request changes** with
+  the reason. With nothing to tick, the comment says so: they only approve.
+  They also give the checkpoint decisions the agent asks for.
 - **The agent merges**, never a person: only when the pull request's check
   **qf/merge** on its current head says *Ready to merge*, and exactly that
   head (`--match-head-commit`). While it says *Wait: …* it names what

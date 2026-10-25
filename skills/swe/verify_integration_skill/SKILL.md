@@ -54,7 +54,7 @@ integration test names its flow as *@flow[&lt;sequence-diagram-id&gt;]*.
 | R5 | Every interface between two components is crossed by a message of a tested flow | verify_tests_to_flows_link_gate · UNTESTED_INTERFACE |
 | R6 | The integration suite writes its results, and every component and integration test passes | verify_tests_to_flows_link_gate · MISSING_RESULTS, FAILED_INTEGRATION_TEST |
 | R7 | No component or integration test changes in a commit that changes code | verify_test_first_gate · TEST_CHANGED_WITH_CODE |
-| R8 | Component tests are black-box, through the component's interfaces only, and the selection and order make sense | Checkpoint 4 |
+| R8 | Component tests are black-box, through the component's interfaces only, and the selection and order make sense | Review |
 | R9 | An integration test tests each interaction once, never a rule a unit test already shows | check_time_budget_gate · SUITE_OVER_BUDGET |
 
 ## Not checkable

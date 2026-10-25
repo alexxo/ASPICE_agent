@@ -43,7 +43,7 @@ the rate of *auth.signin.error*).
 |---|---|---|
 | R1 | Every observability requirement has at least one definition naming it with @sdoc | check_observability_gate · UNOBSERVED_REQUIREMENT |
 | R2 | Every @sdoc marker of a definition names an existing requirement | check_observability_gate · UNKNOWN_REQUIREMENT |
-| R3 | Every watched_by entry has its definition, watching the requirement's events | Checkpoint 4 |
+| R3 | Every watched_by entry has its definition, watching the requirement's events | Review |
 
 ## Not checkable
 

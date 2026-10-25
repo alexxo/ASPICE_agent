@@ -65,7 +65,7 @@ the reporter comments */confirm-fixed*, and the issue is closed.
 | R7 | At release, a closed problem has its test on the main branch, or names its change request | verify_problem_closure_gate · CLOSED_WITHOUT_FIX |
 | R8 | At release, a closed problem has /confirm-fixed from its reporter, given after the fix | verify_problem_closure_gate · MISSING_CONFIRMATION |
 | R9 | While a release is proposed, the report counts the problems opened, fixed and still open since the previous release, by severity and by component | report_problem_trends_gate · MISSING_TREND_SECTION |
-| R10 | The cause is the real one, and the test reproduces the crack the reporter saw | Checkpoint 4 |
+| R10 | The cause is the real one, and the test reproduces the crack the reporter saw | Review |
 
 ## Not checkable
 

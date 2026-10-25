@@ -49,7 +49,7 @@ Markdown files whose fenced blocks are the contract:
 | R7 | A component names only decision records that exist | check_design_contract_gate · UNKNOWN_DECISION |
 | R8 | Every participant of a sequence diagram is a node of an architecture diagram, so a component; the diagrams hold it from stage 1 (draw_diagram_skill R17) | check_diagram_contract_gate · UNKNOWN_PARTICIPANT |
 | R9 | A mode moves only to modes of the same component | check_design_contract_gate · UNKNOWN_MODE |
-| R10 | Responsibilities do not overlap, trust boundaries and cross-cutting concerns are covered, budgets are realistic | Checkpoint 4 |
+| R10 | Responsibilities do not overlap, trust boundaries and cross-cutting concerns are covered, budgets are realistic | Review |
 
 ## Not checkable
 

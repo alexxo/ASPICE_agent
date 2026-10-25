@@ -47,7 +47,7 @@ every event of the requirement literally.
 | # | Rule | Checked by |
 |---|---|---|
 | R1 | Every event of every observability requirement is named by a passing integration test carrying the requirement's @sdoc marker | verify_log_events_gate · UNTESTED_EVENT |
-| R2 | The code emits each event where its behaviour happens, with event, requirement and correlation_id; no secret or personal data beyond an ID | Checkpoint 4 |
+| R2 | The code emits each event where its behaviour happens, with event, requirement and correlation_id; no secret or personal data beyond an ID | Review |
 
 ## Not checkable
 

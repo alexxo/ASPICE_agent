@@ -51,7 +51,7 @@ required variable names it as *@env[&lt;NAME&gt;]*.
 | R4 | Every declared variable is read by the code | check_env_config_gate · UNUSED_VARIABLE |
 | R5 | Every @env marker names a declared variable | check_env_config_gate · UNKNOWN_VARIABLE |
 | R6 | Every required variable is named by at least one passing unit test | check_env_config_gate · UNTESTED_VARIABLE |
-| R7 | The tests show start-up really stops on a missing or invalid value, and no read has a name computed at run time | Checkpoint 4 |
+| R7 | The tests show start-up really stops on a missing or invalid value, and no read has a name computed at run time | Review |
 
 ## Not checkable
 

@@ -4,28 +4,27 @@ The work travels in a pull request (NO_PULL_REQUEST). A reviewer agent — one o
 qf.yaml review.agents, never the author — approves the current head
 (MISSING_AGENT_REVIEW) with every checklist item it asks for checked — logging
 only when it changes code — and its review record, a ```yaml review block
-(review.v1) — when a person reviews, saying what the pull request does,
-describing every test the person reviews, telling every changed design as
-stories and naming the story of every requirement the person is asked about
-(INCOMPLETE_CHECKLIST); every story step names a source its design has
-(REVIEW_STORY_UNSOURCED).
-A person reviews the pull request when classify_pull_request_tool finds it
-important or risky — a requirement of criticality high or of kind security, a
-trust boundary, a file that traces to nothing, a weakened test, a finding
-closed without a change, or the reviewer agent's request — and always when it
-changes paths.architecture_dir or the gates' own files: the CI file, the
-framework pin (the submodule at paths.framework_dir, whose commit a version
-move changes, and .gitmodules) and qf.yaml. Then a person approves the current
-head (MISSING_PERSON_APPROVAL): seal 4, the person's review on the host, never a
+(review.v1) — telling every changed design as stories; when a person reviews,
+saying what the pull request does; with the results, describing their
+software-level tests (INCOMPLETE_CHECKLIST); every story step names a source
+its design has (REVIEW_STORY_UNSOURCED).
+A person reviews the pull request when classify_pull_request_tool calls one:
+for the results of software verification, on the pull request that brings
+them (checkpoint 4); for a question of what is wanted — a gap a story marks
+that the reviewer agent approved, a weakened test, a finding closed without a
+change, the reviewer agent's request, a change of qf.yaml or .gitmodules; and
+always for the architecture. Then a person approves the current head
+(MISSING_PERSON_APPROVAL): seal 4, the person's review on the host, never a
 file the agent could write (rules 1, 2, 7 and 14 of the quality assurance
 stage). When there is something to judge, CI's checkpoint-4 review comment for
-that head (post_checkpoint_review_tool) has every item answered yes
+that head (post_checkpoint_review_tool) exists — for the results, once the
+tree's verification report is written — has every item answered yes
 (REVIEW_ITEMS_UNANSWERED), and was not changed after the approval
 (REVIEW_CHANGED_AFTER_APPROVAL). A person is an approver that is no declared
 agent, no bot and not the author. After the merge, the files are not classified
 again — the gates check before the merge proved them (GATES_NOT_PASSED) — so a
-merged pull request needs a person for the architecture, the gates' own files,
-or its review record's request and disputes.
+merged pull request needs a person for the architecture, the product's
+settings, or its review record's request and disputes.
 
 No host setting is read (decision 6): on every push to the main branch, every
 commit it adds came from a merged pull request (MERGED_WITHOUT_PULL_REQUEST)
@@ -245,7 +244,7 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
             )
     review = person_review(config, pull, record)
     people = [r for r in approvals if r.author not in agents and not r.bot]
-    if review.needed and record is not None and not pull.merged:
+    if record is not None and not pull.merged:
         gaps = _record_gaps(review, record)
         if gaps:
             findings.append(
@@ -286,32 +285,26 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
 
 
 def _record_gaps(review: Classification, record: dict) -> list[str]:
-    """What a person's review needs that the reviewer agent's record leaves out."""
+    """What the reviewer agent's record leaves out: the stories of every changed
+    design; when a person reviews, the summary; with the results, the
+    descriptions of their tests."""
     gaps = []
-    if not record.get("summary"):
+    if review.needed and not record.get("summary"):
         gaps.append("says nothing of what the pull request does (summary)")
     described = {t["file"] for t in record.get("tests", [])}
-    missing = [t for t in review.tests if t not in described]
+    missing = [t for t in review.tests if t not in described] if review.proves else []
     if missing:
         gaps.append(
-            f"describes no test of {', '.join(missing)}, which the person reviews "
+            f"describes no test of {', '.join(missing)}, which the person reads with the results "
             "(agent/describe_tests_prompt.md)"
         )
-    stories = record.get("stories", [])
-    untold = [d for d in review.designs if d not in {s["design"] for s in stories}]
+    told = {s["design"] for s in record.get("stories", [])}
+    untold = [d for d in review.designs if d not in told]
     if untold:
         gaps.append(
             f"tells no story of the design of {', '.join(untold)} "
             "(agent/describe_design_prompt.md)"
         )
-    covers = record.get("covers", {})
-    asked = [u for d in review.designs for u in review.asked.get(d, []) if u not in covers]
-    if asked:
-        gaps.append(f"names no story for {', '.join(asked)} (covers: a story's title, or none)")
-    titles = {s["story"] for s in stories}
-    unknown = sorted({t for t in covers.values() if t != "none" and t not in titles})
-    if unknown:
-        gaps.append(f"names stories it does not tell in covers: {', '.join(unknown)}")
     return gaps
 
 
@@ -333,7 +326,18 @@ def _answers(config, repo, pull, review, record, people) -> list[Finding]:
 
     where = f"{repo}#{pull.number}"
     expected = render(config, repo, pull, review, record)
-    if expected is None or not answers(expected):  # nothing to tick: the approval is the review
+    if expected is None:
+        return [
+            Finding(
+                "REVIEW_ITEMS_UNANSWERED",
+                ".",
+                None,
+                f"{where} brings the results, but this tree has no verification report yet; CI "
+                "writes it (tools/write_verification_report_tool.py) before the results are "
+                "posted.",
+            )
+        ]
+    if not answers(expected):  # nothing to tick: the approval alone is the review
         return []
     note = find_note(pull, expected)
     if note is None:

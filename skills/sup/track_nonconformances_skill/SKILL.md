@@ -70,7 +70,7 @@ By its due date it is closed, or rescheduled by moving *due*.
 | R2 | At release, every open non-conformance older than escalate_after_days is labelled escalated and assigned | check_escalations_gate · UNESCALATED_NONCONFORMANCE |
 | R3 | While a release is proposed, the report counts the non-conformances opened, closed and escalated since the previous release | report_quality_trends_gate · MISSING_TREND_SECTION |
 | R4 | At release, no open retrospective action is past its due date, and each has its block | check_retro_actions_gate · OVERDUE_RETRO_ACTION |
-| R5 | A fault found outside a gate and not fixed in its pull request becomes a non-conformance | Checkpoint 4 |
+| R5 | A fault found outside a gate and not fixed in its pull request becomes a non-conformance | Review |
 
 ## Not checkable
 

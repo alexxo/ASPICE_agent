@@ -22,7 +22,6 @@ from product_builder import (
 )
 
 from gates.sup.verify_delivery_reviewed_gate import check, person_review
-from tools.classify_pull_request_tool import classify
 from tools.post_checkpoint_review_tool import render
 from tools.read_host_tool import FileHost
 from tools.read_product_config_tool import read_product_config
@@ -169,13 +168,19 @@ def test_a_merge_without_its_review_is_caught_on_main(product, tmp_path, monkeyp
     assert _rules(product, tmp_path, monkeypatch, merged) == ["MISSING_AGENT_REVIEW"]
 
 
-@pytest.mark.parametrize(
-    "guarded", [".github/workflows/quality_gates.yml", ".framework", ".gitmodules", "qf.yaml"]
-)
-def test_a_change_to_the_gates_own_files_needs_a_person(product, tmp_path, monkeypatch, guarded):
+@pytest.mark.parametrize("settings", [".gitmodules", "qf.yaml"])
+def test_a_change_of_the_products_settings_needs_a_person(product, tmp_path, monkeypatch, settings):
     head = git_head(product)
-    pull = pull_request(2, head, files=[guarded], reviews=[review(AGENT, head)])
+    pull = pull_request(2, head, files=[settings], reviews=[review(AGENT, head)])
     assert _rules(product, tmp_path, monkeypatch, pull) == ["MISSING_PERSON_APPROVAL"]
+
+
+@pytest.mark.parametrize("checked", [".github/workflows/quality_gates.yml", ".framework"])
+def test_the_ci_file_and_the_pin_are_the_gates_to_judge(product, tmp_path, monkeypatch, checked):
+    """FB-45 D3 B: CI_FILE_NOT_TEMPLATE and FRAMEWORK_NOT_RELEASED judge them."""
+    head = git_head(product)
+    pull = pull_request(2, head, files=[checked], reviews=[review(AGENT, head)])
+    assert _rules(product, tmp_path, monkeypatch, pull) == []
 
 
 def test_a_proposed_release_checks_main_since_the_last_release(product, tmp_path, monkeypatch):
@@ -387,7 +392,7 @@ def test_a_person_is_asked_with_a_short_reason_and_the_records_summary(
     pull = pull_request(2, head, files=["qf.yaml"], reviews=[review(AGENT, head, record=silent)])
     monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json", pulls=[pull])))
     found = {f.rule: f.message for f in check(read_product_config(product))}
-    assert "(why: it changes the quality gates' own files)" in found["MISSING_PERSON_APPROVAL"]
+    assert "(why: it changes the product's settings)" in found["MISSING_PERSON_APPROVAL"]
     assert "says nothing of what the pull request does" in found["INCOMPLETE_CHECKLIST"]
 
 
@@ -409,29 +414,51 @@ STORY = {
 }
 
 
-def test_a_changed_design_is_reviewed_as_its_stories(designed, tmp_path, monkeypatch):
-    """FB-44: the design item was file links and bare IDs; now stories, told from
-    the design alone, with the story of every asked requirement named."""
+def test_a_changed_design_is_told_as_stories_and_only_a_gap_calls_a_person(
+    designed, tmp_path, monkeypatch
+):
+    """FB-45: a design merges on the reviewer agent; a gap it approved — no
+    requirement answers it — is a question of what is wanted."""
     head = git_head(designed)
     files = ["docs/design/auth-service.md"]
-    asked = classify(read_product_config(designed), files).asked["auth-service"]
-    assert asked  # the design serves a requirement of criticality high or of kind security
     summary = {"person": "none", "findings": [], "summary": "It designs the sign-in."}
-    told = {**summary, "stories": [STORY], "covers": {u: STORY["story"] for u in asked}}
+    told = {**summary, "stories": [STORY]}
 
     def rules(record):
         reviews = [review(AGENT, head, record=record)]
         pull = pull_request(1, head, files=files, reviews=reviews)
         return _rules(designed, tmp_path, monkeypatch, pull)
 
-    untold = ["INCOMPLETE_CHECKLIST", "MISSING_PERSON_APPROVAL", "REVIEW_ITEMS_UNANSWERED"]
-    assert rules(summary) == untold
-    assert rules({**told, "covers": {}}) == untold
-    assert rules(told) == ["MISSING_PERSON_APPROVAL", "REVIEW_ITEMS_UNANSWERED"]
-    step = {"text": "An email is sent.", "source": ["unit:send-email"]}
-    invented = {**told, "stories": [{**STORY, "steps": [step]}]}
-    assert rules(invented) == [
+    assert rules(summary) == ["INCOMPLETE_CHECKLIST"]  # no story of the design
+    assert rules(told) == []  # no person for the design itself
+    gap = {"text": "The design does not say how long.", "source": ["unit:open-session"]}
+    open_question = {**STORY, "steps": [*STORY["steps"], {**gap, "gap": True}]}
+    assert rules({**told, "stories": [open_question]}) == [
         "MISSING_PERSON_APPROVAL",
         "REVIEW_ITEMS_UNANSWERED",
-        "REVIEW_STORY_UNSOURCED",
     ]
+    step = {"text": "An email is sent.", "source": ["unit:send-email"]}
+    invented = {**told, "stories": [{**STORY, "steps": [step]}]}
+    assert rules(invented) == ["REVIEW_STORY_UNSOURCED"]
+
+
+def test_the_results_wait_for_the_verification_report(designed, tmp_path, monkeypatch):
+    from product_builder import SOFTWARE_TEST, write_software_plan, write_software_test
+
+    write_software_plan(designed)
+    write_software_test(designed)
+    commit_all(designed, "test: the software tests")
+    head = git_head(designed)
+    told = {"file": SOFTWARE_TEST, "test": "t", "prepares": "p", "does": "d", "checks": "c"}
+    record = {"person": "none", "findings": [], "summary": "Results."}
+
+    def found(record):
+        reviews = [review(AGENT, head, record=record)]
+        pull = pull_request(3, head, files=[SOFTWARE_TEST], reviews=reviews)
+        monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json", pulls=[pull])))
+        return {f.rule: f.message for f in check(read_product_config(designed))}
+
+    described = found({**record, "tests": [{**told, "not": "n"}]})
+    assert set(described) == {"MISSING_PERSON_APPROVAL", "REVIEW_ITEMS_UNANSWERED"}
+    assert "no verification report yet" in described["REVIEW_ITEMS_UNANSWERED"]
+    assert "describes no test of" in found(record)["INCOMPLETE_CHECKLIST"]

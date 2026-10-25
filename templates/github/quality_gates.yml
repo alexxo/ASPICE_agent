@@ -21,11 +21,18 @@
 # again, so a pull request a person must review turns green once they approve
 # it (seal 4). release.yml tags an accepted release after its merge.
 #
-# When a person must review a pull request — it is important or risky
-# (classify_pull_request_tool) and the reviewer agent has approved its head —
-# the run posts the checkpoint-4 review as a comment on it, mentioning qf.yaml
-# review.people: the items in plain words, each with a pair of boxes. The
-# person ticks them, then approves (pull-requests: write, for that comment).
+# When a person must review a pull request — it brings the results of software
+# verification (checkpoint 4), or asks a question of what is wanted
+# (classify_pull_request_tool) — and the reviewer agent has approved its head,
+# the run posts the checkpoint-4 review as a comment on it, after the
+# verification report, mentioning qf.yaml review.people: the questions in
+# plain words, each with a pair of boxes. The person ticks them, then approves
+# (pull-requests: write, for that comment).
+#
+# Keep every step that runs a framework command as it is, in this order:
+# verify_required_checks_gate compares them with this template
+# (CI_FILE_NOT_TEMPLATE), since no person reviews the CI file. Add the
+# product's own steps, such as its toolchain.
 #
 # On a pull request the run posts the crossing sign, the commit status qf/merge
 # on its head, which the author agent reads before it merges:
@@ -115,14 +122,14 @@ jobs:
           QF_HOST_TOKEN: ${{ github.token }}
         run: python .framework/tools/post_merge_status_tool.py --sha "${{ github.event.pull_request.head.sha }}" --running
 
+      - name: Write the verification report
+        run: python .framework/tools/write_verification_report_tool.py --root .
+
       - name: "Checkpoint-4 review: post it when a person must review"
         if: github.event.pull_request
         env:
           QF_HOST_TOKEN: ${{ github.token }}
         run: python .framework/tools/post_checkpoint_review_tool.py --root . --pull-request "${{ github.event.pull_request.number }}"
-
-      - name: Write the verification report
-        run: python .framework/tools/write_verification_report_tool.py --root .
 
       - name: Quality gates
         env:

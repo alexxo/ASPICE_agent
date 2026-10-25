@@ -75,28 +75,27 @@ it changes code.
 - `findings` — every finding of every round on this pull request (read your
   earlier reviews on it), each `fixed`, `withdrawn`, or `disputed` with the
   author's answer and your final position.
-- `tests` — when a person reviews the pull request: run
+- `stories` — when `designs` of the classification is not empty: each
+  changed design told as stories. Run
   `python <framework>/tools/classify_pull_request_tool.py --root .qf/reviews/<n> --pull-request <n> --record <your record> --base origin/<default branch>`.
-  If `needed` is true and `tests` is not empty, the record lists those tests
-  described. When the watcher started you, they are described already, in
-  the file its prompt names: put that list under `tests` as it is. Started by
-  hand, describe them in a fresh session that sees the tests only
+  When the watcher started you, the stories are told already, in the file its
+  prompt names: put that list under `stories` as it is. Started by hand, tell
+  them in a fresh session that sees the design files only
+  (`<framework>/agent/describe_design_prompt.md`). Never write or change a
+  story yourself. Read every step marked `gap`: when a requirement asks for
+  what the gap leaves open, the design misses it — a finding, request
+  changes. Approve only gaps no requirement answers: each goes to the person
+  as a question of what is wanted.
+- `tests` — when the pull request brings the results (`proves` is not
+  empty): the tests under `tests` of the classification, described. When the
+  watcher started you, they are described already, in the file its prompt
+  names: put that list under `tests` as it is. Started by hand, describe them
+  in a fresh session that sees the tests only
   (`<framework>/agent/describe_tests_prompt.md`). Never write or change the
   descriptions yourself: you have read the requirements.
-- `summary` — when a person reviews: what the pull request does, in one plain
-  sentence for a person who does not read code ("It designs how the
-  publisher asks the LLM for a text and saves the draft on WordPress.").
-- `stories` — when a person reviews and `designs` is not empty: each changed
-  design told as stories. When the watcher started you, they are told
-  already, in the file its prompt names: put that list under `stories` as it
-  is. Started by hand, tell them in a fresh session that sees the design files
-  only (`<framework>/agent/describe_design_prompt.md`). Never write or change
-  a story yourself.
-- `covers` — for every requirement under `asked` of the classification: the
-  title of the story that shows what the requirement asks, or `none` when no
-  story does. Choose by what the story's steps make happen, never by its
-  title; a story that shows only the normal run never covers a requirement
-  about a failure.
+- `summary` — when `needed` is true: what the pull request does, in one plain
+  sentence for a person who does not read code ("It brings the results of
+  the publisher: every requirement's software-level test and its result.").
 
 Post with
 

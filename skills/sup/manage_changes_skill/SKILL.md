@@ -63,7 +63,7 @@ is on the main branch, set the status to implemented; the initiator comments
 | R7 | At release, a closed change request has a commit that names it on the main branch | verify_change_closure_gate · CLOSED_WITHOUT_IMPLEMENTATION |
 | R8 | At release, a closed change request has /confirm-change from its initiator, given after its last commit reached the main branch | verify_change_closure_gate · MISSING_CHANGE_CONFIRMATION |
 | R9 | While a release is proposed, the report lists the change requests the release implements and those still open | verify_change_closure_gate · MISSING_CHANGE_SECTION |
-| R10 | The analysis is right: the affected items are all of them, and the size is honest | Checkpoint 4 |
+| R10 | The analysis is right: the affected items are all of them, and the size is honest | Review |
 
 ## Not checkable
 

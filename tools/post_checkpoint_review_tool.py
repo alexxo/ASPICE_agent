@@ -2,32 +2,34 @@
 
 CI posts it as a comment on the pull request once the reviewer agent has
 approved the head with its review record (review.v1), when
-classify_pull_request_tool finds the pull request important or risky (rule 14
-of the quality assurance stage). Never written by the author, and readable
-without code: it mentions qf.yaml review.people, so the host notifies them,
-says what the pull request does (the record's summary), why they are asked in
-one plain sentence, and how to answer, then lists the questions, each with a
-pair of boxes, the first the answer yes; IDs, the head and the files are
-folded under "Details for the record":
+classify_pull_request_tool calls a person (rule 14 of the quality assurance
+stage), after the verification report of the tree is written. Never written by
+the author, and readable without code: it mentions qf.yaml review.people, so
+the host notifies them, says what the pull request does (the record's
+summary), why they are asked in one plain sentence, and how to answer, then
+lists the questions, each with a pair of boxes, the first the answer yes; the
+head and the files are folded under "Details for the record":
 
-- each changed detailed design, as stories: one question per story that shows
-  a requirement of criticality high or of kind security the design serves —
-  the requirements' text next to the story's steps, told from the design
-  alone, a gap marked ⚠ — and one per such requirement no story shows;
-- each test the person reviews: the approved criteria next to the test told
-  as given, when, then, from the test alone;
-- each weakened test: before and now;
-- each finding closed without a change: the finding, the author's answer and
-  the reviewer's final position;
-- the reviewer agent's own request, if any.
+- checkpoint 4, the results, on the pull request that brings them (stage 8):
+  one line per requirement it proves that is of criticality high or of kind
+  security, and per requirement anywhere that did not pass — its text, its
+  software-level tests told as given, when, then from the test alone, the
+  measured values next to the threshold, and the result — answered achieved
+  or not achieved; the other requirements only counted;
+- the questions of what is wanted, on any pull request: each gap (⚠) a story
+  of a changed design marks and the reviewer agent approved, so no
+  requirement answers it — keep the requirements, or change them; each
+  weakened test, before and now; each finding closed without a change, the
+  finding, the author's answer and the reviewer's final position; the
+  reviewer agent's own request.
 
 With nothing to tick, the comment still says who is asked and why, and that
 the approval alone is the review. The person ticks one box per question — the
 host saves each tick at once — then approves, or requests changes with the
-reason. The comment names the head and a
-digest of its items: one comment per pull request, rewritten when the head or
-the items change, never otherwise, so an approval stays valid while nothing it
-covered changed. verify_delivery_reviewed_gate reads the answers.
+reason. The comment names the head and a digest of its items: one comment per
+pull request, rewritten when the head or the items change, never otherwise,
+so an approval stays valid while nothing it covered changed.
+verify_delivery_reviewed_gate reads the answers.
 
     python tools/post_checkpoint_review_tool.py --root PRODUCT --pull-request N
 """
@@ -50,7 +52,7 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
 from tools.read_host_tool import API, HOST_TOKEN, Note, PullRequest  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
 
-__all__ = ["MARK", "answers", "find_note", "render"]
+__all__ = ["MARK", "answers", "find_note", "render", "results_page"]
 
 MARK = "<!-- qf-checkpoint-4-review -->"
 _STAMP = re.compile(r"<!-- head: ([0-9a-f]+) items: ([0-9a-f]+) -->")
@@ -71,18 +73,24 @@ def render(config: ProductConfig, repo: str, pull: PullRequest, review, record: 
     alone is the review."""
     if not review.needed:
         return None
-    items = _items(config, repo, pull, review, record)
+    results = results_page(config, review, record) if review.proves else ([], "")
+    if results is None:
+        return None  # no verification report of this tree yet: nothing to approve
+    items, counted = results
+    items = items + _items(review)
     body = "\n\n".join(
         f"### {i}. {title}\n\n{text}\n\n- [ ] {yes}\n- [ ] {no}"
         for i, (title, text, yes, no) in enumerate(items, 1)
     )
     people = " ".join(f"@{p}" for p in config.review_people)
-    minutes = max(1, sum(2 if text.startswith(_STORY) else 1 for _, text, _, _ in items))
+    minutes = max(1, len(items))
     why = "; ".join(review.brief or review.reasons)
     lines = [f"{people} — **your review is needed** (about {minutes} min)."]
     if record.get("summary"):
         lines.append(f"**What this pull request does:** {record['summary']}")
     lines.append(f"**Why you are asked:** {why[:1].upper()}{why[1:]}.")
+    if counted:
+        lines.append(f"**The results:** {counted}")
     if items:
         lines.append(
             "**How to answer:** tick one box per question — GitHub saves each tick at once — "
@@ -149,43 +157,94 @@ def answers(body: str) -> list[tuple[str, str | None]]:
     return found
 
 
-_STORY = "**What must happen**"
-
-
-def _items(
-    config: ProductConfig, repo: str, pull: PullRequest, review, record: dict
-) -> list[tuple]:
+def results_page(config: ProductConfig, review, record: dict) -> tuple[list, str] | None:
+    """The results of software verification, from the tree's verification report:
+    one question per requirement this pull request proves that is of
+    criticality high or of kind security, and per requirement anywhere that did
+    not pass; the rest only counted. None without a report of this tree."""
+    from tools.classify_pull_request_tool import important
     from tools.read_requirements_tool import read_requirements
+    from tools.write_verification_report_tool import REPORT, report_dir
 
+    folder = report_dir(config)
+    report = folder / REPORT if folder else None
+    if report is None or not report.is_file():
+        return None
+    rows = json.loads(report.read_text()).get("software", [])
     ratings = {
         r.data["uid"]: r.data
         for r in read_requirements(config)
         if isinstance(r.data.get("uid"), str)
     }
-    items = []
-    for component in review.designs:
-        items += _design_items(component, review.asked.get(component, []), record, ratings)
+    proves = set(review.proves)
+    asked = [
+        r
+        for r in rows
+        if r["result"] not in ("passed", "sealed")
+        or (r["requirement"] in proves and important(ratings.get(r["requirement"], {})))
+    ]
+    told = {}
     for test in record.get("tests", []):
-        if test["file"] not in review.tests:
-            continue
-        uids = review.requirements.get(test["file"], [])
-        rated = [
-            u
-            for u in uids
-            if ratings.get(u, {}).get("criticality") == "high"
-            or ratings.get(u, {}).get("kind") == "security"
-        ] or uids
-        criteria = "\n".join(_criteria(u, ratings.get(u, {})) for u in rated) or (
-            "- no requirement named"
-        )
+        told.setdefault(test["file"], []).append(test)
+    items = [_result(row, ratings.get(row["requirement"], {}), told) for row in asked]
+    tally = {k: sum(1 for r in rows if r["result"] in v) for k, v in _TALLY.items()}
+    counted = (
+        f"{len(rows)} requirements · {tally['passed']} passed · {tally['failed']} failed · "
+        f"{tally['not run']} not run. You tick {len(asked)}: the high-criticality and security "
+        "ones this pull request proves, and every one that did not pass; the other "
+        f"{len(rows) - len(asked)} are only counted."
+    )
+    return items, counted
+
+
+_TALLY = {"passed": ("passed", "sealed"), "failed": ("failed",), "not run": ("missing",)}
+_RESULT = {
+    "passed": "passed",
+    "sealed": "proved at checkpoint 3",
+    "failed": "**failed**",
+    "missing": "**not run**",
+}
+
+
+def _result(row: dict, data: dict, told: dict) -> tuple:
+    uid = row["requirement"]
+    rating = ", ".join(x for x in (data.get("criticality"), data.get("kind")) if x)
+    lines = [f"({rating}, {uid})"]
+    for file in row.get("tests", []):
+        for test in told.get(file, []):
+            lines.append(
+                f"**The test, told from the test alone** ({test['test']}):\n"
+                f"- *Given* {test['prepares']}\n- *When* {test['does']}\n"
+                f"- *Then it checks* {test['checks']}\n- *It does not check:* {test['not']}"
+            )
+        if file not in told:
+            lines.append(f"**The test:** {file}, not described")
+    if row["proved_by"] == "measurement":
+        values = ", ".join(f"{m['value']:g}" for m in row.get("measured", [])) or "none"
+        lines.append(f"**Measured:** {values} (threshold {row['threshold']})")
+    lines.append(f"**Result:** {_RESULT.get(row['result'], row['result'])}")
+    statement = data.get("statement")
+    return (
+        f"“{statement}”" if statement else uid,
+        "\n\n".join(lines),
+        "achieved",
+        "not achieved",
+    )
+
+
+def _items(review) -> list[tuple]:
+    """The questions of what is wanted."""
+    items = []
+    for design, story, step in review.gaps:
         items.append(
             (
-                f"Test: {test['test']}",
-                f"{_STORY}\n{criteria}\n\n**What the test does**, told from the test alone:\n"
-                f"- *Given* {test['prepares']}\n- *When* {test['does']}\n"
-                f"- *Then it checks* {test['checks']}\n- *It does not check:* {test['not']}",
-                "the test checks what must happen",
-                "it does not",
+                f"An open question in the design of {design}",
+                f"*{story}*\n⚠ {step}\n\nNo requirement asks for this, so the reviewer agent "
+                "approved the design. Keep the requirements as they are — or change them: "
+                "request changes and write what you want, and the agent proposes it as a change "
+                "request.",
+                "keep the requirements",
+                "change them",
             )
         )
     for w in review.weakenings:
@@ -219,72 +278,6 @@ def _items(
             )
         )
     return items
-
-
-def _design_items(component: str, asked: list[str], record: dict, ratings: dict) -> list[tuple]:
-    """One question per story that shows a requirement the person is asked about,
-    with those requirements; one per asked requirement no story shows. Without
-    such requirements, one question with all the design's stories."""
-    stories = [s for s in record.get("stories", []) if s["design"] == component]
-    covers = record.get("covers", {})
-    told = "**What the design makes happen**, told from the design alone:\n"
-    if not asked:
-        text = "\n\n".join(f"*{s['story']}*\n{_steps(s)}" for s in stories) or (
-            "The reviewer agent's record tells no story of this design."
-        )
-        return [
-            (
-                f"The design of {component}",
-                f"{told}\n{text}",
-                "this is what must happen",
-                "it is not",
-            )
-        ]
-    items = []
-    for story in stories:
-        uids = [u for u in asked if covers.get(u) == story["story"]]
-        if uids:
-            criteria = "\n".join(_criteria(u, ratings.get(u, {})) for u in uids)
-            items.append(
-                (
-                    story["story"],
-                    f"{_STORY}\n{criteria}\n\n{told}{_steps(story)}",
-                    "this is what must happen",
-                    "it is not",
-                )
-            )
-    titles = {s["story"] for s in stories}
-    for uid in asked:
-        if covers.get(uid) not in titles:
-            items.append(
-                (
-                    f"No story of {component} shows this requirement",
-                    f"{_STORY}\n{_criteria(uid, ratings.get(uid, {}))}\n\nThe reviewer agent "
-                    "found no situation of the design that shows it.",
-                    "acceptable: not this design's work",
-                    "the design must show it",
-                )
-            )
-    return items
-
-
-def _steps(story: dict) -> str:
-    return "\n".join(
-        f"{i}. {'⚠ ' if step.get('gap') else ''}{step['text']}"
-        for i, step in enumerate(story["steps"], 1)
-    )
-
-
-def _criteria(uid: str, data: dict) -> str:
-    rating = ", ".join(x for x in (data.get("criticality"), data.get("kind")) if x)
-    statement = data.get("statement", "")
-    lines = [f"- “{statement}” ({rating}, {uid})" if statement else f"- {uid} ({rating})"]
-    for c in data.get("acceptance_criteria", []):
-        if isinstance(c, dict):
-            lines.append(
-                f"  - *Given* {c.get('given')} · *When* {c.get('when')} · *Then* {c.get('then')}"
-            )
-    return "\n".join(lines)
 
 
 def _send(token: str, url: str, method: str, body: str) -> None:
@@ -332,9 +325,14 @@ def main(argv: list[str] | None = None) -> int:
     if record is None:
         print("No review record of the reviewer agent on this head yet: nothing to post.")
         return 0
-    expected = render(config, repo, pull, person_review(config, pull, record), record)
+    review = person_review(config, pull, record)
+    expected = render(config, repo, pull, review, record)
     if expected is None:
-        print("No person's review is needed: nothing to post.")
+        print(
+            "No verification report of this tree yet: write it before posting the results."
+            if review.needed
+            else "No person's review is needed: nothing to post."
+        )
         return 0
     if find_note(pull, expected) is not None:
         print("The checkpoint-4 review for this head is posted already.")

@@ -67,7 +67,7 @@ the threshold has one, its *unit* exactly as the threshold writes it:
 | R6 | Every measured value meets its threshold | verify_nfr_thresholds_gate · THRESHOLD_NOT_MET |
 | R7 | No software-level test changes in a commit that changes code, and every one is committed | verify_test_first_gate · TEST_CHANGED_WITH_CODE, TEST_NOT_COMMITTED |
 | R8 | The verification report exists for the current tree, written from the current results | check_verification_report_gate · MISSING_REPORT, STALE_REPORT |
-| R9 | Each test checks every acceptance criterion of its requirement, a system-level test reaches the product only from outside, and a measurement really measures the metric | Checkpoint 4 |
+| R9 | Each test checks every acceptance criterion of its requirement, a system-level test reaches the product only from outside, and a measurement really measures the metric | Review |
 | R10 | Each acceptance case is tested once, from the outside, never a rule a unit or integration test already shows | check_time_budget_gate · SUITE_OVER_BUDGET |
 
 ## Not checkable

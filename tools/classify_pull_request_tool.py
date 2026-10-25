@@ -1,33 +1,34 @@
 """Classify a pull request: does a person review it, and on what (rule 14 of the
 quality assurance stage).
 
-A person reviews a pull request that is important, risky, or both — never one
-chosen by number. Importance is the architect's own rating at checkpoint 2,
-reached through the links the files already carry:
+The person decides what is wanted (checkpoints 1 to 3) and whether it was
+achieved (checkpoint 4, the results); the build in between is the agents' and
+the gates'. So a person is called into a pull request only:
 
-- code and tests name their requirements (@sdoc), else their unit (@unit, whose
-  component meets requirements) or component (@component); a detailed design
-  is its component's; every changed file of the change contributes;
-- important: a requirement of criticality high or of kind security, or a trust
-  boundary — an interface of a component in the change that is external or has
-  security templates, or a test with a security template (@security);
-- a changed file that is neither documentation, nor an approved input of an
-  earlier checkpoint, nor a marked source or test (a build, dependency or
-  configuration file) traces to nothing, so it counts as touching every
-  requirement and every interface.
+- for the results: it adds or changes software-level tests, so it brings the
+  results of software verification — the feature's last pull request (stage
+  8); the person approves them requirement by requirement;
+- for a question of what is wanted: a test got weaker — a test file deleted,
+  fewer tests in a file, a test switched off (skip, xfail, disabled), or the
+  verification plan's coverage minimum lowered or a time budget loosened,
+  against the base; a finding withdrawn or disputed without a change; the
+  reviewer agent asks for a person, for one of five conditions; a story of a
+  changed design marks a gap (⚠) the reviewer agent approved, so no
+  requirement answers it; or the product's settings change (qf.yaml,
+  .gitmodules);
+- always for the architecture.
 
-Risky, from the change itself and the reviewer agent's review record
-(review.v1): the evidence got weaker — a test file deleted, fewer tests in a
-file, a test switched off (skip, xfail, disabled), or the verification plan's
-coverage minimum lowered or a time budget loosened, against the base; a
-finding withdrawn or disputed without a change; the reviewer agent asks for a
-person, for one of five conditions. A pull request that changes the
-architecture or the gates' own files is always reviewed. Nothing else is.
+Never one chosen by number, and never for the build itself: a changed
+detailed design, unit or integration tests and code merge on the reviewer
+agent and the gates. The CI file is checked against the framework's template
+(verify_required_checks_gate), and a framework pin moved to a released tag by
+verify_framework_integrity_gate.
 
-The classification also says what the person reviews: the detailed designs
-changed, the tests to describe (those linked to what made the pull request
-important, else every changed test), the weakenings, the disputes and the
-reviewer agent's request.
+The classification also says what the person reviews and what the watcher
+describes before the review: the changed designs, told as stories; the
+software-level tests, those of requirements of criticality high or of kind
+security first; the requirements they prove; the weakenings, the disputes,
+the open questions of the stories and the reviewer agent's request.
 
     python tools/classify_pull_request_tool.py --root PRODUCT --pull-request N \\
         [--record review.yaml] [--base REF]
@@ -55,7 +56,15 @@ from tools.read_product_config_tool import (  # noqa: E402
 from tools.read_yaml_blocks_tool import yaml_blocks_in_text  # noqa: E402
 from tools.validate_contract_tool import validate  # noqa: E402
 
-__all__ = ["Classification", "Weakening", "classify", "headline", "review_record", "unsourced"]
+__all__ = [
+    "Classification",
+    "Weakening",
+    "classify",
+    "headline",
+    "important",
+    "review_record",
+    "unsourced",
+]
 
 # A test switched off, in the languages the framework meets.
 SWITCHED_OFF = re.compile(
@@ -77,16 +86,17 @@ class Weakening:
 
 @dataclass(frozen=True)
 class Classification:
-    reasons: tuple[str, ...] = ()  # why a person reviews it, in plain words; empty: no one
-    designs: tuple[str, ...] = ()  # components whose detailed design changed
-    tests: tuple[str, ...] = ()  # changed test files the person reviews
+    reasons: tuple[str, ...] = ()  # why a person reviews it; empty: no one
+    designs: tuple[str, ...] = ()  # components whose detailed design changed: told as stories
+    tests: tuple[str, ...] = ()  # software-level tests the person reads with the results
     requirements: dict[str, list[str]] = field(default_factory=dict)  # test file → its REQ-UIDs
     weakenings: tuple[Weakening, ...] = ()
     disputes: tuple[dict, ...] = ()
     request: dict | None = None  # the reviewer agent's own request
-    candidates: tuple[str, ...] = ()  # the tests a person would review, if one is called
+    candidates: tuple[str, ...] = ()  # the tests to describe before the review
     brief: tuple[str, ...] = ()  # the reasons in plain words, for the page and the status
-    asked: dict[str, list[str]] = field(default_factory=dict)  # design → its high/security REQs
+    proves: tuple[str, ...] = ()  # the REQ-UIDs whose software-level tests it changes: results
+    gaps: tuple[tuple[str, str, str], ...] = ()  # (design, story, step) left open, approved
 
     @property
     def needed(self) -> bool:
@@ -104,7 +114,8 @@ class Classification:
             "request": self.request,
             "candidates": list(self.candidates),
             "brief": list(self.brief),
-            "asked": self.asked,
+            "proves": list(self.proves),
+            "gaps": [list(g) for g in self.gaps],
         }
 
 
@@ -168,11 +179,9 @@ def always(config: ProductConfig, files) -> str | None:
     architecture = config.relative(config.architecture_dir).rstrip("/") + "/"
     if any(f.startswith(architecture) for f in files):
         return f"changes the architecture ({architecture})"
-    pin = config.relative(config.framework_dir).rstrip("/")
-    guarded = {config.relative(config.ci_file), pin, ".gitmodules", "qf.yaml"}
-    touched = sorted(guarded & set(files))
+    touched = sorted({".gitmodules", "qf.yaml"} & set(files))
     if touched:
-        return f"changes the gates' own files ({', '.join(touched)})"
+        return f"changes the product's settings ({', '.join(touched)})"
     return None
 
 
@@ -188,8 +197,9 @@ def classify(
         reasons.append(first)
         brief.append(_ALWAYS_BRIEF[first.split(" (")[0]])
     traced = _trace(config, files)
-    reasons += traced.reasons
-    brief += traced.brief
+    if traced.tests:
+        reasons.append("brings the results of software verification")
+        brief.append("the feature's results are ready for your approval")
     weakenings = _weakenings(config, files, traced.stack, base) if base else []
     for w in weakenings:
         reasons.append(f"weakens a test: {w.file} ({w.now})")
@@ -204,24 +214,37 @@ def classify(
     if request:
         reasons.append(f"the reviewer agent asks for a person: {request['reason']}")
         brief.append("the reviewer agent asks for a person")
-    tests = traced.important_tests if traced.important_tests else traced.tests
+    gaps = tuple(
+        (story["design"], story["story"], step["text"])
+        for story in record.get("stories", [])
+        if story["design"] in traced.designs
+        for step in story["steps"]
+        if step.get("gap")
+    )
+    if gaps:
+        reasons.append(
+            f"the design leaves {len(gaps)} question(s) open that no requirement answers"
+        )
+        brief.append("the design leaves a question open")
+    candidates = traced.important_tests or traced.tests
     return Classification(
         tuple(reasons),
         tuple(traced.designs),
-        tuple(tests) if reasons else (),
-        {t: traced.links.get(t, []) for t in tests} if reasons else {},
+        tuple(candidates),
+        {t: traced.links.get(t, []) for t in traced.tests},
         tuple(weakenings),
         disputes,
         request,
-        tuple(tests),
+        tuple(candidates),
         tuple(brief),
-        dict(traced.asked),
+        tuple(sorted({u for t in traced.tests for u in traced.links.get(t, [])})),
+        gaps,
     )
 
 
 _ALWAYS_BRIEF = {
     "changes the architecture": "it changes the architecture",
-    "changes the gates' own files": "it changes the quality gates' own files",
+    "changes the product's settings": "it changes the product's settings",
 }
 
 
@@ -232,34 +255,18 @@ def headline(brief) -> str:
     return "; ".join(shown) + (f"; {more} more" if more else "")
 
 
+def important(data: dict) -> bool:
+    """A requirement the architect rated critical or security at checkpoint 2."""
+    return data.get("criticality") == "high" or data.get("kind") == "security"
+
+
 @dataclass
 class _Traced:
-    reasons: list[str] = field(default_factory=list)
     designs: list[str] = field(default_factory=list)
-    tests: list[str] = field(default_factory=list)
+    tests: list[str] = field(default_factory=list)  # software-level tests changed
     important_tests: list[str] = field(default_factory=list)
     links: dict[str, list[str]] = field(default_factory=dict)
     stack: dict | None = None
-    brief: list[str] = field(default_factory=list)
-    asked: dict[str, list[str]] = field(default_factory=dict)
-
-
-def _documentation(config: ProductConfig) -> list[str]:
-    """Folders and files reviewed elsewhere: approved at an earlier checkpoint, or
-    documentation with no effect on the product's behaviour."""
-    paths = (
-        config.diagrams_dir,
-        config.requirements_dir,
-        config.approvals_dir,
-        config.wishes_file,
-        config.glossary_file,
-        config.stack_file,
-        config.decisions_dir,
-        config.framework_feedback_file,
-        config.releases_dir,
-        config.verification_plan_file,  # its loosening is a weakening
-    )
-    return [config.relative(p) for p in paths]
 
 
 def _under(path: str, roots: list[str]) -> bool:
@@ -267,132 +274,35 @@ def _under(path: str, roots: list[str]) -> bool:
 
 
 def _trace(config: ProductConfig, files: list[str]) -> _Traced:
-    from tools.read_integration_tool import read_architecture
+    """The changed designs and the software-level tests the change adds or
+    changes, with the requirements each test names (@sdoc)."""
     from tools.read_requirements_tool import read_requirements
-    from tools.read_unit_markers_tool import (
-        design_units,
-        scan_integration_tests,
-        scan_software_tests,
-        scan_sources,
-    )
+    from tools.read_unit_markers_tool import scan_software_tests
     from tools.run_stack_commands_tool import read_stack
 
     out = _Traced()
-    stack = read_stack(config)
-    out.stack = stack
-    known = {}
-    if stack is not None:
-        for s in [
-            *scan_sources(config, stack),
-            *scan_integration_tests(config, stack),
-            *scan_software_tests(config, stack),
-        ]:
-            known[s.path] = s
-    owner = {unit: component for unit, (component, _design) in design_units(config).items()}
-    architecture = read_architecture(config)
+    out.stack = read_stack(config)
+    software = {s.path: s for s in scan_software_tests(config, out.stack)} if out.stack else {}
     ratings = {
         r.data["uid"]: r.data
         for r in read_requirements(config)
         if isinstance(r.data.get("uid"), str)
     }
-    documentation = _documentation(config)
     design_dir = config.relative(config.detailed_design_dir).rstrip("/") + "/"
-    architecture_dir = config.relative(config.architecture_dir).rstrip("/") + "/"
-
-    everything: list[str] = []
-    per_file: dict[str, tuple[set[str], set[str], bool]] = {}  # file → reqs, components, security
     for path in files:
-        if path.startswith(architecture_dir) or always(config, [path]):
-            continue  # reviewed for its own reason
         if path.startswith(design_dir):
             component = PurePosixPath(path).name.split(".")[0]
             if component not in out.designs:
                 out.designs.append(component)
-            per_file[path] = (set(architecture.meets.get(component, ())), {component}, False)
             continue
-        source = known.get(path)
-        if source is None:
-            if path.endswith(".md") or _under(path, documentation):
-                continue
-            if not (config.root / path).is_file():
-                continue  # deleted: a deleted test is a weakening, other code needs nothing
-            everything.append(path)
+        test = software.get(path)
+        if test is None:
             continue
-        components = set(source.components) | {owner[u] for u in source.units if u in owner}
-        if source.requirements:
-            reqs = set(source.requirements)  # precise: the file names them
-        else:
-            reqs = {r for c in components for r in architecture.meets.get(c, ())}
-        per_file[path] = (reqs, components, bool(source.security))
-        if source.kind != "code":
-            out.tests.append(path)
-            out.links[path] = sorted(reqs)
-
-    def important(uid: str) -> str | None:
-        data = ratings.get(uid, {})
-        if data.get("criticality") == "high":
-            return f"{uid} (criticality high)"
-        if data.get("kind") == "security":
-            return f"{uid} (security)"
-        return None
-
-    def boundaries(components: set[str], every: bool = False) -> list[str]:
-        found = []
-        for i in architecture.interfaces:
-            ends = {i["from"], i["to"]}
-            if (every or ends & components) and (i.get("external") or i.get("security_templates")):
-                found.append(f"{i['from']} → {i['to']}")
-        return sorted(set(found))
-
-    hits: list[str] = []
-    crossing: list[str] = []
-    owned: set[str] = set()  # the components the change itself is in
-    for path, (reqs, components, security) in per_file.items():
-        owned |= components
-        found = sorted(filter(None, (important(r) for r in reqs)))
-        crosses = boundaries(components)
-        if security:
-            crosses.append(f"security tests in {path}")
-        if found or crosses:
-            hits += [f for f in found if f not in hits]
-            crossing += [c for c in crosses if c not in crossing]
-            if path in out.links:
-                out.important_tests.append(path)
-    for component in out.designs:
-        out.asked[component] = [
-            u for u in architecture.meets.get(component, ()) if important(u) is not None
-        ]
-    if hits:
-        out.reasons.append("touches " + ", ".join(hits))
-        high = sum(1 for h in hits if h.endswith("(criticality high)"))
-        counted = [
-            _count(high, "high-criticality requirement"),
-            _count(len(hits) - high, "security requirement"),
-        ]
-        out.brief.append("it touches " + " and ".join(c for c in counted if c))
-    if crossing:
-        out.reasons.append("crosses a trust boundary: " + ", ".join(crossing))
-        outside = sorted(
-            {end for c in crossing if " → " in c for end in c.split(" → ")} - set(owned)
-        )
-        out.brief.append(
-            "it handles data crossing to or from " + ", ".join(outside)
-            if outside
-            else "it handles data crossing a trust boundary"
-        )
-    if everything:
-        every = sorted(filter(None, (important(u) for u in ratings)))
-        if every or boundaries(set(), every=True):
-            out.reasons.append(
-                f"changes {', '.join(everything)}, which traces to no requirement, so it "
-                "counts as touching all of them"
-            )
-            out.brief.append(f"it changes {', '.join(everything)}, which traces to no requirement")
+        out.tests.append(path)
+        out.links[path] = sorted(test.requirements)
+        if any(important(ratings.get(u, {})) for u in test.requirements):
+            out.important_tests.append(path)
     return out
-
-
-def _count(n: int, what: str) -> str:
-    return "" if n == 0 else f"{n} {what}" + ("s" if n > 1 else "")
 
 
 def _weakenings(

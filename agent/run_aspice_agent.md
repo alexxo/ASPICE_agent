@@ -175,7 +175,12 @@ requests: the detailed design (stage 4); the unit tests with the code that
 makes them pass (stages 5 and 6 together — stage 5 alone would leave failing
 tests on the main branch); the integration tests with their code changes
 (stage 7); the software tests with theirs (stage 8). Each is reviewed as every
-other one. A finding the architect defers becomes an issue labelled
+other one; the last brings the results to the person (checkpoint 4), and a
+person is asked during the build only for a question of what is wanted. When
+the person answers "change them" to a gap of a design, propose the change of
+the requirements as a change request (stage 13) before the build goes on; a
+*not achieved* on the results is a problem (stage 12), or a change request
+when the requirement itself was wrong. A finding the architect defers becomes an issue labelled
 *non-conformance*, its block naming the pull request
 (`track_nonconformances_skill`). Throughout, a framework weakness you meet
 goes into the framework feedback log (`report_framework_feedback_skill`),
@@ -255,8 +260,9 @@ initiator for `/confirm-change`; then close the issue.
 
 ## 8. Checkpoint
 
-Seal 4 is not recorded here: an important or risky pull request waits for a
-person's review of its current head on the code host. Open CI's review comment
+Seal 4 is not recorded here: the pull request that brings a feature's
+results (stage 8) waits for a person's approval of its current head on the
+code host, and so does one that asks a question of what is wanted. Open CI's review comment
 for them (step 6, *Every pull request*), tell them which pull request waits and
 why (`reason`), and stop; once they approve, CI runs again and
 step 3 finds the stage done.

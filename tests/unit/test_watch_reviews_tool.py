@@ -182,7 +182,7 @@ def test_every_change_of_state_is_one_line_naming_who_acts(watcher):
         "Wait: gates running",
         "Wait: gates running",
         "Wait: gates red: verify_test_first_gate",
-        "Wait: a review by lead-bob (it changes the quality gates' own files): approve on GitHub",
+        "Wait: a review by lead-bob (the feature's results are ready for your approval): approve",
         "Ready to merge",
     ]:
         host.sign = sign
@@ -272,10 +272,10 @@ def test_the_reviewers_own_folder_is_not_the_work(tmp_path):
 DESCRIBER = """
 import os, sys
 seen = sorted(os.path.join(d, f) for d, _, fs in os.walk('.') for f in fs)
-assert seen == ['./src/web_app/test_signin_form.py'], seen
+assert seen == ['./st/software/test_sign_in_form.py'], seen
 print('```yaml')
-print('- file: src/web_app/test_signin_form.py')
-print('  test: test_signin_form')
+print('- file: st/software/test_sign_in_form.py')
+print('  test: test_the_form_takes_the_sign_in')
 print('  prepares: the value 1')
 print('  does: runs the unit')
 print('  checks: the answer is 2')
@@ -322,13 +322,14 @@ def _on_origin(tmp_path, change, files):
 
 @pytest.fixture
 def pulled(tmp_path):
-    """Pull request #7 adds a test of the web app."""
-    from product_builder import write_unit_test
+    """Pull request #7 adds the software-level tests: it brings the results."""
+    from product_builder import SOFTWARE_TEST, write_software_plan, write_software_test
 
     def change(root):
-        write_unit_test(root, "web-app", "signin-form")
+        write_software_plan(root)
+        write_software_test(root)
 
-    return _on_origin(tmp_path, change, ["src/web_app/test_signin_form.py"])
+    return _on_origin(tmp_path, change, [SOFTWARE_TEST])
 
 
 @pytest.fixture
@@ -403,7 +404,7 @@ def test_the_watcher_describes_the_tests_in_a_folder_of_tests_only(pulled):
     w.once()
     described = f".qf/reviews/7-{head[:7]}.tests.yaml"
     assert described in prompts[0] and "never describe a test yourself" in prompts[0]
-    assert "test: test_signin_form" in (w.config.root / described).read_text()
+    assert "test: test_the_form_takes_the_sign_in" in (w.config.root / described).read_text()
     assert not (w.config.root / ".qf/reviews/7-head").exists()  # cleaned up
     assert "approved" in shown[-1]
 

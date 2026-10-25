@@ -55,7 +55,7 @@ The catalog — what the tests of each template must show:
 | R2 | Every @security marker names a template of the catalog | verify_security_tests_gate · UNKNOWN_TEMPLATE |
 | R3 | For every template an external interface names, the component at the product's end has a passing unit test marked with it | verify_security_tests_gate · MISSING_SECURITY_TEST |
 | R4 | The security tests are written first, by the tester, and fail on the stubs | verify_test_first_gate · TEST_NOT_FAILING |
-| R5 | The templates fit what crosses the interface, and the tests really show what the template asks | Checkpoint 4 |
+| R5 | The templates fit what crosses the interface, and the tests really show what the template asks | Review |
 
 ## Not checkable
 

@@ -12,6 +12,3 @@ stories:
         gap: true
       - text: "If the LLM replies with an error, the publisher writes a failure report in the row and stops the run."
         source: [unit:write-input-file, decision:D3]
-covers:
-  REQ-0140: The LLM does not answer
-  REQ-0145: none

@@ -5,7 +5,8 @@
 # push to the main branch checks that each change it adds came through a merged
 # pull request that passed the gates and had its reviews — whoever wrote it, a
 # person or an agent — and that the push rewrote no history. A finding there
-# blocks the next release until the change is reverted or reviewed.
+# blocks the next release until an urgent approver accepts the change after the
+# fact (/accept-delivery on its non-conformance issue).
 #
 # The framework is the product's git submodule at qf.yaml paths.framework_dir
 # (.framework here), pinned to a released commit: the version the gates run at
@@ -17,8 +18,29 @@
 # requests, their reviews and checks, issues — with the token every run has
 # (QF_HOST_TOKEN is github.token, with the read permissions below); no secret
 # and no host setting is needed. A submitted or dismissed review runs the gates
-# again, so a sampled pull request turns green once a person approves it
-# (seal 4). release.yml tags an accepted release after its merge.
+# again, so a pull request a person must review turns green once they approve
+# it (seal 4). release.yml tags an accepted release after its merge.
+#
+# When a person must review a pull request — it brings the results of software
+# verification (checkpoint 4), or asks a question of what is wanted
+# (classify_pull_request_tool) — and the reviewer agent has approved its head,
+# the run posts the checkpoint-4 review as a comment on it, after the
+# verification report, mentioning qf.yaml review.people: the questions in
+# plain words, each with a pair of boxes. The person ticks them, then approves
+# (pull-requests: write, for that comment).
+#
+# Keep every step that runs a framework command as it is, in this order:
+# verify_required_checks_gate compares them with this template
+# (CI_FILE_NOT_TEMPLATE), since no person reviews the CI file. Add the
+# product's own steps, such as its toolchain.
+#
+# On a pull request the run posts the crossing sign, the commit status qf/merge
+# on its head, which the author agent reads before it merges:
+# "Wait: gates running", then "Wait: <what is missing>" or "Ready to merge"
+# (rule 13 of the quality assurance stage). Its write permissions are
+# statuses: write, for the sign, and pull-requests: write, for the review comment. One run per pull request at a time, so a late run never
+# overwrites a newer sign; runs on main are never cancelled, since each checks
+# the commits of its own push.
 #
 # CI needs no plugin: plugins are tools the agent uses on the person's machine to
 # produce work; the gates check the work and use none. resolve_stage_tool --check
@@ -31,7 +53,7 @@
 # gates that did not run are listed in the run's summary, with the reason.
 #
 # From the unit stages on, the gates run the product's own commands — the checks
-# and the unit suite of its stack — and read the pull request's commits since the
+# of its stack and the suites of its verification plan — and read the pull request's commits since the
 # base branch: the job checks out the whole history, passes the base as QF_BASE,
 # and installs the product's toolchain before the gates run. The verification
 # report of the tree is written first — every suite runs once and the gates
@@ -53,15 +75,21 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
   checks: read
   issues: read
+  statuses: write
+
+concurrency:
+  group: qf-gates-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 jobs:
   gates:
     runs-on: ubuntu-latest
     env:
-      QF_BASE: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
+      # The pull request's base, on its own events and on its reviews' alike.
+      QF_BASE: ${{ github.event.pull_request.base.ref && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
     steps:
       - name: Check out the product and its pinned framework, with its history
         uses: actions/checkout@v4
@@ -83,13 +111,25 @@ jobs:
       - name: Install the framework's runtime dependencies
         run: pip install -r .framework/requirements.txt
 
-      # Replace with the product's own toolchain: the commands of its stack
+      # Replace with the product's own toolchain: the tools of its stack
       # (paths.stack_file) must run here, e.g. actions/setup-java plus Maven.
       - name: Install the product's toolchain
-        run: echo "Install the tools the stack's commands need." >&2
+        run: echo "Install the tools the stack lists." >&2
+
+      - name: "Crossing sign: wait, the gates are running"
+        if: github.event.pull_request
+        env:
+          QF_HOST_TOKEN: ${{ github.token }}
+        run: python .framework/tools/post_merge_status_tool.py --sha "${{ github.event.pull_request.head.sha }}" --running
 
       - name: Write the verification report
         run: python .framework/tools/write_verification_report_tool.py --root .
+
+      - name: "Checkpoint-4 review: post it when a person must review"
+        if: github.event.pull_request
+        env:
+          QF_HOST_TOKEN: ${{ github.token }}
+        run: python .framework/tools/post_checkpoint_review_tool.py --root . --pull-request "${{ github.event.pull_request.number }}"
 
       - name: Quality gates
         env:
@@ -98,6 +138,12 @@ jobs:
           set -o pipefail
           mkdir -p .qf
           python .framework/agent/resolve_stage_tool.py --root . --check | tee .qf/stage.json
+
+      - name: "Crossing sign: wait, or ready to merge"
+        if: always() && github.event.pull_request
+        env:
+          QF_HOST_TOKEN: ${{ github.token }}
+        run: python .framework/tools/post_merge_status_tool.py --sha "${{ github.event.pull_request.head.sha }}" --stage-file .qf/stage.json
 
       - name: Show the gates not run
         if: always()

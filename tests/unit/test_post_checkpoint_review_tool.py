@@ -76,47 +76,98 @@ def test_no_person_needed_no_comment(product, tmp_path):
 
 
 def test_a_person_with_nothing_to_tick_is_still_told_who_and_why(product, tmp_path):
-    """FB-43: a change of the gates' own files got no comment at all."""
+    """FB-43: a change of the product's settings got no comment at all."""
     record = {"person": "none", "findings": [], "summary": "It moves the framework pin."}
     head = git_head(product)
     data = pull_request(25, head, files=["qf.yaml"], reviews=[review(AGENT, head, record=record)])
     pull = FileHost(write_host(tmp_path / "host.json", pulls=[data])).pull_request(HOST_REPO, 25)
     body = _render(product, pull, record)
-    assert "@lead-bob" in body and "It changes the quality gates' own files." in body
+    assert "@lead-bob" in body and "It changes the product's settings." in body
     assert "nothing to tick" in body and answers(body) == []
 
 
-def test_a_design_is_asked_as_stories_next_to_the_requirements(tmp_path):
-    """FB-44: one question per story that shows an asked requirement, the
-    requirement's text above the steps, a gap marked; one per requirement no
-    story shows."""
-    from product_builder import build_python_product
+@pytest.fixture
+def results(tmp_path):
+    """The pull request that brings the software tests, its tree's verification
+    report written: REQ-0049 passed, REQ-0011 passed elsewhere, REQ-0052 failed."""
+    from product_builder import (
+        SOFTWARE_TEST,
+        build_python_product,
+        commit_all,
+        write_software_plan,
+        write_software_test,
+    )
 
-    from tools.classify_pull_request_tool import classify
+    from tools.write_verification_report_tool import REPORT, report_dir
 
     root = build_python_product(tmp_path / "product")
-    files = ["docs/design/auth-service.md"]
+    write_software_plan(root)
+    write_software_test(root)
+    commit_all(root, "test: the software tests")
+    rows = [
+        {"requirement": "REQ-0049", "level": "software", "kind": "functional",
+         "proved_by": "test", "suite": "software", "tests": [SOFTWARE_TEST], "result": "passed"},
+        {"requirement": "REQ-0011", "level": "system", "kind": "functional",
+         "proved_by": "test", "suite": "e2e", "tests": [], "result": "passed"},
+        {"requirement": "REQ-0052", "level": "software", "kind": "security",
+         "proved_by": "measurement", "suite": "bench", "threshold": "<= 5 count",
+         "measured": [{"value": 6, "met": False}], "result": "failed"},
+    ]  # fmt: skip
     config = read_product_config(root)
-    first, *rest = classify(config, files).asked["auth-service"]
-    steps = [
-        {"text": "The credentials are checked.", "source": ["unit:check-credentials"]},
-        {"text": "The design does not say how long.", "source": ["unit:open-session"], "gap": True},
-    ]
-    story = {"design": "auth-service", "story": "A wrong password", "steps": steps}
-    record = {"person": "none", "findings": [], "summary": "It designs the sign-in."}
-    covers = {first: "A wrong password", **dict.fromkeys(rest, "none")}
-    record |= {"stories": [story], "covers": covers}
+    folder = report_dir(config)
+    folder.mkdir(parents=True)
+    (folder / REPORT).write_text(json.dumps({"software": rows}))
+    told = {"file": SOFTWARE_TEST, "test": "the form takes the sign-in", "prepares": "an email",
+            "does": "sends the form", "checks": "it is taken", "not": "a wrong email"}  # fmt: skip
+    record = {"person": "none", "findings": [], "summary": "It brings the results.",
+              "tests": [told]}  # fmt: skip
     head = git_head(root)
+    reviews = [review(AGENT, head, record=record)]
+    data = pull_request(30, head, files=[SOFTWARE_TEST], reviews=reviews)
+    pull = FileHost(write_host(tmp_path / "host.json", pulls=[data])).pull_request(HOST_REPO, 30)
+    return config, pull, record
+
+
+def test_the_results_ask_what_matters_and_count_the_rest(results):
+    """FB-45: checkpoint 4 is the person's approval of the results."""
+    config, pull, record = results
+    body = render(config, HOST_REPO, pull, person_review(config, pull, record), record)
+    assert [title for title, _ in answers(body)] == [
+        "1. “The form takes an email and a password.”",
+        "2. “The web app rejects a malformed sign-in form.”",
+    ]
+    assert "3 requirements · 2 passed · 1 failed · 0 not run. You tick 2" in body
+    first, second = body.split("### ")[1:3]
+    assert "*Given* an email" in first and "**Result:** passed" in first
+    assert "**Measured:** 6 (threshold <= 5 count)" in second and "**failed**" in second
+    assert "- [ ] achieved\n- [ ] not achieved" in first
+
+
+def test_without_the_verification_report_the_results_wait(results):
+    import shutil
+
+    from tools.write_verification_report_tool import report_dir
+
+    config, pull, record = results
+    shutil.rmtree(report_dir(config))
+    assert render(config, HOST_REPO, pull, person_review(config, pull, record), record) is None
+
+
+def test_a_gap_of_a_design_asks_whether_to_change_the_requirements(product, tmp_path):
+    step = {"text": "The design does not say how long.", "source": ["unit:x"], "gap": True}
+    story = {"design": "auth-service", "story": "A wrong password", "steps": [step]}
+    record = {"person": "none", "findings": [], "summary": "It designs the sign-in."}
+    record["stories"] = [story]
+    head = git_head(product)
+    files = ["docs/design/auth-service.md"]
     data = pull_request(26, head, files=files, reviews=[review(AGENT, head, record=record)])
     pull = FileHost(write_host(tmp_path / "host.json", pulls=[data])).pull_request(HOST_REPO, 26)
-    body = render(config, HOST_REPO, pull, person_review(config, pull, record), record)
-    titles = [title for title, _ in answers(body)]
-    assert titles[0] == "1. A wrong password"
-    assert len(titles) == 1 + len(rest)  # one more per requirement no story shows
-    question = body.split("### 1.")[1].split("###")[0]
-    assert question.index("**What must happen**") < question.index("1. The credentials")
-    assert "2. ⚠ The design does not say how long." in question
-    assert "docs/design/auth-service.sequence.json" not in body.split("<details>")[0]
+    body = _render(product, pull, record)
+    assert [title for title, _ in answers(body)] == [
+        "1. An open question in the design of auth-service"
+    ]
+    assert "⚠ The design does not say how long." in body
+    assert "- [ ] keep the requirements\n- [ ] change them" in body
 
 
 @pytest.mark.parametrize(

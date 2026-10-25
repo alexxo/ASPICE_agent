@@ -195,6 +195,9 @@ stages:
       - check_verification_report_gate
       - check_time_budget_gate
     planned_gates: []
+    checkpoint: 4
+    approves: results
+    checkpoint_on_host: true
     implemented: true
     trigger: flow
 
@@ -209,9 +212,6 @@ stages:
     gates:
       - scan_security_gate
     planned_gates: []
-    checkpoint: 4
-    approves: pull_request
-    checkpoint_on_host: true
     implemented: true
     trigger: flow
 

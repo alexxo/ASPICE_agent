@@ -74,9 +74,9 @@ the next gate runs the command again.
 | R6 | Every unit of the detailed design has at least one passing unit test in the results | verify_tests_to_requirements_link_gate · UNTESTED_UNIT |
 | R7 | The coverage minimum is judged on a full run only; a selected run covers part of the code | check_stack_commands_gate · COVERAGE_BELOW_MINIMUM |
 | R8 | On a selected run, every unit it covers — the units traced to the change — has a passing unit test; on a full run, every unit | verify_tests_to_requirements_link_gate · UNTESTED_UNIT |
-| R9 | The commands run the tests the plan selects, and *run_selected* runs exactly the tests given in *{tests}* | Checkpoint 4 |
+| R9 | The commands run the tests the plan selects, and *run_selected* runs exactly the tests given in *{tests}* | Review |
 | R10 | Every suite and every unit test runs within its level's time budget — the plan's or the default — and a budget looser than the default states why | check_time_budget_gate · SUITE_OVER_BUDGET, TEST_OVER_BUDGET, MISSING_BUDGET_REASON |
-| R11 | Every suite's *run* runs its tests in parallel (e.g. *pytest -n auto*, Maven Surefire's *forkCount*), unless its test runner has no way to | Checkpoint 4 |
+| R11 | Every suite's *run* runs its tests in parallel (e.g. *pytest -n auto*, Maven Surefire's *forkCount*), unless its test runner has no way to | Review |
 
 ## Not checkable
 

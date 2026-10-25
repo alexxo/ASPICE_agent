@@ -1,6 +1,6 @@
 ---
 name: review_code_skill
-description: "Rules for reviewing a pull request (SUP.1 BP1, SWE.3 BP5): a reviewer agent that is not the author approves the current head from its own declared account, in a session of its own, with the checklist complete — logging only for a change with code — and its review record; a person reviews every architecture pull request and every important or risky one, answering CI's review in plain words; faults left unfixed become non-conformance issues."
+description: "Rules for reviewing a pull request (SUP.1 BP1, SWE.3 BP5): a reviewer agent that is not the author approves the current head from its own declared account, in a session of its own, with the checklist complete — logging only for a change with code — and its review record; a person approves the results of software verification (checkpoint 4) and answers the questions of what is wanted, in CI's review in plain words, never a review of the build; faults left unfixed become non-conformance issues."
 ---
 
 # skill: review_code_skill
@@ -24,15 +24,18 @@ right requirement and observable. Two reviewers, in this order:
   *qf.yaml review.agents*, with *tools/post_review_tool.py*, which writes the
   checklist in a fixed form. The token is a narrow one: for the product's
   repository only, able to review and not to push.
-- **A person** — every pull request that changes *paths.architecture_dir* or
-  the gates' own files, and every one *classify_pull_request_tool* finds
-  important or risky: a requirement of criticality high or of kind security
-  (the architect's rating at checkpoint 2, through the files' links), a trust
-  boundary, a file that traces to nothing, a weakened test, a finding closed
-  without a change, or the reviewer agent's request. Never by number. CI posts
-  the review in plain words as a comment mentioning *review.people*; the
-  person ticks one box per item, then approves. This is seal 4: the person's
-  approval on GitHub, never a file the agent writes.
+- **A person** — where they can judge, never the build itself
+  (*classify_pull_request_tool*): the pull request that brings the results of
+  software verification, stage 8 (checkpoint 4: each high-criticality and
+  security requirement it proves, and every one that did not pass, achieved
+  or not); a question of what is wanted on any pull request — a gap of a
+  design's story that no requirement answers, a weakened test, a finding
+  closed without a change, the reviewer agent's request; a change of the
+  product's settings (*qf.yaml*, *.gitmodules*); and every architecture pull
+  request. Never by number. CI posts the review in plain words as a comment
+  mentioning *review.people*; the person ticks one box per question, then
+  approves. This is seal 4: the person's approval on GitHub, never a file the
+  agent writes.
 
 Both approve the pull request's **current head**: a push after an approval
 needs a new one.
@@ -72,18 +75,19 @@ a *```yaml review* block:
 | R1 | Every delivery is a pull request; every commit a push adds to the main branch came from a merged one | verify_delivery_reviewed_gate · NO_PULL_REQUEST, MERGED_WITHOUT_PULL_REQUEST |
 | R2 | A declared reviewer agent, never the author, approves the current head | verify_delivery_reviewed_gate · MISSING_AGENT_REVIEW |
 | R3 | The agent's approval carries the checklist with every item the pull request asks for checked: *logging* only when it changes a file under *paths.code_dir* | verify_delivery_reviewed_gate · INCOMPLETE_CHECKLIST |
-| R4 | A person approves the current head of every pull request that changes the architecture or the gates' own files (the CI file, the framework pin, qf.yaml), and of every one classified important or risky | verify_delivery_reviewed_gate · MISSING_PERSON_APPROVAL |
+| R4 | A person approves the current head of every pull request that brings the results of software verification (checkpoint 4), asks a question of what is wanted (a gap no requirement answers, a weakened test, a finding closed without a change, the reviewer agent's request), changes the product's settings (qf.yaml, .gitmodules), or changes the architecture | verify_delivery_reviewed_gate · MISSING_PERSON_APPROVAL |
 | R5 | A merged pull request's final head passed the gates check; while a release is proposed, every commit since the last release meets R1–R4 and this rule | verify_delivery_reviewed_gate · GATES_NOT_PASSED |
-| R6 | **Correctness** — the change does what its requirements, design and decision records say, error cases included | Checkpoint 4 |
-| R7 | **Style** — names follow the glossary and the conventions of the stack and of the framework's forms; no dead code, no commented-out code, no text left over | Checkpoint 4 |
-| R8 | **Traceability** — every marker names the requirement, unit, component or flow the file really serves, not just one that exists | Checkpoint 4 |
-| R9 | **Logging** — the events the observability requirements list are emitted where the sequence diagrams say | Checkpoint 4 |
-| R10 | A finding is fixed in the same pull request, or recorded as an issue labelled *non-conformance* that links the pull request; a remark fixed before merge stays in the review | Checkpoint 4 |
+| R6 | **Correctness** — the change does what its requirements, design and decision records say, error cases included | Review |
+| R7 | **Style** — names follow the glossary and the conventions of the stack and of the framework's forms; no dead code, no commented-out code, no text left over | Review |
+| R8 | **Traceability** — every marker names the requirement, unit, component or flow the file really serves, not just one that exists | Review |
+| R9 | **Logging** — the events the observability requirements list are emitted where the sequence diagrams say | Review |
+| R10 | A finding is fixed in the same pull request, or recorded as an issue labelled *non-conformance* that links the pull request; a remark fixed before merge stays in the review | Review |
 | R11 | A change that reached the main branch without the delivery desk — a commit from no pull request, a pull request merged before its reviews or without a gates check that passed before the merge — blocks the release until a non-conformance names it and a person in *qf.yaml urgent_approvers*, not its author, comments */accept-delivery* on it; a re-run after the merge or a revert alone does not clear it | verify_delivery_reviewed_gate · MERGED_WITHOUT_PULL_REQUEST, GATES_NOT_PASSED |
-| R12 | The agent's approval carries a valid review record; when a person reviews, it says what the pull request does, describes every test the person reviews from the test alone, tells every changed design as stories from the design alone, and names the story of every asked requirement | verify_delivery_reviewed_gate · INCOMPLETE_CHECKLIST |
+| R12 | The agent's approval carries a valid review record: every changed design told as stories from the design alone; when a person reviews, what the pull request does; with the results, every software-level test the person reads described from the test alone | verify_delivery_reviewed_gate · INCOMPLETE_CHECKLIST |
 | R13 | When the person's review has items, CI's review comment for the head has every item answered yes, and it did not change after the approval | verify_delivery_reviewed_gate · REVIEW_ITEMS_UNANSWERED, REVIEW_CHANGED_AFTER_APPROVAL |
-| R14 | The agent asks for a person only for one of five conditions, with its reason; its *none* cancels no review the files call for | Checkpoint 4 |
+| R14 | The agent asks for a person only for one of five conditions, with its reason; its *none* cancels no review the files call for | Review |
 | R15 | Every story step names a source its design has: a message of its sequence diagram, a unit, or a decision its document names | verify_delivery_reviewed_gate · REVIEW_STORY_UNSOURCED |
+| R16 | A story's gap that a requirement answers is a finding; the agent approves only gaps no requirement answers, and each goes to the person as a question of what is wanted | Review |
 
 ## Not checkable
 

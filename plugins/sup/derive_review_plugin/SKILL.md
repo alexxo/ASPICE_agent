@@ -1,6 +1,6 @@
 ---
 name: derive_review_plugin
-description: "Reviews one pull request as the reviewer agent: in a session of its own, from its own declared account, never the author's, after every gate passes; checks what no gate can — correctness, style, traceability, and logging for a change with code — and posts its decision with the checklist and the review record (whether a person is needed, every finding's outcome, the tests described from the test alone); findings left unfixed become non-conformance issues."
+description: "Reviews one pull request as the reviewer agent: in a session of its own, from its own declared account, never the author's, after every gate passes; checks what no gate can — correctness, style, traceability, and logging for a change with code — and posts its decision with the checklist and the review record (whether a person is needed, every finding's outcome, the changed designs told as stories, and with the results the tests described from the test alone); findings left unfixed become non-conformance issues."
 ---
 
 # plugin: derive_review_plugin
@@ -21,7 +21,7 @@ it: you read it, and you say what is wrong and where.
 
 Not this method's job: running the gates (CI did, and they must pass before you
 start), writing or changing code or tests (the crews of stages 1–8), the
-person's approval (seal 4, on the important or risky pull requests), deciding
+person's approval (seal 4: the results, or a question of what is wanted), deciding
 that a person is not needed (the files decide that; you can only add a
 request).
 
@@ -89,13 +89,15 @@ review), means
 6. **Record** — the review record (*review.v1*): your answer to step 5;
    every finding of every round with its outcome (*fixed*, *withdrawn*, or
    *disputed* with the author's answer and your final position); and, when
-   *classify_pull_request_tool* says a person reviews the pull request: what
-   it does in one plain sentence (*summary*); its tests described in a fresh
-   session that sees the tests only (*agent/describe_tests_prompt.md*); its
-   changed designs told as stories in a fresh session that sees the designs
-   only (*agent/describe_design_prompt.md*) — never by you, who read the
-   requirements; and, for each requirement under *asked*, the story whose
-   steps show it, or *none* (*covers*).
+   *classify_pull_request_tool* says a person reviews the pull request, what
+   it does in one plain sentence (*summary*); its changed designs told as
+   stories in a fresh session that sees the designs only
+   (*agent/describe_design_prompt.md*); and, when it brings the results, its
+   software-level tests described in a fresh session that sees the tests
+   only (*agent/describe_tests_prompt.md*) — never by you, who read the
+   requirements. A story step marked as a gap that a requirement answers is
+   a finding; a gap no requirement answers goes to the person as a question
+   of what is wanted.
 7. **Post** — from your own account, in your own session
    (*agent/run_reviewer_agent.md*; its token in *QF_HOST_TOKEN* there only):
    *python tools/post_review_tool.py --pull-request N --decision approve
@@ -118,8 +120,9 @@ finding fixed since the last review is not repeated; one still open is.
 ## Done
 
 *verify_delivery_reviewed_gate* finds your approval of the current head with the
-checklist complete and the record valid, every reviewed test described; on an
-important or risky pull request it then waits for the person.
+checklist complete and the record valid, every changed design told and, with
+the results, every test described; on a pull request that brings the results
+or asks a question of what is wanted, it then waits for the person.
 
 Size budgets: at most 3 questions per round; one finding per problem.
 Completeness wins over a budget: never leave a changed file unread or a

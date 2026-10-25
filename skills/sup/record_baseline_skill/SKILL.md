@@ -68,7 +68,7 @@ on a *release/v&lt;version&gt;* branch to write the record, and commit it as
 | R10 | Every release tag is annotated, on the main branch, and contains its record and every configuration item | verify_baseline_gate · TAG_NOT_ANNOTATED, TAG_NOT_ON_MAIN, INCOMPLETE_RELEASE_RECORD, MISSING_CONFIG_ITEM |
 | R11 | A release tag never moves: it points to the commit of the main branch where its record first appeared | verify_baseline_gate · TAG_MOVED |
 | R12 | A release is merged only after the village accepts it on its pull request | Checkpoint 5 |
-| R13 | Never rewrite the main branch: no force-push, no reset of it — the agent brings a refused push up to date with a merge or a rebase of its own branch | Checkpoint 4 |
+| R13 | Never rewrite the main branch: no force-push, no reset of it — the agent brings a refused push up to date with a merge or a rebase of its own branch | Review |
 
 ## Not checkable
 

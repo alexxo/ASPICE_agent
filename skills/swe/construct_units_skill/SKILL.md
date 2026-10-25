@@ -55,7 +55,7 @@ stage 4, and the tester adds its stub and tests at stage 5.
 | R3 | Every unit of the detailed design is implemented by at least one code file | verify_code_to_design_link_gate · UNIMPLEMENTED_UNIT |
 | R4 | Every file with a unit marker lies in a folder named after the unit's component | verify_code_to_design_link_gate · UNIT_OUTSIDE_COMPONENT |
 | R5 | Every requirement marker names a requirement that exists | verify_code_to_design_link_gate · UNKNOWN_REQUIREMENT |
-| R6 | The code does what the unit's responsibility says, within its ranges, and nothing a unit test did not ask for | Checkpoint 4 |
+| R6 | The code does what the unit's responsibility says, within its ranges, and nothing a unit test did not ask for | Review |
 
 The coder may not change a test (enforce_test_first_skill R6), and the tests,
 workshop standards and coverage must pass (run_verification_suites_skill).

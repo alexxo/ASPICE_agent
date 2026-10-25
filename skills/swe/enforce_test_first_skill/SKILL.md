@@ -70,7 +70,7 @@ The tests and stubs follow the stack, not a schema:
 | R5 | No file of a unit's code is committed before the unit's test | verify_test_first_gate · CODE_BEFORE_TEST |
 | R6 | No commit changes a test together with code: the coder leaves the tests alone, and a wrong test goes back to the tester as a finding | verify_test_first_gate · TEST_CHANGED_WITH_CODE |
 | R7 | The gate reads the pull request's commits (base..HEAD), so the product is a git repository | verify_test_first_gate · NOT_A_GIT_REPOSITORY |
-| R8 | Each test asserts what its acceptance criterion or range limit says, and the techniques of the plan are the ones used | Checkpoint 4 |
+| R8 | Each test asserts what its acceptance criterion or range limit says, and the techniques of the plan are the ones used | Review |
 | R9 | A unit test tests one unit's logic and rules with test doubles for what it calls: no database, network, process or clock, so it stays within the unit test budget | check_time_budget_gate · TEST_OVER_BUDGET |
 | R10 | Every suite runs with a *test_runner* of the stack, and every unit-level suite a requirement names has a command in the unit section | check_verification_plan_gate · UNKNOWN_TOOL, UNKNOWN_INSTRUMENT |
 

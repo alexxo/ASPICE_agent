@@ -1,14 +1,17 @@
-"""tools/classify_pull_request_tool.py — a person reviews what is important or risky."""
+"""tools/classify_pull_request_tool.py — a person for the results and what is wanted."""
 
 import re
 
 import pytest
 from product_builder import (
+    SOFTWARE_TEST,
     build_python_product,
     commit_all,
     edit_plan,
     unit_path,
     write_code,
+    write_software_plan,
+    write_software_test,
     write_unit_test,
 )
 
@@ -51,36 +54,32 @@ def _classify(root, files, record=None):
     return classify(read_product_config(root), files, record, base="main")
 
 
-def test_a_change_to_a_medium_functional_requirement_needs_no_person(product):
+def test_the_build_itself_calls_no_one(product):
+    """A design, code, a unit test or a build file merges on the reviewer agent
+    and the gates, whatever the requirements' ratings (FB-45)."""
+    _rate(product, REQ_0048="high")
     write_code(product, "auth-service", "count-failures", sdoc="REQ-0048")
-    assert not _classify(product, [unit_path("auth-service", "count-failures")]).needed
-
-
-def test_a_requirement_rated_high_at_checkpoint_2_calls_a_person(tmp_path):
-    root = build_python_product(tmp_path / "product")
-    _rate(root, REQ_0048="high")
-    write_code(root, "auth-service", "count-failures", sdoc="REQ-0048")
-    review = _classify(root, [unit_path("auth-service", "count-failures")])
-    assert review.reasons == ("touches REQ-0048 (criticality high)",)
-
-
-def test_code_without_its_requirement_takes_its_components(product):
-    """auth-service meets REQ-0047, of kind security: coarse, but none missed."""
-    write_code(product, "auth-service", "count-failures")
-    review = _classify(product, [unit_path("auth-service", "count-failures")])
-    assert review.reasons == ("touches REQ-0047 (security)",)
-
-
-def test_a_component_with_an_external_interface_crosses_a_trust_boundary(product):
-    write_code(product, "web-app", "signin-form", sdoc="REQ-0053")
-    review = _classify(product, [unit_path("web-app", "signin-form")])
-    assert review.reasons == ("crosses a trust boundary: user → web-app",)
-
-
-def test_a_file_that_traces_to_nothing_touches_everything(product):
+    write_unit_test(product, "auth-service", "count-failures")
     (product / "pyproject.toml").write_text("[project]\nname = 'p'\n")
-    review = _classify(product, ["pyproject.toml"])
-    assert review.needed and "pyproject.toml" in review.reasons[0]
+    for files in (
+        [unit_path("auth-service", "count-failures")],
+        [unit_path("auth-service", "count-failures", test=True)],
+        ["docs/design/auth-service.md"],
+        ["pyproject.toml"],
+        [".github/workflows/quality_gates.yml", ".framework"],  # checked by gates
+    ):
+        assert not _classify(product, files).needed, files
+
+
+def test_the_software_tests_bring_the_results(product):
+    _rate(product, REQ_0050="high")
+    write_software_plan(product)
+    write_software_test(product)
+    review = _classify(product, [SOFTWARE_TEST])
+    assert review.reasons == ("brings the results of software verification",)
+    assert review.brief == ("the feature's results are ready for your approval",)
+    assert review.proves == ("REQ-0049", "REQ-0050", "REQ-0053")
+    assert review.tests == review.candidates == (SOFTWARE_TEST,)  # described for the person
 
 
 def test_documentation_and_approved_inputs_call_no_one(product):
@@ -94,17 +93,27 @@ def test_the_architecture_always_calls_a_person(product):
     assert review.reasons == ("changes the architecture (docs/architecture/)",)
 
 
-def test_a_detailed_design_is_its_components(product):
-    review = _classify(product, ["docs/design/auth-service.md"])
+def test_the_products_settings_call_a_person(product):
+    review = _classify(product, ["qf.yaml", ".gitmodules"])
+    assert review.reasons == ("changes the product's settings (.gitmodules, qf.yaml)",)
+
+
+def test_a_gap_the_reviewer_agent_approved_is_a_question_of_what_is_wanted(product):
+    gap = {"text": "The design does not say what happens after five failures.", "gap": True}
+    told = {"text": "The credentials are checked.", "source": ["unit:check-credentials"]}
+    story = {"design": "auth-service", "story": "A wrong password", "steps": [told]}
+    story["steps"].append({**gap, "source": ["unit:count-failures"]})
+    other = {**story, "design": "web-app"}  # a design this pull request does not change
+    record = {"person": "none", "findings": [], "stories": [story, other]}
+    review = _classify(product, ["docs/design/auth-service.md"], record)
     assert review.designs == ("auth-service",)
-    assert review.reasons == ("touches REQ-0047 (security)",)
-    assert review.asked == {"auth-service": ["REQ-0047"]}  # what its stories must show
-    assert review.brief == ("it touches 1 security requirement",)  # plain words, no IDs
+    assert review.gaps == (("auth-service", "A wrong password", gap["text"]),)
+    assert review.reasons == ("the design leaves 1 question(s) open that no requirement answers",)
 
 
 def test_the_reasons_in_one_short_line():
-    brief = ("it changes the quality gates' own files", "a test got weaker", "the agents disagree")
-    assert headline(brief) == "it changes the quality gates' own files; a test got weaker; 1 more"
+    brief = ("it changes the product's settings", "a test got weaker", "the agents disagree")
+    assert headline(brief) == "it changes the product's settings; a test got weaker; 1 more"
 
 
 def test_a_story_step_must_name_what_its_design_has(product):
@@ -123,17 +132,6 @@ def test_a_story_step_must_name_what_its_design_has(product):
         "'A wrong password' step 1: unit:send-email is not in auth-service",
         "'A wrong password' step 1: decision:D2 is not in auth-service",
     ]
-
-
-def test_the_tests_to_describe_are_those_of_what_made_it_important(product):
-    write_unit_test(product, "auth-service", "count-failures")
-    write_unit_test(product, "web-app", "signin-form")
-    files = [unit_path("auth-service", "count-failures", test=True)]
-    files += [unit_path("web-app", "signin-form", test=True)]
-    review = _classify(product, files)
-    assert set(review.tests) == set(files)  # both: security and a trust boundary
-    assert any(b.startswith("it handles data crossing") for b in review.brief)
-    assert review.requirements[files[0]] == ["REQ-0047", "REQ-0048", "REQ-0050", "REQ-0051"]
 
 
 def _committed_test(product):
@@ -187,9 +185,7 @@ def test_a_finding_closed_without_a_change_calls_a_person(product):
     assert review.disputes == (DISPUTE,)
 
 
-def test_the_reviewer_agent_may_ask_for_a_person_never_cancel_one(product):
+def test_the_reviewer_agent_may_ask_for_a_person(product):
     asked = {"person": {"condition": 4, "reason": "publishes posts"}, "findings": []}
-    assert _classify(product, ["NOTES.md"], asked).request == asked["person"]
-    write_code(product, "web-app", "signin-form")
-    files = [unit_path("web-app", "signin-form")]
-    assert _classify(product, files, {"person": "none", "findings": []}).needed
+    review = _classify(product, ["NOTES.md"], asked)
+    assert review.request == asked["person"] and review.needed

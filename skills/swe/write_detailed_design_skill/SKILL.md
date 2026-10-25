@@ -59,7 +59,7 @@ input or output has a range *{min, max}* and a real unit of measure (e.g.
 | R9 | Every call appears as a message between the two units, and every message between units is a declared call or the reply to one | check_detailed_design_contract_gate · UNSHOWN_CALL, UNDECLARED_CALL |
 | R10 | Every call is an edge of the structure diagram, and every edge between units is a declared call | check_detailed_design_contract_gate · UNDRAWN_CALL, UNDECLARED_EDGE |
 | R11 | Every environment variable a unit will read is declared once, in its contract (validate_env_config_skill) | check_detailed_design_contract_gate · UNREADABLE_BLOCK, SCHEMA_VIOLATION, DUPLICATE_VARIABLE |
-| R12 | The interactions agree with the architecture's flows, units are cohesive, and an input declared not numeric really is not | Checkpoint 4 |
+| R12 | The interactions agree with the architecture's flows, units are cohesive, and an input declared not numeric really is not | Review |
 
 ## Not checkable
 
