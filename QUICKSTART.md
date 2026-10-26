@@ -376,8 +376,9 @@ wishes. Tell the person how the work runs from now on:
   of `review.people` with why they are asked, or red gates — and after any push or review it starts again at *Wait: gates
   running*. GitHub does not block the button: the sign is the rule.
 - **Everyone**: every change reaches `main` through a reviewed pull request
-  with passing gates. Never push to `main` directly and never rewrite it (no
-  force-push, no reset). CI flags a direct push, or a merge with red gates or
+  with passing gates. Never push to `main` directly and never rewrite it or
+  any pushed branch (no force-push, no reset): a pull request behind `main`
+  catches up by merging `main` into it, not by a rebase. CI flags a direct push, or a merge with red gates or
   missing reviews, and blocks the next release until an urgent approver
   accepts the change after the fact: a non-conformance issue names it, and
   they comment `/accept-delivery` on it (a revert alone does not clear it).

@@ -3527,7 +3527,9 @@ joins the main branch, and a release is recorded as the official baseline.
    in its history after it (MAIN_REWRITTEN): a force-push that drops commits is
    caught on the push itself, and the lost commits come back from any clone
    that has them. No host setting is read. The rulebooks forbid the agent to
-   force-push or reset the main branch.
+   force-push or reset any pushed branch: a pull request's branch behind
+   main catches up by a merge of main into it, never a rebase, since its stage
+   done records and reviews name the pushed commits.
 8. **Every change on the main branch has a reason.** On a push to the main
    branch, *check_commit_conventions_gate* checks the commits it adds as it
    checks a pull request's, so a commit that reached it without one still
