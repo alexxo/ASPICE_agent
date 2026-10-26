@@ -6,7 +6,10 @@ request's checks, as anyone can next to the merge button (rule 13 of the
 quality assurance stage): pending
 "Wait: gates running" when the gates start (--running), then, from the gates'
 result (--stage-file, resolve_stage_tool's JSON), failure "Wait: <what is
-missing>" or success "Ready to merge". A person's review names qf.yaml
+missing>" or success "Ready to merge". A head the reviewer agent sent back
+says so: "Wait: changes requested by the reviewer agent: fix the findings and
+push", never "the reviewer agent's approval", which is for a head not
+reviewed yet. A person's review names qf.yaml
 review.people, why they are asked and what to do, e.g. "Wait: a review by
 alexxo (it changes the quality gates' own files): approve on GitHub". A
 status belongs to one commit, so a new push starts with no sign, and no sign
@@ -33,12 +36,15 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
 
 from tools.read_host_tool import API, HOST_TOKEN, repository  # noqa: E402
 
-__all__ = ["CONTEXT", "READY", "RUNNING", "sign"]
+__all__ = ["CHANGES_REQUESTED", "CONTEXT", "READY", "RUNNING", "sign"]
 
 CONTEXT = "qf/merge"
 RUNNING = "Wait: gates running"
 READY = "Ready to merge"
 LIMIT = 140  # GitHub's longest status description
+# verify_delivery_reviewed_gate's MISSING_AGENT_REVIEW says this when the
+# reviewer agent sent the head back, so the sign does not read "not reviewed yet"
+CHANGES_REQUESTED = "the reviewer agent requested changes"
 # What a finding means the pull request still waits for, by rule; {review} is
 # the person's review, named.
 WAITS_FOR = {
@@ -68,6 +74,8 @@ def sign(state: dict | None, people=()) -> tuple[str, str]:
         findings, key=lambda f: order.index(f["rule"]) if f["rule"] in order else 0
     ):
         waits = WAITS_FOR.get(finding["rule"])
+        if waits is not None and CHANGES_REQUESTED in finding.get("message", ""):
+            waits = "changes requested by the reviewer agent: fix the findings and push"
         if waits is not None:
             why = _WHY.search(finding.get("message", ""))
             waits = waits.format(review=review, why=f" ({why.group(1)})" if why else "")

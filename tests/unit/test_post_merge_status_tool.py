@@ -34,6 +34,18 @@ def test_the_sign_says_what_is_missing():
     )
 
 
+def test_a_head_sent_back_says_changes_requested_not_approval():
+    """FB-55: "the reviewer agent's approval" is for a head not reviewed yet."""
+    message = "o/r#36: the reviewer agent requested changes on its head 08672b4 (bot): fix"
+    state = {
+        "findings": [_finding("verify_delivery_reviewed_gate", "MISSING_AGENT_REVIEW", message)]
+    }
+    assert sign(state) == (
+        "failure",
+        "Wait: changes requested by the reviewer agent: fix the findings and push",
+    )
+
+
 def test_a_persons_review_names_who_why_and_what_to_do_once():
     """FB-43: "a person's review" named neither who nor why."""
     why = "acme/login#25 needs a person's review (why: it changes the quality gates' own files)"

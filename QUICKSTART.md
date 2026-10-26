@@ -372,7 +372,8 @@ wishes. Tell the person how the work runs from now on:
 - **The agent merges**, never a person: only when the pull request's check
   **qf/merge** on its current head says *Ready to merge*, and exactly that
   head (`--match-head-commit`). While it says *Wait: …* it names what
-  is still missing — the reviewer agent's approval, a review by the people
+  is still missing — the reviewer agent's approval, changes the reviewer
+  agent requested (fix them and push), a review by the people
   of `review.people` with why they are asked, or red gates — and after any push or review it starts again at *Wait: gates
   running*. GitHub does not block the button: the sign is the rule.
 - **Everyone**: every change reaches `main` through a reviewed pull request

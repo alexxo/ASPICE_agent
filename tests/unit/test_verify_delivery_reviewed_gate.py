@@ -211,6 +211,20 @@ def test_without_the_agents_approval_the_review_is_missing(product, tmp_path, mo
     assert "MISSING_AGENT_REVIEW" in _rules(product, tmp_path, monkeypatch, pull)
 
 
+@pytest.mark.parametrize(
+    ("on", "sent_back"),
+    [("head", True), ("older", False)],  # a new head is not reviewed yet
+)
+def test_a_change_request_on_the_head_says_so(product, tmp_path, monkeypatch, on, sent_back):
+    """FB-55: the author fixes a head sent back; it does not wait for a review."""
+    head = git_head(product)
+    reviewed = head if on == "head" else "0" * 40
+    pull = pull_request(1, head, reviews=[review(AGENT, reviewed, "CHANGES_REQUESTED")])
+    monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json", pulls=[pull])))
+    found = {f.rule: f.message for f in check(read_product_config(product))}
+    assert ("the reviewer agent requested changes" in found["MISSING_AGENT_REVIEW"]) is sent_back
+
+
 def test_an_approval_of_an_older_head_does_not_count(product, tmp_path, monkeypatch):
     pull = pull_request(1, git_head(product), reviews=[review(AGENT, "0" * 40)])
     assert _rules(product, tmp_path, monkeypatch, pull) == ["MISSING_AGENT_REVIEW"]

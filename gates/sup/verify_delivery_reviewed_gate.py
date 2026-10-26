@@ -2,7 +2,8 @@
 
 The work travels in a pull request (NO_PULL_REQUEST). A reviewer agent — one of
 qf.yaml review.agents, never the author — approves the current head
-(MISSING_AGENT_REVIEW) with every checklist item it asks for checked — logging
+(MISSING_AGENT_REVIEW; when it requested changes on that head, the finding
+says so) with every checklist item it asks for checked — logging
 only when it changes code — and its review record, a ```yaml review block
 (review.v1) — telling every changed design as stories; when a person reviews,
 saying what the pull request does; with the results, describing their
@@ -69,6 +70,7 @@ from tools.classify_pull_request_tool import (  # noqa: E402
     unsourced,
 )
 from tools.emit_findings_tool import Finding  # noqa: E402
+from tools.post_merge_status_tool import CHANGES_REQUESTED  # noqa: E402
 from tools.post_review_tool import checklist, required_items  # noqa: E402
 from tools.read_commit_range_tool import (  # noqa: E402
     first_parents,
@@ -192,6 +194,17 @@ def _main_commits(config: ProductConfig, found: Delivery) -> list[str]:
     return kept
 
 
+def _changes_requested(pull: PullRequest, agents: set[str]) -> list[str]:
+    """The reviewer agents whose latest decision requests changes on the head."""
+    latest = {}
+    for review in pull.reviews:
+        if review.author in agents and review.state != "COMMENTED":
+            latest[review.author] = review
+    return sorted(
+        a for a, r in latest.items() if r.state == "CHANGES_REQUESTED" and r.commit == pull.head
+    )
+
+
 def _start(root) -> str | None:
     """The commit that started the product: the first to add qf.yaml."""
     run = subprocess.run(
@@ -211,7 +224,19 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
     items = required_items(config, pull.files)
     findings = []
     record = None
-    if not by_agent:
+    sent_back = _changes_requested(pull, agents)
+    if not by_agent and sent_back:
+        findings.append(
+            Finding(
+                "MISSING_AGENT_REVIEW",
+                ".",
+                None,
+                f"{where}: {CHANGES_REQUESTED} on its head {pull.head[:7]} "
+                f"({', '.join(sent_back)}): fix the findings of its review — its body and its "
+                "line comments — and push; the watcher reviews the new head.",
+            )
+        )
+    elif not by_agent:
         findings.append(
             Finding(
                 "MISSING_AGENT_REVIEW",

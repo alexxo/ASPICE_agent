@@ -148,7 +148,11 @@ crew of the stage it belongs to; the watcher reviews the new head.
 
 You merge the pull request, never the person, and only when its
 **qf/merge** check on the current head says *Ready to merge*; while it says
-*Wait: …* it names what is missing, and you wait or fix it. Read the head
+*Wait: …* it names what is missing, and you wait or fix it. *Changes
+requested by the reviewer agent* is yours to fix, not to wait for: read the
+findings in its review's body and its line comments
+(`gh pr view <n> --comments`, `gh api repos/<owner>/<repo>/pulls/<n>/comments`),
+fix them and push. Read the head
 the check belongs to, then merge exactly that head:
 `gh pr merge <n> --merge --match-head-commit <sha>`, which the host refuses
 if anything was pushed after you read it. Never merge on any other status,

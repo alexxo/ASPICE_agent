@@ -3352,7 +3352,9 @@ and a person approves the results and answers the questions of what is wanted
     reads, on the pull request, whether to wait or to merge: on every pull request CI posts the commit
     status *qf/merge* on its head with *post_merge_status_tool* — pending
     *Wait: gates running* when the gates start, then failure *Wait: <what
-    is missing>* (the reviewer agent's approval; a person's review when rule
+    is missing>* (the reviewer agent's approval, or, for a head it sent
+    back, *changes requested by the reviewer agent: fix the findings and
+    push*; a person's review when rule
     14 asks for one, naming *qf.yaml review.people*, why in a few words and
     what to do — *Wait: a review by alexxo (the feature's results are ready
     for your approval): approve on GitHub*; the gates that are red) or success
