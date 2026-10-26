@@ -24,7 +24,7 @@ machine, a fixed order — so the approval gate renders it again and compares
 byte for byte, and record_checkpoint_tool refuses an approval on a page the
 files no longer render (§ 5 stages 1 and 2, rules 22–25). The agent never
 writes it by hand; it renders it, and commits it, before the person reviews.
-The diagrams are reviewed on their pictures; they have no review page.
+The diagrams have their own page (agent/render_diagram_review_tool.py).
 
     python agent/render_review_tool.py [--root PRODUCT]
 """
@@ -190,6 +190,31 @@ def _model(config: ProductConfig) -> list[dict]:
             }
         )
     return sections
+
+
+def page_order(config: ProductConfig) -> list[str]:
+    """The keys of the page's rows, top to bottom: requirements, then terms."""
+    return [row["key"] for section in _model(config) for row in section["rows"]]
+
+
+def approved_config(config: ProductConfig, folder: Path) -> ProductConfig | None:
+    """The requirements and the glossary as the latest approval of checkpoint 2
+    approved them, copied under folder; None when none is committed."""
+    approvals = config.approvals_dir
+    for path in (
+        sorted(approvals.glob("*-checkpoint-2-requirements.yaml"), reverse=True)
+        if (approvals.is_dir())
+        else []
+    ):
+        try:
+            data = read_yaml_file(path)
+        except YamlReadError:
+            continue
+        if validate(data, "approval") or data["decision"] != "approved":
+            continue
+        commit = _added_in(config.root, path)
+        return _config_at(config, commit, folder) if commit else None
+    return None
 
 
 def _block_row(file: str, block) -> dict:

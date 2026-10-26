@@ -27,6 +27,8 @@ import yaml  # noqa: E402
 
 from agent.read_stages_tool import read_stages  # noqa: E402
 from agent.record_answer_tool import question_findings  # noqa: E402
+from agent.render_diagram_review_tool import diagram_review_page  # noqa: E402
+from agent.render_diagram_review_tool import render as render_diagrams  # noqa: E402
 from agent.render_review_tool import render, review_page  # noqa: E402
 from tools.read_approvals_tool import approval_state, sha256, subject_files  # noqa: E402
 from tools.read_product_config_tool import ProductConfig, read_product_config  # noqa: E402
@@ -61,6 +63,8 @@ def record_checkpoint(
     approves = _approves(checkpoint)
     if approves == "requirements" and decision == "approved":
         _reviewed(config)
+    if approves == "diagrams" and decision == "approved":
+        _current(config, diagram_review_page(config), render_diagrams, "render_diagram_review_tool")
     files = subject_files(config, approves)
     now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     data = {
@@ -89,11 +93,15 @@ def _reviewed(config: ProductConfig) -> None:
             f"{unsettled[0].message} An approval at checkpoint 2 waits until every criterion "
             "is checked and every question answered."
         )
-    page = review_page(config)
-    if not page.is_file() or page.read_text(encoding="utf-8") != render(config):
+    _current(config, review_page(config), render, "render_review_tool")
+
+
+def _current(config: ProductConfig, page: Path, render_page, tool: str) -> None:
+    """Refuse an approval on a page missing or not what the files render now."""
+    if not page.is_file() or page.read_text(encoding="utf-8") != render_page(config):
         raise ValueError(
             f"{config.relative(page)} is missing or not what the files render now: render it "
-            "with agent/render_review_tool.py, commit it and have the person review it again"
+            f"with agent/{tool}.py, commit it and have the person review it again"
         )
 
 

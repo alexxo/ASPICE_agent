@@ -4,6 +4,7 @@ import pytest
 from product_builder import check_criteria, commit_all, render_reviews
 
 from agent.record_answer_tool import (
+    label,
     main,
     open_questions,
     question_findings,
@@ -162,6 +163,37 @@ def test_a_criterion_left_unchanged_is_not_asked_again(product, capsys):
     _rewrite(product)
     assert main(["--unchecked", "--root", str(product)]) == 0
     assert capsys.readouterr().out.splitlines() == ["REQ-0011 criterion 2"]
+
+
+def test_questions_are_numbered_as_the_page_shows_them(product):
+    """FB-58: the numbers follow the page, top to bottom, not the session's order."""
+    check_criteria(product, [TERM, LOCK])  # the glossary sits below the requirements
+    numbered = {q["id"]: label(q["about"]) for q in read_questions(_config(product))["questions"]}
+    assert numbered == {"Q1": "REQ-0012 criterion 2", "Q2": "term account"}
+
+
+def test_a_criterion_unchanged_since_the_approval_is_not_checked_again(asked, capsys):
+    """FB-59: a change request checks what it changed, not every criterion."""
+    record_answer(asked, "Q1", 1, "Alex", "architect")
+    render_review(asked)
+    commit_all(asked, "Q1 answered")
+    record_checkpoint(asked, 2, "approved", "Alex", "architect")
+    commit_all(asked, "checkpoint 2 approved")
+    (asked / "docs/requirements/questions.yaml").unlink()  # approved before the check existed
+    _rewrite(asked)
+    assert main(["--unchecked", "--root", str(asked)]) == 0
+    assert capsys.readouterr().out.splitlines() == ["REQ-0011 criterion 2"]
+
+
+def test_a_criterion_rewritten_to_settle_a_question_names_it(asked, capsys):
+    """FB-59: the recheck asks only about the wording the rewrite added."""
+    record_answer(asked, "Q1", 1, "Alex", "architect")
+    _rewrite(asked, "REQ-0012")
+    assert main(["--unchecked", "--root", str(asked)]) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "REQ-0012 criterion 2 — rewritten to settle Q1 (locked at the 3rd failure): ask only "
+        "about wording the rewrite added"
+    ]
 
 
 def test_a_question_about_something_that_does_not_exist_is_refused(product):

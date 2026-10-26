@@ -80,8 +80,8 @@ hyphens (*login.sequence.json* → *login*). An element is referenced as
 | R12 | There is at least one architecture diagram and at least one sequence diagram; a workflow, dataflow or lifecycle diagram may stand beside the architecture diagram, not replace it | check_diagram_contract_gate · NO_ARCHITECTURE_DIAGRAM, NO_SEQUENCE_DIAGRAM |
 | R13 | Every wish of kind behaviour is realised by an element of a sequence diagram, so every feature reaches the software level | verify_diagram_to_wishes_link_gate · WISH_NOT_IN_SEQUENCE |
 | R14 | The picture stays a picture: the parts and the main hand-overs, the steps in the sequence diagrams | Checkpoint 1 |
-| R15 | Every diagram keeps its picture, committed with the diagram's last change or after it | check_diagram_contract_gate · MISSING_PICTURE, PICTURE_OUTDATED |
-| R16 | The architect reviews the diagrams on their pictures; the approval covers the pictures with the diagrams | verify_diagram_approval_gate · APPROVAL_OUTDATED |
+| R15 | Every diagram keeps its picture, committed with the diagram's last change or after it; the diagrams' review page is rendered from the committed files, never by hand, and is what they render until checkpoint 1 approves it | check_diagram_contract_gate · MISSING_PICTURE, PICTURE_OUTDATED, MISSING_REVIEW_PAGE, REVIEW_PAGE_OUTDATED |
+| R16 | The architect reviews the diagrams on their review page (*agent/render_diagram_review_tool.py*): each diagram's pictures with its rules and wish links, what changed since the previous approval marked; the approval covers the page and the pictures with the diagrams | verify_diagram_approval_gate · APPROVAL_OUTDATED |
 | R17 | Every participant of a sequence diagram is a node of an architecture diagram, named as it names that part | check_diagram_contract_gate · UNKNOWN_PARTICIPANT |
 
 ## Not checkable

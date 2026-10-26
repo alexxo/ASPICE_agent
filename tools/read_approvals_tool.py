@@ -56,7 +56,8 @@ def subject_files(config: ProductConfig, approves: str) -> list[Path]:
         files = [
             *_diagram_files(config),
             *(spec.with_suffix(".html") for spec in config.diagrams_dir.glob("*.json")),
-        ]  # with the pictures the person saw
+            config.diagrams_dir / "review.html",
+        ]  # with the pictures and the page the person saw
     elif approves == "requirements":
         files = [
             *config.requirements_dir.rglob("*.md"),

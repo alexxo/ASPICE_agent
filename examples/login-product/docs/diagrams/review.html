@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkpoint 1 — the diagrams</title>
+<style>
+body { font: 14px system-ui, sans-serif; margin: 1.5rem; color: #111; background: #fff; }
+table { border-collapse: collapse; width: 100%; margin: 0.5rem 0 1.5rem; }
+th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left;
+  vertical-align: top; }
+th { background: #eee; position: sticky; top: 0; }
+section { overflow-x: auto; }
+tr.system td { background: #f3f6fb; font-weight: 500; }
+tr.software td.uid { padding-left: 1.6rem; }
+tr.high td.criticality { color: #b00; font-weight: 600; }
+td.mark { font-size: 12px; font-weight: 600; }
+tr.new td.mark { box-shadow: inset 5px 0 #1f6feb; color: #1f6feb; }
+tr.changed td.mark { box-shadow: inset 5px 0 #b8860b; color: #b8860b; }
+tr.removed td.mark { box-shadow: inset 5px 0 #888; color: #666; }
+tr.removed td { color: #777; }
+.case { margin: 2px 0; padding-left: 4px; border-left: 3px solid; }
+.case.happy { border-color: #070; }
+.case.edge { border-color: #a60; }
+.case.error { border-color: #b00; }
+.threshold { font-weight: 700; }
+i { color: #036; }
+ins { background: #d7f5dd; color: #05631d; }
+del { background: #fde0e0; color: #a40000; }
+.added { background: #d7f5dd; }
+.gone { background: #fde0e0; }
+.summary { background: #fffbe6; border: 1px solid #e6d58a; padding: 0.5rem; }
+body.only tr.unchanged { display: none; }
+.questions { background: #eef4ff; border: 1px solid #9db8e8; padding: 0.5rem; }
+.question { margin: 0.2rem 0 0.2rem 1.6rem; padding: 0.4rem 0.6rem; border-left: 4px solid; }
+.question.open { border-color: #1f6feb; background: #f5f9ff; }
+.question.settled { border-color: #070; color: #05631d; }
+.question ol { margin: 0.3rem 0; }
+.question p { margin: 0.2rem 0; font-weight: 600; }
+.example { color: #555; font-family: ui-monospace, monospace; margin-left: 0.5rem; }
+iframe { width: 100%; height: 480px; border: 1px solid #ccc; }
+.picture.new .mark { color: #1f6feb; font-weight: 600; }
+.picture.changed .mark { color: #b8860b; font-weight: 600; }
+.conflict { color: #b00; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Checkpoint 1 — the diagrams</h1>
+<p>Each diagram: its pictures, then its rules and the wishes each element realises — the
+pictures cannot show them, yet your approval covers them. Rendered by the framework's
+render_diagram_review_tool from the committed files; never edited by hand.</p>
+<p class="summary">Nothing is marked: no earlier approval of checkpoint 1 to compare with.</p>
+<section>
+<h2>auth-flow</h2>
+<div class="picture "><p><span class="mark"></span><a href="auth-flow.architecture.html" target="_blank">auth-flow.architecture.html</a></p><iframe src="auth-flow.architecture.html" title="auth-flow.architecture.html"></iframe></div>
+<section>
+<h2>Wish links of auth-flow (auth-flow.wishes.yaml)</h2>
+<table>
+<thead><tr><th>Change</th><th>Element</th><th>Realises</th></tr></thead>
+<tbody>
+<tr class="term"><td class="mark"></td><td class="element"><div>web-app</div></td><td class="realises"><div>W-01 — Registered users sign in with their email and a password.</div></td></tr>
+<tr class="term"><td class="mark"></td><td class="element"><div>auth-service</div></td><td class="realises"><div>W-01 — Registered users sign in with their email and a password.</div><div>W-02 — An account is protected against password guessing.</div></td></tr>
+<tr class="term"><td class="mark"></td><td class="element"><div>signin-request</div></td><td class="realises"><div>W-01 — Registered users sign in with their email and a password.</div></td></tr>
+</tbody>
+</table>
+</section>
+</section>
+<section>
+<h2>login</h2>
+<div class="picture "><p><span class="mark"></span><a href="login.sequence.html" target="_blank">login.sequence.html</a></p><iframe src="login.sequence.html" title="login.sequence.html"></iframe></div>
+<section>
+<h2>Rules of login (login.invariants.yaml)</h2>
+<table>
+<thead><tr><th>Change</th><th>Rule</th><th>Statement</th><th>Constrains</th></tr></thead>
+<tbody>
+<tr class="term"><td class="mark"></td><td class="rule"><div>INV-1</div></td><td class="statement"><div>After five consecutive failed sign-ins the account is locked.</div></td><td class="constrains"><div>submit-credentials</div></td></tr>
+</tbody>
+</table>
+</section>
+<section>
+<h2>Wish links of login (login.wishes.yaml)</h2>
+<table>
+<thead><tr><th>Change</th><th>Element</th><th>Realises</th></tr></thead>
+<tbody>
+<tr class="term"><td class="mark"></td><td class="element"><div>web-app</div></td><td class="realises"><div>W-01 — Registered users sign in with their email and a password.</div></td></tr>
+<tr class="term"><td class="mark"></td><td class="element"><div>auth-service</div></td><td class="realises"><div>W-01 — Registered users sign in with their email and a password.</div></td></tr>
+<tr class="term"><td class="mark"></td><td class="element"><div>submit-credentials</div></td><td class="realises"><div>W-01 — Registered users sign in with their email and a password.</div></td></tr>
+<tr class="term"><td class="mark"></td><td class="element"><div>session-opened</div></td><td class="realises"><div>W-01 — Registered users sign in with their email and a password.</div></td></tr>
+<tr class="term"><td class="mark"></td><td class="element"><div>INV-1</div></td><td class="realises"><div>W-02 — An account is protected against password guessing.</div></td></tr>
+</tbody>
+</table>
+</section>
+</section>
+</body>
+</html>

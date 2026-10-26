@@ -122,11 +122,14 @@ they name — the rule, the file and the line are in every finding.
 
 **Stages 1 and 2, what the person reads.** At stage 1 the diagram plugin
 renders every diagram's picture next to it (*&lt;id&gt;.&lt;type&gt;.html*);
-commit the picture with the diagram, never one without the other. At stage 2,
-once the requirements are written, render their review page — never write it
-by hand — and commit it with the work:
+commit the picture with the diagram, never one without the other; then render
+the diagrams' review page, which shows the pictures with the rules and the
+wish links: `python <framework>/agent/render_diagram_review_tool.py --root <product>`.
+At stage 2, once the requirements are written, render their review page and
+commit it with the work:
 `python <framework>/agent/render_review_tool.py --root <product>`.
-Render it again after every change, a retry's included: the gates compare it
+Never write a review page by hand. Render it again after every change, a
+retry's included: the gates compare it
 with what the files render now, and an approval on a page they no longer
 render is refused.
 
@@ -282,24 +285,35 @@ it. Until then CI stays red on the release pull request, so it cannot merge
 before the village accepts. Commit the decision to the pull request.
 
 For the other checkpoints, show the person the work product of the stage and
-ask for their decision. At checkpoint 1 that is the diagrams' pictures, at
-checkpoint 2 the review page (step 6): give them the full paths, not the raw
-files. What the page marks changed is what changed since their previous
-approval, and it names the diagrams changed since then. At checkpoint 3 it is
-the stack as a table — `python <framework>/tools/write_stack_table_tool.py
---root <product>` prints it — with the path of its decision record. Then record it — never record a decision the person did
+ask for their decision. At checkpoint 1 that is the diagrams review page —
+`python <framework>/agent/render_diagram_review_tool.py --root <product>`
+renders it: each diagram's pictures with its rules and wish links — at
+checkpoint 2 the requirements review page (step 6). Open the page in the
+browser of this computer, once per decision
+(`python -c "import webbrowser, sys; webbrowser.open(sys.argv[1])" file://<full path>`),
+and print its full path too; never show the raw files. What a page marks
+changed is what changed since the person's previous approval. At
+checkpoint 3 it is the stack as a table — `python
+<framework>/tools/write_stack_table_tool.py --root <product>` prints it —
+with the full path of its decision record. Then record it — never record a decision the person did
 not give:
 
 `python <framework>/agent/record_checkpoint_tool.py --checkpoint <n> --decision approved|changes-requested --approver <name> --role <role> [--comment <text>] --root <product>`
 
-**Checkpoint 2 asks its questions first.** Open the review page, then go
-through its open questions one at a time, in the order of their numbers. For
-each, show the question, its numbered readings with their examples, the last
-number *neither: the requirement goes back to be rewritten*, and the proposal
-with its source — or *No proposal: nothing approved decides it*. Ask
-`Accept 1? [Y / 1 / 2 / 3]`, or without a proposal `Choose [1 / 2 / 3]`.
-Take only Y (with a proposal) or a listed number; anything else, ask the same
-question again. Record each answer at once:
+**Checkpoint 2 asks its questions first.** Open the review page; its
+questions are numbered top to bottom, as the page shows them. First the
+questions with a proposal, as one list in that order: per question its
+number, the question and the proposed reading with its source (`Q3 · REQ-0012
+criterion 2: locked at the 3rd failure — diagram message "3rd failure →
+lock"`). Ask `Accept these proposals? [Y / a question's number to answer it
+yourself]`: Y records every proposal still listed; a number opens that
+question as below, and the list is asked again without it. Then the
+questions without a proposal, one at a time in page order: the question, its
+numbered readings with their examples, the last number *neither: the
+requirement goes back to be rewritten*, and *No proposal: nothing decides
+it*; ask `Choose [1 / 2 / 3]`. An opened question with a proposal is asked
+`Accept 1? [Y / 1 / 2 / 3]`. Take only Y where it is offered or a listed
+number; anything else, ask again. Record each answer at once:
 
 `python <framework>/agent/record_answer_tool.py --question Q<n> --choice <number> --approver <name> --role architect --root <product>`
 
@@ -309,8 +323,8 @@ back to step 4 with it — have the rewritten criteria checked again
 question settled, its criterion marked changed. Ask for the decision the same
 way: `1 approve the requirements (checkpoint 2)`, `2 request changes: tell me
 what is wrong`, with the proposal and its reason (`Proposed: 1 — every
-question settled, no open findings`). Never offer a key that accepts every
-proposal at once. An approval is refused while a question is open.
+question settled, no open findings`). The approval is never part of the list
+of proposals. An approval is refused while a question is open.
 
 - **approved** — commit the approval with the stage's work, in the same pull
   request: the next stage is work in progress, so CI stays green. Go back to
@@ -319,8 +333,9 @@ proposal at once. An approval is refused while a question is open.
   At checkpoint 2, if the person says the diagram is wrong, the product goes back
   to the diagram stage.
 
-The approval records the SHA-256 of every file it covers — at checkpoints 1
-and 2 the pictures and the review page too, so it covers what the person saw;
+The approval records the SHA-256 of every file it covers — at checkpoint 1
+the pictures and the diagrams review page, at checkpoint 2 the requirements
+review page, so it covers what the person saw;
 at checkpoint 2 also the diagrams the requirements are derived from. If any of
 them changes later, the approval no longer counts and step 3 sends the product
 back here: a changed diagram brings back checkpoint 1, then checkpoint 2.

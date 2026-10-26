@@ -5,10 +5,13 @@ the approved diagrams (agent/clarify_criteria_prompt.md) flags each acceptance
 criterion, or glossary term, whose readings would need different tests. Its
 questions and the person's answers live in <requirements_dir>/questions.yaml
 (question.v1), with the SHA-256 of every criterion and term the check has seen:
-one left unchanged is never asked about again.
+one left unchanged is never asked about again, nor one unchanged since the
+latest approval of checkpoint 2. Questions are numbered in the review page's
+order, top to bottom, so the person answers them as the page shows them.
 
     python agent/record_answer_tool.py --unchecked [--root PRODUCT]
-        prints the criteria and terms the check has not seen yet
+        prints the criteria and terms the check has not seen yet; one rewritten
+        to settle a question names it, so only the rewrite's wording is checked
     python agent/record_answer_tool.py --questions FILE [--root PRODUCT]
         records the session's questions (a YAML list, without id and asked)
         and every criterion and term as checked
@@ -46,6 +49,7 @@ from tools.read_yaml_blocks_tool import (  # noqa: E402
 from tools.validate_contract_tool import validate  # noqa: E402
 
 __all__ = [
+    "checked",
     "items",
     "label",
     "neither",
@@ -56,6 +60,7 @@ __all__ = [
     "read_questions",
     "record_answer",
     "record_check",
+    "unchecked",
 ]
 
 
@@ -161,6 +166,10 @@ def record_check(root: Path, session_file: Path) -> Path:
     for entry in asked:
         if not isinstance(entry, dict) or not isinstance(entry.get("about"), dict):
             raise ValueError(f"every question in {session_file} needs an 'about'")
+    from agent.render_review_tool import page_order
+
+    order = {key: i for i, key in enumerate(page_order(config))}
+    for entry in sorted(asked, key=lambda e: _on_page(order, place(e["about"]))):
         try:
             sha = now[place(entry["about"])]
         except KeyError:
@@ -214,10 +223,11 @@ def question_findings(config: ProductConfig, unanswered: bool = True) -> list[Fi
         return [Finding("QUESTION_UNANSWERED", shown, None, f"{err}; no answer can be read.")]
     now = items(config)
     findings = []
-    unchecked = [k for k, sha in now.items() if sha not in set(data["checked"])]
-    if unchecked:
-        names = ", ".join(label(_about(k)) for k in unchecked[:8])
-        more = f" and {len(unchecked) - 8} more" if len(unchecked) > 8 else ""
+    seen = checked(config, data)
+    missing = [k for k, sha in now.items() if sha not in seen]
+    if missing:
+        names = ", ".join(label(_about(k)) for k in missing[:8])
+        more = f" and {len(missing) - 8} more" if len(missing) > 8 else ""
         findings.append(
             Finding(
                 "CRITERIA_NOT_CHECKED",
@@ -253,6 +263,51 @@ def question_findings(config: ProductConfig, unanswered: bool = True) -> list[Fi
     return findings
 
 
+def _on_page(order: dict[str, int], key: tuple) -> tuple:
+    """Where a question sits on the review page: its row, then its criterion."""
+    row = key[1] if key[0] == "term" else key[0]
+    return (order.get(row, len(order)), str(key[1]) if key[0] == "term" else key[1])
+
+
+def checked(config: ProductConfig, data: dict) -> set[str]:
+    """The criteria and terms checked: recorded by the check, or unchanged since the
+    latest approval of checkpoint 2, which the person read."""
+    import tempfile
+
+    from agent.render_review_tool import approved_config
+
+    with tempfile.TemporaryDirectory() as folder:
+        approved = approved_config(config, Path(folder))
+        then = set(items(approved).values()) if approved is not None else set()
+    return set(data["checked"]) | then
+
+
+def unchecked(config: ProductConfig, data: dict | None = None) -> list[str]:
+    """The criteria and terms to check, as lines; one rewritten to settle a question
+    names it, so the check asks only about the wording the rewrite added."""
+    data = read_questions(config) if data is None else data
+    seen = checked(config, data)
+    settled = {
+        place(q["about"]): q
+        for q in data["questions"]
+        if q.get("answer") and q["answer"]["choice"] != neither(q)
+    }
+    lines = []
+    for key, sha in items(config).items():
+        if sha in seen:
+            continue
+        line = label(_about(key))
+        q = settled.get(key)
+        if q is not None:
+            reading = q["readings"][q["answer"]["choice"] - 1]["reading"]
+            line += (
+                f" — rewritten to settle {q['id']} ({reading}): ask only about wording the "
+                "rewrite added"
+            )
+        lines.append(line)
+    return lines
+
+
 def _about(key: tuple) -> dict:
     return {"term": key[1]} if key[0] == "term" else {"requirement": key[0], "criterion": key[1]}
 
@@ -270,11 +325,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.unchecked:
-            config = read_product_config(args.root)
-            checked = set(read_questions(config)["checked"])
-            for key, sha in items(config).items():
-                if sha not in checked:
-                    print(label(_about(key)))
+            for line in unchecked(read_product_config(args.root)):
+                print(line)
             return 0
         if args.questions:
             print(record_check(args.root, args.questions))

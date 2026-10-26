@@ -15,7 +15,10 @@ Every diagram keeps its picture, the page the diagram plugin renders from it
 (<id>.<type>.html next to <id>.<type>.json), committed with the diagram's last
 change or after it: git's order of commits is the check, so CI needs no plugin
 (§ 5 stages 1 and 2, rule 21). Outside a git repository only its presence is
-checked.
+checked. The diagrams review page (agent/render_diagram_review_tool.py) shows
+each diagram's pictures with its rules and wish links: it exists
+(MISSING_REVIEW_PAGE) and, until checkpoint 1 approves it, is what the files
+render now (REVIEW_PAGE_OUTDATED).
 
     python gates/swe/check_diagram_contract_gate.py [--root PRODUCT]
 """
@@ -33,6 +36,7 @@ from adapters.read_archify_diagram_adapter import (  # noqa: E402
     diagram_type,
     read_archify_diagrams,
 )
+from agent.render_diagram_review_tool import diagram_review_findings  # noqa: E402
 from tools.check_approval_order_tool import in_git  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
@@ -54,6 +58,7 @@ def check(config: ProductConfig) -> list[Finding]:
             )
         ]
     findings = _levels(config, results) + _pictures(config, [path for path, _ in results])
+    findings += diagram_review_findings(config)
     for path, result in results:
         findings.extend(result.problems)
         if result.diagram is None:

@@ -18,8 +18,11 @@ For example:
 `claude -p "Follow <framework>/agent/clarify_criteria_prompt.md for <product>. Check these: <the list>"`
 
 Its questions are recorded with `record_answer_tool.py --questions <file>`,
-which also marks every criterion and term as checked. The person answers each
-question at checkpoint 2, one at a time in the terminal, on the review page.
+which also marks every criterion and term as checked and numbers the questions
+in the review page's order. A criterion unchanged since the latest approval of
+checkpoint 2 is not on the list: the person read it. At checkpoint 2 the
+person accepts the questions with a proposal in one list and answers the
+others one at a time in the terminal, on the review page.
 A criterion the tester, the coder and the reviewer agent would all read the
 same wrong way is caught here, where the person can still settle it.
 
@@ -42,8 +45,15 @@ not changed.
   nobody could mean it.
 - **Propose only with a source.** Propose the reading that an approved
   diagram message, another requirement or a glossary definition decides,
-  and name that source. When nothing approved decides it, the proposal is
-  `none` — never a guess.
+  and name that source. Where none decides it but every tool of this kind
+  behaves one way without being told — a text of only spaces is empty, rows
+  are read in order, one sign-in serves the whole run — propose that reading
+  with the source `convention: <that behaviour, in one line>`. When neither
+  decides it, the proposal is `none` — never a guess. The person accepts
+  every proposal in one list, so a convention you are not sure of is `none`.
+- **A rewritten criterion.** A line of your list that says it was rewritten
+  to settle a question: that reading is decided. Ask only about wording the
+  rewrite added, never the settled question again in other words.
 - **One example per reading**, as short as a timeline: `✗ ✗ ✗ → locked`.
 
 Never open the code, the tests, the design or the architecture: you check what

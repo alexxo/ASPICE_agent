@@ -104,7 +104,8 @@ requirements, each with its own criteria and tests.
    `record_answer_tool.py --questions <file>`, then render the review page.
    The questions go to the person at checkpoint 2; after each answer rewrite
    the criterion to the reading chosen, and have the rewritten criteria
-   checked again the same way.
+   checked again the same way: the list names the question each settles, so
+   only the wording the rewrite added is checked.
 
 After each batch, run the stage's gates: the uncovered elements and the other
 findings are what is still to do, and a task is done only when its findings are

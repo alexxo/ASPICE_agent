@@ -560,12 +560,15 @@ def check_criteria(root: Path, questions: list[dict] | None = None) -> None:
 
 
 def render_reviews(root: Path) -> None:
-    """The requirements review page, as the agent renders it before checkpoint 2,
-    after the check for unclear criteria."""
+    """The review pages, as the agent renders them: the diagrams' before
+    checkpoint 1, the requirements' before checkpoint 2, after the check for
+    unclear criteria."""
+    from agent.render_diagram_review_tool import render_diagram_review
     from agent.render_review_tool import render_review
     from tools.read_product_config_tool import ConfigError
 
     try:
+        render_diagram_review(root)
         check_criteria(root)
         render_review(root)
     except ConfigError:  # a product built with a broken qf.yaml has no page

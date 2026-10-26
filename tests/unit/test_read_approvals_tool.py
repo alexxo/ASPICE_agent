@@ -89,11 +89,8 @@ def test_the_approval_covers_what_the_person_saw_and_what_it_is_derived_from(pro
     assert {
         "docs/diagrams/auth-flow.architecture.html",
         "docs/diagrams/login.sequence.html",
+        "docs/diagrams/review.html",
     } <= diagrams
-    (product / "docs/diagrams/review.html").write_text("left over\n")
-    assert "docs/diagrams/review.html" not in {
-        config.relative(f) for f in subject_files(config, "diagrams")
-    }
     requirements = {config.relative(f) for f in subject_files(config, "requirements")}
     assert {"docs/requirements/review.html", "docs/diagrams/login.sequence.json"} <= requirements
     assert "docs/diagrams/login.sequence.html" not in requirements

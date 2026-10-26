@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from product_builder import build_product, commit_all
 
 from agent.record_checkpoint_tool import record_checkpoint
+from agent.render_diagram_review_tool import render_diagram_review
 from gates.swe.verify_diagram_approval_gate import GATE, check
 from tools.read_product_config_tool import read_product_config
 
@@ -61,6 +62,7 @@ def test_corrected_diagrams_approved_again_pass(product):
     spec = product / "docs/diagrams/login.sequence.json"
     spec.write_text(spec.read_text().replace("submit", "send"))
     commit_all(product, "correct the diagram")
+    render_diagram_review(product)  # against the first approval, now committed
     _approve(product, when=datetime.now(timezone.utc) + timedelta(days=1))
     assert _rules(product) == []
 

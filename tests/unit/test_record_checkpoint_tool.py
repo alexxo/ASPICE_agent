@@ -27,7 +27,7 @@ def test_requirements_subject_is_the_requirements_their_page_and_their_diagrams(
     ]
 
 
-def test_diagrams_subject_is_the_specs_invariants_and_pictures(product):
+def test_diagrams_subject_is_the_specs_invariants_pictures_and_page(product):
     files = subject_files(read_product_config(product), "diagrams")
     assert [f.name for f in files] == [
         "auth-flow.architecture.html",
@@ -37,6 +37,7 @@ def test_diagrams_subject_is_the_specs_invariants_and_pictures(product):
         "login.sequence.html",
         "login.sequence.json",
         "login.wishes.yaml",
+        "review.html",
     ]
 
 

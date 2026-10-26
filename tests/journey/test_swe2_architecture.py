@@ -26,6 +26,7 @@ from agent.load_skills_tool import load_skills
 from agent.read_stages_tool import stage
 from agent.record_checkpoint_tool import record_checkpoint
 from agent.record_stage_done_tool import record_stage_done
+from agent.render_diagram_review_tool import render_diagram_review
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import reached_gates, run_gates
 
@@ -116,6 +117,7 @@ def test_a_corrected_diagram_is_approved_again_and_the_product_resumes(repo_root
     spec = product / "docs/diagrams/login.sequence.json"
     spec.write_text(spec.read_text().replace("session opened", "session started"))
     write_picture(spec)
+    render_diagram_review(product)
     commit_all(product, "the architect corrects the diagram")
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("diagram", "gates_failing")
