@@ -37,9 +37,16 @@ not changed.
   two readings of it would need different tests: a test that passes for one
   reading fails for the other. A wording you would merely put differently is
   not unclear.
+- **Ask only what someone would notice.** Ask only when the author, or a
+  system next to the product, would notice which reading was built, and a
+  careful builder could build either. An edge case nobody would notice is
+  not a question; leave it out.
 - **Ask about the term, not every criterion.** When the unclear word is a
   glossary term, ask once, about the term: its answer settles every
   requirement that uses it.
+- **One rule, one question.** When the same rule settles several criteria or
+  terms — a text of only white space is empty — ask once, about the first,
+  and name the others under `also`.
 - **Check each reading against the other requirements.** A reading that
   contradicts another requirement is marked with *conflicts*; leave it out if
   nobody could mean it.
@@ -48,9 +55,10 @@ not changed.
   and name that source. Where none decides it but every tool of this kind
   behaves one way without being told — a text of only spaces is empty, rows
   are read in order, one sign-in serves the whole run — propose that reading
-  with the source `convention: <that behaviour, in one line>`. When neither
-  decides it, the proposal is `none` — never a guess. The person accepts
-  every proposal in one list, so a convention you are not sure of is `none`.
+  with the source `convention: <that behaviour, in one line>` — also when
+  you are not sure of it: the person is shown every convention they accept,
+  marked, and can answer it again. The proposal is `none` only when the
+  readings are equally likely and no convention prefers one.
 - **A rewritten criterion.** A line of your list that says it was rewritten
   to settle a question: that reading is decided. Ask only about wording the
   rewrite added, never the settled question again in other words.
@@ -69,6 +77,7 @@ on your list is unclear. One entry per question:
 
 ```yaml
 - about: {requirement: REQ-0047, criterion: 2}   # or {term: attempt}; criteria count from 1
+  also: [{requirement: REQ-0051, criterion: 1}]   # only when the same rule settles others
   question: When is the account locked?
   readings:                                       # two or more, most likely first
     - reading: locked at the 3rd failure

@@ -7,7 +7,26 @@
   "additionalProperties": false,
   "required": ["checked", "questions"],
   "$defs": {
-    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "place": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requirement", "criterion"],
+          "properties": {
+            "requirement": {"type": "string", "pattern": "^REQ-[0-9]{4,}$"},
+            "criterion": {"type": "integer", "minimum": 1}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["term"],
+          "properties": {"term": {"type": "string", "minLength": 1}}
+        }
+      ]
+    }
   },
   "properties": {
     "checked": {
@@ -25,23 +44,13 @@
           "id": {"type": "string", "pattern": "^Q[0-9]+$"},
           "about": {
             "description": "The acceptance criterion (by its requirement and its place, from 1) or the glossary term the question is about.",
-            "oneOf": [
-              {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["requirement", "criterion"],
-                "properties": {
-                  "requirement": {"type": "string", "pattern": "^REQ-[0-9]{4,}$"},
-                  "criterion": {"type": "integer", "minimum": 1}
-                }
-              },
-              {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["term"],
-                "properties": {"term": {"type": "string", "minLength": 1}}
-              }
-            ]
+            "$ref": "#/$defs/place"
+          },
+          "also": {
+            "description": "The other criteria and terms the same rule settles (one convention, one question): the answer settles each of them, and each is rewritten to it.",
+            "type": "array",
+            "minItems": 1,
+            "items": {"$ref": "#/$defs/place"}
           },
           "asked": {
             "description": "The SHA-256 of the criterion's or term's text when it was asked.",

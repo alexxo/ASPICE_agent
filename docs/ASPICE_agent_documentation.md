@@ -2668,7 +2668,11 @@ requirements).
     short example, a reading that contradicts another requirement marked, a
     proposal only with its source — a diagram message, another requirement,
     a term, or *convention:* the behaviour every tool of the kind has
-    without being told — and an unclear term asked once, on the term.
+    without being told, proposed also when unsure, *none* only when the
+    readings are equally likely — only what the author or a system next to
+    the product would notice, an unclear term asked once, on the term, and
+    one rule settling several criteria asked once, the others under
+    *also*.
     *agent/record_answer_tool.py* records the questions in
     *&lt;requirements_dir&gt;/questions.yaml* (*question.v1*) with the
     SHA-256 of every criterion and term checked, so an unchanged one is
@@ -2687,7 +2691,8 @@ requirements).
     practice; the person keeps them with Y or answers any one again. The
     agent rewrites each criterion to the reading
     chosen and has it checked again for the wording the rewrite added only,
-    and renders the page, which shows the question
+    once: a criterion settled at two texts since the latest approval is
+    checked when rewritten again — and renders the page, which shows the question
     settled — *proposal accepted*, *changed* or *no proposal*. Until the
     approval, CRITERIA_NOT_CHECKED names a criterion or term not checked
     and QUESTION_UNANSWERED one answered *neither* whose criterion is
@@ -4124,6 +4129,22 @@ label together.
   order. *Not taken:* the build as a source — the check would see what
   was built, the reading it exists to question; an answer by the agent
   itself — a reading the person never saw.
+  Revised again (FB-60): each rewrite raised a new round one edge case
+  deeper, some without a proposal where a convention settled them, the
+  same convention asked once per criterion — rounds that end only when the
+  check runs out of edge cases, O 9, S 7, D 6 — 378. *Chosen:* the check
+  asks only what the author or a system next to the product would notice
+  and a careful builder could build either way; it proposes a convention
+  also when unsure — the summary marks it and it can be answered again —
+  and *no proposal* only when the readings are equally likely; one rule
+  settling several criteria is one question, the others named under
+  *also*; and a criterion is checked again once after its rewrite — one
+  settled at two texts since the latest approval counts as checked when
+  rewritten again, its new wording marked on the page. Risks kept: an edge
+  case someone would notice is judged unnoticed and not asked — S 7, O 3,
+  D 6 — 126; what a third round would have found is built unasked — S 6,
+  O 3, D 5 — 90. *Not taken:* listing the unasked edge cases as
+  assumptions — the summary would carry the noise the change removes.
   → § 5 stages 1 and 2, rule 27.
 
 ### A.3 Architecture stage — stage 3

@@ -7,7 +7,11 @@ questions and the person's answers live in <requirements_dir>/questions.yaml
 (question.v1), with the SHA-256 of every criterion and term the check has seen:
 one left unchanged is never asked about again, nor one unchanged since the
 latest approval of checkpoint 2. Questions are numbered in the review page's
-order, top to bottom, so the person answers them as the page shows them.
+order, top to bottom, so the person answers them as the page shows them. One
+question may settle several criteria and terms (`also`): one rule, one
+question. A criterion is checked again once after its rewrite: one settled at
+two texts since the latest approval — the check and that recheck — counts as
+checked when it is rewritten again, so the rounds end.
 
     python agent/record_answer_tool.py --unchecked [--root PRODUCT]
         prints the criteria and terms the check has not seen yet; one rewritten
@@ -32,6 +36,7 @@ and 2, rule 27).
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import sys
@@ -60,6 +65,7 @@ __all__ = [
     "open_questions",
     "pending",
     "place",
+    "places",
     "question_findings",
     "questions_file",
     "read_questions",
@@ -83,6 +89,11 @@ def place(about: dict) -> tuple:
     if "term" in about:
         return ("term", about["term"])
     return (about["requirement"], about["criterion"])
+
+
+def places(question: dict) -> list[tuple]:
+    """Every place a question settles: its own, then those of `also`."""
+    return [place(a) for a in [question["about"], *question.get("also", [])]]
 
 
 def label(about: dict) -> str:
@@ -195,8 +206,9 @@ def summary(config: ProductConfig) -> list[str]:
         taken = isinstance(proposal, dict) and proposal["choice"] == choice
         if taken and str(proposal["source"]).startswith("convention"):
             why.append("decided by common practice, not by anything you approved")
+        more = f" and {len(q['also'])} more" if q.get("also") else ""
         line = (
-            f"{q['id']} · {label(about)}: the product will — {reading['reading']} "
+            f"{q['id']} · {label(about)}{more}: the product will — {reading['reading']} "
             f"(e.g. {reading['example']})"
         )
         if why:
@@ -227,12 +239,10 @@ def record_check(root: Path, session_file: Path) -> Path:
 
     order = {key: i for i, key in enumerate(page_order(config))}
     for entry in sorted(asked, key=lambda e: _on_page(order, place(e["about"]))):
-        try:
-            sha = now[place(entry["about"])]
-        except KeyError:
-            raise ValueError(
-                f"{label(entry['about'])}: no such criterion or glossary term"
-            ) from None
+        for about in [entry["about"], *(entry.get("also") or [])]:
+            if not isinstance(about, dict) or place(about) not in now:
+                raise ValueError(f"{label(about)}: no such criterion or glossary term")
+        sha = now[place(entry["about"])]
         number += 1
         data["questions"].append({"id": f"Q{number}", **entry, "asked": sha})
         proposal = entry.get("proposal")
@@ -333,16 +343,35 @@ def _on_page(order: dict[str, int], key: tuple) -> tuple:
 
 
 def checked(config: ProductConfig, data: dict) -> set[str]:
-    """The criteria and terms checked: recorded by the check, or unchanged since the
-    latest approval of checkpoint 2, which the person read."""
+    """The criteria and terms checked: recorded by the check, unchanged since the
+    latest approval of checkpoint 2, which the person read, or rewritten after
+    their one recheck."""
     import tempfile
 
     from agent.render_review_tool import approved_config
 
+    then, before = set(), set()
     with tempfile.TemporaryDirectory() as folder:
         approved = approved_config(config, Path(folder))
-        then = set(items(approved).values()) if approved is not None else set()
-    return set(data["checked"]) | then
+        if approved is not None:
+            then = set(items(approved).values())
+            with contextlib.suppress(ValueError):  # an unreadable file holds no earlier rounds
+                before = {q["id"] for q in read_questions(approved)["questions"]}
+    return set(data["checked"]) | then | _rechecked(config, data, before)
+
+
+def _rechecked(config: ProductConfig, data: dict, before: set[str]) -> set[str]:
+    """The criteria and terms settled at two texts since the latest approval — the
+    check, then the recheck of its rewrite — and rewritten again: not checked a
+    third time."""
+    texts: dict[tuple, set[str]] = {}
+    for q in data["questions"]:
+        answer = q.get("answer")
+        if q["id"] in before or not answer or answer["choice"] == neither(q):
+            continue
+        texts.setdefault(place(q["about"]), set()).add(q["asked"])
+    now = items(config)
+    return {now[k] for k, asked in texts.items() if len(asked) >= 2 and now.get(k) not in asked}
 
 
 def unchecked(config: ProductConfig, data: dict | None = None) -> list[str]:
@@ -351,9 +380,10 @@ def unchecked(config: ProductConfig, data: dict | None = None) -> list[str]:
     data = read_questions(config) if data is None else data
     seen = checked(config, data)
     settled = {
-        place(q["about"]): q
+        key: q
         for q in data["questions"]
         if q.get("answer") and q["answer"]["choice"] != neither(q)
+        for key in places(q)
     }
     lines = []
     for key, sha in items(config).items():

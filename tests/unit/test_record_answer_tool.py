@@ -257,3 +257,31 @@ def test_questions_settled_before_the_previous_approval_are_not_shown_again(aske
     page = render(_config(asked))
     assert "Q1" not in page
     assert "question(s)" not in page
+
+
+def test_one_rule_is_one_question_that_settles_each_criterion_it_names(product, capsys):
+    """FB-60: the same convention is asked once, not once per criterion."""
+    check_criteria(product, [{**LOCK, "also": [{"requirement": "REQ-0011", "criterion": 2}]}])
+    record_answer(product, "Q1", 1, "Alex", "architect")
+    assert summary(_config(product))[0].startswith("⚠ Q1 · REQ-0012 criterion 2 and 1 more:")
+    _rewrite(product)
+    assert main(["--unchecked", "--root", str(product)]) == 0
+    assert capsys.readouterr().out.startswith("REQ-0011 criterion 2 — rewritten to settle Q1")
+
+
+def test_a_rule_naming_a_criterion_that_does_not_exist_is_refused(product):
+    with pytest.raises(ValueError, match="REQ-0999 criterion 1: no such"):
+        check_criteria(product, [{**LOCK, "also": [{"requirement": "REQ-0999", "criterion": 1}]}])
+
+
+def test_a_criterion_is_checked_again_once_after_its_rewrite(asked, capsys):
+    """FB-60: the check, one recheck of the rewrite, and no third round."""
+    record_answer(asked, "Q1", 1, "Alex", "architect")
+    _rewrite(asked, "REQ-0012")
+    check_criteria(asked, [{**LOCK, "question": "Is a refused sign-in a failure?"}])
+    record_answer(asked, "Q2", 1, "Alex", "architect")
+    path = _login(asked)
+    path.write_text(path.read_text().replace("it reports the failure", "it reports the sign-in"))
+    assert main(["--unchecked", "--root", str(asked)]) == 0
+    assert capsys.readouterr().out == ""
+    assert [f.rule for f in question_findings(_config(asked))] == []

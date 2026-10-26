@@ -1,0 +1,18 @@
+checked:
+  - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+questions:
+  - id: Q1
+    about: {requirement: REQ-0012, criterion: 1}
+    also:
+      - {requirement: REQ-0014, criterion: 2}
+      - {term: brief}
+    asked: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    question: Is a text of only spaces, tabs or line breaks empty?
+    readings:
+      - reading: a text of only white space counts as empty
+        example: '"  \t" → empty'
+      - reading: only a text with no characters is empty
+        example: '"  \t" → not empty'
+    proposal:
+      choice: 1
+      source: "convention: a text of only white space is empty"

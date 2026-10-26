@@ -103,9 +103,11 @@ requirements, each with its own criteria and tests.
    check them yourself, since you wrote them. Record its questions with
    `record_answer_tool.py --questions <file>`, then render the review page.
    The questions go to the person at checkpoint 2; after each answer rewrite
-   the criterion to the reading chosen, and have the rewritten criteria
-   checked again the same way: the list names the question each settles, so
-   only the wording the rewrite added is checked.
+   the criterion to the reading chosen — and every criterion under the
+   question's `also` — and have the rewritten criteria checked again the same
+   way: the list names the question each settles, so only the wording the
+   rewrite added is checked. That recheck happens once: a criterion rewritten
+   after it is not listed again.
 
 After each batch, run the stage's gates: the uncovered elements and the other
 findings are what is still to do, and a task is done only when its findings are

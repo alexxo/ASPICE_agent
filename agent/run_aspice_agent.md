@@ -328,9 +328,12 @@ anything they approved. Show it as it is, under *What you accepted*, and ask
 asks that question again, as above, recorded with `--again`; then show the
 summary again. Only after Y:
 
-Rewrite each criterion to the reading chosen — or, for *neither*, go
+Rewrite each criterion to the reading chosen — every criterion and term a
+question settles, its own and those of its `also` — or, for *neither*, go
 back to step 4 with it — have the rewritten criteria checked again
-(*derive_requirements_plugin*, step 7), render the page and show it: each
+(*derive_requirements_plugin*, step 7), once: a criterion rewritten after its
+recheck is not checked a third time, and `--unchecked` no longer lists it.
+Render the page and show it: each
 question settled, its criterion marked changed. Ask for the decision the same
 way: `1 approve the requirements (checkpoint 2)`, `2 request changes: tell me
 what is wrong`, with the proposal and its reason (`Proposed: 1 — every
