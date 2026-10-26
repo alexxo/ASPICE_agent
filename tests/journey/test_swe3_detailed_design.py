@@ -17,14 +17,13 @@ resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 import shutil
 from datetime import datetime, timezone
 
-from product_builder import commit_all
+from product_builder import commit_all, render_reviews
 
 from agent.count_retries_tool import decide, record_attempt
 from agent.load_skills_tool import load_skills
 from agent.read_stages_tool import stage
 from agent.record_checkpoint_tool import record_checkpoint
 from agent.record_stage_done_tool import record_stage_done
-from agent.render_review_tool import render_review
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import reached_gates, run_gates
 
@@ -42,7 +41,7 @@ def _architecture_done(repo_root, product):
     target = product / "docs" / "requirements" / "login.md"
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(repo_root / OUTPUTS / "requirements" / "correct" / "login.md", target)
-    render_review(product)
+    render_reviews(product)
     record_checkpoint(product, 2, "approved", "Example Architect", "architect", now=APPROVED)
     commit_all(product, "requirements approved at checkpoint 2")
     _write(repo_root, product, "architecture/stack")

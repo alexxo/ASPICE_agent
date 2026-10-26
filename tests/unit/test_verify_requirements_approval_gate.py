@@ -63,8 +63,8 @@ def test_an_approval_given_after_the_design_is_reported(tmp_path):
 
 def test_requirements_without_their_review_page_are_reported(tmp_path):
     root = build_product(tmp_path, review_pages=False, git=False)
-    (finding,) = check(read_product_config(root))
-    assert (finding.rule, finding.file) == ("MISSING_REVIEW_PAGE", "docs/requirements/review.html")
+    found = [(f.rule, f.file) for f in check(read_product_config(root))]
+    assert ("MISSING_REVIEW_PAGE", "docs/requirements/review.html") in found
 
 
 def test_a_review_page_older_than_the_requirements_is_reported(product):

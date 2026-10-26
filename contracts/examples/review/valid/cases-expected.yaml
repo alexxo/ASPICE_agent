@@ -1,0 +1,14 @@
+person: none
+findings:
+  - finding: The 4th attempt after a lock has no test.
+    outcome: fixed
+summary: It brings the results of the sign-in lock.
+expected:
+  - requirement: REQ-0047
+    criterion: 2
+    case: the 3rd failure locks the account
+    test: tests/software/test_lock.py::test_third_failure_locks
+  - requirement: REQ-0047
+    criterion: 2
+    case: a right password on a locked account is refused
+    test: tests/software/test_lock.py::test_locked_refuses_right_password

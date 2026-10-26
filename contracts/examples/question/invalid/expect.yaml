@@ -1,0 +1,3 @@
+one-reading.yaml: {path: "questions/0/readings", keyword: minItems}
+proposal-without-source.yaml: {path: "questions/0/proposal", keyword: oneOf}
+no-checked.yaml: {path: "", keyword: required}

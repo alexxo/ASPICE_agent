@@ -1,0 +1,187 @@
+"""agent/record_answer_tool.py — unclear criteria checked and answered before checkpoint 2."""
+
+import pytest
+from product_builder import check_criteria, commit_all, render_reviews
+
+from agent.record_answer_tool import (
+    main,
+    open_questions,
+    question_findings,
+    read_questions,
+    record_answer,
+)
+from agent.record_checkpoint_tool import record_checkpoint
+from agent.render_review_tool import render, render_review
+from gates.swe.verify_requirements_approval_gate import check
+from tools.read_product_config_tool import read_product_config
+
+LOCK = {
+    "about": {"requirement": "REQ-0012", "criterion": 2},
+    "question": "When is the account locked?",
+    "readings": [
+        {"reading": "locked at the 3rd failure", "example": "✗ ✗ ✗ → locked"},
+        {
+            "reading": "locked at the 4th attempt, after 3 failures",
+            "example": "✗ ✗ ✗ → 4th refused, locked",
+            "conflicts": "REQ-0013 criterion 1",
+        },
+    ],
+    "proposal": {"choice": 1, "source": 'diagram message "3rd failure → lock"'},
+}
+TERM = {
+    "about": {"term": "account"},
+    "question": "Is a closed account still an account?",
+    "readings": [
+        {"reading": "yes", "example": "closed → listed"},
+        {"reading": "no", "example": "closed → gone"},
+    ],
+    "proposal": "none",
+}
+
+
+def _config(root):
+    return read_product_config(root)
+
+
+def _rules(root):
+    return sorted(f.rule for f in check(_config(root)))
+
+
+def _login(root):
+    return root / "docs/requirements/login.md"
+
+
+def _rewrite(root, uid="REQ-0011"):
+    """The error criterion (2) of a requirement, rewritten."""
+    path = _login(root)
+    text = path.read_text()
+    at = text.index("it reports it", text.index(f"uid: {uid}"))
+    path.write_text(text[:at] + "it reports the failure" + text[at + len("it reports it") :])
+
+
+@pytest.fixture
+def asked(product):
+    """The check found the lock criterion unclear; the page shows the question."""
+    check_criteria(product, [LOCK])
+    render_review(product)
+    return product
+
+
+def test_a_product_never_checked_lists_every_criterion_and_term(product, capsys):
+    (product / "docs/requirements/questions.yaml").unlink()
+    assert main(["--unchecked", "--root", str(product)]) == 0
+    printed = capsys.readouterr().out.splitlines()
+    assert printed[0] == "REQ-0011 criterion 1"
+    assert "term account" in printed
+    assert [f.rule for f in question_findings(_config(product))] == ["CRITERIA_NOT_CHECKED"]
+
+
+def test_a_question_is_numbered_and_bound_to_its_criterion(asked):
+    (question,) = read_questions(_config(asked))["questions"]
+    assert question["id"] == "Q1"
+    assert len(question["asked"]) == 64
+    assert _rules(asked) == []  # it waits for the person at checkpoint 2, not for the agent
+
+
+def test_an_open_question_is_reported_once_design_work_exists(asked):
+    design = asked / "docs/architecture/auth-flow.md"
+    design.parent.mkdir(parents=True, exist_ok=True)
+    design.write_text("# The components\n")
+    assert "QUESTION_UNANSWERED" in _rules(asked)
+
+
+def test_an_open_question_sits_in_its_requirements_row_with_its_options(asked):
+    page = render(_config(asked))
+    assert "1 question(s) to settle before you approve:" in page
+    row = page[page.index('id="Q1"') : page.index("</tr>", page.index('id="Q1"'))]
+    assert "Q1 · REQ-0012 criterion 2:</b> When is the account locked?" in row
+    assert "<li>neither: the requirement goes back to be rewritten</li>" in row
+    assert "conflicts with REQ-0013 criterion 1" in row
+    assert "Proposed: 1 — diagram message" in row
+
+
+def test_an_approval_waits_for_every_answer(asked):
+    with pytest.raises(ValueError, match="Q1 about REQ-0012 criterion 2 is not answered"):
+        record_checkpoint(asked, 2, "approved", "Alex", "architect")
+
+
+def test_an_answer_records_whether_it_took_the_proposal(asked):
+    record_answer(asked, "Q1", 2, "Alex", "architect")
+    (question,) = read_questions(_config(asked))["questions"]
+    assert question["answer"] == {
+        "choice": 2,
+        "approver": {"name": "Alex", "role": "architect"},
+        "proposal": "changed",
+    }
+    render_review(asked)
+    assert "✓ Q1 · REQ-0012 criterion 2 settled: 2 — locked at the 4th attempt" in render(
+        _config(asked)
+    )
+    assert "proposal changed, Alex" in render(_config(asked))
+    assert _rules(asked) == []
+    record_checkpoint(asked, 2, "approved", "Alex", "architect")
+
+
+def test_without_a_proposal_the_answer_says_so(product):
+    check_criteria(product, [TERM])
+    record_answer(product, "Q1", 1, "Alex", "architect")
+    assert read_questions(_config(product))["questions"][0]["answer"]["proposal"] == "none"
+
+
+@pytest.mark.parametrize("choice", [0, 4])
+def test_only_a_listed_number_is_an_answer(asked, choice):
+    with pytest.raises(ValueError, match="choose 1 to 3"):
+        record_answer(asked, "Q1", choice, "Alex", "architect")
+
+
+def test_a_question_is_answered_once(asked):
+    record_answer(asked, "Q1", 1, "Alex", "architect")
+    with pytest.raises(ValueError, match="Q1 is not open"):
+        record_answer(asked, "Q1", 2, "Alex", "architect")
+
+
+def test_neither_holds_until_the_criterion_is_rewritten_and_checked_again(asked):
+    record_answer(asked, "Q1", 3, "Alex", "architect")
+    assert _rules(asked) == ["QUESTION_UNANSWERED", "REVIEW_PAGE_OUTDATED"]
+    _rewrite(asked, "REQ-0012")
+    render_review(asked)
+    (finding,) = question_findings(_config(asked))
+    assert finding.rule == "CRITERIA_NOT_CHECKED"
+    assert "REQ-0012 criterion 2." in finding.message  # the rewritten one alone
+    render_reviews(asked)
+    assert _rules(asked) == []
+
+
+def test_an_unanswered_question_whose_criterion_changed_is_gone(asked):
+    _rewrite(asked, "REQ-0012")
+    assert open_questions(_config(asked)) == []
+    assert "Q1" not in render(_config(asked))
+
+
+def test_a_criterion_left_unchanged_is_not_asked_again(product, capsys):
+    _rewrite(product)
+    assert main(["--unchecked", "--root", str(product)]) == 0
+    assert capsys.readouterr().out.splitlines() == ["REQ-0011 criterion 2"]
+
+
+def test_a_question_about_something_that_does_not_exist_is_refused(product):
+    with pytest.raises(ValueError, match="REQ-0999 criterion 1: no such"):
+        check_criteria(product, [{**LOCK, "about": {"requirement": "REQ-0999", "criterion": 1}}])
+
+
+def test_a_proposal_must_be_one_of_the_readings(product):
+    with pytest.raises(ValueError, match="Q1: the proposal is not one of its readings"):
+        check_criteria(product, [{**LOCK, "proposal": {"choice": 3, "source": "a guess"}}])
+
+
+def test_questions_settled_before_the_previous_approval_are_not_shown_again(asked):
+    record_answer(asked, "Q1", 1, "Alex", "architect")
+    render_review(asked)
+    commit_all(asked, "Q1 answered")
+    record_checkpoint(asked, 2, "approved", "Alex", "architect")
+    commit_all(asked, "checkpoint 2 approved")
+    _rewrite(asked)
+    render_reviews(asked)
+    page = render(_config(asked))
+    assert "Q1" not in page
+    assert "question(s)" not in page

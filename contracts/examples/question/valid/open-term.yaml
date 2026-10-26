@@ -1,0 +1,13 @@
+checked:
+  - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+questions:
+  - id: Q2
+    about: {term: attempt}
+    asked: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    question: Is a refused sign-in on a locked account an attempt?
+    readings:
+      - reading: yes, it counts
+        example: "locked, ✗ → counted"
+      - reading: no, only sign-ins on an open account count
+        example: "locked, ✗ → not counted"
+    proposal: none

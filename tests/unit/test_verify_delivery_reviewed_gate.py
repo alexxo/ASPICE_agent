@@ -442,6 +442,12 @@ def test_a_changed_design_is_told_as_stories_and_only_a_gap_calls_a_person(
     assert rules(invented) == ["REVIEW_STORY_UNSOURCED"]
 
 
+EXPECTED = [
+    {"requirement": uid, "criterion": 1, "case": "the sign-in is taken", "test": "t::t"}
+    for uid in ("REQ-0049", "REQ-0050", "REQ-0053")
+]
+
+
 def test_the_results_wait_for_the_verification_report(designed, tmp_path, monkeypatch):
     from product_builder import SOFTWARE_TEST, write_software_plan, write_software_test
 
@@ -458,7 +464,41 @@ def test_the_results_wait_for_the_verification_report(designed, tmp_path, monkey
         monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json", pulls=[pull])))
         return {f.rule: f.message for f in check(read_product_config(designed))}
 
-    described = found({**record, "tests": [{**told, "not": "n"}]})
+    described = found({**record, "tests": [{**told, "not": "n"}], "expected": EXPECTED})
     assert set(described) == {"MISSING_PERSON_APPROVAL", "REVIEW_ITEMS_UNANSWERED"}
     assert "no verification report yet" in described["REVIEW_ITEMS_UNANSWERED"]
     assert "describes no test of" in found(record)["INCOMPLETE_CHECKLIST"]
+
+
+def test_the_results_list_the_expected_cases_of_every_requirement_they_prove(
+    designed, tmp_path, monkeypatch
+):
+    from product_builder import SOFTWARE_TEST, write_software_plan, write_software_test
+
+    write_software_plan(designed)
+    write_software_test(designed)
+    commit_all(designed, "test: the software tests")
+    head = git_head(designed)
+    told = {"file": SOFTWARE_TEST, "test": "t", "prepares": "p", "does": "d", "checks": "c"}
+    record = {
+        "person": "none",
+        "findings": [],
+        "summary": "Results.",
+        "tests": [{**told, "not": "n"}],
+    }
+
+    def found(record):
+        reviews = [review(AGENT, head, record=record)]
+        pull = pull_request(3, head, files=[SOFTWARE_TEST], reviews=reviews)
+        monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json", pulls=[pull])))
+        findings = check(read_product_config(designed))
+        return [f.message for f in findings if f.rule == "REVIEW_EXPECTED_CASES_MISSING"]
+
+    assert found({**record, "expected": EXPECTED}) == []
+    (unlisted,) = found({**record, "expected": EXPECTED[:1]})
+    assert "lists no expected case of REQ-0050, REQ-0053" in unlisted
+    untested = [{**EXPECTED[0], "test": "missing"}, *EXPECTED[1:]]
+    (approved,) = found({**record, "expected": untested})
+    assert "approves 1 expected case(s) no test checks, e.g. REQ-0049 criterion 1" in approved
+    asked = {"condition": 2, "reason": "REQ-0049 criterion 1 reads two ways"}
+    assert found({**record, "expected": untested, "person": asked}) == []

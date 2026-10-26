@@ -95,6 +95,16 @@ it changes code.
   in a fresh session that sees the tests only
   (`<framework>/agent/describe_tests_prompt.md`). Never write or change the
   descriptions yourself: you have read the requirements.
+- `expected` — when the pull request brings the results (`proves` is not
+  empty): the cases expected of each criterion of those requirements. When
+  the watcher started you, they are listed already, in the file its prompt
+  names: put that list under `expected` as it is. Started by hand, list them
+  in a fresh session that sees only those requirements' criteria and the
+  glossary (`<framework>/agent/expect_cases_prompt.md`). Never add, drop or
+  change a case. Give each case `test`: the test that checks it, as
+  `<file>::<test>`, or `missing`. A missing case is a finding for the tester:
+  request changes. A case you hold wrong means the criterion reads two ways:
+  ask for a person, condition 2.
 - `summary` — when `needed` is true: what the pull request does, in one plain
   sentence for a person who does not read code ("It brings the results of
   the publisher: every requirement's software-level test and its result.").

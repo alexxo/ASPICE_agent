@@ -10,7 +10,10 @@ withdraws the approval, and approving again restores it.
 Once requirements exist, the person reviews them on the review page: it must
 exist, and while no current approval covers it, match what
 agent/render_review_tool.py renders from the files now (§ 5 stages 1 and 2,
-rules 22–25).
+rules 22–25). Until then, too, every acceptance criterion and glossary term is
+checked for readings that would need different tests, and once work derived
+from the requirements exists, every question that check raised is answered
+(agent/record_answer_tool.py, rule 27).
 
     python gates/swe/verify_requirements_approval_gate.py [--root PRODUCT]
 """
@@ -23,9 +26,11 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from agent.record_answer_tool import question_findings  # noqa: E402
 from agent.render_review_tool import review_page_findings  # noqa: E402
 from tools.check_approval_order_tool import approval_order_findings  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
+from tools.read_approvals_tool import approval_state  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
 from tools.run_gate_command_tool import run_gate_command  # noqa: E402
 
@@ -46,6 +51,9 @@ def check(config: ProductConfig) -> list[Finding]:
     folder = config.requirements_dir
     if folder.is_dir() and any(folder.rglob("*.md")):
         findings += review_page_findings(config)
+        if approval_state(config, 2, "requirements").status != "approved":
+            # an open question waits for the person at checkpoint 2, not for the agent
+            findings += question_findings(config, unanswered=bool(derived))
     return findings
 
 

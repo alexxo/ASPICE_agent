@@ -95,6 +95,17 @@ Throughout: **one behaviour per requirement**. A statement that joins two
 behaviours ("locks the account and unlocks it after 15 minutes") is two
 requirements, each with its own criteria and tests.
 
+7. **Unclear criteria** — once the other findings are gone, have the
+   criteria and terms not checked yet
+   (`python <framework>/agent/record_answer_tool.py --unchecked`) checked in a
+   fresh session that sees only the requirements, the glossary and the
+   approved diagrams (`<framework>/agent/clarify_criteria_prompt.md`); never
+   check them yourself, since you wrote them. Record its questions with
+   `record_answer_tool.py --questions <file>`, then render the review page.
+   The questions go to the person at checkpoint 2; after each answer rewrite
+   the criterion to the reading chosen, and have the rewritten criteria
+   checked again the same way.
+
 After each batch, run the stage's gates: the uncovered elements and the other
 findings are what is still to do, and a task is done only when its findings are
 gone. Never mark a task done on your own judgement.
@@ -115,7 +126,9 @@ modified, removed and renamed requirement.
 ## Done
 
 The stage's gates pass: check_requirements_contract_gate,
-verify_requirements_to_diagram_link_gate and check_glossary_gate.
+verify_requirements_to_diagram_link_gate and check_glossary_gate; of
+verify_requirements_approval_gate, everything but the open questions, which
+the person answers at checkpoint 2.
 
 Size budgets: a statement is one sentence; a criterion at most 3 lines; at most
 5 questions per round; a change summary at most 300 words. Completeness wins over
@@ -123,5 +136,6 @@ a budget: never leave out an element, a requirement or an edge case to stay
 within one — say briefly why it is longer, and continue.
 
 Report: the requirements by level and kind, the coverage of happy, edge and error
-cases, the domain terms you introduced, the assumptions still open, and the next
-step — the architect's review at checkpoint 2.
+cases, the domain terms you introduced, the assumptions still open, the
+questions for the person, and the next step — the architect's review at
+checkpoint 2.

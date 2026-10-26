@@ -285,6 +285,26 @@ not give:
 
 `python <framework>/agent/record_checkpoint_tool.py --checkpoint <n> --decision approved|changes-requested --approver <name> --role <role> [--comment <text>] --root <product>`
 
+**Checkpoint 2 asks its questions first.** Open the review page, then go
+through its open questions one at a time, in the order of their numbers. For
+each, show the question, its numbered readings with their examples, the last
+number *neither: the requirement goes back to be rewritten*, and the proposal
+with its source — or *No proposal: nothing approved decides it*. Ask
+`Accept 1? [Y / 1 / 2 / 3]`, or without a proposal `Choose [1 / 2 / 3]`.
+Take only Y (with a proposal) or a listed number; anything else, ask the same
+question again. Record each answer at once:
+
+`python <framework>/agent/record_answer_tool.py --question Q<n> --choice <number> --approver <name> --role architect --root <product>`
+
+Then rewrite each criterion to the reading chosen — or, for *neither*, go
+back to step 4 with it — have the rewritten criteria checked again
+(*derive_requirements_plugin*, step 7), render the page and show it: each
+question settled, its criterion marked changed. Ask for the decision the same
+way: `1 approve the requirements (checkpoint 2)`, `2 request changes: tell me
+what is wrong`, with the proposal and its reason (`Proposed: 1 — every
+question settled, no open findings`). Never offer a key that accepts every
+proposal at once. An approval is refused while a question is open.
+
 - **approved** — commit the approval with the stage's work, in the same pull
   request: the next stage is work in progress, so CI stays green. Go back to
   step 3; the product moves to the next stage.

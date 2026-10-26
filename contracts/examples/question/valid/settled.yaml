@@ -1,0 +1,21 @@
+checked:
+  - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+questions:
+  - id: Q1
+    about: {requirement: REQ-0047, criterion: 2}
+    asked: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    question: When is the account locked?
+    readings:
+      - reading: locked at the 3rd failure
+        example: "✗ ✗ ✗ → locked"
+      - reading: locked at the 4th attempt, after 3 failures
+        example: "✗ ✗ ✗ → 4th attempt refused, locked"
+        conflicts: REQ-0049 criterion 1
+    proposal:
+      choice: 1
+      source: 'diagram message "3rd failure → lock"'
+    answer:
+      choice: 1
+      approver: {name: Alex, role: architect}
+      proposal: accepted

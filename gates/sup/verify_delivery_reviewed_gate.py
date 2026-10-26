@@ -7,7 +7,10 @@ only when it changes code — and its review record, a ```yaml review block
 (review.v1) — telling every changed design as stories; when a person reviews,
 saying what the pull request does; with the results, describing their
 software-level tests (INCOMPLETE_CHECKLIST); every story step names a source
-its design has (REVIEW_STORY_UNSOURCED).
+its design has (REVIEW_STORY_UNSOURCED); with the results, it lists the cases
+expected of each criterion of the requirements proved, from the criteria alone,
+each with its test — a case no test checks only with a person asked
+(REVIEW_EXPECTED_CASES_MISSING).
 A person reviews the pull request when classify_pull_request_tool calls one:
 for the results of software verification, on the pull request that brings
 them (checkpoint 4); for a question of what is wanted — a gap a story marks
@@ -267,6 +270,7 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
             )
             for wrong in unsourced(config, record.get("stories", []))
         ]
+        findings += _expected_findings(review, record, where)
     if review.needed and not people:
         why = f" (why: {headline(review.brief)})" if review.brief else ""
         findings.append(
@@ -306,6 +310,43 @@ def _record_gaps(review: Classification, record: dict) -> list[str]:
             "(agent/describe_design_prompt.md)"
         )
     return gaps
+
+
+def _expected_findings(review: Classification, record: dict, where: str) -> list[Finding]:
+    """With the results: the expected cases of every requirement proved, each with a
+    test, unless the reviewer agent asks a person about it (agent/expect_cases_prompt.md)."""
+    if not review.proves:
+        return []
+    cases = record.get("expected", [])
+    findings = []
+    listed = {c["requirement"] for c in cases}
+    unlisted = [u for u in review.proves if u not in listed]
+    if unlisted:
+        findings.append(
+            Finding(
+                "REVIEW_EXPECTED_CASES_MISSING",
+                ".",
+                None,
+                f"The review record of {where} lists no expected case of {', '.join(unlisted)}, "
+                "which it proves: list them from the criteria alone "
+                "(agent/expect_cases_prompt.md) and give each its test.",
+            )
+        )
+    untested = [c for c in cases if c["test"] == "missing"]
+    if untested and record.get("person") == "none":
+        first = untested[0]
+        findings.append(
+            Finding(
+                "REVIEW_EXPECTED_CASES_MISSING",
+                ".",
+                None,
+                f"The review record of {where} approves {len(untested)} expected case(s) no test "
+                f"checks, e.g. {first['requirement']} criterion {first['criterion']}: "
+                f"{first['case']}. A missing case is a finding for the tester; a case held wrong "
+                "is a question for a person (condition 2).",
+            )
+        )
+    return findings
 
 
 def person_review(config: ProductConfig, pull: PullRequest, record: dict | None):

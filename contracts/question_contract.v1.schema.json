@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/question_contract.v1.schema.json",
+  "title": "question.v1",
+  "description": "The unclear criteria of the requirements and the person's answers (SWE.1 BP1, checkpoint 2): which criteria and glossary terms the check has seen, and each question it raised — a criterion, or a term, whose readings would need different tests — with its readings, each with an example, the proposal and its source, and the person's answer. One YAML file, <requirements_dir>/questions.yaml, written by agent/record_answer_tool.py from the session of agent/clarify_criteria_prompt.md and from the person's answers. That every criterion is checked and every question answered before checkpoint 2 are rules of verify_requirements_approval_gate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["checked", "questions"],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "properties": {
+    "checked": {
+      "description": "Each criterion and glossary term the check has seen, as the SHA-256 of its text: one left unchanged is not asked about again.",
+      "type": "array",
+      "items": {"$ref": "#/$defs/sha256"}
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "about", "asked", "question", "readings", "proposal"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^Q[0-9]+$"},
+          "about": {
+            "description": "The acceptance criterion (by its requirement and its place, from 1) or the glossary term the question is about.",
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["requirement", "criterion"],
+                "properties": {
+                  "requirement": {"type": "string", "pattern": "^REQ-[0-9]{4,}$"},
+                  "criterion": {"type": "integer", "minimum": 1}
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["term"],
+                "properties": {"term": {"type": "string", "minLength": 1}}
+              }
+            ]
+          },
+          "asked": {
+            "description": "The SHA-256 of the criterion's or term's text when it was asked.",
+            "$ref": "#/$defs/sha256"
+          },
+          "question": {"type": "string", "minLength": 1},
+          "readings": {
+            "description": "The readings, numbered from 1 in this order; the next number is always 'neither: the requirement goes back to be rewritten'.",
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["reading", "example"],
+              "properties": {
+                "reading": {"type": "string", "minLength": 1},
+                "example": {"type": "string", "minLength": 1},
+                "conflicts": {
+                  "description": "The other requirement this reading contradicts, e.g. 'REQ-0049 criterion 1'.",
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "proposal": {
+            "description": "none when nothing approved decides it; else the reading proposed and its source — a diagram message, another requirement, a glossary term.",
+            "oneOf": [
+              {"const": "none"},
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["choice", "source"],
+                "properties": {
+                  "choice": {"type": "integer", "minimum": 1},
+                  "source": {"type": "string", "minLength": 1}
+                }
+              }
+            ]
+          },
+          "answer": {
+            "description": "The person's answer: a reading's number, or the one after the last for 'neither'; who gave it; whether it took the proposal.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["choice", "approver", "proposal"],
+            "properties": {
+              "choice": {"type": "integer", "minimum": 1},
+              "approver": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "role"],
+                "properties": {
+                  "name": {"type": "string", "minLength": 1},
+                  "role": {"type": "string", "minLength": 1}
+                }
+              },
+              "proposal": {"enum": ["accepted", "changed", "none"]}
+            }
+          }
+        }
+      }
+    }
+  }
+}

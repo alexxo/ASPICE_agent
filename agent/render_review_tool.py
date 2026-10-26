@@ -12,6 +12,13 @@ removed and added; a summary counts the changes and names the diagram files
 changed since that approval, which the requirements are derived from. At the
 first approval nothing is marked.
 
+The questions about unclear criteria (agent/record_answer_tool.py, rule 27) sit
+in their requirement's or term's row: an open one with its numbered readings,
+their examples, *neither* and the proposal with its source; a settled one with
+the answer and whether it took the proposal. Shown are the open ones and those
+answered since the previous approval; a line above the tables lists the open
+ones.
+
 The page depends only on the files it shows and that commit — no clock, no
 machine, a fixed order — so the approval gate renders it again and compares
 byte for byte, and record_checkpoint_tool refuses an approval on a page the
@@ -39,6 +46,8 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from agent.record_answer_tool import items, neither, place, read_questions  # noqa: E402
+from agent.record_answer_tool import label as about_label  # noqa: E402
 from tools.check_approval_order_tool import in_git  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_approvals_tool import approval_state, sha256, subject_files  # noqa: E402
@@ -86,10 +95,11 @@ def render(config: ProductConfig) -> str:
         with tempfile.TemporaryDirectory() as folder:
             old = _model(_config_at(config, commit, Path(folder)))
     sections = _model(config)
-    rendered = [_section(s, old) for s in sections]
+    asked, questions = _questions(config, commit)
+    rendered = [_section(s, old, asked) for s in sections]
     for section in old or []:  # the glossary removed since the approval
         if section["key"] not in {s["key"] for s in sections}:
-            rendered.append(_section({**section, "rows": []}, [section]))
+            rendered.append(_section({**section, "rows": []}, [section], {}))
     body = "".join(text for text, _ in rendered)
     if commit is None:
         summary = "Nothing is marked: no earlier approval of checkpoint 2 to compare with."
@@ -103,7 +113,7 @@ def render(config: ProductConfig) -> str:
             "onchange=\"document.body.classList.toggle('only', this.checked)\"> "
             "Show changes only</label>"
         )
-    return PAGE.format(summary=summary, body=body)
+    return PAGE.format(summary=summary, questions=questions, body=body)
 
 
 def review_page_findings(config: ProductConfig) -> list[Finding]:
@@ -293,6 +303,94 @@ def _git(root: Path, *args: str) -> str:
     return run.stdout if run.returncode == 0 else ""
 
 
+# --- the questions: unclear criteria and the person's answers (rule 27) -------------------
+
+
+def _questions(config: ProductConfig, commit: str | None) -> tuple[dict[str, list[str]], str]:
+    """Each row's questions as HTML rows, by the row's key, and the line above the
+    tables. Shown: every open question, and every one answered since the previous
+    approval; an unanswered one whose text changed since it was asked is gone."""
+    try:
+        data = read_questions(config)
+    except ValueError as err:
+        return {}, f'<p class="questions"><b>{html.escape(str(err))}</b></p>\n'
+    before: set[str] = set()
+    if commit is not None:
+        with tempfile.TemporaryDirectory() as folder:
+            try:
+                then = read_questions(_config_at(config, commit, Path(folder)))
+            except ValueError:
+                then = {"questions": []}
+        before = {q["id"] for q in then["questions"] if "answer" in q}
+    now = items(config)
+    shown = [
+        q
+        for q in data["questions"]
+        if q["id"] not in before and ("answer" in q or now.get(place(q["about"])) == q["asked"])
+    ]
+    if not shown:
+        return {}, ""
+    rows: dict[str, list[str]] = {}
+    for q in sorted(shown, key=lambda q: int(q["id"][1:])):
+        key = q["about"].get("term") or q["about"]["requirement"]
+        rows.setdefault(key, []).append(_question(q))
+    waiting = [q for q in shown if "answer" not in q]
+    if waiting:
+        links = " ".join(
+            f'<a href="#{q["id"]}">{q["id"]}</a> ({html.escape(about_label(q["about"]))})'
+            for q in sorted(waiting, key=lambda q: int(q["id"][1:]))
+        )
+        line = f"<b>{len(waiting)} question(s) to settle before you approve:</b> {links}"
+    else:
+        line = f"<b>All {len(shown)} question(s) settled.</b>"
+    return rows, f'<p class="questions">{line} Answer each in the terminal.</p>\n'
+
+
+def _question(q: dict) -> str:
+    """One question, open with its options and proposal, or settled with its answer."""
+    what = html.escape(about_label(q["about"]))
+    readings = [r["reading"] for r in q["readings"]]
+    answer = q.get("answer")
+    if answer:
+        choice = answer["choice"]
+        chosen = (
+            "neither: the requirement goes back to be rewritten"
+            if choice == neither(q)
+            else readings[choice - 1]
+        )
+        taken = {
+            "accepted": "proposal accepted",
+            "changed": "proposal changed",
+            "none": "no proposal",
+        }[answer["proposal"]]
+        return (
+            f'<div class="question settled" id="{q["id"]}">✓ {q["id"]} · {what} settled: '
+            f"{choice} — {html.escape(chosen)} ({taken}, {html.escape(answer['approver']['name'])})"
+            "</div>"
+        )
+    options = "".join(
+        f"<li>{html.escape(r['reading'])} <span class=\"example\">{html.escape(r['example'])}"
+        "</span>"
+        + (
+            f' <span class="conflict">conflicts with {html.escape(r["conflicts"])}</span>'
+            if r.get("conflicts")
+            else ""
+        )
+        + "</li>"
+        for r in q["readings"]
+    )
+    options += "<li>neither: the requirement goes back to be rewritten</li>"
+    proposal = q["proposal"]
+    if proposal == "none":
+        proposed = "No proposal: nothing approved decides it."
+    else:
+        proposed = f"Proposed: {proposal['choice']} — {html.escape(proposal['source'])}."
+    return (
+        f'<div class="question open" id="{q["id"]}"><b>{q["id"]} · {what}:</b> '
+        f"{html.escape(q['question'])}<ol>{options}</ol><p>{proposed}</p></div>"
+    )
+
+
 # --- the page ----------------------------------------------------------------------------
 
 # Marks travel through escaping as control characters, then become tags.
@@ -303,8 +401,11 @@ TERM = r"(?<![A-Za-z0-9_])_[^_\n]+?_(?![A-Za-z0-9_])"
 TOKEN = re.compile(rf"{TERM}|\s+|[^\s_]+|\S")
 
 
-def _section(section: dict, old: list[dict] | None) -> tuple[str, dict[str, int]]:
-    """The section's table, and how many of its rows are new, changed and removed."""
+def _section(
+    section: dict, old: list[dict] | None, asked: dict[str, list[str]]
+) -> tuple[str, dict[str, int]]:
+    """The section's table, each row followed by its questions, and how many of its
+    rows are new, changed and removed."""
     before = next((s for s in old or [] if s["key"] == section["key"]), None)
     previous = {r["key"]: r["fields"] for r in (before or {}).get("rows", [])}
     columns = section["columns"]
@@ -327,6 +428,10 @@ def _section(section: dict, old: list[dict] | None) -> tuple[str, dict[str, int]
         if mark in counts:
             counts[mark] += 1
         parts.append(_row(mark, columns, row["fields"], was if mark == "changed" else None))
+        parts += [
+            f'<tr class="asked"><td colspan="{len(columns) + 1}">{q}</td></tr>\n'
+            for q in asked.get(row["key"], [])
+        ]
     for key, fields in previous.items():
         if key not in keys:
             counts["removed"] += 1
@@ -466,6 +571,14 @@ del {{ background: #fde0e0; color: #a40000; }}
 .gone {{ background: #fde0e0; }}
 .summary {{ background: #fffbe6; border: 1px solid #e6d58a; padding: 0.5rem; }}
 body.only tr.unchanged {{ display: none; }}
+.questions {{ background: #eef4ff; border: 1px solid #9db8e8; padding: 0.5rem; }}
+.question {{ margin: 0.2rem 0 0.2rem 1.6rem; padding: 0.4rem 0.6rem; border-left: 4px solid; }}
+.question.open {{ border-color: #1f6feb; background: #f5f9ff; }}
+.question.settled {{ border-color: #070; color: #05631d; }}
+.question ol {{ margin: 0.3rem 0; }}
+.question p {{ margin: 0.2rem 0; font-weight: 600; }}
+.example {{ color: #555; font-family: ui-monospace, monospace; margin-left: 0.5rem; }}
+.conflict {{ color: #b00; font-weight: 600; }}
 </style>
 </head>
 <body>
@@ -474,7 +587,7 @@ body.only tr.unchanged {{ display: none; }}
 (indented); then the glossary. <i>Italics</i>: a glossary term. Rendered by the framework's
 render_review_tool from the committed files; never edited by hand.</p>
 <p class="summary">{summary}</p>
-{body}</body>
+{questions}{body}</body>
 </html>
 """
 

@@ -21,11 +21,14 @@ person types R. After a review the session's records go to the product's
 .qf/reviews/ and the copy is removed; a stopped review keeps it.
 
 Before each review it describes, for the person's review, the tests a person
-would review (agent/describe_tests_prompt.md) and tells the changed designs as
-stories (agent/describe_design_prompt.md), each in a session that sees those
-files only, in a temporary folder outside the product, without the token; the
-results go to .qf/reviews/<n>-<sha>.tests.yaml and .stories.yaml, and the
-reviewer copies them into its record unchanged.
+would review (agent/describe_tests_prompt.md), tells the changed designs as
+stories (agent/describe_design_prompt.md) and, with the results, lists the
+cases expected of each criterion of the requirements they prove, from those
+criteria and the glossary alone (agent/expect_cases_prompt.md) — each in a
+session that sees those files only, in a temporary folder outside the product,
+without the token; the results go to .qf/reviews/<n>-<sha>.tests.yaml,
+.stories.yaml and .expected.yaml, and the reviewer copies them into its record
+unchanged, adding to each expected case the test that checks it.
 
 Every event is one line with the time, and so is every change of a pull
 request's state, naming who acts next: waits for CI, gates red (the author
@@ -209,10 +212,17 @@ def _prompt(
         if "stories" in described
         else ""
     )
+    expected = (
+        f" The cases expected of the criteria are listed already, in {described['expected']}: "
+        "put that list under `expected` as it is, adding to each case `test`, the test that "
+        "checks it (<file>::<test>) or `missing`; never add, drop or change a case yourself."
+        if "expected" in described
+        else ""
+    )
     return (
         f"Follow {framework}/agent/run_reviewer_agent.md for pull request #{number} of {repo}."
-        f"{here}{tests}{stories} You run unattended: if you must stop or ask, do not wait for an "
-        "answer — end "
+        f"{here}{tests}{stories}{expected} You run unattended: if you must stop or ask, do "
+        "not wait for an answer — end "
         "with one line starting 'STOPPED:' saying why, and one starting 'DO:' saying what the "
         "person does."
     )
@@ -221,10 +231,13 @@ def _prompt(
 def _describe_prompt(config: ProductConfig, files: list[str], what: str = "tests") -> str:
     """The describe instructions themselves, so the session needs no file but the
     tests, or the designs."""
-    name = "describe_tests_prompt.md" if what == "tests" else "describe_design_prompt.md"
+    name, task = {
+        "tests": ("describe_tests_prompt.md", "Describe the tests of"),
+        "stories": ("describe_design_prompt.md", "Tell as stories the designs of"),
+        "expected": ("expect_cases_prompt.md", "List the cases expected of the criteria in"),
+    }[what]
     rules = (Path(__file__).resolve().parents[1] / "agent" / name).read_text()
     rules = rules.split("## You", 1)[-1]
-    task = "Describe the tests of" if what == "tests" else "Tell as stories the designs of"
     return (
         f"{task} these files, which are all this folder holds: "
         f"{' '.join(files)}. Read nothing else.\n\n## You{rules}"
@@ -419,11 +432,12 @@ class Watcher:
             self.notify(f"Review stopped: #{number}", stop.why)
 
     def describe_work(self, number: int, head: str) -> tuple[dict[str, str], Stop | None]:
-        """The tests a person would review, described, and the changed designs, told
-        as stories — each in a session that sees those files alone: the head is
+        """The tests a person would review, described, the changed designs, told
+        as stories, and with the results the cases expected of the criteria they
+        prove — each in a session that sees those files alone: the head is
         unpacked from the host, the files are copied into an otherwise empty
         folder, and the session runs there, without the reviewer's token. Returns
-        each result's file by kind (tests, stories), or why one failed; nothing to
+        each result's file by kind (tests, stories, expected), or why one failed; nothing to
         describe gives neither. The folders are temporary ones outside the product,
         and the instructions come in the prompt, so no session has a path to the
         requirements."""
@@ -457,6 +471,16 @@ class Watcher:
                 if stop is not None:
                     return {}, stop
                 described[what] = kept
+            if found.proves:
+                criteria = _criteria(config, found.proves)
+                glossary = config.relative(config.glossary_file)
+                files = [glossary] if (tree / glossary).is_file() else []
+                kept, stop = self._describe(
+                    number, head, env, tree, config, "expected", files, criteria
+                )
+                if stop is not None:
+                    return {}, stop
+                described["expected"] = kept
             return described, None
         except (ConfigError, OSError) as err:
             return {}, Stop(
@@ -469,9 +493,11 @@ class Watcher:
         finally:
             _shutil.rmtree(tree, ignore_errors=True)
 
-    def _describe(self, number, head, env, tree, config, what, files) -> tuple[str, Stop | None]:
-        """One describe session in a folder of these files only; its checked
-        result's file, or why it failed."""
+    def _describe(
+        self, number, head, env, tree, config, what, files, criteria=None
+    ) -> tuple[str, Stop | None]:
+        """One describe session in a folder of these files only — and, for the
+        expected cases, criteria.yaml; its checked result's file, or why it failed."""
         import shutil as _shutil
         import tempfile
 
@@ -484,6 +510,11 @@ class Watcher:
                 target = alone / name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 _shutil.copyfile(tree / name, target)
+            if criteria is not None:
+                (alone / "criteria.yaml").write_text(
+                    yaml.safe_dump(criteria, sort_keys=False, allow_unicode=True)
+                )
+                files = ["criteria.yaml", *files]
             output, timed_out = self._session(
                 self.describe(_describe_prompt(self.config, files, what)), alone, env, number, head
             )
@@ -492,14 +523,16 @@ class Watcher:
         (self.config.root / log).write_text(output)
         if what == "tests":
             entries, why = _descriptions(output, files)
-        else:
+        elif what == "stories":
             entries, why = _stories(output, config, files)
+        else:
+            entries, why = _expected(output, criteria)
         if timed_out or entries is None:
-            failed = (
-                "The tests could not be described: "
-                if what == "tests"
-                else ("The designs could not be told as stories: ")
-            )
+            failed = {
+                "tests": "The tests could not be described: ",
+                "stories": "The designs could not be told as stories: ",
+                "expected": "The expected cases could not be listed: ",
+            }[what]
             return "", Stop(
                 number,
                 head,
@@ -633,6 +666,66 @@ def _stories(output: str, config: ProductConfig, files: list[str]) -> tuple[list
     if wrong:
         return None, f"a step names a source the design does not have: {wrong[0]}."
     return entries, ""
+
+
+def _criteria(config: ProductConfig, proves) -> list[dict]:
+    """The statement and numbered acceptance criteria of each requirement proved:
+    all the expected-cases session reads, with the glossary."""
+    from tools.read_requirements_tool import read_requirements
+
+    wanted = set(proves)
+    out = []
+    for req in read_requirements(config):
+        uid = req.text("uid")
+        if uid not in wanted:
+            continue
+        criteria = req.data.get("acceptance_criteria")
+        out.append(
+            {
+                "requirement": uid,
+                "statement": req.data.get("statement", ""),
+                "criteria": [
+                    {"criterion": i, **c}
+                    for i, c in enumerate(criteria if isinstance(criteria, list) else [], 1)
+                    if isinstance(c, dict)
+                ],
+            }
+        )
+    return sorted(out, key=lambda r: r["requirement"])
+
+
+def _expected(output: str, criteria: list[dict]) -> tuple[list | None, str]:
+    """The expected cases, checked against review.v1: each of a criterion that
+    exists, and at least one for every requirement."""
+    import yaml
+
+    from tools.validate_contract_tool import validate
+
+    text = output.strip()
+    if text.startswith("```"):
+        text = "\n".join(text.splitlines()[1:]).rsplit("```", 1)[0]
+    try:
+        entries = yaml.safe_load(text)
+    except yaml.YAMLError as err:
+        return None, f"its answer is not YAML ({err.__class__.__name__})."
+    if not isinstance(entries, list):
+        return None, "its answer is not a list of cases."
+    tested = [{**e, "test": "missing"} if isinstance(e, dict) else e for e in entries]
+    problems = validate({"person": "none", "findings": [], "expected": tested}, "review")
+    if problems:
+        return None, f"its answer breaks review.v1 at '{problems[0].path}': {problems[0].message}"
+    counts = {r["requirement"]: len(r["criteria"]) for r in criteria}
+    wrong = [
+        f"{e['requirement']} criterion {e['criterion']}"
+        for e in entries
+        if not 1 <= e["criterion"] <= counts.get(e["requirement"], 0)
+    ]
+    if wrong:
+        return None, f"it lists a case of a criterion that does not exist: {wrong[0]}."
+    missing = sorted(set(counts) - {e["requirement"] for e in entries})
+    if missing:
+        return None, f"it lists no case of {', '.join(missing)}."
+    return [{k: e[k] for k in ("requirement", "criterion", "case")} for e in entries], ""
 
 
 def _copy_head(root: Path, number: int, head: str, into: Path) -> bool:

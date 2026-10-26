@@ -22,6 +22,7 @@ def test_requirements_subject_is_the_requirements_their_page_and_their_diagrams(
         "docs/diagrams/login.wishes.yaml",
         "docs/glossary.md",
         "docs/requirements/login.md",
+        "docs/requirements/questions.yaml",
         "docs/requirements/review.html",
     ]
 
@@ -52,6 +53,7 @@ def test_record_writes_a_valid_dated_approval(product):
         "docs/diagrams/login.wishes.yaml",
         "docs/glossary.md",
         "docs/requirements/login.md",
+        "docs/requirements/questions.yaml",
         "docs/requirements/review.html",
     ]
 

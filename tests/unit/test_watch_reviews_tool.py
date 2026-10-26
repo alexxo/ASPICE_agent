@@ -344,6 +344,27 @@ print('```')
 """
 
 
+EXPECTER = """
+import os, yaml
+seen = sorted(os.path.join(d, f) for d, _, fs in os.walk('.') for f in fs)
+assert seen == ['./criteria.yaml', './docs/glossary.md'], seen
+assert 'QF_HOST_TOKEN' not in os.environ and 'GH_TOKEN' not in os.environ
+for req in yaml.safe_load(open('criteria.yaml')):
+    print(f"- requirement: {req['requirement']}")
+    print("  criterion: 1")
+    print("  case: the sign-in is taken")
+"""
+
+
+def _sessions(expecter=EXPECTER):
+    """The describe sessions: the tests described, the expected cases listed."""
+    return lambda prompt: [
+        sys.executable,
+        "-c",
+        DESCRIBER if prompt.startswith("Describe the tests") else expecter,
+    ]
+
+
 def _on_origin(tmp_path, change, files):
     """A Python product whose pull request #7, the change of these files, is on
     its origin."""
@@ -463,7 +484,7 @@ def test_a_story_with_an_invented_source_stops_the_review(redesigned):
 def test_the_watcher_describes_the_tests_in_a_folder_of_tests_only(pulled):
     w, shown, head = pulled
     prompts = []
-    w.describe = lambda prompt: [sys.executable, "-c", DESCRIBER]
+    w.describe = _sessions()
 
     def review(prompt):
         prompts.append(prompt)
@@ -477,6 +498,52 @@ def test_the_watcher_describes_the_tests_in_a_folder_of_tests_only(pulled):
     assert "test: test_the_form_takes_the_sign_in" in (w.config.root / described).read_text()
     assert not (w.config.root / ".qf/reviews/7-head").exists()  # cleaned up
     assert "approved" in shown[-1]
+
+
+def test_the_watcher_lists_the_expected_cases_from_the_criteria_alone(pulled):
+    w, shown, head = pulled
+    prompts = []
+    w.describe = _sessions()
+
+    def review(prompt):
+        prompts.append(prompt)
+        w.host.posted.append(Review(AGENT, "APPROVED", head))
+        return [sys.executable, "-c", "print('reviewed')"]
+
+    w.command = review
+    w.once()
+    listed = f".qf/reviews/7-{head[:7]}.expected.yaml"
+    assert listed in prompts[0] and "never add, drop or change a case yourself" in prompts[0]
+    cases = (w.config.root / listed).read_text()
+    assert [line for line in cases.splitlines() if "requirement" in line] == [
+        "- requirement: REQ-0049",
+        "- requirement: REQ-0050",
+        "- requirement: REQ-0053",
+    ]
+    assert "approved" in shown[-1]
+
+
+@pytest.mark.parametrize(
+    ("answer", "why"),
+    [
+        ("print('- requirement: REQ-0049')", "breaks review.v1"),
+        (
+            "print('- {requirement: REQ-0049, criterion: 1, case: c}')",
+            "it lists no case of REQ-0050, REQ-0053",
+        ),
+        (
+            "print('- {requirement: REQ-0049, criterion: 9, case: c}')",
+            "a criterion that does not exist: REQ-0049 criterion 9",
+        ),
+    ],
+)
+def test_expected_cases_that_fail_stop_the_review_before_it_starts(pulled, answer, why):
+    w, shown, head = pulled
+    w.describe = _sessions(answer)
+    w.command = lambda prompt: pytest.fail("the review must not start")
+    w.once()
+    said = " ".join(line.strip("# ") for line in shown[-1].splitlines())
+    assert "The expected cases could not be listed" in said and why in said
 
 
 def test_descriptions_that_fail_stop_the_review_before_it_starts(pulled):

@@ -62,6 +62,7 @@ def subject_files(config: ProductConfig, approves: str) -> list[Path]:
             *config.requirements_dir.rglob("*.md"),
             config.glossary_file,
             config.requirements_dir / "review.html",
+            config.requirements_dir / "questions.yaml",  # the answers the page shows
             *_diagram_files(config),  # what they are derived from: a changed diagram withdraws it
         ]
     elif approves == "stack":

@@ -1,0 +1,6 @@
+person: none
+findings: []
+expected:
+  - requirement: REQ-0047
+    criterion: 2
+    case: the 3rd failure locks the account

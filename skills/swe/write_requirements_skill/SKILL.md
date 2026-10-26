@@ -80,6 +80,7 @@ and *watched_by*.
 | R15 | Each requirement states one behaviour; two behaviours are two requirements | Checkpoint 2 |
 | R16 | The architect reviews the requirements on the review page (*&lt;requirements_dir&gt;/review.html*), rendered from the current files by *agent/render_review_tool.py*, never written by hand: each system-level requirement (shaded) followed by the software-level ones refining it (indented), every field, what changed since the previous approval marked word by word, the diagrams changed since then named; an approval on a page the files no longer render is refused | verify_requirements_approval_gate · MISSING_REVIEW_PAGE, REVIEW_PAGE_OUTDATED |
 | R17 | The approval covers the diagrams the requirements are derived from: a changed diagram withdraws it, and the requirements are reviewed again against it | verify_requirements_approval_gate · APPROVAL_OUTDATED |
+| R18 | Before checkpoint 2, every acceptance criterion and glossary term is checked for readings that would need different tests, in a session that sees only the requirements, the glossary and the approved diagrams (*agent/clarify_criteria_prompt.md*); each question it raises is answered by the person with a listed number, and the criterion is rewritten to the reading chosen and checked again. An unchanged criterion is not checked again | verify_requirements_approval_gate · CRITERIA_NOT_CHECKED, QUESTION_UNANSWERED |
 
 ## Not checkable
 

@@ -1677,6 +1677,7 @@ sequenceDiagram
     participant CP as record_checkpoint_tool
     participant RS as record_stage_done_tool
     participant RR as render_review_tool
+    participant QA as record_answer_tool
   end
   participant ST as read_stages_tool<br/>(stages.yaml)
   participant SK as Plugin + framework skills
@@ -1708,8 +1709,11 @@ sequenceDiagram
         OR->>SK: Do the work by the method, in the framework's form (+ previous findings, if any)
         SK->>REPO: Write the work product
         opt stage 2
+          OR->>QA: The criteria and terms not checked yet
+          OR->>SK: A fresh session flags the unclear ones, from the requirements, glossary and diagrams alone
+          OR->>QA: Record its questions, every criterion checked
           OR->>RR: Render the requirements' review page
-          RR->>REPO: Review page, what changed since the previous approval marked
+          RR->>REPO: Review page, what changed since the previous approval marked, the questions in their rows
         end
         OR->>GR: Run the gates of this stage
         GR->>G: Run each gate script
@@ -1731,6 +1735,14 @@ sequenceDiagram
       OR->>H: The pull request waits for your review on the host (the link opens)
     else awaiting_checkpoint — seals 1, 2, 3, 5
       OR->>H: Review this work product
+      opt seal 2, a question open
+        loop each question, one at a time
+          OR->>H: Its readings, numbered, and the proposal with its source
+          H-->>OR: Y or a listed number
+          OR->>QA: Record the answer
+        end
+        OR->>REPO: Each criterion rewritten to the reading chosen, checked again, the page rendered again
+      end
       H-->>OR: Approve or request changes
       OR->>CP: Record the decision the person gave
       CP->>REPO: Approval (who, role, when, SHA-256 of every file covered)
@@ -2124,6 +2136,9 @@ and format).
 | *agent/render_review_tool.py* | Renders the requirements' review page for checkpoint 2 from the committed files, what changed since the previous approval marked; the approval gate renders it again to compare, and record_checkpoint_tool refuses an approval on a page the files no longer render |
 | *agent/run_aspice_agent.md* | The orchestrator: the only LLM part; holds ODD's common steps — Authorize, Classify, Track before write, Close |
 | *agent/describe_tests_prompt.md* | The prompt of the session that describes each test from the test alone, never the requirement, for the person's review (§ 5 stage 9, rule 14) |
+| *agent/expect_cases_prompt.md* | The prompt of the session that lists the cases each acceptance criterion needs tested, from the criteria alone, never the tests or the code, for the reviewer agent's comparison (§ 5 stage 9, rule 14) |
+| *agent/clarify_criteria_prompt.md* | The prompt of the session that flags each criterion or glossary term whose readings would need different tests, before checkpoint 2 (§ 5 stages 1 and 2, rule 27) |
+| *agent/record_answer_tool.py* | Records the check for unclear criteria as *question.v1* and the person's answer to each question; lists the criteria and terms not checked yet |
 | *agent/describe_design_prompt.md* | The prompt of the session that tells each changed detailed design as stories from the design alone, never the requirements, a gap marked ⚠, for the person's review (§ 5 stage 9, rule 14) |
 | *agent/run_reviewer_agent.md* | The reviewer's own session: the only one holding the reviewer agent's token; loads the reviewer's method and rules, reviews one pull request's head, posts, changes nothing |
 | *agent/start_product.md* | The start rulebook: asks the person the setup's values, runs the construction site setup, relays the host steps, then hands over to the orchestrator (starting a product) |
@@ -2632,6 +2647,31 @@ requirements).
     checkpoint 1, not after the components are written. Without an
     architecture diagram the finding is NO_ARCHITECTURE_DIAGRAM alone, not
     one per participant.
+27. **Unclear criteria are settled before the build.** Once the other gates
+    of stage 2 pass, a fresh session that sees only the requirements, the
+    glossary and the approved diagrams flags each acceptance criterion or
+    glossary term whose readings would need different tests
+    (*agent/clarify_criteria_prompt.md*): two or more readings, each with a
+    short example, a reading that contradicts another requirement marked, a
+    proposal only with its source — a diagram message, another requirement,
+    a term — and an unclear term asked once, on the term.
+    *agent/record_answer_tool.py* records the questions in
+    *&lt;requirements_dir&gt;/questions.yaml* (*question.v1*) with the
+    SHA-256 of every criterion and term checked, so an unchanged one is
+    never asked again. The questions sit in their requirement's row of the
+    review page; in the terminal the agent asks them one at a time, and the
+    person answers only with a listed number, or Y to accept the proposal;
+    the last number is *neither: the requirement goes back to be
+    rewritten*. The agent rewrites each criterion to the reading chosen,
+    has it checked again and renders the page, which shows the question
+    settled — *proposal accepted*, *changed* or *no proposal*. Until the
+    approval, CRITERIA_NOT_CHECKED names a criterion or term not checked
+    and QUESTION_UNANSWERED one answered *neither* whose criterion is
+    unchanged, and — once work derived from the requirements exists — an
+    open question: before that it waits for the person, not the agent. An
+    approval is refused while any of them holds, and it covers the
+    questions file with the page. Appendix A.2,
+    *Unclear criteria settled at checkpoint 2*.
 
 #### Architecture stage — stage 3
 
@@ -3282,10 +3322,11 @@ and a person approves the results and answers the questions of what is wanted
     tools *read_host_tool*, *post_review_tool*, *classify_pull_request_tool*,
     *post_checkpoint_review_tool* and *watch_reviews_tool*, with its logs
     *.qf/reviews/&lt;n&gt;-&lt;sha&gt;.log*; the contract *review.v1* and its
-    *```yaml review* block with its *summary*, *stories* and *covers*; the
-    prompts *agent/describe_tests_prompt.md* and
-    *agent/describe_design_prompt.md*, with the watcher's files
-    *.qf/reviews/&lt;n&gt;-&lt;sha&gt;.tests.yaml* and *.stories.yaml*; the
+    *```yaml review* block with its *summary*, *stories*, *expected* and
+    *covers*; the prompts *agent/describe_tests_prompt.md*,
+    *agent/describe_design_prompt.md* and *agent/expect_cases_prompt.md*,
+    with the watcher's files *.qf/reviews/&lt;n&gt;-&lt;sha&gt;.tests.yaml*,
+    *.stories.yaml* and *.expected.yaml*; the record's *expected*; the
     *qf.v1* fields *framework_dir*, *ci_file*, *framework_feedback_file*,
     *review.agents*, *review.people*; the *stack.v2* areas *secrets_scanner* and
     *dependencies_scanner*; the token
@@ -3370,6 +3411,18 @@ and a person approves the results and answers the questions of what is wanted
     design; REVIEW_STORY_UNSOURCED rejects one the design does not have). The
     reviewer agent reads the stories: a gap a requirement answers is a
     finding; a gap no requirement answers goes to the person.
+    *The cases expected of each criterion.* With the results, a session that
+    saw only the statement and acceptance criteria of the requirements the
+    pull request proves, and the glossary — never the tests or the code
+    (*agent/expect_cases_prompt.md*) — lists the cases each criterion needs
+    tested: the case it states, its limits and the failures it implies, one
+    plain line each. The reviewer agent copies the list into its record's
+    *expected* and gives each case the test that checks it, or *missing*. A
+    missing case is a finding for the tester; a case the reviewer agent holds
+    wrong shows a criterion read two ways, and it asks for a person
+    (condition 2). REVIEW_EXPECTED_CASES_MISSING rejects a record with no
+    case of a requirement proved, or one that approves a case no test checks
+    without asking a person. Appendix A.8, *The reviewer's independence*.
     *What the person sees.* Once the reviewer agent has approved the head, CI
     posts the checkpoint-4 review as a comment on the pull request
     (*post_checkpoint_review_tool*), after the verification report, mentioning
@@ -3393,8 +3446,9 @@ and a person approves the results and answers the questions of what is wanted
     - Each weakened test, before and now; each finding closed without a
       change; the reviewer agent's request.
 
-    The watcher runs both describe sessions in temporary folders outside the
-    product, each holding nothing but those files, copied from the head,
+    The watcher runs the describe sessions and the expected cases in
+    temporary folders outside the product, each holding nothing but those
+    files, copied from the head,
     without the reviewer's token, the instructions in the prompt, so no
     session has a path to the requirements. The author agent opens the
     comment on its computer (rule 13).
@@ -3404,7 +3458,9 @@ and a person approves the results and answers the questions of what is wanted
     record with every changed design told and, when a person reviews, the
     summary and, with the results, every test described
     (INCOMPLETE_CHECKLIST), every story step's source in its design
-    (REVIEW_STORY_UNSOURCED), a person's approval of the head
+    (REVIEW_STORY_UNSOURCED), with the results the expected cases of every
+    requirement proved, each tested or asked about
+    (REVIEW_EXPECTED_CASES_MISSING), a person's approval of the head
     (MISSING_PERSON_APPROVAL), the comment for that head and those questions —
     for the results, once the tree's verification report exists — with every
     question answered yes — the first box alone; both ticked is unanswered
@@ -3979,6 +4035,40 @@ label together.
   rated high; the architecture diagram derived from the workflow, which
   needs a generator the diagram plugin does not have.
   → § 5 stages 1 and 2, rules 17, 18 and 26.
+- **Unclear criteria settled at checkpoint 2** (2026-10-26, Alex). The
+  tester, the coder and the reviewer agent run the same model on the same
+  text, so a criterion that can be read two ways is read the same wrong way
+  by all three; tests and code then agree, both wrong, and a lower-rated
+  requirement never reaches the person again (risk A of *The reviewer's
+  independence*, Appendix A.8 — 252). *Chosen:* before checkpoint 2 a session
+  that sees only the requirements, the glossary and the approved diagrams
+  flags each criterion whose readings would need different tests — one that
+  passes for one reading fails for the other; wording alone is never
+  flagged. Each reading is checked against the other requirements, a
+  conflicting one marked or left out; an unclear term is asked once, on the
+  glossary term, and its answer fixes every requirement using it. The
+  questions sit in the requirement's row of the review page, each reading
+  with a short example (✗ ✗ ✗ → locked), a last option *neither: the
+  requirement goes back to be rewritten*, and a proposal that names its
+  source — a diagram message, another requirement, a term — or *no proposal*
+  when nothing approved decides it. In the terminal the agent asks one
+  question at a time; the person answers only with a listed number, or Y to
+  accept the proposal (no Y without one); anything else asks again. The
+  agent rewrites each criterion to the reading chosen and renders the page
+  again, which shows it marked changed and the question settled, *proposal
+  accepted* or *proposal changed*; the approval is proposed the same way and
+  refused while a question is open. An answer stays with its criterion: a
+  later checkpoint 2 asks only about criteria changed since. Risk A falls to
+  O 4 — 168, with the expected cases of Appendix A.8 to 112. Risks kept: the
+  person accepts proposals without reading — S 7, O 4, D 5 (the options come
+  before the proposal, each with its reason; the record shows how often the
+  proposal was taken) — 140; a criterion every session reads the same wrong
+  way is not flagged — S 7, O 3, D 6 — 126. *Not taken:* free-text answers —
+  an answer the agent could misread; answers on the page itself (a script
+  and a copy step), a local server (a process to run) or on the host like
+  checkpoint 4 (checkpoint 2 lives in the product's files); an *accept all
+  proposals* key — the rubber stamp the check exists to prevent.
+  → § 5 stages 1 and 2, rule 27.
 
 ### A.3 Architecture stage — stage 3
 
@@ -4515,6 +4605,46 @@ label together.
   rule that an approval covers the ticks it saw stays (H5), so that run could
   only say *approve again* too, for a new trigger, a write token on comment
   events and a CI file change in every product.
+- **The reviewer's independence** (2026-10-26, Alex). The reviewer agent
+  is a separate session of the same model as the author: an agent reviewing
+  an agent is not independent, and during the build (stages 4 to 8) it is
+  the only check of what the gates cannot see. Rated with today's measures —
+  the tester who never sees the code, the red run, the blind stories and
+  test descriptions, the scanners, checkpoint 4 for high and security
+  requirements:
+
+  | # | Scenario | O | S | D | Risk |
+  |---|---|---|---|---|---|
+  | A | An unclear criterion read the same wrong way by tester, coder and reviewer; tests and code agree, both wrong | 6 | 7 | 6 | 252 |
+  | B | Tests that miss limits and failures, red once, judged by the reviewer as the tester did | 6 | 6 | 6 | 216 |
+  | E | A shallow review of a large pull request; nobody checks the review | 4 | 6 | 7 | 168 |
+  | C | The reviewer takes the author's reasoning and withdraws a right finding | 5 | 6 | 5 | 150 |
+  | D | A security flaw in the code neither model sees; no gate scans the code itself | 3 | 9 | 5 | 135 |
+  | G | Text the author wrote steers the reviewer | 2 | 7 | 6 | 84 |
+  | F | A framework prompt's defect misleads author and reviewer alike | 3 | 6 | 4 | 72 |
+
+  *Chosen* for A: the unclear criteria settled at checkpoint 2 (Appendix
+  A.2), and **expected cases** — before the review of a pull request that
+  brings the results (it adds or changes software-level tests, which name
+  their requirements), the watcher runs a session that sees only the
+  acceptance criteria of the requirements they prove and the glossary, never
+  the tests or the code, and
+  lists the cases it expects of each: the normal case, the limits, the
+  failures. The reviewer agent compares them with the tests and records each
+  case with the test that covers it or *missing*; a missing case is a
+  finding for the tester, a case the reviewer holds wrong shows an unclear
+  criterion and goes to the person as a question of what is wanted. A falls
+  to O 4, D 4 — 112. B, C, D and E are accepted, with their mitigations
+  above. Risk kept with A: the expected-cases session shares the misreading
+  the checkpoint-2 check did not flag — 126 (Appendix A.2). Cost: no CI
+  time; one more session per such pull request on the person's computer,
+  against the same usage limit. *Not taken:* a different model as reviewer
+  — every session reads the same unclear text, so its gain is unknown until
+  measured, and it needs another vendor; the reviewer's own black-box tests
+  — a session and a run per pull request; mutation testing for B and a code
+  scanner for D — not chosen now; two reviewers — the cost doubled; expected
+  cases for unit tests — they trace to units, not to criteria, and the
+  criteria are tested at the software level. → § 5 stage 9, rule 14.
 - **No person is asked during the build** (2026-10-25, FB-49). Each plugin
   of stages 4 to 8 asked the person a round of build questions, against the
   split of v3.0.0. Risk of the agent settling them: a choice that was the

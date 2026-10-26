@@ -543,12 +543,30 @@ def write_picture(spec: Path) -> Path:
     return picture
 
 
+def check_criteria(root: Path, questions: list[dict] | None = None) -> None:
+    """The check for unclear criteria before checkpoint 2, recorded: by default it
+    found nothing unclear."""
+    from agent.record_answer_tool import record_check
+    from tools.read_product_config_tool import read_product_config
+
+    folder = read_product_config(Path(root)).requirements_dir
+    if not (folder.is_dir() and any(folder.rglob("*.md"))):
+        return
+    session = Path(root) / ".qf" / "clarify.yaml"
+    session.parent.mkdir(parents=True, exist_ok=True)
+    session.write_text(yaml.safe_dump(questions or [], allow_unicode=True))
+    record_check(Path(root), session)
+    session.unlink()
+
+
 def render_reviews(root: Path) -> None:
-    """The requirements review page, as the agent renders it before checkpoint 2."""
+    """The requirements review page, as the agent renders it before checkpoint 2,
+    after the check for unclear criteria."""
     from agent.render_review_tool import render_review
     from tools.read_product_config_tool import ConfigError
 
     try:
+        check_criteria(root)
         render_review(root)
     except ConfigError:  # a product built with a broken qf.yaml has no page
         return

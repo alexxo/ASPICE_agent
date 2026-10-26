@@ -6,7 +6,8 @@ file it covers, so it is bound to the exact content reviewed. The latest file
 for a checkpoint and subject counts; it is current only while every covered file
 is unchanged and no file was added or removed. An approval at checkpoint 2 is
 refused while the review page is missing or differs from what the files render
-now: the person approves the requirements they saw.
+now, or while a criterion is unchecked or a question unanswered: the person
+approves the requirements they saw, with every question settled.
 
     python agent/record_checkpoint_tool.py --checkpoint N --decision approved \\
         --approver NAME --role ROLE [--comment TEXT] [--root PRODUCT]
@@ -25,6 +26,7 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
 import yaml  # noqa: E402
 
 from agent.read_stages_tool import read_stages  # noqa: E402
+from agent.record_answer_tool import question_findings  # noqa: E402
 from agent.render_review_tool import render, review_page  # noqa: E402
 from tools.read_approvals_tool import approval_state, sha256, subject_files  # noqa: E402
 from tools.read_product_config_tool import ProductConfig, read_product_config  # noqa: E402
@@ -81,6 +83,12 @@ def record_checkpoint(
 
 
 def _reviewed(config: ProductConfig) -> None:
+    unsettled = question_findings(config)
+    if unsettled:
+        raise ValueError(
+            f"{unsettled[0].message} An approval at checkpoint 2 waits until every criterion "
+            "is checked and every question answered."
+        )
     page = review_page(config)
     if not page.is_file() or page.read_text(encoding="utf-8") != render(config):
         raise ValueError(

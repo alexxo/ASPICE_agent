@@ -17,12 +17,13 @@ resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 import shutil
 from datetime import datetime, timezone
 
+from product_builder import render_reviews
+
 from agent.count_retries_tool import decide, record_attempt
 from agent.load_skills_tool import load_skills
 from agent.read_config_tool import read_config
 from agent.read_stages_tool import stage
 from agent.record_checkpoint_tool import record_checkpoint
-from agent.render_review_tool import render_review
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import run_gates
 
@@ -56,7 +57,7 @@ def _attempts(repo_root, product, outputs):
         target = product / "docs" / "requirements" / "login.md"
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(repo_root / OUTPUTS / output / "login.md", target)
-        render_review(product)
+        render_reviews(product)
         results = run_gates(product, stage("requirements").gates)
         record_attempt(product, "requirements", results)
         decision = decide(product, "requirements")

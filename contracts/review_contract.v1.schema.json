@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://quality-framework/contracts/review_contract.v1.schema.json",
   "title": "review.v1",
-  "description": "What the reviewer agent hands to the person's review (SUP.1 BP1, SWE.3 BP5): whether it asks for a person, what became of each finding over the review rounds, what the pull request does, each changed design told as stories from the design alone — a gap it approved is a question for the person — and, with the results, each software-level test described from the test alone. A fenced ```yaml review block in the reviewer agent's review, written by post_review_tool --record. That an approval carries one, and which pull requests a person reviews, are rules of verify_delivery_reviewed_gate (classify_pull_request_tool); the person's review is posted by post_checkpoint_review_tool.",
+  "description": "What the reviewer agent hands to the person's review (SUP.1 BP1, SWE.3 BP5): whether it asks for a person, what became of each finding over the review rounds, what the pull request does, each changed design told as stories from the design alone — a gap it approved is a question for the person — and, with the results, each software-level test described from the test alone and the cases expected of each criterion, listed from the criterion alone, with the test that checks each. A fenced ```yaml review block in the reviewer agent's review, written by post_review_tool --record. That an approval carries one, and which pull requests a person reviews, are rules of verify_delivery_reviewed_gate (classify_pull_request_tool); the person's review is posted by post_checkpoint_review_tool.",
   "type": "object",
   "additionalProperties": false,
   "required": ["person", "findings"],
@@ -53,6 +53,25 @@
           "does": {"type": "string", "minLength": 1},
           "checks": {"type": "string", "minLength": 1},
           "not": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "expected": {
+      "description": "With the results: the cases expected of each acceptance criterion of the requirements the pull request proves, listed in a session that saw those criteria only, never the tests or the code (agent/expect_cases_prompt.md) — copied unchanged — each with the test that checks it, or missing. A missing case is a finding for the tester; one the reviewer agent holds wrong shows an unclear criterion, a question for the person.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requirement", "criterion", "case", "test"],
+        "properties": {
+          "requirement": {"type": "string", "pattern": "^REQ-[0-9]{4,}$"},
+          "criterion": {"type": "integer", "minimum": 1},
+          "case": {"type": "string", "minLength": 1},
+          "test": {
+            "description": "The test that checks the case, as <file>::<test>, or missing.",
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
