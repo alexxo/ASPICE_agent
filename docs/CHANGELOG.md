@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-10-26
+
+A pull request behind main catches up by a merge, never a rebase.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v3.2.1 |
+
+### Fixed
+
+- **A rebase was offered as an equal way to bring a refused push up to date.** On a pushed pull request branch a rebase rewrites its history: the next push goes through only as a force-push, and the stage done records and reviews name commits the branch no longer holds. The rulebooks now forbid rewriting any pushed branch: a pull request behind main catches up by merging main into its branch, and a rebase is left to a branch never pushed. `skills/sup/record_baseline_skill/SKILL.md` R13, `agent/run_aspice_agent.md`, `QUICKSTART.md`, design document § 5 stage 10 rule 7. Origin: FB-53 (wp_publisher).
+
 ## [3.2.0] - 2026-10-26
 
 Unclear criteria are settled by the person before the build, and the reviewer agent compares the tests with cases listed from the criteria alone.
