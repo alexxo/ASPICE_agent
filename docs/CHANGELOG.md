@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.1.3] - 2026-10-26
+
+A renamed test, a new assumption or a changed test double no longer fails the red run of a built unit.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v3.1.3 |
+
+### Fixed
+
+- **v3.1.2's per-test judging still blocked review fixes.** A test's lines were compared with the parent's file cut by the new commit's test names, so a renamed or removed test made the test before it changed; and any change before the first test judged every test of the file, so a new assumption in the module docstring or a test double following a changed interface met TEST_NOT_FAILING for every test on the built unit. *verify_test_first_gate* now reads the commit's diff: a test changed when code among its own lines changed — its annotations and the comments right above it included — while blank lines, comments and docstrings change nothing and a test removed between two others changes neither. Code changed before the first test (imports, fixtures, helpers) judges no test by itself, but one of the file's tests must fail on that commit, else TEST_NOT_FAILING names the file. `gates/swe/verify_test_first_gate.py`, `skills/swe/enforce_test_first_skill/SKILL.md` R4, design document § 5 unit stages rule 18, Appendix A.5. Origin: FB-52 (wp_publisher).
+
 ## [3.1.2] - 2026-10-25
 
 A built unit's tests change test-first again.
