@@ -18,7 +18,9 @@ head and the files are folded under "Details for the record":
   or not achieved; the other requirements only counted;
 - the questions of what is wanted, on any pull request: each gap (⚠) a story
   of a changed design marks and the reviewer agent approved, so no
-  requirement answers it — keep the requirements, or change them; each
+  requirement answers it — what the build does there now and what follows
+  for the user, as the reviewer agent's record says, then keep it, or
+  change it; each
   weakened test, before and now; each finding closed without a change, the
   finding, the author's answer and the reviewer's final position; the
   reviewer agent's own request.
@@ -77,7 +79,7 @@ def render(config: ProductConfig, repo: str, pull: PullRequest, review, record: 
     if results is None:
         return None  # no verification report of this tree yet: nothing to approve
     items, counted = results
-    items = items + _items(review)
+    items = items + _items(review, record)
     body = "\n\n".join(
         f"### {i}. {title}\n\n{text}\n\n- [ ] {yes}\n- [ ] {no}"
         for i, (title, text, yes, no) in enumerate(items, 1)
@@ -232,19 +234,20 @@ def _result(row: dict, data: dict, told: dict) -> tuple:
     )
 
 
-def _items(review) -> list[tuple]:
+def _items(review, record: dict) -> list[tuple]:
     """The questions of what is wanted."""
     items = []
+    now = {(g["design"], g["story"], g["step"]): g for g in record.get("gaps", [])}
     for design, story, step in review.gaps:
         items.append(
             (
                 f"An open question in the design of {design}",
-                f"*{story}*\n⚠ {step}\n\nNo requirement asks for this, so the reviewer agent "
-                "approved the design. Keep the requirements as they are — or change them: "
-                "request changes and write what you want, and the agent proposes it as a change "
-                "request.",
-                "keep the requirements",
-                "change them",
+                f"*{story}*\n⚠ {step}\n\n{_now(now.get((design, story, step)))}\n\n"
+                "No requirement asks for this, so the reviewer agent approved the design. Keep "
+                "it as it is now — or change it: request changes and write what you want, and "
+                "the agent proposes it as a change request.",
+                "keep it as it is now",
+                "change it",
             )
         )
     for w in review.weakenings:
@@ -278,6 +281,18 @@ def _items(review) -> list[tuple]:
             )
         )
     return items
+
+
+def _now(gap: dict | None) -> str:
+    """What the build does at a gap, and what follows for the user."""
+    if gap is None:
+        return "**Now:** the reviewer agent did not say."
+    if gap["source"]:
+        lines = ", ".join(f"`{s}`" for s in gap["source"])
+        told = f"**Now:** {gap['now']} ({lines})"
+    else:
+        told = f"**Now:** nothing decides it yet; the build will take this reading: {gap['now']}"
+    return f"{told}\n**For the user:** {gap['means']}"
 
 
 def _send(token: str, url: str, method: str, body: str) -> None:

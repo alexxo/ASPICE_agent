@@ -6,7 +6,9 @@ qf.yaml review.agents, never the author — approves the current head
 only when it changes code — and its review record, a ```yaml review block
 (review.v1) — telling every changed design as stories; when a person reviews,
 saying what the pull request does; with the results, describing their
-software-level tests (INCOMPLETE_CHECKLIST); every story step names a source
+software-level tests; at each gap it approves, what the build does there now,
+from lines the product has, and what follows for the user
+(INCOMPLETE_CHECKLIST); every story step names a source
 its design has (REVIEW_STORY_UNSOURCED); with the results, it lists the cases
 expected of each criterion of the requirements proved, from the criteria alone,
 each with its test — a case no test checks only with a person asked
@@ -248,7 +250,7 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
     review = person_review(config, pull, record)
     people = [r for r in approvals if r.author not in agents and not r.bot]
     if record is not None and not pull.merged:
-        gaps = _record_gaps(review, record)
+        gaps = _record_gaps(review, record, config.root)
         if gaps:
             findings.append(
                 Finding(
@@ -288,10 +290,11 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
     return findings
 
 
-def _record_gaps(review: Classification, record: dict) -> list[str]:
+def _record_gaps(review: Classification, record: dict, root: Path) -> list[str]:
     """What the reviewer agent's record leaves out: the stories of every changed
     design; when a person reviews, the summary; with the results, the
-    descriptions of their tests."""
+    descriptions of their tests; at each gap it approved, what the build does
+    there now, from lines the product has."""
     gaps = []
     if review.needed and not record.get("summary"):
         gaps.append("says nothing of what the pull request does (summary)")
@@ -309,7 +312,28 @@ def _record_gaps(review: Classification, record: dict) -> list[str]:
             f"tells no story of the design of {', '.join(untold)} "
             "(agent/describe_design_prompt.md)"
         )
+    now = {(g["design"], g["story"], g["step"]): g for g in record.get("gaps", [])}
+    for design, story, step in review.gaps:
+        if (design, story, step) not in now:
+            gaps.append(f"does not say what the build does now at the gap “{step}” (gaps)")
+    for told in now.values():
+        unknown = [s for s in told["source"] if not _line_exists(root, s)]
+        if unknown:
+            gaps.append(
+                f"names lines the product does not have for the gap “{told['step']}”: "
+                f"{', '.join(unknown)}"
+            )
     return gaps
+
+
+def _line_exists(root: Path, source: str) -> bool:
+    """Whether path:line names a line of a file under the product's root."""
+    path, _, line = source.rpartition(":")
+    file = (root / path).resolve()
+    if not file.is_file() or not file.is_relative_to(root.resolve()):
+        return False
+    with file.open(errors="replace") as text:
+        return sum(1 for _ in text) >= int(line)
 
 
 def _expected_findings(review: Classification, record: dict, where: str) -> list[Finding]:

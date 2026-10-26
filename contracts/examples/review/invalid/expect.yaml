@@ -3,3 +3,4 @@ condition-six.yaml: {path: "person", keyword: oneOf}
 dispute-without-answer.yaml: {path: "findings/0", keyword: required}
 step-without-source.yaml: {path: "stories/0/steps/0/source", keyword: minItems}
 case-without-test.yaml: {path: "expected/0", keyword: required}
+gap-without-now.yaml: {path: "gaps/0", keyword: required}

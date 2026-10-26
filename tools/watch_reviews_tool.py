@@ -208,7 +208,8 @@ def _prompt(
     stories = (
         f" The changed designs are told as stories already, in {described['stories']}: if your "
         "record needs stories, put that list under `stories` as it is; never write or change a "
-        "story yourself."
+        "story yourself. For each gap you approve, write under `gaps` what the build does there "
+        "now, the lines that decide it and what follows for the user."
         if "stories" in described
         else ""
     )

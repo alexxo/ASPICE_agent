@@ -153,11 +153,33 @@ def test_without_the_verification_report_the_results_wait(results):
     assert render(config, HOST_REPO, pull, person_review(config, pull, record), record) is None
 
 
-def test_a_gap_of_a_design_asks_whether_to_change_the_requirements(product, tmp_path):
+GAP = {
+    "design": "auth-service",
+    "story": "A wrong password",
+    "step": "The design does not say how long.",
+    "now": "The session stays open 30 minutes.",
+    "source": ["src/auth.py:12"],
+    "means": "A user away for half an hour signs in again.",
+}
+
+
+@pytest.mark.parametrize(
+    ("gap", "told"),
+    [
+        (GAP, "**Now:** The session stays open 30 minutes. (`src/auth.py:12`)"),
+        (
+            {**GAP, "source": [], "now": "30 minutes"},
+            "**Now:** nothing decides it yet; the build will take this reading: 30 minutes",
+        ),
+    ],
+)
+def test_a_gap_of_a_design_says_what_keeping_it_keeps(product, tmp_path, gap, told):
+    """FB-54: "keep" keeps a named behaviour, and the person sees what it means."""
     step = {"text": "The design does not say how long.", "source": ["unit:x"], "gap": True}
     story = {"design": "auth-service", "story": "A wrong password", "steps": [step]}
     record = {"person": "none", "findings": [], "summary": "It designs the sign-in."}
     record["stories"] = [story]
+    record["gaps"] = [gap]
     head = git_head(product)
     files = ["docs/design/auth-service.md"]
     data = pull_request(26, head, files=files, reviews=[review(AGENT, head, record=record)])
@@ -166,8 +188,9 @@ def test_a_gap_of_a_design_asks_whether_to_change_the_requirements(product, tmp_
     assert [title for title, _ in answers(body)] == [
         "1. An open question in the design of auth-service"
     ]
-    assert "⚠ The design does not say how long." in body
-    assert "- [ ] keep the requirements\n- [ ] change them" in body
+    assert f"⚠ The design does not say how long.\n\n{told}\n" in body
+    assert "**For the user:** A user away for half an hour signs in again." in body
+    assert "- [ ] keep it as it is now\n- [ ] change it" in body
 
 
 @pytest.mark.parametrize(

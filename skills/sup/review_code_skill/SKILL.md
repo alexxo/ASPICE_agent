@@ -87,7 +87,7 @@ a *```yaml review* block:
 | R13 | When the person's review has items, CI's review comment for the head has every item answered yes, and it did not change after the approval | verify_delivery_reviewed_gate · REVIEW_ITEMS_UNANSWERED, REVIEW_CHANGED_AFTER_APPROVAL |
 | R14 | The agent asks for a person only for one of five conditions, with its reason; its *none* cancels no review the files call for | Review |
 | R15 | Every story step names a source its design has: a message of its sequence diagram, a unit, or a decision its document names | verify_delivery_reviewed_gate · REVIEW_STORY_UNSOURCED |
-| R16 | A story's gap that a requirement answers is a finding; the agent approves only gaps no requirement answers, and each goes to the person as a question of what is wanted | Review |
+| R16 | A story's gap that a requirement answers is a finding; the agent approves only gaps no requirement answers, and each goes to the person as a question of what is wanted, with what the build does there now, the lines that decide it and what follows for the user | verify_delivery_reviewed_gate · INCOMPLETE_CHECKLIST |
 | R17 | With the results, the record lists the cases expected of each criterion of every requirement proved, from a session that saw the criteria alone (*agent/expect_cases_prompt.md*), copied unchanged, each with the test that checks it or *missing*; a missing case is a finding for the tester, and one held wrong is a question for a person (condition 2) | verify_delivery_reviewed_gate · REVIEW_EXPECTED_CASES_MISSING |
 
 ## Not checkable

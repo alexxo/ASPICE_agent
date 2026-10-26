@@ -12,3 +12,10 @@ stories:
         gap: true
       - text: "If the LLM replies with an error, the publisher writes a failure report in the row and stops the run."
         source: [unit:write-input-file, decision:D3]
+gaps:
+  - design: publisher-script
+    story: The LLM does not answer
+    step: "The design does not say how long the publisher waits for the answer."
+    now: "The publisher waits 60 seconds, then writes a failure report in the row."
+    source: [src/publisher/request_text.py:42]
+    means: "A slow LLM costs a row at most a minute; the run goes on with the next row."

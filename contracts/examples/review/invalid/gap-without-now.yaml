@@ -1,0 +1,15 @@
+person: none
+findings: []
+stories:
+  - design: publisher-script
+    story: The LLM does not answer
+    steps:
+      - text: "The design does not say how long the publisher waits for the answer."
+        source: [unit:request-text]
+        gap: true
+gaps:
+  - design: publisher-script
+    story: The LLM does not answer
+    step: "The design does not say how long the publisher waits for the answer."
+    source: []
+    means: "Nobody knows."

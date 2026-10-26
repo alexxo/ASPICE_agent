@@ -88,6 +88,13 @@ it changes code.
   what the gap leaves open, the design misses it — a finding, request
   changes. Approve only gaps no requirement answers: each goes to the person
   as a question of what is wanted.
+- `gaps` — one per gap you approve, so the person who keeps it knows what is
+  kept: `design`, `story` and `step` as the story tells them; `now`, what the
+  build does there, in plain words; `source`, the lines that decide it
+  (`path:line` from the product's root, lines the head has); `means`, what
+  follows for the user (a run stopped midway, a step repeated, a second
+  draft). When nothing decides it yet, `source` is `[]` and `now` is the
+  reading the build will take.
 - `tests` — when the pull request brings the results (`proves` is not
   empty): the tests under `tests` of the classification, described. When the
   watcher started you, they are described already, in the file its prompt

@@ -3440,8 +3440,13 @@ and a person approves the results and answers the questions of what is wanted
       requirements are only counted. A *not achieved* goes back as a problem
       (SUP.9), or as a change request (SUP.10) when the requirement itself was
       wrong.
-    - *A gap of a design* — the story and its ⚠ step: keep the requirements,
-      or change them; for a change the agent proposes a change request
+    - *A gap of a design* — the story and its ⚠ step, then *Now:* what the
+      build does there, with the lines of the product that decide it, and
+      what follows for the user — or, when nothing decides it yet, the
+      reading the build will take. The reviewer agent, who reads the code,
+      writes both in its record's *gaps*, one per gap it approves, naming
+      only lines the product has (INCOMPLETE_CHECKLIST). Keep it as it is
+      now, or change it; for a change the agent proposes a change request
       (SUP.10).
     - Each weakened test, before and now; each finding closed without a
       change; the reviewer agent's request.
@@ -4683,6 +4688,28 @@ label together.
   requirement — the same story repeated; D2 B, gaps listed apart at the end —
   the step they belong to lost; diagrams as images in the comment — the
   stories carry their content. → § 5 stage 9, rules 13 and 14.
+- **What a kept gap keeps** (2026-10-26, FB-54). The person was asked to
+  keep a design's gap — "the design does not say whether the workbook is
+  written once or after each row" — without being told what the build does
+  there; the code decided it, and a run stopped midway saved no row.
+
+  | # | Scenario | O | S | D | Risk |
+  |---|---|---|---|---|---|
+  | G1 | The person keeps a gap without knowing what is kept, and an unwanted behaviour ships approved | 9 | 7 | 7 | 441 |
+  | G3 | The behaviour is named but not what follows for the user, so the person cannot weigh it | 6 | 6 | 6 | 216 |
+  | G4 | Nothing decides the gap yet (a design before its code), so *keep* keeps nothing | 5 | 6 | 6 | 180 |
+  | G2 | The reviewer agent names a behaviour the code does not have | 4 | 7 | 5 | 140 |
+
+  *Chosen* for G1 and G3: at each gap it approves, the reviewer agent — who
+  reads the code — writes what the build does there now, the lines that
+  decide it, and what follows for the user (review.v1 *gaps*); the comment
+  shows it as *Now:* before the choice, and the gate requires one per
+  approved gap. With it, G4: with no line deciding it, the reading the
+  build will take, shown as *nothing decides it yet*. G2 only in part: a
+  named line must exist in the product. *Not taken:* the storyteller
+  telling the current behaviour — it sees the design only, so the gap
+  stays visible; a machine check that the line does what *now* says — no
+  gate can read behaviour. → § 5 stage 9.
 - **Who decides, step by step along the V** (2026-10-25, Alex, D1 A, D2 A,
   D3 B, U1 A, U2 A, U3 A, FB-45). Checkpoint 2 is the last point before the
   build where the architect can read everything, yet the person was called

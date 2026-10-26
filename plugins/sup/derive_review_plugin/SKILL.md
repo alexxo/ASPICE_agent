@@ -97,7 +97,8 @@ review), means
    only (*agent/describe_tests_prompt.md*) — never by you, who read the
    requirements. A story step marked as a gap that a requirement answers is
    a finding; a gap no requirement answers goes to the person as a question
-   of what is wanted.
+   of what is wanted, with what the build does there now, the lines that
+   decide it and what follows for the user (*gaps*).
 7. **Post** — from your own account, in your own session
    (*agent/run_reviewer_agent.md*; its token in *QF_HOST_TOKEN* there only):
    *python tools/post_review_tool.py --pull-request N --decision approve

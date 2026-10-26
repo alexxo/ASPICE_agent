@@ -433,10 +433,25 @@ def test_a_changed_design_is_told_as_stories_and_only_a_gap_calls_a_person(
     assert rules(told) == []  # no person for the design itself
     gap = {"text": "The design does not say how long.", "source": ["unit:open-session"]}
     open_question = {**STORY, "steps": [*STORY["steps"], {**gap, "gap": True}]}
-    assert rules({**told, "stories": [open_question]}) == [
+    now = {
+        "design": "auth-service",
+        "story": "A wrong password",
+        "step": gap["text"],
+        "now": "nothing closes it",
+        "source": ["qf.yaml:1"],
+        "means": "a session lasts until the server restarts",
+    }
+    asked = {**told, "stories": [open_question], "gaps": [now]}
+    assert rules(asked) == ["MISSING_PERSON_APPROVAL", "REVIEW_ITEMS_UNANSWERED"]
+    # FB-54: what the build does at the gap, from lines the product has
+    assert rules({**asked, "gaps": []}) == [
+        "INCOMPLETE_CHECKLIST",
         "MISSING_PERSON_APPROVAL",
         "REVIEW_ITEMS_UNANSWERED",
     ]
+    for wrong in ("qf.yaml:100000", "nowhere.py:1", "../outside.py:1"):
+        bad = {**asked, "gaps": [{**now, "source": [wrong]}]}
+        assert "INCOMPLETE_CHECKLIST" in rules(bad), wrong
     step = {"text": "An email is sent.", "source": ["unit:send-email"]}
     invented = {**told, "stories": [{**STORY, "steps": [step]}]}
     assert rules(invented) == ["REVIEW_STORY_UNSOURCED"]
