@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.3.1] - 2026-10-26
+
+qf/merge tells a head the reviewer agent sent back from one not reviewed yet.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v3.3.1 |
+
+### Fixed
+
+- **A change request read as "not reviewed yet".** After the reviewer agent requested changes on the head, qf/merge still said *Wait: the reviewer agent's approval*, the text of a head not yet reviewed, so the author agent waited instead of fixing. *verify_delivery_reviewed_gate*'s MISSING_AGENT_REVIEW now says when a reviewer agent's latest decision requests changes on the head, and qf/merge says *Wait: changes requested by the reviewer agent: fix the findings and push*. `agent/run_aspice_agent.md` says where the findings are: the review's body and its line comments. `tools/post_merge_status_tool.py`, `gates/sup/verify_delivery_reviewed_gate.py`, `QUICKSTART.md`, design document § 5 stage 9 rule 13. Origin: FB-55 (wp_publisher).
+
 ## [3.3.0] - 2026-10-26
 
 A design's open question says what keeping it keeps.
