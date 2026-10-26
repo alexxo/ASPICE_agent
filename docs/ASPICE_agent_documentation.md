@@ -2679,7 +2679,13 @@ requirements).
     person accepts with one Y or opens by number, then asks the others one
     at a time; the person answers only with a listed number, or Y where a
     proposal is offered; the last number is *neither: the requirement goes
-    back to be rewritten*. The agent rewrites each criterion to the reading
+    back to be rewritten*. Before anything is rewritten, the agent shows
+    what the answers accept, in plain words — what the product will do —
+    the risky ones first, each with why: a requirement of high criticality
+    or about security, a glossary term every requirement using it follows,
+    a reading that contradicts another requirement, a proposal from common
+    practice; the person keeps them with Y or answers any one again. The
+    agent rewrites each criterion to the reading
     chosen and has it checked again for the wording the rewrite added only,
     and renders the page, which shows the question
     settled — *proposal accepted*, *changed* or *no proposal*. Until the
@@ -4107,7 +4113,11 @@ label together.
   list. *Chosen:* a proposal may name *convention* — the behaviour every
   tool of the kind has without being told — and the questions with a
   proposal are accepted in one list with Y, any one opened by number;
-  those without are asked one at a time. A criterion unchanged since the
+  those without are asked one at a time. The list's own risk — a risky
+  reading accepted unseen in a batch (Alex, 2026-10-26) — is met by a
+  summary in plain words of what was accepted, the risky ones first with
+  why, shown before anything is rewritten; any answer can be given again
+  before the final decision. A criterion unchanged since the
   latest approval of checkpoint 2 counts as checked, so a change request
   checks only what it changed; a rewritten criterion is checked for the
   wording the rewrite added only; the questions are numbered in the page's

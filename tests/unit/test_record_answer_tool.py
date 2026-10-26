@@ -10,6 +10,7 @@ from agent.record_answer_tool import (
     question_findings,
     read_questions,
     record_answer,
+    summary,
 )
 from agent.record_checkpoint_tool import record_checkpoint
 from agent.render_review_tool import render, render_review
@@ -194,6 +195,45 @@ def test_a_criterion_rewritten_to_settle_a_question_names_it(asked, capsys):
         "REQ-0012 criterion 2 — rewritten to settle Q1 (locked at the 3rd failure): ask only "
         "about wording the rewrite added"
     ]
+
+
+def test_what_was_accepted_is_told_in_plain_words_the_risky_first(product):
+    """Alex: a batch of proposals accepted with one Y is told back, risky ones first."""
+    convention = {**TERM, "proposal": {"choice": 1, "source": "convention: closed is listed"}}
+    check_criteria(product, [LOCK, convention])
+    record_answer(product, "Q1", 1, "Alex", "architect")
+    record_answer(product, "Q2", 1, "Alex", "architect")
+    lines = summary(_config(product))
+    assert lines[0] == (
+        "⚠ Q1 · REQ-0012 criterion 2: the product will — locked at the 3rd failure "
+        "(e.g. ✗ ✗ ✗ → locked)\n    Risky: a requirement of high criticality."
+    )
+    assert lines[1].startswith("⚠ Q2 · term account: the product will — yes")
+    assert "it changes every requirement using the term" in lines[1]
+    assert "decided by common practice, not by anything you approved" in lines[1]
+
+
+def test_a_plain_answer_is_not_marked_risky(product):
+    path = _login(product)
+    text = path.read_text()
+    at = text.index("criticality: high", text.index("uid: REQ-0012"))
+    path.write_text(text[:at] + "criticality: low" + text[at + len("criticality: high") :])
+    check_criteria(product, [LOCK])
+    record_answer(product, "Q1", 1, "Alex", "architect")
+    assert summary(_config(product)) == [
+        "Q1 · REQ-0012 criterion 2: the product will — locked at the 3rd failure "
+        "(e.g. ✗ ✗ ✗ → locked)"
+    ]
+
+
+def test_an_answer_can_be_given_again_until_the_criterion_is_rewritten(asked):
+    record_answer(asked, "Q1", 1, "Alex", "architect")
+    record_answer(asked, "Q1", 2, "Alex", "architect", again=True)
+    assert read_questions(_config(asked))["questions"][0]["answer"]["choice"] == 2
+    _rewrite(asked, "REQ-0012")
+    assert summary(_config(asked)) == []
+    with pytest.raises(ValueError, match="Q1 has no answer to change"):
+        record_answer(asked, "Q1", 1, "Alex", "architect", again=True)
 
 
 def test_a_question_about_something_that_does_not_exist_is_refused(product):

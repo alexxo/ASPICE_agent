@@ -54,6 +54,9 @@ not changed.
 - **A rewritten criterion.** A line of your list that says it was rewritten
   to settle a question: that reading is decided. Ask only about wording the
   rewrite added, never the settled question again in other words.
+- **Each reading in plain words**: what the product does, as a sentence a
+  person who reads no code understands ("the account is locked at the 3rd
+  failed sign-in"); the person is shown it as what they accept.
 - **One example per reading**, as short as a timeline: `✗ ✗ ✗ → locked`.
 
 Never open the code, the tests, the design or the architecture: you check what

@@ -317,7 +317,18 @@ number; anything else, ask again. Record each answer at once:
 
 `python <framework>/agent/record_answer_tool.py --question Q<n> --choice <number> --approver <name> --role architect --root <product>`
 
-Then rewrite each criterion to the reading chosen — or, for *neither*, go
+**Then tell the person what they accepted**, before anything is rewritten:
+`python <framework>/agent/record_answer_tool.py --summary --root <product>`
+prints, in plain words, what the product will do for each answer, the risky
+ones first, each marked ⚠ with why — a requirement of high criticality or
+about security, a term every requirement using it follows, a reading that
+contradicts another requirement, a proposal from common practice rather than
+anything they approved. Show it as it is, under *What you accepted*, and ask
+`Keep these answers? [Y / a question's number to answer it again]`. A number
+asks that question again, as above, recorded with `--again`; then show the
+summary again. Only after Y:
+
+Rewrite each criterion to the reading chosen — or, for *neither*, go
 back to step 4 with it — have the rewritten criteria checked again
 (*derive_requirements_plugin*, step 7), render the page and show it: each
 question settled, its criterion marked changed. Ask for the decision the same

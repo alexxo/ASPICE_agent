@@ -16,9 +16,13 @@ order, top to bottom, so the person answers them as the page shows them.
         records the session's questions (a YAML list, without id and asked)
         and every criterion and term as checked
     python agent/record_answer_tool.py --question Q1 --choice N --approver NAME \\
-        --role ROLE [--root PRODUCT]
+        --role ROLE [--again] [--root PRODUCT]
         records the person's answer: a reading's number, or the one after the
-        last for 'neither: the requirement goes back to be rewritten'
+        last for 'neither: the requirement goes back to be rewritten'; --again
+        changes an answer whose criterion is not rewritten yet
+    python agent/record_answer_tool.py --summary [--root PRODUCT]
+        prints, in plain words, what the answers not yet written into the
+        criteria decide, the risky ones first, each with why it is risky
 
 An unanswered question whose criterion or term changed since it was asked no
 longer counts: the changed text is unchecked, and is checked again (§ 5 stages 1
@@ -54,12 +58,14 @@ __all__ = [
     "label",
     "neither",
     "open_questions",
+    "pending",
     "place",
     "question_findings",
     "questions_file",
     "read_questions",
     "record_answer",
     "record_check",
+    "summary",
     "unchecked",
 ]
 
@@ -149,6 +155,57 @@ def open_questions(config: ProductConfig, data: dict | None = None) -> list[dict
     ]
 
 
+def pending(config: ProductConfig, data: dict | None = None) -> list[dict]:
+    """The answered questions whose criterion or term is not rewritten yet."""
+    data = read_questions(config) if data is None else data
+    now = items(config)
+    return [
+        q for q in data["questions"] if "answer" in q and now.get(place(q["about"])) == q["asked"]
+    ]
+
+
+def summary(config: ProductConfig) -> list[str]:
+    """What the pending answers decide, in plain words: the risky ones first, each
+    with why — a requirement of high criticality or about security, a term every
+    requirement using it follows, a reading that contradicts another requirement,
+    a proposal taken from common practice rather than anything approved."""
+    requirements = {r.text("uid"): r.data for r in read_requirements(config) if r.text("uid")}
+    risky, rest = [], []
+    for q in pending(config):
+        choice = q["answer"]["choice"]
+        if choice == neither(q):
+            line = f"{q['id']} · {label(q['about'])}: neither — the requirement is rewritten"
+            rest.append(line)
+            continue
+        reading = q["readings"][choice - 1]
+        why = []
+        about = q["about"]
+        if "term" in about:
+            using = [uid for uid, data in requirements.items() if f"_{about['term']}_" in str(data)]
+            why.append(f"it changes every requirement using the term ({len(using)})")
+        else:
+            data = requirements.get(about["requirement"], {})
+            if data.get("criticality") == "high":
+                why.append("a requirement of high criticality")
+            if data.get("kind") == "security":
+                why.append("a security requirement")
+        if reading.get("conflicts"):
+            why.append(f"it contradicts {reading['conflicts']}")
+        proposal = q.get("proposal")
+        taken = isinstance(proposal, dict) and proposal["choice"] == choice
+        if taken and str(proposal["source"]).startswith("convention"):
+            why.append("decided by common practice, not by anything you approved")
+        line = (
+            f"{q['id']} · {label(about)}: the product will — {reading['reading']} "
+            f"(e.g. {reading['example']})"
+        )
+        if why:
+            risky.append(f"⚠ {line}\n    Risky: {'; '.join(why)}.")
+        else:
+            rest.append(line)
+    return risky + rest
+
+
 def record_check(root: Path, session_file: Path) -> Path:
     """Record the session's questions and every criterion and term as checked."""
     config = read_product_config(root)
@@ -187,14 +244,20 @@ def record_check(root: Path, session_file: Path) -> Path:
     return _write(config, data)
 
 
-def record_answer(root: Path, question: str, choice: int, approver: str, role: str) -> Path:
-    """Record the person's answer to one open question."""
+def record_answer(
+    root: Path, question: str, choice: int, approver: str, role: str, again: bool = False
+) -> Path:
+    """Record the person's answer to one open question, or, again, change the answer
+    to one whose criterion is not rewritten yet."""
     config = read_product_config(root)
     data = read_questions(config)
     found = next((q for q in data["questions"] if q["id"] == question), None)
     if found is None:
         raise ValueError(f"no question {question}")
-    if found not in open_questions(config, data):
+    if again:
+        if found not in pending(config, data):
+            raise ValueError(f"{question} has no answer to change: open, or rewritten since")
+    elif found not in open_questions(config, data):
         raise ValueError(f"{question} is not open: answered, or its text changed since")
     if not 1 <= choice <= neither(found):
         raise ValueError(f"{question}: choose 1 to {neither(found)}")
@@ -319,7 +382,9 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--unchecked", action="store_true")
     mode.add_argument("--questions", type=Path)
     mode.add_argument("--question")
+    mode.add_argument("--summary", action="store_true")
     parser.add_argument("--choice", type=int)
+    parser.add_argument("--again", action="store_true")
     parser.add_argument("--approver")
     parser.add_argument("--role", choices=["architect", "reviewer", "customer"])
     args = parser.parse_args(argv)
@@ -331,9 +396,17 @@ def main(argv: list[str] | None = None) -> int:
         if args.questions:
             print(record_check(args.root, args.questions))
             return 0
+        if args.summary:
+            for line in summary(read_product_config(args.root)):
+                print(line)
+            return 0
         if args.choice is None or not args.approver or not args.role:
             parser.error("--question needs --choice, --approver and --role")
-        print(record_answer(args.root, args.question, args.choice, args.approver, args.role))
+        print(
+            record_answer(
+                args.root, args.question, args.choice, args.approver, args.role, args.again
+            )
+        )
         return 0
     except ValueError as err:
         print(str(err), file=sys.stderr)
