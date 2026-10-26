@@ -35,6 +35,27 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-10-26
+
+Checkpoint 1 gets a review page with the rules and wish links; checkpoint 2 asks fewer, better-ordered questions; both pages open in the browser.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Render the diagrams review page — `python .framework/agent/render_diagram_review_tool.py --root .` — and commit it | `<diagrams_dir>/review.html` | required: MISSING_REVIEW_PAGE until it exists |
+| Have the person approve checkpoint 1 again, on that page | `<approvals_dir>` | required: the approval now covers the page, so the earlier one is outdated (APPROVAL_OUTDATED) |
+
+### Added
+
+- **A review page for checkpoint 1.** A change to a diagram's rules or wish links was approved on a picture that shows neither. `agent/render_diagram_review_tool.py` renders `<diagrams_dir>/review.html`: per diagram its pictures, linked and shown in place, its rules and the wishes each element realises with their statements, what changed since the previous approval of checkpoint 1 marked. *check_diagram_contract_gate* reports MISSING_REVIEW_PAGE and, until checkpoint 1 approves it, REVIEW_PAGE_OUTDATED; the approval covers the page, and record_checkpoint_tool refuses one on a stale page. `draw_diagram_skill` R15, R16, design document § 5 stages 1 and 2 rules 22–25, Appendix A.2 *What the person approves*. Origin: FB-57 (wp_publisher).
+
+### Changed
+
+- **The pages open in the browser.** At checkpoints 1 and 2 the agent opens the review page in the browser of the person's computer, once per decision, and prints its full path; checkpoint 3 prints the stack table and the full path of its decision record. `agent/run_aspice_agent.md` step 8. Origin: FB-56 (wp_publisher).
+- **Questions numbered as the page shows them.** `record_answer_tool --questions` numbers the questions in the review page's order, top to bottom, and the agent asks them in that order. Origin: FB-58 (wp_publisher).
+- **Fewer questions at checkpoint 2.** A change request checked every criterion again — 27 questions, most with a conventional answer. Now a criterion unchanged since the latest approval of checkpoint 2 counts as checked; a criterion rewritten to settle a question is listed with it, and the check asks only about the wording the rewrite added; a proposal may name *convention: …*, the behaviour every tool of the kind has without being told. The questions with a proposal are accepted in one list with Y, any one opened by number; those without are asked one at a time. The build is not a source: the check questions what was built. `agent/record_answer_tool.py`, `agent/clarify_criteria_prompt.md`, `agent/run_aspice_agent.md` step 8, `derive_requirements_plugin` step 7, `write_requirements_skill` R18, design document § 5 rule 27, Appendix A.2 *Unclear criteria settled at checkpoint 2*. Origin: FB-59 (wp_publisher).
+
 ## [3.3.1] - 2026-10-26
 
 qf/merge tells a head the reviewer agent sent back from one not reviewed yet.
