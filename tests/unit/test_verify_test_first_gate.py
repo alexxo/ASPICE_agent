@@ -219,14 +219,65 @@ def test_a_test_is_judged_at_its_own_commit_when_a_later_one_changes_the_file(tm
     assert _rules(root) == ["TEST_NOT_FAILING"]
 
 
-def test_a_changed_helper_before_the_tests_judges_every_test_of_the_file(tmp_path):
+def _built(tmp_path):
+    """Stage 6 done, and count-failures' test file holds a second test."""
     root = _red(tmp_path)
+    _add_test(root, "assert run(2) == 3")  # red on the stub, green on the code
+    commit_all(root, "test: a second test")
     write_all_code(root)
     commit_all(root, "feat: the units")
-    path = root / unit_path("auth-service", "count-failures", test=True)
+    return root, root / unit_path("auth-service", "count-failures", test=True)
+
+
+def test_a_changed_helper_before_the_tests_needs_a_failing_test(tmp_path):
+    root, path = _built(tmp_path)
     path.write_text(path.read_text().replace("import run\n", "import run\n\nLIMIT = 5\n"))
     commit_all(root, "test: a helper for the tests")
-    assert _rules(root) == ["TEST_NOT_FAILING"]
+    findings = check(read_product_config(root))
+    assert [f.rule for f in findings] == ["TEST_NOT_FAILING"]
+    assert "before its tests" in findings[0].message
+
+
+def test_a_changed_helper_with_a_failing_test_judges_that_test_alone(tmp_path):
+    """FB-52: a double follows a changed interface; the other tests pass on the built unit."""
+    root, path = _built(tmp_path)
+    text = path.read_text().replace("import run\n", "import run\n\nLIMIT = 5\n")
+    path.write_text(text.replace("run(2) == 3", "run(2) == LIMIT"))
+    commit_all(root, "test: a reviewer's finding on count-failures")
+    assert _rules(root) == []
+
+
+def test_a_changed_docstring_or_comment_judges_no_test(tmp_path):
+    """FB-52: the tester's assumptions live in docstrings."""
+    root, path = _built(tmp_path)
+    text = path.read_text().replace("from ", '"""D8: a new assumption."""\nfrom ', 1)
+    text = text.replace("finding 1", "finding 1, reworded")
+    path.write_text(text.replace("    assert run(1)", '    """D9: another."""\n    assert run(1)'))
+    commit_all(root, "test: the assumptions of D8 and D9")
+    assert _rules(root) == []
+
+
+def test_a_renamed_test_does_not_mark_its_neighbour(tmp_path):
+    """FB-52: the old name is no boundary in the new file."""
+    root, path = _built(tmp_path)
+    text = path.read_text().replace("def test_count_failures():\n    assert run(1) == 2", "")
+    path.write_text(text + "\n\ndef test_renamed():\n    assert run(1) == 3\n")
+    commit_all(root, "test: a renamed criterion")
+    assert _rules(root) == []
+    text = path.read_text()
+    path.write_text(text.replace("def test_more", "def test_more_renamed"))
+    commit_all(root, "test: only a name changed")
+    findings = check(read_product_config(root))
+    assert [f.rule for f in findings] == ["TEST_NOT_FAILING"]
+    assert "test_more_renamed passes" in findings[0].message
+
+
+def test_a_removed_test_judges_no_test(tmp_path):
+    root, path = _built(tmp_path)
+    first = "def test_count_failures():\n    assert run(1) == 2"
+    path.write_text(path.read_text().replace(first, ""))
+    commit_all(root, "test: a criterion withdrawn")
+    assert _rules(root) == []
 
 
 def test_an_integration_test_changed_with_code_is_reported(tmp_path):

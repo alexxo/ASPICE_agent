@@ -2911,12 +2911,14 @@ the product's own commands.
     TEST_NOT_FAILING. The gate judges tests, not files: a test-only commit
     that adds or changes one test of a built unit's file judges that test
     alone, since the file's other tests pass on the code they already have.
-    A test is found in its file by its name, and it changed when its lines —
-    up to the next test, trailing comments, blank lines and annotations left
-    out — differ from the commit's parent; a change before the first test
-    (imports, fixtures, helpers) judges every test of the file, and a test
-    whose name is not in its file is judged at the file's last test-only
-    commit. Only those commits are checked out, each red run kept under its
+    A test is found in its file by its name; its lines run to the next test,
+    its annotations and the comments right above it included. It changed
+    when the commit changed code among its lines: blank lines, comments and
+    docstrings change nothing, and a test removed between two others changes
+    neither. Code changed before the first test (imports, fixtures, helpers)
+    judges no test by itself, but one of the file's tests must fail on that
+    commit. A test whose name is not in its file is judged at the file's last
+    test-only commit. Only those commits are checked out, each red run kept under its
     commit's SHA. A commit that mixes tests and code stays a finding until it
     is rewritten.
 19. **The environment read patterns belong to the stack.** *stack.v2
@@ -4219,13 +4221,30 @@ label together.
   judged at the last test-only commit that changed its lines, found by its
   name. Risks kept: a changed test taken for unchanged — its behaviour
   changed through a helper inside another test's lines — S 7, O 2, D 4 (that
-  other test is judged instead, and a change before the first test judges
-  all) — 56; an unchanged test taken for changed, a false TEST_NOT_FAILING —
+  other test is judged instead, and code changed before the first test needs
+  a failing test) — 56; an unchanged test taken for changed, a false TEST_NOT_FAILING —
   S 4, O 3, D 2 (the finding names the test) — 24. *Not taken:* comparing
   the red runs of the commit and its parent — a second run per commit, and
   a test that passes on both is still not told apart from a new one; a new
   test file per change — a removed or changed test stays in the old file,
   and one unit's tests spread over files. → § 5 unit stages, rule 18.
+- **A test's own code** (2026-10-26, FB-52). Comparing a test's lines with
+  the parent's, cut by the new commit's names, made a renamed or removed
+  test's neighbour changed; and any change before the first test judged every
+  test, so a new assumption in a docstring or a test double following a
+  changed interface failed the gate on a built unit. Taken: a test changed
+  when the commit's diff changes code among its lines; blank lines, comments
+  and docstrings change nothing; a test removed between two others changes
+  neither; code changed before the first test needs one of the file's tests
+  to fail on that commit. Risks kept: a fixture change that weakens tests
+  while another test of the file fails — S 7, O 2, D 4 (the reviewer agent
+  reads the tests' diff) — 56; lines removed at the end of the file's last
+  test taken for a removed test — S 6, O 2, D 4 — 48; a fixture that follows
+  a changed interface its tests rightly ignore asks for a failing test — S 5,
+  O 3, D 2 (the finding names the file) — 30. *Not taken:* cutting the
+  parent's file by the parent's own test names — they need a red run of the
+  parent or each language's test syntax, which the diff needs neither of.
+  → § 5 unit stages, rule 18.
 
 ### A.6 Integration verification stage — stage 7
 

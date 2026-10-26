@@ -11,11 +11,13 @@ checked out on its own and its unit suite run, which must write its results
 a weakened one as weakened. The gate judges tests, not files: a commit that
 adds or changes one test of a built unit's file judges that test alone, since
 the file's other tests pass on the code they already have. A test is found in
-its file by its name; it changed when its lines differ from the commit's parent
-— up to the next test, trailing comments, blank lines and annotations left out
-— or when the lines before the first test changed (imports, fixtures, helpers),
-which judges every test of the file. A test whose name is not found in its file
-is judged at the file's last test-only commit, as before. Because the commits
+its file by its name, and its lines run to the next test, its annotations and
+the comments right above it included. It changed when the commit changed code
+among its lines; blank lines, comments and docstrings change nothing, and a
+test removed between two others changes neither (FB-52). Code changed before
+the first test (imports, fixtures, helpers) judges no test by itself, but one
+of the file's tests must fail on that commit. A test whose name is not found
+in its file is judged at the file's last test-only commit. Because the commits
 are found in the history, not at the head, the gate keeps holding — and keeps
 catching a test changed with code — at stage 6 and when the pull request
 re-runs every gate. Component and integration tests, under
@@ -29,6 +31,7 @@ software verification stage).
 
 from __future__ import annotations
 
+import ast
 import re
 import shutil
 import subprocess
@@ -180,6 +183,7 @@ def _judge_tests(config: ProductConfig, stack: dict, test_commits: list, kind) -
         return runs[commit.sha]
 
     wanted: dict[str, dict[str, set[str] | None]] = {}  # commit -> file -> tests (None: all)
+    fixtures: dict[str, set[str]] = {}  # commit -> files whose code before the tests changed
     for path, touching in touched.items():
         latest = touching[-1]
         names = _names(*red(latest), path)
@@ -187,8 +191,12 @@ def _judge_tests(config: ProductConfig, stack: dict, test_commits: list, kind) -
             wanted.setdefault(latest.sha, {})[path] = None
             continue
         changes = {c.sha: _changed_tests(config.root, c, path, names) for c in touching}
+        for c in touching:
+            if changes[c.sha][1]:
+                fixtures.setdefault(c.sha, set()).add(path)
+                wanted.setdefault(c.sha, {}).setdefault(path, set())
         for name in sorted(names):
-            if name in changes[latest.sha][1]:  # not found in the file: judged at its latest
+            if name in changes[latest.sha][2]:  # not found in the file: judged at its latest
                 wanted.setdefault(latest.sha, {}).setdefault(path, set()).add(name)
                 continue
             at = next((c for c in reversed(touching) if name in changes[c.sha][0]), None)
@@ -197,7 +205,7 @@ def _judge_tests(config: ProductConfig, stack: dict, test_commits: list, kind) -
     findings = []
     for commit, _ in test_commits:
         if commit.sha in wanted:
-            findings += _judge(commit, wanted[commit.sha], *red(commit))
+            findings += _judge(commit, wanted[commit.sha], *red(commit), fixtures.get(commit.sha))
     return findings
 
 
@@ -217,41 +225,119 @@ def _names(run, test_files: list[str], path: str) -> set[str] | None:
     return {_base_name(r) for r in results if map_to_file(r, test_files) == path}
 
 
-TRAILING = re.compile(r"^\s*($|@|#|//|/\*|\*)")  # blank, annotation or comment lines
+PROSE = re.compile(r"^\s*($|#|//|/\*|\*)")  # blank or comment lines
+LEADING = re.compile(r"^\s*(@|#|//|/\*|\*)")  # annotations and comments above a test
 
 
-def _chunks(text: str, names: set[str]) -> tuple[dict[str, str], set[str]]:
-    """Each found test's lines, up to the next test, trailing comments, blank lines
-    and annotations left out (they belong to the next test); "" holds the lines
-    before the first test. Also the names not found."""
+def _python_parts(path: str, text: str) -> tuple[set[int], dict[int, int]]:
+    """A Python file's docstring lines, and each function's first decorator line by
+    its def line (0-based); nothing for another language or a file that does not parse."""
+    if not path.endswith(".py"):
+        return set(), {}
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return set(), {}
+    docs: set[int] = set()
+    decorated: dict[int, int] = {}
+    for node in ast.walk(tree):
+        defined = isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+        if defined and node.decorator_list:
+            decorated[node.lineno - 1] = min(d.lineno for d in node.decorator_list) - 1
+        if defined or isinstance(node, ast.Module):
+            first = node.body[0] if node.body else None
+            if (
+                isinstance(first, ast.Expr)
+                and isinstance(first.value, ast.Constant)
+                and isinstance(first.value.value, str)
+            ):
+                docs.update(range(first.lineno - 1, first.end_lineno))
+    return docs, decorated
+
+
+def _prose(path: str, text: str) -> set[int]:
+    """The lines that change no behaviour: blank lines, comments and docstrings."""
+    docs, _ = _python_parts(path, text)
+    return docs | {i for i, line in enumerate(text.splitlines()) if PROSE.match(line)}
+
+
+def _starts(path: str, text: str, names: set[str]) -> tuple[dict[str, int], set[str]]:
+    """Each found test's first line — its annotations and the comments right above it
+    included — and the names not found. A test's lines run to the next test's first
+    line; the lines before the first test hold the imports, fixtures and helpers."""
     lines = text.splitlines()
+    _, decorated = _python_parts(path, text)
     starts = {}
     for name in names:
         word = re.compile(rf"\b{re.escape(name)}\b")
         found = next((i for i, line in enumerate(lines) if word.search(line)), None)
-        if found is not None:
-            starts[name] = found
-    order = sorted(starts, key=starts.get)
-    bounds = [starts[n] for n in order] + [len(lines)]
-    chunks = {"": "\n".join(lines[: bounds[0]])}
-    for name, start, end in zip(order, bounds, bounds[1:], strict=False):
-        block = lines[start:end]
-        while len(block) > 1 and TRAILING.match(block[-1]):
-            block.pop()
-        chunks[name] = "\n".join(block)
-    return chunks, set(names) - set(starts)
+        if found is None:
+            continue
+        found = decorated.get(found, found)
+        while found > 0 and lines[found - 1].strip() and LEADING.match(lines[found - 1]):
+            found -= 1
+        starts[name] = found
+    return starts, set(names) - set(starts)
+
+
+HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", re.M)
+
+
+def _hunks(root: Path, commit: Commit, path: str) -> list[tuple[int, int, int, int]]:
+    """The commit's changed line ranges in a file: old start, count, new start, count."""
+    diff = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "diff",
+            "-U0",
+            "--no-color",
+            "--no-ext-diff",
+            f"{commit.sha}^",
+            commit.sha,
+            "--",
+            path,
+        ],
+        capture_output=True,
+        text=True,
+    ).stdout
+    return [
+        (int(a), int(b) if b else 1, int(c), int(d) if d else 1)
+        for a, b, c, d in HUNK.findall(diff)
+    ]
 
 
 def _changed_tests(root: Path, commit: Commit, path: str, names: set[str]):
-    """The tests a commit added or changed in a file, and the names not found in it."""
-    now, missing = _chunks(file_at(root, commit.sha, path) or "", names)
+    """The tests whose own code a commit added or changed in a file; whether it changed
+    code before the first test (imports, fixtures, helpers); and the names not found.
+    Blank lines, comments and docstrings change nothing, and a test removed between
+    two others changes neither (FB-52)."""
+    text = file_at(root, commit.sha, path) or ""
+    starts, missing = _starts(path, text, names)
     before = file_at(root, f"{commit.sha}^", path)
     if before is None:
-        return set(now) - {""}, missing
-    then, _ = _chunks(before, names)
-    if now[""] != then[""]:  # imports, fixtures or helpers changed: every test
-        return set(now) - {""}, missing
-    return {n for n in now if n and now[n] != then.get(n)}, missing
+        return set(starts), False, missing
+    lines = text.splitlines()
+    order = sorted(starts.items(), key=lambda item: item[1])
+    new_prose, old_prose = _prose(path, text), _prose(path, before)
+
+    def owner(i: int) -> str:  # "" for the lines before the first test
+        return next((name for name, start in reversed(order) if start <= i), "")
+
+    owners: set[str] = set()
+    for old_at, old_count, new_at, new_count in _hunks(root, commit, path):
+        new = range(new_at - 1, new_at - 1 + new_count)
+        owners |= {owner(i) for i in new if i not in new_prose}
+        if all(i in old_prose for i in range(old_at - 1, old_at - 1 + old_count)):
+            continue
+        if any(i not in new_prose for i in new):
+            continue  # code replaced: owned by the replacing lines, above
+        last = new_at - 2 if new_count else new_at - 1  # code removed after this line
+        nxt = next((i for i in range(last + 1, len(lines)) if i not in new_prose), None)
+        if nxt is not None and (owner(last) if last >= 0 else "") == owner(nxt):
+            owners.add(owner(nxt))  # inside one test, or before the first: not between two
+    return owners - {""}, "" in owners, missing
 
 
 def _present(units: dict, sources: list) -> list[Finding]:
@@ -340,9 +426,14 @@ def _red_run(config: ProductConfig, stack: dict, commit: Commit, kind) -> tuple:
 
 
 def _judge(
-    commit: Commit, changed: dict[str, set[str] | None], run, test_files: list[str]
+    commit: Commit,
+    changed: dict[str, set[str] | None],
+    run,
+    test_files: list[str],
+    fixtures: set[str] | None = None,
 ) -> list[Finding]:
-    """The red run's findings for the tests the commit added or changed, by file."""
+    """The red run's findings for the tests the commit added or changed, by file; a file
+    whose code before its tests changed needs one of its tests to fail there."""
     try:
         results = read_results(run.result_paths) if run.results else None
     except ResultsError:
@@ -388,6 +479,18 @@ def _judge(
                         "exists; a test that passes against a stub tests nothing.",
                     )
                 )
+        red = any(r.outcome in ("failed", "error") for r in mine)
+        if file in (fixtures or ()) and mine and not red:
+            findings.append(
+                Finding(
+                    "TEST_NOT_FAILING",
+                    file,
+                    None,
+                    f"Commit {commit.short} changes this file's code before its tests "
+                    "(imports, fixtures, helpers), and no test of the file fails there; "
+                    "such a change comes with a test that fails on it.",
+                )
+            )
     return findings
 
 
