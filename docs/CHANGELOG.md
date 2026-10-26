@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-10-26
+
+Checkpoint 2 tells the person, in plain words, what their answers accept — the risky ones first — before anything is rewritten.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v3.5.0 |
+
+### Added
+
+- **What you accepted.** Accepting every proposal with one Y (v3.4.0) could let a risky reading through unseen. Before the criteria are rewritten, `record_answer_tool --summary` prints what each answer makes the product do, in plain words, the risky ones first, each marked ⚠ with why: a requirement of high criticality or about security, a glossary term every requirement using it follows, a reading that contradicts another requirement, a proposal from common practice rather than anything approved. The person keeps the answers with Y or answers any one again (`--again`, while its criterion is not rewritten). The criteria check writes each reading as a plain sentence of what the product does. `agent/record_answer_tool.py`, `agent/run_aspice_agent.md` step 8, `agent/clarify_criteria_prompt.md`, `write_requirements_skill` R18, design document § 5 rule 27, Appendix A.2 *Unclear criteria settled at checkpoint 2*. Origin: internal (Alex).
+
 ## [3.4.0] - 2026-10-26
 
 Checkpoint 1 gets a review page with the rules and wish links; checkpoint 2 asks fewer, better-ordered questions; both pages open in the browser.
