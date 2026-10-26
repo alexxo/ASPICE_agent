@@ -35,6 +35,23 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-10-26
+
+Unclear criteria are settled by the person before the build, and the reviewer agent compares the tests with cases listed from the criteria alone.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v3.2.0 |
+
+Requirements already approved at checkpoint 2 are not checked again until they change. Requirements not yet approved meet CRITERIA_NOT_CHECKED until the agent runs the check. An open pull request that brings the results meets REVIEW_EXPECTED_CASES_MISSING until its next head is reviewed.
+
+### Added
+
+- **Unclear criteria settled at checkpoint 2.** The tester, the coder and the reviewer agent run the same model on the same text, so a criterion read two ways was read the same wrong way by all three. Before checkpoint 2 a fresh session that sees only the requirements, the glossary and the approved diagrams (`agent/clarify_criteria_prompt.md`) flags each criterion or glossary term whose readings would need different tests, each reading with an example, a reading that contradicts another requirement marked, and a proposal only with its source. `agent/record_answer_tool.py` records the questions in `<requirements_dir>/questions.yaml` (new contract `question.v1`) with the SHA-256 of every criterion and term checked, so an unchanged one is not asked again, and records each answer. The questions sit in their requirement's row of the review page; the agent asks them one at a time in the terminal, the person answers with a listed number or Y for the proposal, and the agent rewrites the criterion and has it checked again. *verify_requirements_approval_gate* gains CRITERIA_NOT_CHECKED and QUESTION_UNANSWERED; *record_checkpoint_tool* refuses an approval while a question is open; the approval covers `questions.yaml`. `derive_requirements_plugin` step 7, `agent/run_aspice_agent.md` § 8, `write_requirements_skill` R18, design document § 5 stages 1 and 2 rule 27, Appendix A.2. Origin: internal (the reviewer's independence, Appendix A.8).
+- **Expected cases with the results.** Before reviewing a pull request that brings the results, the watcher runs a session that sees only the statement and criteria of the requirements proved and the glossary (`agent/expect_cases_prompt.md`) and lists the cases each criterion needs tested, kept in `.qf/reviews/<n>-<sha>.expected.yaml`. The reviewer agent copies them into its record's new `expected` field (`review.v1`) with the test that checks each, or `missing`: a missing case is a finding for the tester, a case held wrong a question for a person. *verify_delivery_reviewed_gate* gains REVIEW_EXPECTED_CASES_MISSING. `tools/watch_reviews_tool.py`, `agent/run_reviewer_agent.md`, `review_code_skill` R17, design document § 5 stage 9 rule 14, Appendix A.8. Origin: internal (the reviewer's independence, Appendix A.8).
+
 ## [3.1.3] - 2026-10-26
 
 A renamed test, a new assumption or a changed test double no longer fails the red run of a built unit.
