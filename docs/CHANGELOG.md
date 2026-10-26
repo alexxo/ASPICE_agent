@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-10-26
+
+The criteria check before checkpoint 2 asks only what someone would notice, asks one rule once, and checks a rewrite again only once.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v3.6.0 |
+
+### Changed
+
+- **Rounds of questions end.** Each rewrite of a criterion raised a new round of questions one edge case deeper, some without a proposal although a convention settled them, and the same convention once per criterion. The check now asks only what the author or a system next to the product would notice; it proposes a convention also when unsure (the *What you accepted* summary marks it, and it can be answered again) and *no proposal* only when the readings are equally likely; one rule that settles several criteria or terms is one question, naming the others under the new optional `also` of `question.v1`, and its answer rewrites each. A criterion is checked again once after its rewrite: one settled at two texts since the latest approval of checkpoint 2 counts as checked when rewritten again. `agent/clarify_criteria_prompt.md`, `agent/record_answer_tool.py`, `contracts/question_contract.v1.schema.json`, `agent/run_aspice_agent.md` step 8, `derive_requirements_plugin` step 7, `write_requirements_skill` R18, design document § 5 rule 27, Appendix A.2 *Unclear criteria settled at checkpoint 2*. Origin: FB-60 (wp_publisher).
+
 ## [3.5.0] - 2026-10-26
 
 Checkpoint 2 tells the person, in plain words, what their answers accept — the risky ones first — before anything is rewritten.
