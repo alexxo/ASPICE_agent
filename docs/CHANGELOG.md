@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-10-26
+
+A design's open question says what keeping it keeps.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v3.3.0; an open pull request whose design has a gap meets INCOMPLETE_CHECKLIST until its next head is reviewed |
+
+### Added
+
+- **What the build does at each gap of a design.** The checkpoint-4 comment asked the person to keep a gap of a design — "the design does not say whether the workbook is written once or after each row" — without saying what the build does there, so *keep* kept something unnamed. The review record (review.v1) gains `gaps`: for each gap the reviewer agent approves, what the build does there now, the lines that decide it (`path:line`) and what follows for the user; with no line deciding it yet, the reading the build will take. The comment shows it as **Now:** and **For the user:** before the choice, now *keep it as it is now* or *change it*. *verify_delivery_reviewed_gate* reports INCOMPLETE_CHECKLIST for an approved gap with none, or a named line the product does not have. `contracts/review_contract.v1.schema.json`, `tools/post_checkpoint_review_tool.py`, `gates/sup/verify_delivery_reviewed_gate.py`, `tools/watch_reviews_tool.py`, `agent/run_reviewer_agent.md`, `skills/sup/review_code_skill/SKILL.md` R16, `plugins/sup/derive_review_plugin/SKILL.md`, design document § 5 stage 9, Appendix A.8 *What a kept gap keeps*. Origin: FB-54 (wp_publisher).
+
 ## [3.2.1] - 2026-10-26
 
 A pull request behind main catches up by a merge, never a rebase.
