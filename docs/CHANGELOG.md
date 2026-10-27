@@ -35,6 +35,25 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-10-27
+
+Every decision put to a person has one plain pattern; review pages open themselves in the browser; *What you accepted* tells each answer as a short story.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none: move the pin to v3.7.0. A pull request waiting for its checkpoint-4 review gets its comment rewritten in the new pattern; the person ticks and approves it again. |
+
+### Added
+
+- **One pattern for every decision.** The framework asked a person to decide in six different ways. Now each decision is a `choice.v1`, in plain language — *Question*, *Options* (explained in sentences, no requirement ID), *Select your option* (numbered labels) and, when something decides one, *Proposed* with its reason — printed by the new `agent/ask_person_tool.py` in the terminal or as Markdown with a box per option; the answer is only a listed number, or Y where a proposal is offered (`--answer` checks it). The checkpoint-4 comment's items, the watcher's *REVIEW STOPPED* banner (1 or R retries) and `record_answer_tool --ask` print through it; the agent, the plugins' rounds (the assumption becomes the proposal), the checkpoints, the escalation, the product start and the approvals asked on an issue follow it. `contracts/choice_contract.v1.schema.json`, `agent/run_aspice_agent.md`, `agent/start_product.md`, the requirements, architecture and validation plugins, `manage_changes_skill`, `resolve_problems_skill`, `track_nonconformances_skill`, `validate_release_skill`, design document § 5 *Inside the ASPICE Agent*, Appendix A.1 *One pattern for every decision*. Origin: internal (Alex).
+- **Pages open themselves.** `render_review_tool` and `render_diagram_review_tool`, run from the command line, open the page they write in the browser and print its path — never in CI or a test run, nor with `--no-open`. Origin: internal (Alex).
+
+### Changed
+
+- ***What you accepted* in the person's words.** The summary named each answer by requirement ID and criterion number, with glossary terms unexplained. `question.v1` gains `situation` and, per reading, `label` and `means`, written by the criteria check without IDs or unexplained terms; the summary tells each answer as the question, *When* the situation, what the product will do, *For you* what it means, the risk, and the requirement's statement and ID last. `agent/record_answer_tool.py`, `agent/clarify_criteria_prompt.md`, `write_requirements_skill` R18, design document rule 27, Appendix A.2. Origin: FB-61 (wp_publisher).
+
 ## [3.6.0] - 2026-10-26
 
 The criteria check before checkpoint 2 asks only what someone would notice, asks one rule once, and checks a rewrite again only once.
