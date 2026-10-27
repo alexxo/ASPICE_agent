@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-framework/contracts/choice_contract.v1.schema.json",
+  "title": "choice.v1",
+  "description": "One decision put to a person, in plain words, always in the same three parts: the question, the options explained in sentences, and the options to select by number; a proposal when something decides one. Printed by agent/ask_person_tool.py — in the terminal, or in Markdown with a box per option on the code host — never written by hand. No requirement ID in the words: the person reads them without the requirements open.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["question", "options", "select"],
+  "$defs": {
+    "plain": {"type": "string", "minLength": 1, "not": {"pattern": "REQ-[0-9]"}}
+  },
+  "properties": {
+    "question": {
+      "description": "One question, ending with '?': 'What happens when the user enters a wrong password?'",
+      "allOf": [{"$ref": "#/$defs/plain"}, {"pattern": "\\?$"}]
+    },
+    "options": {
+      "description": "The options explained in sentences: 'We could block the account immediately, or give the user two more chances.'",
+      "$ref": "#/$defs/plain"
+    },
+    "select": {
+      "description": "The options as short labels, numbered from 1 in this order: the person answers with a number.",
+      "type": "array",
+      "minItems": 2,
+      "items": {"$ref": "#/$defs/plain"}
+    },
+    "proposal": {
+      "description": "The option proposed and why; the person accepts it with Y. Left out when nothing decides one.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["choice", "why"],
+      "properties": {
+        "choice": {"type": "integer", "minimum": 1},
+        "why": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

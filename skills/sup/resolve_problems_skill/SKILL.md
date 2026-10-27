@@ -49,7 +49,8 @@ The fix comes test first: the tester writes a test of the level where the
 crack shows, marked *@problem[&lt;n&gt;]*, in a test-only commit where it
 fails; the coder fixes the code until it passes. For a critical problem, a
 person in *urgent_approvers* comments */authorize-urgent-fix* on the issue
-before the fix merges. Once it is on the main branch, set the status to fixed;
+before the fix merges; the agent asks with a choice commented on the issue
+(*agent/ask_person_tool.py --markdown*), each option naming its command. Once it is on the main branch, set the status to fixed;
 the reporter comments */confirm-fixed*, and the issue is closed.
 
 ## Rules

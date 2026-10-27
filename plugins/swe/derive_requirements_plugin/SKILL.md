@@ -36,9 +36,11 @@ List the diagram elements no requirement covers yet: that list is the work.
 ## Ask
 
 Before writing, settle what the inputs do not say. Ask the round in one message:
-3–5 questions, the ones whose answer would change a requirement, each with the
-assumption you will write from if it is skipped — so the person can answer,
-correct or skip any of them:
+3–5 questions, the ones whose answer would change a requirement, each a choice printed by `<framework>/agent/ask_person_tool.py` — the
+readings you see as options, the last *something else: I tell you* when the
+answer is one only the person knows, and the assumption you will write from
+if it is skipped as the proposal — so the person accepts it with Y, picks
+another, or tells their own:
 
 - business rules — limits, permissions, what happens after how many attempts;
 - thresholds — how fast, how many, how available, and how it is measured;

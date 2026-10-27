@@ -49,8 +49,11 @@ folder of stages 5 to 8.
 ## Ask
 
 Ask the round in one message: 3–5 questions whose answer would change a
-scenario or its environment, each with the assumption you will write from if
-it is skipped:
+scenario or its environment, each a choice printed by `<framework>/agent/ask_person_tool.py` — the
+readings you see as options, the last *something else: I tell you* when the
+answer is one only the person knows, and the assumption you will write from
+if it is skipped as the proposal — so the person accepts it with Y, picks
+another, or tells their own:
 
 - what "it works" looks like to the person who asked for each wish — the
   observation that would convince them;

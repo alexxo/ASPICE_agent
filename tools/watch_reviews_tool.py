@@ -74,6 +74,8 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from agent.ask_person_tool import check  # noqa: E402
+from agent.ask_person_tool import render as ask  # noqa: E402
 from tools.read_host_tool import HOST_TOKEN, Host, HostError, read_host, repository  # noqa: E402
 from tools.read_product_config_tool import (  # noqa: E402
     ConfigError,
@@ -140,6 +142,16 @@ class Stop:
     limit: bool = False  # the agent's usage limit: tried again on its own
 
 
+RETRY = check(
+    {
+        "question": "What do you do with the stopped review?",
+        "options": "Retry: once you have done what Do says, the watcher reviews the head "
+        "again. Stop: the review stays stopped, and you stop the watcher.",
+        "select": ["retry (type 1 or R, then Enter)", "stop the watcher (Ctrl+C)"],
+    }
+)
+
+
 def banner(stop: Stop, colour: bool = False) -> str:
     """The stopped review, impossible to miss: why, what to do, where the log is."""
     rule = "#" * WIDTH
@@ -147,7 +159,13 @@ def banner(stop: Stop, colour: bool = False) -> str:
     for label, text in (("Why:", stop.why), ("Do:", stop.do)):
         lines += _wrapped(label, text)
         lines.append("#")
-    lines += [f"#  Log:   {stop.log}", rule]
+    lines += [f"#  Log:   {stop.log}", "#"]
+    if not stop.limit:
+        import textwrap
+
+        for line in ask(RETRY).splitlines():
+            lines += [f"#  {part}" for part in textwrap.wrap(line, WIDTH - 3)]
+    lines.append(rule)
     text = "\n".join(lines)
     return f"\033[1;31m{text}\033[0m" if colour else text
 
@@ -910,12 +928,12 @@ def main(argv: list[str] | None = None) -> int:
         colour=colour,
         notify=desktop_notification,
     )
-    watcher.say(f"Watching {repo} (type R and Enter to retry stopped reviews; Ctrl+C to stop)")
+    watcher.say(f"Watching {repo} (type 1 or R and Enter to retry stopped reviews; Ctrl+C to stop)")
     retry = threading.Event()
 
     def listen() -> None:
         for line in sys.stdin:
-            if line.strip().lower() == "r":
+            if line.strip().lower() in ("r", "1"):
                 retry.set()
 
     threading.Thread(target=listen, daemon=True).start()

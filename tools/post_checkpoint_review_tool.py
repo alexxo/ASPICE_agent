@@ -7,7 +7,8 @@ stage), after the verification report of the tree is written. Never written by
 the author, and readable without code: it mentions qf.yaml review.people, so
 the host notifies them, says what the pull request does (the record's
 summary), why they are asked in one plain sentence, and how to answer, then
-lists the questions, each with a pair of boxes, the first the answer yes; the
+lists the questions, each a choice.v1 printed by agent/ask_person_tool.py —
+question, options, a box per option to select, the first the answer yes — the
 head and the files are folded under "Details for the record":
 
 - checkpoint 4, the results, on the pull request that brings them (stage 8):
@@ -51,6 +52,8 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from agent.ask_person_tool import check  # noqa: E402
+from agent.ask_person_tool import render as ask  # noqa: E402
 from tools.read_host_tool import API, HOST_TOKEN, Note, PullRequest  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
 
@@ -81,8 +84,8 @@ def render(config: ProductConfig, repo: str, pull: PullRequest, review, record: 
     items, counted = results
     items = items + _items(review, record)
     body = "\n\n".join(
-        f"### {i}. {title}\n\n{text}\n\n- [ ] {yes}\n- [ ] {no}"
-        for i, (title, text, yes, no) in enumerate(items, 1)
+        f"### {i}. {title}\n\n{text}\n\n{ask(choice, markdown=True)}"
+        for i, (title, text, choice) in enumerate(items, 1)
     )
     people = " ".join(f"@{p}" for p in config.review_people)
     minutes = max(1, len(items))
@@ -226,12 +229,28 @@ def _result(row: dict, data: dict, told: dict) -> tuple:
         lines.append(f"**Measured:** {values} (threshold {row['threshold']})")
     lines.append(f"**Result:** {_RESULT.get(row['result'], row['result'])}")
     statement = data.get("statement")
+    passed = row["result"] in ("passed", "sealed")
     return (
         f"“{statement}”" if statement else uid,
         "\n\n".join(lines),
-        "achieved",
-        "not achieved",
+        _choice(
+            "Is this requirement achieved?",
+            "Achieved: the test checks what the requirement asks, and the result shows it "
+            "holds. Not achieved: the test misses part of it, or the result fails it.",
+            ["achieved", "not achieved"],
+            (1, "the test passed")
+            if passed
+            else (2, f"the test {'failed' if row['result'] == 'failed' else 'did not run'}"),
+        ),
     )
+
+
+def _choice(question: str, options: str, select: list[str], proposal=None) -> dict:
+    """An item's decision, as choice.v1."""
+    choice = {"question": question, "options": options, "select": select}
+    if proposal:
+        choice["proposal"] = {"choice": proposal[0], "why": proposal[1]}
+    return check(choice)
 
 
 def _items(review, record: dict) -> list[tuple]:
@@ -243,11 +262,13 @@ def _items(review, record: dict) -> list[tuple]:
             (
                 f"An open question in the design of {design}",
                 f"*{story}*\n⚠ {step}\n\n{_now(now.get((design, story, step)))}\n\n"
-                "No requirement asks for this, so the reviewer agent approved the design. Keep "
-                "it as it is now — or change it: request changes and write what you want, and "
-                "the agent proposes it as a change request.",
-                "keep it as it is now",
-                "change it",
+                "No requirement asks for this, so the reviewer agent approved the design.",
+                _choice(
+                    "Do you keep what the product does here now?",
+                    "Keep it: the product stays as *Now* says. Change it: request changes and "
+                    "write what you want, and the agent proposes it as a change request.",
+                    ["keep it as it is now", "change it"],
+                ),
             )
         )
     for w in review.weakenings:
@@ -255,8 +276,12 @@ def _items(review, record: dict) -> list[tuple]:
             (
                 f"Weakened: {w.file}",
                 f"*Before:* {w.before} · *Now:* {w.now}",
-                "acceptable",
-                "weakened, request changes",
+                _choice(
+                    "Is the weaker test acceptable?",
+                    "Acceptable: the test checks less on purpose, as the change needs. "
+                    "Weakened: request changes, so the test checks again what it did before.",
+                    ["acceptable", "weakened, request changes"],
+                ),
             )
         )
     for d in review.disputes:
@@ -266,8 +291,12 @@ def _items(review, record: dict) -> list[tuple]:
                 f"*The reviewer found:* {d['finding']}\n"
                 f"*The author answered:* {d.get('author_answer') or '—'}\n"
                 f"*The reviewer's final position:* {d.get('reviewer_position') or 'withdrawn'}",
-                "the author is right",
-                "the reviewer is right",
+                _choice(
+                    "Who is right?",
+                    "The author: the finding stays closed without a change. The reviewer: "
+                    "request changes, and the author fixes it.",
+                    ["the author is right", "the reviewer is right"],
+                ),
             )
         )
     if review.request:
@@ -276,8 +305,12 @@ def _items(review, record: dict) -> list[tuple]:
             (
                 "The reviewer agent asks for a person",
                 f"*{condition} — {CONDITIONS[condition]}:* {review.request['reason']}",
-                "acceptable",
-                "needs changes",
+                _choice(
+                    "Is it acceptable as it is?",
+                    "Acceptable: the pull request goes on as it is. Needs changes: request "
+                    "changes and write what must change.",
+                    ["acceptable", "needs changes"],
+                ),
             )
         )
     return items

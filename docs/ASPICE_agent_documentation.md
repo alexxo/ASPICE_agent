@@ -1662,6 +1662,36 @@ decision (seals 1, 2, 3 and 5; seal 4 is a review on the code host), and moves
 on. Each participant is the tool of that name in *agent/*. Working out the stage from the repository means the
 agent can resume at any time without a state file of its own.
 
+Every decision put to a person is a *choice* (*choice.v1*), always in the
+same plain pattern: the question; the options, explained in sentences with
+no requirement ID; the options to select, short labels numbered from 1; and,
+when something decides one, a proposal with its reason, accepted with Y.
+
+```
+Question: What happens when the user enters a wrong password?
+Options: We could block the account immediately, or give the user two more chances.
+Select your option: 1. block immediately, 2. give two more chances
+Proposed: 2. give two more chances — the sign-in diagram shows three attempts.
+```
+
+*agent/ask_person_tool.py* checks a choice and prints it — in the terminal,
+or in Markdown with a box per option on the code host — and reads the answer:
+only a listed number, or Y where a proposal is offered. It holds everywhere a
+person decides: the questions of a round (the assumption the work would take
+as the proposal), the questions of checkpoint 2, the decision at checkpoints
+1, 2, 3 and 5, an escalation, the items of checkpoint 4 on the code host, the
+approvals asked for on an issue (each option naming its command), and a
+review the watcher stopped. What the person needs to decide — a review page,
+a summary, a report — is shown before the choice, never inside it. Appendix
+A.1, *One pattern for every decision*.
+
+A page written for the person opens itself: *render_diagram_review_tool* and
+*render_review_tool*, run from the command line, open the page they write in
+the browser of the computer the agent runs on and print its full path —
+never in CI or a test run — so the person never copies a path; the agent
+opens any other page it makes for them the same way, and the checkpoint-4
+comment on the code host.
+
 ```mermaid
 sequenceDiagram
   autonumber
@@ -1679,6 +1709,7 @@ sequenceDiagram
     participant RR as render_review_tool
     participant RD as render_diagram_review_tool
     participant QA as record_answer_tool
+    participant AP as ask_person_tool
   end
   participant ST as read_stages_tool<br/>(stages.yaml)
   participant SK as Plugin + framework skills
@@ -1739,15 +1770,19 @@ sequenceDiagram
     else awaiting_checkpoint — seal 4
       OR->>H: The pull request waits for your review on the host (the link opens)
     else awaiting_checkpoint — seals 1, 2, 3, 5
-      OR->>H: Review this work product
+      OR->>H: Review this work product (its page opens in the browser)
       opt seal 2, a question open
         loop each question, one at a time
-          OR->>H: Its readings, numbered, and the proposal with its source
-          H-->>OR: Y or a listed number
+          OR->>AP: The question as a choice
+          AP->>H: Question, options, select your option, proposal
+          H-->>AP: Y or a listed number
+          AP-->>OR: The option selected
           OR->>QA: Record the answer
         end
         OR->>REPO: Each criterion rewritten to the reading chosen, checked again, the page rendered again
       end
+      OR->>AP: The decision as a choice: approve, or request changes
+      AP->>H: Question, options, select your option, proposal
       H-->>OR: Approve or request changes
       OR->>CP: Record the decision the person gave
       CP->>REPO: Approval (who, role, when, SHA-256 of every file covered)
@@ -2684,8 +2719,10 @@ requirements).
     at a time; the person answers only with a listed number, or Y where a
     proposal is offered; the last number is *neither: the requirement goes
     back to be rewritten*. Before anything is rewritten, the agent shows
-    what the answers accept, in plain words — what the product will do —
-    the risky ones first, each with why: a requirement of high criticality
+    what the answers accept, per answer a short story in the person's
+    words — the situation they are in, what the product will do, what that
+    means for them, the requirement last as a reference, written by the
+    check with the readings — the risky ones first, each with why: a requirement of high criticality
     or about security, a glossary term every requirement using it follows,
     a reading that contradicts another requirement, a proposal from common
     practice; the person keeps them with Y or answers any one again. The
@@ -3951,6 +3988,23 @@ label together.
   unfinished current stage worse — is accepted: the checkpoint and the
   release still need the stage green. → § 5 *What CI fails on*, *The ASPICE
   Agent — the flow* (retry policy).
+- **One pattern for every decision** (2026-10-27, Alex). The framework put
+  choices to a person in six ways — numbered options with a proposal, rounds
+  of free-text questions with an assumption, named choices in free text, tick
+  boxes, slash commands, a key — each described in its own file, and the
+  checkpoint-2 summary named criteria by number (FB-61). *Chosen:* one
+  contract, *choice.v1*, in plain language: the question, the options in
+  sentences, the options to select by number, and a proposal with its reason
+  when something decides one; one tool prints it, in the terminal or on the
+  code host, and takes only a listed number or Y. It covers every occasion,
+  rounds included, their assumption becoming the proposal. Risk kept: in the
+  terminal no gate sees what the agent printed, so a decision asked in the
+  agent's own words is caught only by the person — the code host's
+  comments and the watcher's banner are printed by the tool itself. *Not
+  taken:* a richer contract with the situation, a story per option, the
+  risk and the reference as fields (Alex: too complex — the person is told
+  the information plainly, in three parts).
+  → § 5 *Inside the ASPICE Agent*.
 
 ### A.2 Diagram and requirements stages — stages 1 and 2
 
@@ -4145,6 +4199,15 @@ label together.
   D 6 — 126; what a third round would have found is built unasked — S 6,
   O 3, D 5 — 90. *Not taken:* listing the unasked edge cases as
   assumptions — the summary would carry the noise the change removes.
+  Revised (FB-61): the summary named each answer by requirement ID and
+  criterion number, with glossary terms unexplained, so the person could
+  not follow what they kept — the risk it exists for, back at S 7, O 8,
+  D 6 — 336. *Chosen:* the check writes, with the readings, the situation
+  the person is in and what each reading means for them, in their words,
+  no ID and no term without its plain meaning; the summary tells each
+  answer in that order, the requirement's statement and ID last. *Not
+  taken:* the agent retelling the summary itself — a retelling the person
+  cannot check against the record.
   → § 5 stages 1 and 2, rule 27.
 
 ### A.3 Architecture stage — stage 3

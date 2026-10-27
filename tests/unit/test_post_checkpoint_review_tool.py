@@ -140,7 +140,9 @@ def test_the_results_ask_what_matters_and_count_the_rest(results):
     first, second = body.split("### ")[1:3]
     assert "*Given* an email" in first and "**Result:** passed" in first
     assert "**Measured:** 6 (threshold <= 5 count)" in second and "**failed**" in second
-    assert "- [ ] achieved\n- [ ] not achieved" in first
+    assert "- [ ] 1. achieved\n- [ ] 2. not achieved" in first
+    assert "**Question:** Is this requirement achieved?" in first
+    assert "**Proposed:** 1. achieved — the test passed." in first
 
 
 def test_without_the_verification_report_the_results_wait(results):
@@ -190,7 +192,8 @@ def test_a_gap_of_a_design_says_what_keeping_it_keeps(product, tmp_path, gap, to
     ]
     assert f"⚠ The design does not say how long.\n\n{told}\n" in body
     assert "**For the user:** A user away for half an hour signs in again." in body
-    assert "- [ ] keep it as it is now\n- [ ] change it" in body
+    assert "- [ ] 1. keep it as it is now\n- [ ] 2. change it" in body
+    assert "**Question:** Do you keep what the product does here now?" in body
 
 
 @pytest.mark.parametrize(

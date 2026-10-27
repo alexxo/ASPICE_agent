@@ -42,7 +42,9 @@ same way: *found_in* names the merged pull request, or, for a commit pushed
 straight to the main branch, *commit* names its SHA, and the body says the
 cause — the change was wrong, or the gate was. A person in *qf.yaml
 urgent_approvers*, not its author, accepts it by commenting */accept-delivery*
-on the issue (*review_code_skill* R11). *fixed_by* names the revert, or the pull
+on the issue (*review_code_skill* R11); the agent asks with a choice
+commented on the issue (*agent/ask_person_tool.py --markdown*), each option
+naming its command. *fixed_by* names the revert, or the pull
 request that fixed the gate; when the change was right, nothing was fixed, so
 there is no *fixed_by* and the acceptance alone closes the issue.
 

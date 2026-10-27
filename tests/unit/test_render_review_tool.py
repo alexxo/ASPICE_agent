@@ -157,3 +157,22 @@ def test_the_command_writes_the_page(tmp_path, capsys):
     root = build_product(tmp_path, review_pages=False, git=False)
     assert main(["--root", str(root)]) == 0
     assert capsys.readouterr().out.strip().endswith("docs/requirements/review.html")
+
+
+def test_a_page_opens_in_the_browser_outside_ci_and_tests(tmp_path, monkeypatch):
+    """Alex: a page made for the person opens itself; nobody copies a path."""
+    import webbrowser
+
+    from agent.render_review_tool import open_page
+
+    page = tmp_path / "review.html"
+    opened = []
+    monkeypatch.setattr(webbrowser, "open", lambda url: opened.append(url) or True)
+    assert open_page(page) == str(page)  # a test run: nobody looks
+    monkeypatch.delenv("PYTEST_CURRENT_TEST")
+    monkeypatch.delenv("CI", raising=False)
+    assert open_page(page) == f"{page} (opened in the browser)"
+    assert opened == [page.resolve().as_uri()]
+    monkeypatch.setenv("CI", "true")
+    assert open_page(page) == str(page)
+    assert len(opened) == 1

@@ -23,7 +23,11 @@ If `<product>/qf.yaml` exists, the product is set up: change nothing, and follow
 
 ## 2. Ask the values only the person knows
 
-Ask the person, one question at a time, and wait for each answer:
+Ask the person, one question at a time, and wait for each answer. Each is a
+choice printed by `<framework>/agent/ask_person_tool.py`: an account you
+found (the code host's login of this folder, for example) as the proposal,
+and *another: I type it*, whose words follow; with none found, *I type it*
+and *stop the setup for now*:
 
 1. **The reviewer agent** — the code host account the reviewer agent posts its
    reviews from (`--reviewer-agent`).

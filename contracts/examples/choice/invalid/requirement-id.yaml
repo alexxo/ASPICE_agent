@@ -1,0 +1,3 @@
+question: Is REQ-0012 right?
+options: It is right, or it needs a change.
+select: [right, change it]

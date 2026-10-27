@@ -54,8 +54,9 @@ the deployment, run
 
 It runs the *validation* suite, writes the automated results and keeps the
 results already entered by hand; add the result of every guided demo or trial
-use you ran, then commit the record. Ask the customer for their decision with
-the report's validation section, and record it:
+use you ran, then commit the record. Show the customer the report's validation section,
+ask for their decision as a choice (*agent/ask_person_tool.py*: accept the
+release, or reject it and say why), and record it:
 
     python .framework/agent/record_checkpoint_tool.py --checkpoint 5 \
         --decision approved|changes-requested --approver <name> --role customer \

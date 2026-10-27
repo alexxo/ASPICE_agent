@@ -18,7 +18,10 @@ record_checkpoint_tool refuses an approval on a page the files no longer render
 (§ 5 stages 1 and 2, rules 21–25). The agent never writes it by hand; it
 renders it, and commits it, before the person reviews.
 
-    python agent/render_diagram_review_tool.py [--root PRODUCT]
+    python agent/render_diagram_review_tool.py [--root PRODUCT] [--no-open]
+
+Run from the command line, it opens the page in the browser of this computer
+(never in CI or a test run, nor with --no-open).
 """
 
 from __future__ import annotations
@@ -35,7 +38,7 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agent.render_review_tool import PAGE as REQUIREMENTS_PAGE  # noqa: E402
-from agent.render_review_tool import _added_in, _git, _section  # noqa: E402
+from agent.render_review_tool import _added_in, _git, _section, open_page  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_approvals_tool import approval_state, sha256, subject_files  # noqa: E402
 from tools.read_product_config_tool import ProductConfig, read_product_config  # noqa: E402
@@ -301,8 +304,10 @@ render_diagram_review_tool from the committed files; never edited by hand.</p>""
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument("--no-open", action="store_true")
     args = parser.parse_args(argv)
-    print(render_diagram_review(args.root))
+    page = render_diagram_review(args.root)
+    print(page if args.no_open else open_page(page))
     return 0
 
 

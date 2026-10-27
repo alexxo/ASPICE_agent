@@ -62,9 +62,19 @@ not changed.
 - **A rewritten criterion.** A line of your list that says it was rewritten
   to settle a question: that reading is decided. Ask only about wording the
   rewrite added, never the settled question again in other words.
-- **Each reading in plain words**: what the product does, as a sentence a
-  person who reads no code understands ("the account is locked at the 3rd
-  failed sign-in"); the person is shown it as what they accept.
+- **Tell it as a short story, in the person's words.** The person is shown,
+  per answer, what they accept: write it so a person who reads no code
+  follows it without the requirements open. No requirement ID, no criterion
+  number, and no glossary term without its plain meaning — "the brief (the
+  cell telling the AI what to write)".
+  - `situation`: what the person does or sees when the question matters
+    ("you type a wrong password three times").
+  - each `reading`: what the product then does, as a sentence ("the account
+    is locked at the 3rd failed sign-in").
+  - each `means`: what that means for the person — what they see, or must
+    do, afterwards ("you wait 15 minutes or ask an administrator").
+  - each `label`: the reading in a few words, as the person selects it
+    ("lock at the 3rd").
 - **One example per reading**, as short as a timeline: `✗ ✗ ✗ → locked`.
 
 Never open the code, the tests, the design or the architecture: you check what
@@ -79,11 +89,16 @@ on your list is unclear. One entry per question:
 - about: {requirement: REQ-0047, criterion: 2}   # or {term: attempt}; criteria count from 1
   also: [{requirement: REQ-0051, criterion: 1}]   # only when the same rule settles others
   question: When is the account locked?
+  situation: you type a wrong password three times
   readings:                                       # two or more, most likely first
-    - reading: locked at the 3rd failure
+    - reading: the account is locked at the 3rd failed sign-in
+      label: lock at the 3rd
       example: "✗ ✗ ✗ → locked"
-    - reading: locked at the 4th attempt, after 3 failures
+      means: your 3rd try already locks you out
+    - reading: the account is locked at the 4th attempt, after 3 failures
+      label: lock at the 4th
       example: "✗ ✗ ✗ → 4th attempt refused, locked"
+      means: you get one more try, which is refused
       conflicts: REQ-0049 criterion 1            # only when it contradicts one
   proposal:                                       # or: proposal: none
     choice: 1

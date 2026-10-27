@@ -1,8 +1,10 @@
 """agent/record_answer_tool.py — unclear criteria checked and answered before checkpoint 2."""
 
 import pytest
+import yaml
 from product_builder import check_criteria, commit_all, render_reviews
 
+from agent.ask_person_tool import check as valid_choice
 from agent.record_answer_tool import (
     label,
     main,
@@ -204,11 +206,10 @@ def test_what_was_accepted_is_told_in_plain_words_the_risky_first(product):
     record_answer(product, "Q1", 1, "Alex", "architect")
     record_answer(product, "Q2", 1, "Alex", "architect")
     lines = summary(_config(product))
-    assert lines[0] == (
-        "⚠ Q1 · REQ-0012 criterion 2: the product will — locked at the 3rd failure "
-        "(e.g. ✗ ✗ ✗ → locked)\n    Risky: a requirement of high criticality."
-    )
-    assert lines[1].startswith("⚠ Q2 · term account: the product will — yes")
+    assert lines[0].startswith("⚠ Q1 — When is the account locked?")
+    assert "\n    Risky: a requirement of high criticality.\n" in lines[0]
+    assert lines[1].startswith("⚠ Q2 — Is a closed account still an account?")
+    assert lines[1].endswith("About: the glossary term account")
     assert "it changes every requirement using the term" in lines[1]
     assert "decided by common practice, not by anything you approved" in lines[1]
 
@@ -221,8 +222,31 @@ def test_a_plain_answer_is_not_marked_risky(product):
     check_criteria(product, [LOCK])
     record_answer(product, "Q1", 1, "Alex", "architect")
     assert summary(_config(product)) == [
-        "Q1 · REQ-0012 criterion 2: the product will — locked at the 3rd failure "
-        "(e.g. ✗ ✗ ✗ → locked)"
+        "Q1 — When is the account locked?\n"
+        "    the product will — locked at the 3rd failure (e.g. ✗ ✗ ✗ → locked)\n"
+        '    About: "A user signs in to their account." (REQ-0012, criterion 2)'
+    ]
+
+
+def test_each_answer_is_told_as_a_story_in_the_persons_words(product):
+    """FB-61: the situation, what the product does and what it means, the ID last."""
+    told = {
+        **LOCK,
+        "situation": "you type a wrong password three times",
+        "readings": [
+            {**LOCK["readings"][0], "means": "your 3rd try already locks you out"},
+            LOCK["readings"][1],
+        ],
+    }
+    check_criteria(product, [told])
+    record_answer(product, "Q1", 1, "Alex", "architect")
+    assert summary(_config(product))[0].splitlines() == [
+        "⚠ Q1 — When is the account locked?",
+        "    When you type a wrong password three times:",
+        "    the product will — locked at the 3rd failure (e.g. ✗ ✗ ✗ → locked)",
+        "    For you: your 3rd try already locks you out",
+        "    Risky: a requirement of high criticality.",
+        '    About: "A user signs in to their account." (REQ-0012, criterion 2)',
     ]
 
 
@@ -263,7 +287,7 @@ def test_one_rule_is_one_question_that_settles_each_criterion_it_names(product, 
     """FB-60: the same convention is asked once, not once per criterion."""
     check_criteria(product, [{**LOCK, "also": [{"requirement": "REQ-0011", "criterion": 2}]}])
     record_answer(product, "Q1", 1, "Alex", "architect")
-    assert summary(_config(product))[0].startswith("⚠ Q1 · REQ-0012 criterion 2 and 1 more:")
+    assert summary(_config(product))[0].endswith("(REQ-0012, criterion 2), and 1 more")
     _rewrite(product)
     assert main(["--unchecked", "--root", str(product)]) == 0
     assert capsys.readouterr().out.startswith("REQ-0011 criterion 2 — rewritten to settle Q1")
@@ -285,3 +309,12 @@ def test_a_criterion_is_checked_again_once_after_its_rewrite(asked, capsys):
     assert main(["--unchecked", "--root", str(asked)]) == 0
     assert capsys.readouterr().out == ""
     assert [f.rule for f in question_findings(_config(asked))] == []
+
+
+def test_a_question_is_asked_as_a_choice(asked, capsys):
+    """The checkpoint-2 question in the pattern of every decision (choice.v1)."""
+    assert main(["--ask", "Q1", "--root", str(asked)]) == 0
+    told = valid_choice(yaml.safe_load(capsys.readouterr().out))
+    assert told["question"] == "When is the account locked?"
+    assert told["select"][-1] == "neither: rewrite the requirement"
+    assert told["proposal"] == {"choice": 1, "why": 'diagram message "3rd failure → lock"'}

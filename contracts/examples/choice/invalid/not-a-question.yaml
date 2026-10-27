@@ -1,0 +1,3 @@
+question: Approve the requirements.
+options: You approve them, or you request changes.
+select: [approve, request changes]

@@ -24,9 +24,11 @@ checked when it is rewritten again, so the rounds end.
         records the person's answer: a reading's number, or the one after the
         last for 'neither: the requirement goes back to be rewritten'; --again
         changes an answer whose criterion is not rewritten yet
+    python agent/record_answer_tool.py --ask Q1 [--root PRODUCT]
+        prints the question as a choice.v1, for agent/ask_person_tool.py --file -
     python agent/record_answer_tool.py --summary [--root PRODUCT]
-        prints, in plain words, what the answers not yet written into the
-        criteria decide, the risky ones first, each with why it is risky
+        prints, as a short story per answer, what the answers not yet written
+        into the criteria decide, the risky ones first, each with why
 
 An unanswered question whose criterion or term changed since it was asked no
 longer counts: the changed text is unchecked, and is checked again (§ 5 stages 1
@@ -39,6 +41,7 @@ import argparse
 import contextlib
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -59,6 +62,7 @@ from tools.validate_contract_tool import validate  # noqa: E402
 
 __all__ = [
     "checked",
+    "choice",
     "items",
     "label",
     "neither",
@@ -176,46 +180,86 @@ def pending(config: ProductConfig, data: dict | None = None) -> list[dict]:
 
 
 def summary(config: ProductConfig) -> list[str]:
-    """What the pending answers decide, in plain words: the risky ones first, each
-    with why — a requirement of high criticality or about security, a term every
+    """What the pending answers decide, told as a short story: the question, the
+    situation the person is in, what the product will do and what that means for
+    them, the requirement last, as a reference. The risky ones first, each with
+    why — a requirement of high criticality or about security, a term every
     requirement using it follows, a reading that contradicts another requirement,
     a proposal taken from common practice rather than anything approved."""
     requirements = {r.text("uid"): r.data for r in read_requirements(config) if r.text("uid")}
     risky, rest = [], []
     for q in pending(config):
-        choice = q["answer"]["choice"]
-        if choice == neither(q):
-            line = f"{q['id']} · {label(q['about'])}: neither — the requirement is rewritten"
-            rest.append(line)
-            continue
-        reading = q["readings"][choice - 1]
-        why = []
         about = q["about"]
-        if "term" in about:
-            using = [uid for uid, data in requirements.items() if f"_{about['term']}_" in str(data)]
-            why.append(f"it changes every requirement using the term ({len(using)})")
+        choice = q["answer"]["choice"]
+        lines = [f"{q['id']} — {q['question']}"]
+        if q.get("situation"):
+            lines.append(f"When {q['situation']}:")
+        why = []
+        if choice == neither(q):
+            lines.append("neither reading — the requirement goes back to be rewritten")
         else:
-            data = requirements.get(about["requirement"], {})
-            if data.get("criticality") == "high":
-                why.append("a requirement of high criticality")
-            if data.get("kind") == "security":
-                why.append("a security requirement")
-        if reading.get("conflicts"):
-            why.append(f"it contradicts {reading['conflicts']}")
-        proposal = q.get("proposal")
-        taken = isinstance(proposal, dict) and proposal["choice"] == choice
-        if taken and str(proposal["source"]).startswith("convention"):
-            why.append("decided by common practice, not by anything you approved")
-        more = f" and {len(q['also'])} more" if q.get("also") else ""
-        line = (
-            f"{q['id']} · {label(about)}{more}: the product will — {reading['reading']} "
-            f"(e.g. {reading['example']})"
-        )
+            reading = q["readings"][choice - 1]
+            lines.append(f"the product will — {reading['reading']} (e.g. {reading['example']})")
+            if reading.get("means"):
+                lines.append(f"For you: {reading['means']}")
+            if "term" in about:
+                term = about["term"]
+                using = [uid for uid, data in requirements.items() if f"_{term}_" in str(data)]
+                why.append(f"it changes every requirement using the term ({len(using)})")
+            else:
+                data = requirements.get(about["requirement"], {})
+                if data.get("criticality") == "high":
+                    why.append("a requirement of high criticality")
+                if data.get("kind") == "security":
+                    why.append("a security requirement")
+            if reading.get("conflicts"):
+                why.append(f"it contradicts {reading['conflicts']}")
+            proposal = q.get("proposal")
+            taken = isinstance(proposal, dict) and proposal["choice"] == choice
+            if taken and str(proposal["source"]).startswith("convention"):
+                why.append("decided by common practice, not by anything you approved")
         if why:
-            risky.append(f"⚠ {line}\n    Risky: {'; '.join(why)}.")
-        else:
-            rest.append(line)
+            lines.append(f"Risky: {'; '.join(why)}.")
+        lines.append(f"About: {_reference(q, requirements)}")
+        text = "\n    ".join(lines)
+        (risky if why else rest).append(f"⚠ {text}" if why else text)
     return risky + rest
+
+
+def _reference(question: dict, requirements: dict[str, dict]) -> str:
+    """The requirement a question is about, by its statement, then its ID."""
+    about = question["about"]
+    if "term" in about:
+        shown = f"the glossary term {about['term']}"
+    else:
+        statement = str(requirements.get(about["requirement"], {}).get("statement", "")).strip()
+        statement = re.sub(r"_([^_\s][^_]*)_", r"\1", statement)  # a term's mark, not its word
+        shown = f'"{statement}" ' if statement else ""
+        shown += f"({about['requirement']}, criterion {about['criterion']})"
+    more = question.get("also") or []
+    return shown + (f", and {len(more)} more" if more else "")
+
+
+def choice(question: dict) -> dict:
+    """The question as the person is asked it (choice.v1): the options explained —
+    the situation, each reading with what it means for them — and selected by
+    their labels, the last one 'neither'; the proposal with its source."""
+    readings = []
+    for r in question["readings"]:
+        means = f" ({r['means']})" if r.get("means") else ""
+        readings.append(f"{r['reading']}{means}")
+    situation = f"When {question['situation']}: " if question.get("situation") else ""
+    asked = {
+        "question": question["question"].rstrip(" ?.") + "?",
+        "options": f"{situation}{'; or '.join(readings)}. Or neither, and the requirement "
+        "goes back to be rewritten.",
+        "select": [r.get("label") or r["reading"] for r in question["readings"]]
+        + ["neither: rewrite the requirement"],
+    }
+    proposal = question.get("proposal")
+    if isinstance(proposal, dict):
+        asked["proposal"] = {"choice": proposal["choice"], "why": proposal["source"]}
+    return asked
 
 
 def record_check(root: Path, session_file: Path) -> Path:
@@ -413,6 +457,7 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--questions", type=Path)
     mode.add_argument("--question")
     mode.add_argument("--summary", action="store_true")
+    mode.add_argument("--ask")
     parser.add_argument("--choice", type=int)
     parser.add_argument("--again", action="store_true")
     parser.add_argument("--approver")
@@ -425,6 +470,13 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.questions:
             print(record_check(args.root, args.questions))
+            return 0
+        if args.ask:
+            data = read_questions(read_product_config(args.root))
+            found = next((q for q in data["questions"] if q["id"] == args.ask), None)
+            if found is None:
+                raise ValueError(f"no question {args.ask}")
+            print(yaml.safe_dump(choice(found), sort_keys=False, allow_unicode=True), end="")
             return 0
         if args.summary:
             for line in summary(read_product_config(args.root)):

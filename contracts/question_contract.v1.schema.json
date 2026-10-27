@@ -57,6 +57,11 @@
             "$ref": "#/$defs/sha256"
           },
           "question": {"type": "string", "minLength": 1},
+          "situation": {
+            "description": "What the person does or sees when the question matters, in their own words, no requirement ID and no glossary term unexplained: 'you leave the brief cell with only spaces'.",
+            "type": "string",
+            "minLength": 1
+          },
           "readings": {
             "description": "The readings, numbered from 1 in this order; the next number is always 'neither: the requirement goes back to be rewritten'.",
             "type": "array",
@@ -68,6 +73,16 @@
               "properties": {
                 "reading": {"type": "string", "minLength": 1},
                 "example": {"type": "string", "minLength": 1},
+                "label": {
+                  "description": "The reading in a few words, as the person selects it: 'block immediately'.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "means": {
+                  "description": "What this reading means for the person, in their own words: what they see, or must do, afterwards.",
+                  "type": "string",
+                  "minLength": 1
+                },
                 "conflicts": {
                   "description": "The other requirement this reading contradicts, e.g. 'REQ-0049 criterion 1'.",
                   "type": "string",

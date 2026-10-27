@@ -8,9 +8,11 @@ questions:
       - {term: brief}
     asked: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     question: Is a text of only spaces, tabs or line breaks empty?
+    situation: you leave a cell with only spaces in it
     readings:
       - reading: a text of only white space counts as empty
         example: '"  \t" → empty'
+        means: the row is skipped and its report column says the cell is empty
       - reading: only a text with no characters is empty
         example: '"  \t" → not empty'
     proposal:

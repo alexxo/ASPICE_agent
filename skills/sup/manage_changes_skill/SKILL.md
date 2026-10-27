@@ -45,7 +45,8 @@ problem caused it, that *problem*'s number (the problem names it back in its
 *change_request*).
 
 A person in *change_approvers* comments */approve-change* on the issue before
-anyone builds it. The change then enters the flow at stage 1 as a new or
+anyone builds it; the agent asks with a choice commented on the issue
+(*agent/ask_person_tool.py --markdown*), each option naming its command. The change then enters the flow at stage 1 as a new or
 amended wish, and every commit that builds it names *#n*. Once its last commit
 is on the main branch, set the status to implemented; the initiator comments
 */confirm-change*, and the issue is closed.

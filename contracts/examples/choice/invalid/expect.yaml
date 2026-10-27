@@ -1,0 +1,3 @@
+one-option.yaml: {path: "select", keyword: minItems}
+not-a-question.yaml: {path: "question", keyword: pattern}
+requirement-id.yaml: {path: "question", keyword: not}

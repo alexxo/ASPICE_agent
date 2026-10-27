@@ -26,7 +26,11 @@ files no longer render (§ 5 stages 1 and 2, rules 22–25). The agent never
 writes it by hand; it renders it, and commits it, before the person reviews.
 The diagrams have their own page (agent/render_diagram_review_tool.py).
 
-    python agent/render_review_tool.py [--root PRODUCT]
+    python agent/render_review_tool.py [--root PRODUCT] [--no-open]
+
+Run from the command line, it opens the page in the browser of this computer
+(never in CI or a test run, nor with --no-open), so the person never copies a
+path.
 """
 
 from __future__ import annotations
@@ -617,11 +621,25 @@ render_review_tool from the committed files; never edited by hand.</p>
 """
 
 
+def open_page(page: Path) -> str:
+    """Open a page written for the person in the browser of this computer, and
+    say so; never in CI or a test run, where nobody looks."""
+    import os
+    import webbrowser
+
+    if os.environ.get("CI") or os.environ.get("PYTEST_CURRENT_TEST"):
+        return str(page)
+    opened = webbrowser.open(page.resolve().as_uri())
+    return f"{page} (opened in the browser)" if opened else f"{page} (open it in the browser)"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument("--no-open", action="store_true")
     args = parser.parse_args(argv)
-    print(render_review(args.root))
+    page = render_review(args.root)
+    print(page if args.no_open else open_page(page))
     return 0
 
 

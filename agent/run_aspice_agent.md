@@ -21,6 +21,33 @@ Every tool runs from the framework's root and takes the product root:
 `python <tool> --root <product>`. `<framework>` below is the framework's
 directory.
 
+**Every decision you put to a person is a choice** (*choice.v1*), always in
+the same plain pattern: the question; the options, explained in sentences
+with no requirement ID; the options to select, as short labels numbered from
+1; and a proposal with its reason when something decides one. Write it as
+YAML (`question`, `options`, `select`, `proposal: {choice, why}`) and print
+it with `python <framework>/agent/ask_person_tool.py --file <choice.yaml>`
+(`--file -` reads it from standard input); show what it prints as it is,
+never in your own words:
+
+```
+Question: What happens when the user enters a wrong password?
+Options: We could block the account immediately, or give the user two more chances.
+Select your option: 1. block immediately, 2. give two more chances
+Proposed: 2. give two more chances — the sign-in diagram shows three attempts.
+Your answer [Y / 1 / 2]:
+```
+
+Take only a listed number, or Y where a proposal is offered:
+`ask_person_tool.py --file <choice.yaml> --answer <what they typed>` prints
+the number, or exits 1 — ask again. An option that needs words (*request
+changes*, *give guidance*) asks for them once it is chosen. What the person
+needs to decide — a review page, a summary, an escalation report — comes
+before the choice, never inside it. On the code host, write the choice with
+`--markdown`: a box per option, and an option to comment names its command.
+This holds for every decision: the questions of a round, the checkpoints, an
+escalation, a stopped review, and the approvals you ask for on an issue.
+
 ## 1. Authorize
 
 Decide whether the request asks for a change at all.
@@ -141,8 +168,9 @@ reviewer agent approves the pull request's current head. The person's
 watcher starts the reviewer on its own, once CI waits for it
 (`<framework>/tools/watch_reviews_tool.py`, which they start once a working
 day in a terminal of their own with the reviewer agent's token). If no review
-comes, ask the person whether the watcher runs, and whether it shows a
-*REVIEW STOPPED* banner for this pull request; without the watcher, they start
+comes, ask the person, as a choice, whether the watcher runs and shows a
+*REVIEW STOPPED* banner for this pull request (it runs and shows nothing, it
+shows the banner, it does not run); without the watcher, they start
 the reviewer's own session by hand, following
 `<framework>/agent/run_reviewer_agent.md`. That token is never in your
 session: never read `~/.aspice_agent_reviewer_bot_token`, and you never post
@@ -177,8 +205,8 @@ missing, tell the person at once: the change reached the main branch without
 the delivery desk, and the next release waits until it is accepted. Record it
 as an issue labelled *non-conformance* whose block names the pull request
 (*found_in*) or the commit (*commit*), with the cause, and ask a person in
-*qf.yaml urgent_approvers*, not its author, to comment `/accept-delivery` on
-it. A revert does not clear it on its own.
+*qf.yaml urgent_approvers*, not its author, with a choice commented on it
+(accept: comment `/accept-delivery`; not accepted: comment why). A revert does not clear it on its own.
 
 **Stage 9, the delivery desk.** Stages 4 to 8 deliver in four pull
 requests: the detailed design (stage 4); the unit tests with the code that
@@ -225,7 +253,8 @@ ask whoever ran each guided demo or trial use for its result, enter it in the
 record, and commit it. Nothing else may change after the deployment: a fix
 means a new deployment and a new record. Show the customer the validation
 section of the report (*tools/write_verification_report_tool.py*) and ask for
-their decision (step 8). A failed scenario goes to the crew of the stage it
+their decision as a choice — accept the release, or reject it and say why
+(step 8). A failed scenario goes to the crew of the stage it
 belongs to; a rejection closes the release pull request, and its reason comes
 back as a new or changed wish.
 
@@ -235,7 +264,9 @@ crack as an issue labelled *problem*, its body one *problem* block
 (`resolve_problems_skill`), and analyse it before any fix: cause, impact,
 severity; a high or critical one names its affected parties and when they were
 told. A critical one waits for `/authorize-urgent-fix` from a person in
-`urgent_approvers` — ask, never give it. Then, on a `bugfix/` branch, the
+`urgent_approvers` — ask with a choice commented on the issue (authorize:
+comment `/authorize-urgent-fix`; wait for the normal flow: comment why),
+never give it. Then, on a `bugfix/` branch, the
 stage's plugin — the tester — writes a test that reproduces the crack, marked
 `@problem[<n>]`, in a test-only commit where it fails; the coder (also loaded)
 fixes the code until it passes, never touching the test. Deliver it as any
@@ -251,8 +282,9 @@ request once the flow is done. There is no plugin: you follow
 *change-request*, its body one *change_request* block, and analyse it: the
 wishes, diagram elements and requirements it affects, the changes it depends
 on, its size, and the problem that caused it if one did. Then ask a person in
-`change_approvers` for `/approve-change` — never give it, and build nothing
-before it. The approved change re-enters the flow at stage 1 as a new or
+`change_approvers` for `/approve-change`, with a choice commented on the
+issue (approve: comment `/approve-change`; reject: comment why) — never give
+it, and build nothing before it. The approved change re-enters the flow at stage 1 as a new or
 amended wish, and every commit that builds it names `#<n>`. Once its last
 commit is on the main branch, set the status to implemented and ask the
 initiator for `/confirm-change`; then close the issue.
@@ -269,7 +301,7 @@ initiator for `/confirm-change`; then close the issue.
 |---|---|
 | `pass` | If the stage has no closing checkpoint (stages 3 to 10; stage 3 after its components), record it as done: `python <framework>/agent/record_stage_done_tool.py --stage <stage> --root <product>`, and commit the record with the stage's work. From then on the stage is enforced: a change that breaks it fails CI. Go back to step 3: the product moves on, or waits for its checkpoint. |
 | `retry` | Go back to step 6 with the findings. `retries_left` says how many remain: only failing attempts in a row count, and a pass starts a new round. |
-| `escalate` | Stop. Give the architect the `escalation_report` — the findings of every attempt — and ask: fix the work, give guidance for a new round, or stop. For a new round, run `count_retries_tool.py reset` and go back to step 6. |
+| `escalate` | Stop. Give the architect the `escalation_report` — the findings of every attempt — then ask as a choice: they fix the work, they give guidance for a new round (the words follow), or the work stops; propose the one the report supports. For a new round, run `count_retries_tool.py reset` and go back to step 6. |
 
 ## 8. Checkpoint
 
@@ -285,13 +317,16 @@ it. Until then CI stays red on the release pull request, so it cannot merge
 before the village accepts. Commit the decision to the pull request.
 
 For the other checkpoints, show the person the work product of the stage and
-ask for their decision. At checkpoint 1 that is the diagrams review page —
+ask for their decision as a choice: approve, or request changes (the reason
+follows), with a proposal and its reason. At checkpoint 1 that is the diagrams review page —
 `python <framework>/agent/render_diagram_review_tool.py --root <product>`
 renders it: each diagram's pictures with its rules and wish links — at
-checkpoint 2 the requirements review page (step 6). Open the page in the
-browser of this computer, once per decision
-(`python -c "import webbrowser, sys; webbrowser.open(sys.argv[1])" file://<full path>`),
-and print its full path too; never show the raw files. What a page marks
+checkpoint 2 the requirements review page (step 6). Each render tool opens
+its page in the browser of this computer as it writes it, and prints its full
+path: the person never copies a path. Any other page you make for the person
+you open the same way, at once
+(`python -c "import webbrowser, sys; webbrowser.open(sys.argv[1])" file://<full path>`);
+never show the raw files. What a page marks
 changed is what changed since the person's previous approval. At
 checkpoint 3 it is the stack as a table — `python
 <framework>/tools/write_stack_table_tool.py --root <product>` prints it —
@@ -303,30 +338,33 @@ not give:
 **Checkpoint 2 asks its questions first.** Open the review page; its
 questions are numbered top to bottom, as the page shows them. First the
 questions with a proposal, as one list in that order: per question its
-number, the question and the proposed reading with its source (`Q3 · REQ-0012
-criterion 2: locked at the 3rd failure — diagram message "3rd failure →
-lock"`). Ask `Accept these proposals? [Y / a question's number to answer it
-yourself]`: Y records every proposal still listed; a number opens that
-question as below, and the list is asked again without it. Then the
-questions without a proposal, one at a time in page order: the question, its
-numbered readings with their examples, the last number *neither: the
-requirement goes back to be rewritten*, and *No proposal: nothing decides
-it*; ask `Choose [1 / 2 / 3]`. An opened question with a proposal is asked
-`Accept 1? [Y / 1 / 2 / 3]`. Take only Y where it is offered or a listed
-number; anything else, ask again. Record each answer at once:
+number, the question and the proposed reading with its source. Then the
+choice *Do you accept these proposals?* — accept them all, each listed
+question taking its proposal, or answer one yourself, which asks *Which
+question do you answer yourself?* by the questions' numbers, then that
+question; the list is asked again without it. Then the questions without a
+proposal, one at a time in page order. Each question is its own choice, the
+last option *neither: rewrite the requirement*:
+
+`python <framework>/agent/record_answer_tool.py --ask Q<n> --root <product> | python <framework>/agent/ask_person_tool.py --file -`
+
+Record each answer at once:
 
 `python <framework>/agent/record_answer_tool.py --question Q<n> --choice <number> --approver <name> --role architect --root <product>`
 
 **Then tell the person what they accepted**, before anything is rewritten:
 `python <framework>/agent/record_answer_tool.py --summary --root <product>`
-prints, in plain words, what the product will do for each answer, the risky
+prints, per answer, a short story in the person's words — the question, the
+situation they are in, what the product will do and what that means for
+them, the requirement last as a reference — the risky
 ones first, each marked ⚠ with why — a requirement of high criticality or
 about security, a term every requirement using it follows, a reading that
 contradicts another requirement, a proposal from common practice rather than
-anything they approved. Show it as it is, under *What you accepted*, and ask
-`Keep these answers? [Y / a question's number to answer it again]`. A number
-asks that question again, as above, recorded with `--again`; then show the
-summary again. Only after Y:
+anything they approved. Show it as it is, under *What you accepted*, then
+the choice *Do you keep these answers?* — keep them, or answer one again,
+which asks *Which question do you answer again?*, then that question,
+recorded with `--again`; then show the summary again. Only once they keep
+them:
 
 Rewrite each criterion to the reading chosen — every criterion and term a
 question settles, its own and those of its `also` — or, for *neither*, go
@@ -334,11 +372,10 @@ back to step 4 with it — have the rewritten criteria checked again
 (*derive_requirements_plugin*, step 7), once: a criterion rewritten after its
 recheck is not checked a third time, and `--unchecked` no longer lists it.
 Render the page and show it: each
-question settled, its criterion marked changed. Ask for the decision the same
-way: `1 approve the requirements (checkpoint 2)`, `2 request changes: tell me
-what is wrong`, with the proposal and its reason (`Proposed: 1 — every
-question settled, no open findings`). The approval is never part of the list
-of proposals. An approval is refused while a question is open.
+question settled, its criterion marked changed. Ask for the decision as a
+choice — *Do you approve the requirements?*, approve or request changes —
+with the proposal and its reason (*every question settled, no open
+findings*). The approval is never part of the list of proposals. An approval is refused while a question is open.
 
 - **approved** — commit the approval with the stage's work, in the same pull
   request: the next stage is work in progress, so CI stays green. Go back to
