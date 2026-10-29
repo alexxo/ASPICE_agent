@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.8.3] - 2026-10-29
+
+A requirement measured by the unit or the integration suite now has a stage that writes its measurement.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Add the measuring test of every requirement with *instrument: integration*, and *measurements* on the plan's *integration* suite, in a commit with no code | `<integration_tests_dir>`, verification plan | required on a product past stage 7: MISSING_MEASUREMENT at stage 8 until done |
+| Change the instrument of a requirement with *instrument: unit* whose unit is already built, by a change request (e.g. to *integration*) | the requirement | required on a product past stage 5: its measuring unit test cannot be written before its code |
+
+### Fixed
+
+- **A unit or integration measurement had no stage that wrote it.** Only the software tests plugin said to write a measuring test, under the software tests folder, so a requirement whose instrument is *unit* or *integration* stayed MISSING_MEASUREMENT. The measuring test is now written at the instrument's stage: `derive_unit_tests_plugin` (stage 5, red on the stub) and `derive_integration_tests_plugin` (stage 7), each naming *measurements* on its suite; `derive_software_tests_plugin` writes the others. `verify_software_skill`, `specify_nfr_measurement_skill` R8, design document § 5 SWE.6, Appendix A.7 *Who writes a unit or integration measurement*. Origin: FB-67 (wp_publisher).
+
 ## [3.8.2] - 2026-10-29
 
 A test renamed after its code was built no longer blames the test before it.
