@@ -35,6 +35,8 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.8.1] - 2026-10-29
+
 A changed requirement no longer needs a decision record of its own: the person gets a card only for a real choice.
 
 ### Migration
