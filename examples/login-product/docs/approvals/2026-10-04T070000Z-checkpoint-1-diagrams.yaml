@@ -21,4 +21,4 @@ subject:
   - path: docs/diagrams/login.wishes.yaml
     sha256: 8c77eec3c7a33d151db1f06d58f32ec7c2b97b8eb7e0388089fb59112f33e149
   - path: docs/diagrams/review.html
-    sha256: 243dfca48351bb85a8e9d300198c664cefbe5fa1acd479c655d124052cf2bd3e
+    sha256: 4fd2c1d981585c99d8d0b928a5b71f0da0fd1ec848e2684e60cde4f404ae521f

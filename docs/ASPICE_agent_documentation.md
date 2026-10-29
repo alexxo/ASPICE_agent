@@ -955,7 +955,7 @@ flowchart TD
   end
 
   subgraph P4["4 · SWE.3 Software detailed design (BP1–BP2)"]
-    s1["Agent triggers create_detailed_design_plugin<br/>detailed design of the software units,<br/>per software component;<br/>create_diagram_plugin draws its diagrams<br/>rules: write_detailed_design_skill,<br/>validate_env_config_skill"]:::agent
+    s1["Agent triggers create_detailed_design_plugin<br/>detailed design of the software units,<br/>per software component;<br/>create_diagram_plugin draws its diagrams<br/>rules: write_detailed_design_skill,<br/>validate_env_config_skill, record_decisions_skill"]:::agent
     g4a{"check_detailed_design_contract_gate"}:::gate
     s1 --> g4a
     g4a -. fail .-> s1
@@ -1103,8 +1103,14 @@ and CI fails on three things:
    checkpoint is finished once its *stage done* record exists: the agent
    writes it, as it records an approval, when the stage's gates first pass.
    The resolver counts such a stage as done only with its record, so the
-   record cannot be skipped. The record never goes outdated: it says the
-   stage was finished once.
+   record cannot be skipped. The first record says the stage was finished
+   once. A stage built from the requirements — stages 4 to 7 — is done only
+   while no requirement was added or changed since its latest record: after a
+   change request on a built product, it is the current stage again, its work
+   still enforced, until it is brought up to the changed requirements and
+   recorded again, naming them. The detailed design is recorded again only
+   once each changed requirement is served by a decision record since then —
+   the person's, accepted, for a critical one.
 3. **A missing seal 4 or 5.** A pull request waiting for a person's approval
    — the results, or a question of what is wanted — or a release waiting for
    the customer's decision, fails, so it does not
@@ -1306,7 +1312,7 @@ sequenceDiagram
 
   rect rgba(59,110,158,0.06)
   Note over C,CI: 4 · SWE.3 Software detailed design (BP1–BP2)
-  AG->>PL: Detailed design of the software units, per component (rules: write_detailed_design_skill, validate_env_config_skill)
+  AG->>PL: Detailed design of the software units, per component (rules: write_detailed_design_skill, validate_env_config_skill, record_decisions_skill)
   AG->>DP: Draw the design diagrams
   PL-->>AG: Detailed design
   AG->>G: check_detailed_design_contract_gate
@@ -1522,6 +1528,7 @@ sequenceDiagram
   Note over C,CI: 4 · SWE.3 Software detailed design (BP1–BP2)
   AG->>DDA: Load the detailed design rules
   AG->>ENV: Load the configuration rules
+  AG->>ADR: Load the decision record rules (the person decides only on a critical requirement)
   AG->>DDS: Detailed design of the software units, per component
   DDS->>ARC: Draw the design diagrams
   DDS-->>AG: Detailed design
@@ -1662,13 +1669,17 @@ decision (seals 1, 2, 3 and 5; seal 4 is a review on the code host), and moves
 on. Each participant is the tool of that name in *agent/*. Working out the stage from the repository means the
 agent can resume at any time without a state file of its own.
 
-Every decision put to a person is a *choice* (*choice.v1*), always in the
-same plain pattern: the question; the options, explained in sentences with
-no requirement ID; the options to select, short labels numbered from 1; and,
-when something decides one, a proposal with its reason, accepted with Y.
+Every decision put to a person is a *choice* (*choice.v1*), always the same
+card: the question; *Why you* — why this person is asked — and *Before* —
+what they already answered on the same matter — when either applies; the
+options, explained in sentences with no requirement ID; the options to select,
+short labels numbered from 1; and, when something decides one, a proposal with
+its reason, accepted with Y.
 
 ```
 Question: What happens when the user enters a wrong password?
+Why you: A security requirement: who may sign in.
+Before: On 2026-10-21 you answered: lock the account after three attempts.
 Options: We could block the account immediately, or give the user two more chances.
 Select your option: 1. block immediately, 2. give two more chances
 Proposed: 2. give two more chances — the sign-in diagram shows three attempts.
@@ -1685,8 +1696,37 @@ review the watcher stopped. What the person needs to decide — a review page,
 a summary, a report — is shown before the choice, never inside it. Appendix
 A.1, *One pattern for every decision*.
 
+**One layout for the person.** Every page a person reads, and every card,
+comes from one renderer, *tools/render_page_tool.py*: a title, one line of
+lead, one summary line, then sections; each decision the card above, its lines
+always in the same order — Question, Why you, Before, Options, Select,
+Proposed, Answer — in the browser, in the terminal and on the code host alike.
+Nothing is folded: every line of every card and every row of every table is on
+the page. The diagrams and requirements review pages keep their tables inside
+the same frame. A framework test fails on a page a tool writes any other way.
+Appendix A.1, *One layout for the person*.
+
+**Only a critical requirement asks the person.** A choice of the design or the
+build that a critical requirement depends on — criticality high, or kind
+security, as checkpoint 2 approved it — is the person's: a decision record
+(*decision.v1*) *decided_by: person*, with its question, why they are asked
+and a proposal. Every other choice is the agent's, written down as a decision
+record *decided_by: agent*, with the requirements it serves, why it is not
+critical and where it is in the work (path:line); the agent never decides a
+critical one (*AGENT_DECIDED_CRITICAL*). Nothing is asked twice: a record that
+changes an earlier one supersedes it, and the earlier choice is its *Before*.
+The **decisions page**, *<decisions_dir>/index.html*, written by
+*agent/render_decisions_tool.py*, lists them in four sections, nothing folded:
+*Waiting for you*, *Answered by you*, *Decided by the agent* — each with a
+*Change this* link that opens a change request filled in with the decision —
+and *Recorded with the architecture* (the records checkpoint 3 approves).
+*render_decisions_tool.py --ask ADR-NNNN* prints the person's decision as the
+card, and *--answer* records their Y or number. Appendix A.4, *Who decides a
+design choice*.
+
 A page written for the person opens itself: *render_diagram_review_tool* and
-*render_review_tool*, run from the command line, open the page they write in
+*render_review_tool* and *render_decisions_tool*, run from the command line,
+open the page they write in
 the browser of the computer the agent runs on and print its full path —
 never in CI or a test run — so the person never copies a path; the agent
 opens any other page it makes for them the same way, and the checkpoint-4
@@ -1710,6 +1750,7 @@ sequenceDiagram
     participant RD as render_diagram_review_tool
     participant QA as record_answer_tool
     participant AP as ask_person_tool
+    participant DP as render_decisions_tool
   end
   participant ST as read_stages_tool<br/>(stages.yaml)
   participant SK as Plugin + framework skills
@@ -1750,6 +1791,13 @@ sequenceDiagram
           OR->>QA: Record its questions, every criterion checked
           OR->>RR: Render the requirements' review page
           RR->>REPO: Review page, what changed since the previous approval marked, the questions in their rows
+        end
+        opt stage 4, a requirement changed or a choice to make
+          OR->>DP: Each choice a critical requirement depends on, as the card
+          DP->>H: Question, why you, before, options, select, proposal
+          H-->>DP: Y or a listed number
+          OR->>DP: Every other choice: recorded as decided by the agent
+          DP->>REPO: Decision records, the decisions page rendered again
         end
         OR->>GR: Run the gates of this stage
         GR->>G: Run each gate script
@@ -2156,6 +2204,7 @@ and format).
 
 | File | Does |
 |---|---|
+| *tools/render_page_tool.py* | The one layout of every page and every decision a person reads: the page frame, the sections and the card (Question, Why you, Before, Options, Select, Proposed, Answer), in HTML, in the terminal and in Markdown for the code host; nothing folded |
 | *tools/read_yaml_blocks_tool.py* | Reads the fenced YAML blocks of requirement and glossary files, with their line numbers |
 | *tools/validate_contract_tool.py* | Loads a contract and validates a record against it |
 | *tools/create_product_tool.py* | The construction site setup, run from the framework cloned into the product: the git repository, the clone adopted as the submodule, *qf.yaml*, the CI workflows, *CODEOWNERS*, the feedback log, and the submodule's release pin staged (starting a product) |
@@ -2172,8 +2221,9 @@ and format).
 | *agent/run_gates_tool.py* | Runs the stage's gates and collects their findings, in the order asked for: the gates that run the product's commands one at a time first, the others in parallel |
 | *agent/count_retries_tool.py* | Counts attempts: 3 retries in a row, then the architect; a pass starts a new round |
 | *agent/record_checkpoint_tool.py* | Writes the checkpoint decision as *approval.v1* |
-| *agent/record_stage_done_tool.py* | Writes the stage done record as *stage_done.v1*, for a stage without a closing checkpoint once its gates pass |
+| *agent/record_stage_done_tool.py* | Writes the stage done record as *stage_done.v1*, for a stage without a closing checkpoint once its gates pass; for a stage built from the requirements (stages 4 to 7), again after requirements changed, naming them — the detailed design only once each is served by a decision record |
 | *agent/render_diagram_review_tool.py* | Renders the diagrams' review page for checkpoint 1 from the committed files: each diagram's pictures with its rules and wish links, what changed since the previous approval marked; the diagram contract gate renders it again to compare, and record_checkpoint_tool refuses an approval on a page the files no longer render |
+| *agent/render_decisions_tool.py* | Renders the decisions page from the decision records, in the one layout, nothing folded: waiting for the person, answered by them, decided by the agent (each with a *Change this* link), recorded with the architecture; prints the person's decision as the card and records their answer; the decision records gate renders it again to compare |
 | *agent/render_review_tool.py* | Renders the requirements' review page for checkpoint 2 from the committed files, what changed since the previous approval marked; the approval gate renders it again to compare, and record_checkpoint_tool refuses an approval on a page the files no longer render |
 | *agent/run_aspice_agent.md* | The orchestrator: the only LLM part; holds ODD's common steps — Authorize, Classify, Track before write, Close |
 | *agent/describe_tests_prompt.md* | The prompt of the session that describes each test from the test alone, never the requirement, for the person's review (§ 5 stage 9, rule 14) |
@@ -4005,6 +4055,18 @@ label together.
   risk and the reference as fields (Alex: too complex — the person is told
   the information plainly, in three parts).
   → § 5 *Inside the ASPICE Agent*.
+- **One layout for the person** (2026-10-29, Alex, O4). Three pages, a
+  terminal card and a code-host comment each had their own look, and the
+  checkpoint-4 comment folded its details. *Chosen:* one renderer,
+  *tools/render_page_tool.py* — the page frame, the sections and the card,
+  its lines always Question, Why you, Before, Options, Select, Proposed,
+  Answer — used by every page and by *ask_person_tool*; nothing folded
+  (Alex: everything shall be visible); a framework test fails on a page
+  written any other way. *Not taken:* O1 — an HTML template file, needing a
+  template engine and stopping no tool from writing its own HTML; O2 — a page
+  contract, which fixes the content, not the look, on top of *choice.v1* and
+  *decision.v1*; O3 — the renderer alone, without the rule and the test that
+  keep the next page from drifting. → § 5 *Inside the ASPICE Agent*.
 
 ### A.2 Diagram and requirements stages — stages 1 and 2
 
@@ -4285,6 +4347,34 @@ label together.
 - **Structure diagram edges** (2026-10-09, D11 option A). *Chosen:* edges are
   the calls, both ways. *Not taken:* B — edges ignored; C — a structure
   diagram without edges.
+- **A change request on a built product** (2026-10-29, FB-63). A stage done
+  record never went outdated, so after change request #37 added and rewrote
+  requirements the product went straight to checkpoint 4 with none of it
+  built (S 7, O 6 — every change request on a built product, D 6 — new
+  requirements caught only at stage 8, rewritten criteria only by review:
+  RPN 252). *Chosen:* stages 4 to 7 (*built_from_requirements* in the
+  manifest) are done only while no requirement was added or changed since
+  their latest record, compared with the requirements at the record's commit;
+  the resolver makes the first of them the current stage again, naming the
+  requirements and the components that meet them, its work still enforced;
+  each is recorded again, naming them; the detailed design only once each is
+  served by a decision record since then. When git cannot show the record's
+  commit, the record counts. *Not taken:* withdrawing the records per
+  component (the resolver walks stages, not components; the reason names the
+  components); a gate tying each requirement to a unit (unit.v1 has no link
+  to requirements; SWE.6 checks them at stage 8).
+- **Who decides a design choice** (2026-10-29, Alex, D1–D3 A). *Chosen:* the
+  person only when a critical requirement depends on it — criticality high,
+  or kind security, as checkpoint 2 approved — asked as the one card with a
+  proposal; never again what they answered (a record that changes it
+  supersedes it, its choice shown as *Before*); every other choice the
+  agent's, written down in the decision records (*decided_by: agent*, the
+  requirements, why not critical, where in the work), all four kinds on one
+  decisions page, nothing folded, each agent decision with a *Change this*
+  link that opens a change request filled in. *Not taken:* a box per changed
+  requirement at checkpoint 4 (clicks on what no critical requirement needs);
+  a separate log for the agent's decisions (a second place and form);
+  reversal only by a change request written by hand.
 
 ### A.5 Unit construction and verification stages — stages 5 and 6
 

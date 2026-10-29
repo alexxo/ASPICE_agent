@@ -214,6 +214,39 @@ DECISIONS = {
 }
 
 
+# Decision records that say who decides: the agent on a requirement rated low (REQ-0011
+# made low by the test), the person on a critical one.
+AGENT_DECISION = {
+    "id": "ADR-0002",
+    "title": "The form shows the email field first",
+    "status": "accepted",
+    "date": "2026-10-29",
+    "context": "REQ-0011 asks for a sign-in form.",
+    "options": [
+        {"name": "email first", "pros": ["usual"], "cons": ["none known"]},
+        {"name": "password first", "pros": ["none"], "cons": ["unusual"]},
+    ],
+    "choice": "email first",
+    "consequences": "The form reads top to bottom.",
+    "decided_by": "agent",
+    "requirements": ["REQ-0011"],
+    "not_critical": "Only the order of two fields; rated low.",
+    "where": ["src/web/form.py:12"],
+}
+PERSON_DECISION = {
+    **AGENT_DECISION,
+    "id": "ADR-0003",
+    "title": "Who may sign in after a lockout",
+    "status": "proposed",
+    "decided_by": "person",
+    "requirements": ["REQ-0012"],
+    "question": "After a lockout, who may unlock the account?",
+    "why_you": "A high requirement: who may sign in.",
+    "proposed_because": "the sign-in diagram shows the support desk.",
+}
+del PERSON_DECISION["not_critical"], PERSON_DECISION["where"]
+
+
 def _component(cid, name, meets, **extra):
     budget = [{"resource": "memory", "value": 256, "unit": "MB"}]
     return {

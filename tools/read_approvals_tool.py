@@ -21,6 +21,7 @@ from datetime import datetime
 from pathlib import Path
 
 from tools.read_product_config_tool import ProductConfig
+from tools.read_requirements_tool import changed_since
 from tools.read_yaml_blocks_tool import YamlReadError, read_yaml_file
 from tools.validate_contract_tool import validate
 from tools.write_release_tool import pending
@@ -159,3 +160,27 @@ def stage_done_record(config: ProductConfig, stage_id: str, number: int) -> Path
         if not validate(data, "stage_done") and data["stage"] == stage_id:
             return path
     return None
+
+
+def latest_stage_done(config: ProductConfig, stage_id: str, number: int) -> dict | None:
+    """The latest valid stage done record of the stage, if one exists."""
+    folder = config.approvals_dir
+    found = None
+    for path in sorted(folder.glob(f"*-stage-{number}-done.yaml")) if folder.is_dir() else []:
+        try:
+            data = read_yaml_file(path)
+        except YamlReadError:
+            continue
+        if not validate(data, "stage_done") and data["stage"] == stage_id:
+            found = data
+    return found
+
+
+def requirements_changed(config: ProductConfig, stage_id: str, number: int) -> list[str]:
+    """The requirements added or changed since the stage's latest stage done record
+    — what a stage built from the requirements (stages 4 to 7) is not done for yet.
+    None changed when there is no record, or git cannot show its commit."""
+    record = latest_stage_done(config, stage_id, number)
+    if record is None:
+        return []
+    return changed_since(config, record["commit"]) or []

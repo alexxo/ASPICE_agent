@@ -7,7 +7,7 @@ description: "Works out the detailed design of every component from the architec
 
 **Stage:** 4 · SWE.3 Software detailed design and unit construction — design (BP1, BP2)
 **Fills slot:** create_detailed_design_plugin
-**Loaded with:** write_detailed_design_skill, validate_env_config_skill
+**Loaded with:** write_detailed_design_skill, validate_env_config_skill, record_decisions_skill
 
 ## Goal
 
@@ -40,10 +40,14 @@ Read before writing anything:
 
 ## Ask
 
-Ask no person: from stage 4 on the build is the agents' and the gates', and
-the person approves the results (checkpoint 4). Settle each question below
-yourself, write the choice as an assumption in the design, as a decision of
-its own (`D<n> — assumed: …`), and go on; the reviewer agent judges every
+Ask the person only what a critical requirement depends on — criticality
+high, or kind security: write it as a decision record `decided_by: person`
+with a proposal, and ask it as the one card
+(`agent/render_decisions_tool.py --ask ADR-NNNN`); never ask again what they
+answered. Settle every other question yourself, write the choice as an
+assumption in the design, as a decision of its own (`D<n> — assumed: …`) —
+a non-obvious one also as a decision record `decided_by: agent`
+(*record_decisions_skill*) — and go on; the reviewer agent judges every
 assumption:
 
 - the limits the requirements leave open — sizes, counts, durations, the

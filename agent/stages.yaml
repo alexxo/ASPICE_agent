@@ -21,6 +21,11 @@
 #                 true: the checkpoint is a person's review on the code host, not a
 #                 file the agent records (seal 4); a gate checks it, and the stage
 #                 waits for it while that gate's only finding is the missing approval
+#   built_from_requirements
+#                 true: the stage builds from the requirements (stages 4 to 7); its
+#                 stage done record counts only while no requirement was added or
+#                 changed since the record's commit — a change request on a built
+#                 product sends the product back to it (FB-63)
 #   implemented   false: the agent stops here and says the stage is not built yet
 #   trigger       flow (walked in order) or event (problem and change requests): an event
 #                 stage's gates run once the flow is done, on every pull request
@@ -112,9 +117,11 @@ stages:
     skills:
       - write_detailed_design_skill
       - validate_env_config_skill
+      - record_decisions_skill
     gates:
       - check_detailed_design_contract_gate
     planned_gates: []
+    built_from_requirements: true
     implemented: true
     trigger: flow
 
@@ -130,6 +137,7 @@ stages:
       - check_verification_plan_gate
       - verify_test_first_gate
     planned_gates: []
+    built_from_requirements: true
     implemented: true
     trigger: flow
 
@@ -153,6 +161,7 @@ stages:
       - verify_security_tests_gate
       - check_time_budget_gate
     planned_gates: []
+    built_from_requirements: true
     implemented: true
     trigger: flow
 
@@ -173,6 +182,7 @@ stages:
       - verify_log_events_gate
       - check_time_budget_gate
     planned_gates: []
+    built_from_requirements: true
     implemented: true
     trigger: flow
 

@@ -88,5 +88,5 @@ def test_an_approved_review_page_is_held_by_the_approval(tmp_path, monkeypatch):
 
     root = build_product(tmp_path, stack=STACK)
     _approve(root)
-    monkeypatch.setattr(render_review_tool, "PAGE", render_review_tool.PAGE + "<!-- v2 -->\n")
+    monkeypatch.setattr(render_review_tool, "LEAD", render_review_tool.LEAD + " v2")
     assert _rules(root) == []

@@ -62,9 +62,11 @@ from tools.read_yaml_blocks_tool import (  # noqa: E402
     read_yaml_blocks,
     read_yaml_file,
 )
+from tools.render_page_tool import card, open_page  # noqa: E402
+from tools.render_page_tool import page as layout  # noqa: E402
 from tools.validate_contract_tool import contract_path, validate  # noqa: E402
 
-__all__ = ["render", "render_review", "review_page", "review_page_findings"]
+__all__ = ["open_page", "render", "render_review", "review_page", "review_page_findings"]
 
 # The requirement's columns: one field each, then the measure, then every other field.
 COLUMNS = [
@@ -117,7 +119,7 @@ def render(config: ProductConfig) -> str:
             "onchange=\"document.body.classList.toggle('only', this.checked)\"> "
             "Show changes only</label>"
         )
-    return PAGE.format(summary=summary, questions=questions, body=body)
+    return layout(TITLE, LEAD, summary, questions + body, STYLE)
 
 
 def review_page_findings(config: ProductConfig) -> list[Finding]:
@@ -342,7 +344,7 @@ def _questions(config: ProductConfig, commit: str | None) -> tuple[dict[str, lis
     try:
         data = read_questions(config)
     except ValueError as err:
-        return {}, f'<p class="questions"><b>{html.escape(str(err))}</b></p>\n'
+        return {}, f'<p class="summary"><b>{html.escape(str(err))}</b></p>\n'
     before: set[str] = set()
     if commit is not None:
         with tempfile.TemporaryDirectory() as folder:
@@ -372,16 +374,17 @@ def _questions(config: ProductConfig, commit: str | None) -> tuple[dict[str, lis
         line = f"<b>{len(waiting)} question(s) to settle before you approve:</b> {links}"
     else:
         line = f"<b>All {len(shown)} question(s) settled.</b>"
-    return rows, f'<p class="questions">{line} Answer each in the terminal.</p>\n'
+    return rows, f'<p class="summary">{line} Answer each in the terminal.</p>\n'
 
 
 def _question(q: dict) -> str:
-    """One question, open with its options and proposal, or settled with its answer."""
-    what = html.escape(about_label(q["about"]))
-    readings = [r["reading"] for r in q["readings"]]
+    """One question as the one card: open with its options and proposal, or answered."""
+    meta = f"{q['id']} · {html.escape(about_label(q['about']))}"
+    lines = {"Question": html.escape(q["question"])}
     answer = q.get("answer")
     if answer:
         choice = answer["choice"]
+        readings = [r["reading"] for r in q["readings"]]
         chosen = (
             "neither: the requirement goes back to be rewritten"
             if choice == neither(q)
@@ -392,32 +395,30 @@ def _question(q: dict) -> str:
             "changed": "proposal changed",
             "none": "no proposal",
         }[answer["proposal"]]
-        return (
-            f'<div class="question settled" id="{q["id"]}">✓ {q["id"]} · {what} settled: '
-            f"{choice} — {html.escape(chosen)} ({taken}, {html.escape(answer['approver']['name'])})"
-            "</div>"
+        lines["Answer"] = (
+            f"{choice}. {html.escape(chosen)} ({taken}, {html.escape(answer['approver']['name'])})"
         )
-    options = "".join(
-        f"<li>{html.escape(r['reading'])} <span class=\"example\">{html.escape(r['example'])}"
-        "</span>"
+        return card("answered", lines, meta=meta, anchor=q["id"])
+    lines["Select"] = [
+        f"{html.escape(r['reading'])} <span class=\"example\">{html.escape(r['example'])}</span>"
         + (
             f' <span class="conflict">conflicts with {html.escape(r["conflicts"])}</span>'
             if r.get("conflicts")
             else ""
         )
-        + "</li>"
         for r in q["readings"]
-    )
-    options += "<li>neither: the requirement goes back to be rewritten</li>"
+    ] + ["neither: the requirement goes back to be rewritten"]
     proposal = q["proposal"]
     if proposal == "none":
-        proposed = "No proposal: nothing approved decides it."
+        lines["Proposed"] = "No proposal: nothing approved decides it."
     else:
-        proposed = f"Proposed: {proposal['choice']} — {html.escape(proposal['source'])}."
-    return (
-        f'<div class="question open" id="{q["id"]}"><b>{q["id"]} · {what}:</b> '
-        f"{html.escape(q['question'])}<ol>{options}</ol><p>{proposed}</p></div>"
+        lines["Proposed"] = f"{proposal['choice']}: {html.escape(proposal['source'])}."
+    numbers = range(1, neither(q) + 1)
+    lines["Answer"] = (
+        " ".join(f"<code>{a}</code>" for a in ([] if proposal == "none" else ["Y"]) + [*numbers])
+        + " in the terminal"
     )
+    return card("open", lines, meta=meta, anchor=q["id"])
 
 
 # --- the page ----------------------------------------------------------------------------
@@ -567,70 +568,31 @@ def _formatted(text: str) -> str:
     return re.sub("[\x01-\x04]", lambda m: TAGS[m.group()], out)
 
 
-PAGE = """<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Checkpoint 2 — the requirements</title>
-<style>
-body {{ font: 14px system-ui, sans-serif; margin: 1.5rem; color: #111; background: #fff; }}
-table {{ border-collapse: collapse; width: 100%; margin: 0.5rem 0 1.5rem; }}
-th, td {{ border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left;
-  vertical-align: top; }}
-th {{ background: #eee; position: sticky; top: 0; }}
-section {{ overflow-x: auto; }}
-tr.system td {{ background: #f3f6fb; font-weight: 500; }}
-tr.software td.uid {{ padding-left: 1.6rem; }}
-tr.high td.criticality {{ color: #b00; font-weight: 600; }}
-td.mark {{ font-size: 12px; font-weight: 600; }}
-tr.new td.mark {{ box-shadow: inset 5px 0 #1f6feb; color: #1f6feb; }}
-tr.changed td.mark {{ box-shadow: inset 5px 0 #b8860b; color: #b8860b; }}
-tr.removed td.mark {{ box-shadow: inset 5px 0 #888; color: #666; }}
-tr.removed td {{ color: #777; }}
-.case {{ margin: 2px 0; padding-left: 4px; border-left: 3px solid; }}
-.case.happy {{ border-color: #070; }}
-.case.edge {{ border-color: #a60; }}
-.case.error {{ border-color: #b00; }}
-.threshold {{ font-weight: 700; }}
-i {{ color: #036; }}
-ins {{ background: #d7f5dd; color: #05631d; }}
-del {{ background: #fde0e0; color: #a40000; }}
-.added {{ background: #d7f5dd; }}
-.gone {{ background: #fde0e0; }}
-.summary {{ background: #fffbe6; border: 1px solid #e6d58a; padding: 0.5rem; }}
-body.only tr.unchanged {{ display: none; }}
-.questions {{ background: #eef4ff; border: 1px solid #9db8e8; padding: 0.5rem; }}
-.question {{ margin: 0.2rem 0 0.2rem 1.6rem; padding: 0.4rem 0.6rem; border-left: 4px solid; }}
-.question.open {{ border-color: #1f6feb; background: #f5f9ff; }}
-.question.settled {{ border-color: #070; color: #05631d; }}
-.question ol {{ margin: 0.3rem 0; }}
-.question p {{ margin: 0.2rem 0; font-weight: 600; }}
-.example {{ color: #555; font-family: ui-monospace, monospace; margin-left: 0.5rem; }}
-.conflict {{ color: #b00; font-weight: 600; }}
-</style>
-</head>
-<body>
-<h1>Checkpoint 2 — the requirements</h1>
-<p>Each system-level requirement (shaded), followed by the software-level ones refining it
-(indented); then the glossary. <i>Italics</i>: a glossary term. Rendered by the framework's
-render_review_tool from the committed files; never edited by hand.</p>
-<p class="summary">{summary}</p>
-{questions}{body}</body>
-</html>
+TITLE = "Checkpoint 2 — the requirements"
+LEAD = (
+    "Each system-level requirement (shaded), followed by the software-level ones refining it "
+    "(indented); then the glossary. <i>Italics</i>: a glossary term. Rendered by the "
+    "framework's render_review_tool from the committed files; never edited by hand."
+)
+# The tables' own look, next to the one layout of tools/render_page_tool.py.
+STYLE = """\
+tr.system td { background: #f3f6fb; font-weight: 500; }
+tr.software td.uid { padding-left: 1.6rem; }
+tr.high td.criticality { color: #b00; font-weight: 600; }
+td.mark { font-size: 12px; font-weight: 600; }
+tr.new td.mark { box-shadow: inset 5px 0 #1f6feb; color: #1f6feb; }
+tr.changed td.mark { box-shadow: inset 5px 0 #b8860b; color: #b8860b; }
+tr.removed td.mark { box-shadow: inset 5px 0 #888; color: #666; }
+tr.removed td { color: #777; }
+.case { margin: 2px 0; padding-left: 4px; border-left: 3px solid; }
+.case.happy { border-color: #070; }
+.case.edge { border-color: #a60; }
+.case.error { border-color: #b00; }
+.threshold { font-weight: 700; }
+.added { background: #d7f5dd; }
+.gone { background: #fde0e0; }
+body.only tr.unchanged { display: none; }
 """
-
-
-def open_page(page: Path) -> str:
-    """Open a page written for the person in the browser of this computer, and
-    say so; never in CI or a test run, where nobody looks."""
-    import os
-    import webbrowser
-
-    if os.environ.get("CI") or os.environ.get("PYTEST_CURRENT_TEST"):
-        return str(page)
-    opened = webbrowser.open(page.resolve().as_uri())
-    return f"{page} (opened in the browser)" if opened else f"{page} (open it in the browser)"
 
 
 def main(argv: list[str] | None = None) -> int:

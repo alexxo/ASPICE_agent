@@ -6,11 +6,34 @@
 <title>Checkpoint 1 — the diagrams</title>
 <style>
 body { font: 14px system-ui, sans-serif; margin: 1.5rem; color: #111; background: #fff; }
+h1 { margin-bottom: 0.2rem; }
+h2 { margin-top: 2rem; border-bottom: 1px solid #ccc; padding-bottom: 0.2rem; }
+.lead { color: #444; margin-top: 0; }
+.summary { background: #fffbe6; border: 1px solid #e6d58a; padding: 0.5rem 0.75rem; }
+section { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; margin: 0.5rem 0 1.5rem; }
 th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left;
   vertical-align: top; }
 th { background: #eee; position: sticky; top: 0; }
-section { overflow-x: auto; }
+.card { border: 1px solid #ccc; border-left: 5px solid; margin: 0.8rem 0;
+  padding: 0.6rem 0.8rem; max-width: 60rem; }
+.card.open { border-left-color: #1f6feb; background: #f5f9ff; }
+.card.answered { border-left-color: #070; }
+.card.agent { border-left-color: #888; }
+.line { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.6rem; margin: 0.25rem 0; }
+.label { font-weight: 600; color: #555; }
+.why { color: #b00; font-weight: 600; }
+.before { color: #05631d; }
+.proposed { font-weight: 600; }
+.answered .answer { color: #05631d; font-weight: 600; }
+.card ol { margin: 0; padding-left: 1.2rem; }
+.title { display: grid; grid-template-columns: 1fr auto; gap: 1rem; margin-bottom: 0.3rem; }
+.meta { color: #666; font-size: 12px; font-family: ui-monospace, monospace; }
+.example { color: #555; font-family: ui-monospace, monospace; margin-left: 0.5rem; }
+.conflict { color: #b00; font-weight: 600; }
+i { color: #036; }
+ins { background: #d7f5dd; color: #05631d; }
+del { background: #fde0e0; color: #a40000; }
 tr.system td { background: #f3f6fb; font-weight: 500; }
 tr.software td.uid { padding-left: 1.6rem; }
 tr.high td.criticality { color: #b00; font-weight: 600; }
@@ -24,31 +47,17 @@ tr.removed td { color: #777; }
 .case.edge { border-color: #a60; }
 .case.error { border-color: #b00; }
 .threshold { font-weight: 700; }
-i { color: #036; }
-ins { background: #d7f5dd; color: #05631d; }
-del { background: #fde0e0; color: #a40000; }
 .added { background: #d7f5dd; }
 .gone { background: #fde0e0; }
-.summary { background: #fffbe6; border: 1px solid #e6d58a; padding: 0.5rem; }
 body.only tr.unchanged { display: none; }
-.questions { background: #eef4ff; border: 1px solid #9db8e8; padding: 0.5rem; }
-.question { margin: 0.2rem 0 0.2rem 1.6rem; padding: 0.4rem 0.6rem; border-left: 4px solid; }
-.question.open { border-color: #1f6feb; background: #f5f9ff; }
-.question.settled { border-color: #070; color: #05631d; }
-.question ol { margin: 0.3rem 0; }
-.question p { margin: 0.2rem 0; font-weight: 600; }
-.example { color: #555; font-family: ui-monospace, monospace; margin-left: 0.5rem; }
 iframe { width: 100%; height: 480px; border: 1px solid #ccc; }
 .picture.new .mark { color: #1f6feb; font-weight: 600; }
 .picture.changed .mark { color: #b8860b; font-weight: 600; }
-.conflict { color: #b00; font-weight: 600; }
 </style>
 </head>
 <body>
 <h1>Checkpoint 1 — the diagrams</h1>
-<p>Each diagram: its pictures, then its rules and the wishes each element realises — the
-pictures cannot show them, yet your approval covers them. Rendered by the framework's
-render_diagram_review_tool from the committed files; never edited by hand.</p>
+<p class="lead">Each diagram: its pictures, then its rules and the wishes each element realises — the pictures cannot show them, yet your approval covers them. Rendered by the framework's render_diagram_review_tool from the committed files; never edited by hand.</p>
 <p class="summary">Nothing is marked: no earlier approval of checkpoint 1 to compare with.</p>
 <section>
 <h2>auth-flow</h2>

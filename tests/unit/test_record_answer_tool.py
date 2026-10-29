@@ -98,10 +98,11 @@ def test_an_open_question_sits_in_its_requirements_row_with_its_options(asked):
     page = render(_config(asked))
     assert "1 question(s) to settle before you approve:" in page
     row = page[page.index('id="Q1"') : page.index("</tr>", page.index('id="Q1"'))]
-    assert "Q1 · REQ-0012 criterion 2:</b> When is the account locked?" in row
+    assert '<span class="label">Question</span><span>When is the account locked?</span>' in row
+    assert '<div class="meta">Q1 · REQ-0012 criterion 2</div>' in row
     assert "<li>neither: the requirement goes back to be rewritten</li>" in row
     assert "conflicts with REQ-0013 criterion 1" in row
-    assert "Proposed: 1 — diagram message" in row
+    assert '<span class="proposed">1: diagram message' in row
 
 
 def test_an_approval_waits_for_every_answer(asked):
@@ -118,9 +119,9 @@ def test_an_answer_records_whether_it_took_the_proposal(asked):
         "proposal": "changed",
     }
     render_review(asked)
-    assert "✓ Q1 · REQ-0012 criterion 2 settled: 2 — locked at the 4th attempt" in render(
-        _config(asked)
-    )
+    page = render(_config(asked))
+    assert '<div class="card answered" id="Q1">' in page
+    assert '<span class="answer">2. locked at the 4th attempt' in page
     assert "proposal changed, Alex" in render(_config(asked))
     assert _rules(asked) == []
     record_checkpoint(asked, 2, "approved", "Alex", "architect")

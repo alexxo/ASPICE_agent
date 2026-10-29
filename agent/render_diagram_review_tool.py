@@ -37,8 +37,8 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from agent.render_review_tool import PAGE as REQUIREMENTS_PAGE  # noqa: E402
-from agent.render_review_tool import _added_in, _git, _section, open_page  # noqa: E402
+from agent.render_review_tool import STYLE as TABLES  # noqa: E402
+from agent.render_review_tool import _added_in, _git, _section  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_approvals_tool import approval_state, sha256, subject_files  # noqa: E402
 from tools.read_product_config_tool import ProductConfig, read_product_config  # noqa: E402
@@ -47,6 +47,8 @@ from tools.read_yaml_blocks_tool import (  # noqa: E402
     read_yaml_blocks,
     read_yaml_file,
 )
+from tools.render_page_tool import open_page  # noqa: E402
+from tools.render_page_tool import page as layout  # noqa: E402
 from tools.validate_contract_tool import validate  # noqa: E402
 
 __all__ = ["diagram_review_findings", "diagram_review_page", "render", "render_diagram_review"]
@@ -112,7 +114,7 @@ def render(config: ProductConfig) -> str:
             f"removed</b> since the previous approval, {html.escape(baseline)}, at commit "
             f"<code>{commit}</code>."
         )
-    return PAGE.format(summary=summary, body="".join(parts))
+    return layout(TITLE, LEAD, summary, "".join(parts), STYLE)
 
 
 def diagram_review_findings(config: ProductConfig) -> list[Finding]:
@@ -279,25 +281,19 @@ def _files_at(config: ProductConfig, commit: str, folder: Path) -> ProductConfig
     )
 
 
-PAGE = (
-    REQUIREMENTS_PAGE.replace("Checkpoint 2 — the requirements", "Checkpoint 1 — the diagrams")
-    .replace(
-        "<p>Each system-level requirement (shaded), followed by the software-level ones refining "
-        """it
-(indented); then the glossary. <i>Italics</i>: a glossary term. Rendered by the framework's
-render_review_tool from the committed files; never edited by hand.</p>""",
-        """<p>Each diagram: its pictures, then its rules and the wishes each element realises — the
-pictures cannot show them, yet your approval covers them. Rendered by the framework's
-render_diagram_review_tool from the committed files; never edited by hand.</p>""",
-    )
-    .replace("{questions}{body}", "{body}")
-    .replace(
-        ".conflict {{",
-        "iframe {{ width: 100%; height: 480px; border: 1px solid #ccc; }}\n"
-        ".picture.new .mark {{ color: #1f6feb; font-weight: 600; }}\n"
-        ".picture.changed .mark {{ color: #b8860b; font-weight: 600; }}\n"
-        ".conflict {{",
-    )
+TITLE = "Checkpoint 1 — the diagrams"
+LEAD = (
+    "Each diagram: its pictures, then its rules and the wishes each element realises — the "
+    "pictures cannot show them, yet your approval covers them. Rendered by the framework's "
+    "render_diagram_review_tool from the committed files; never edited by hand."
+)
+STYLE = (
+    TABLES
+    + """\
+iframe { width: 100%; height: 480px; border: 1px solid #ccc; }
+.picture.new .mark { color: #1f6feb; font-weight: 600; }
+.picture.changed .mark { color: #b8860b; font-weight: 600; }
+"""
 )
 
 

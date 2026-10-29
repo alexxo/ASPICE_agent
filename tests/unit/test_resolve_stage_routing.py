@@ -25,6 +25,7 @@ def world(monkeypatch):
         unapproved=set(),  # checkpoints without a current approval
         approved_once=set(),  # of those, the ones approved before
         unrecorded=set(),  # stage ids without a stage done record
+        changed={},  # stage id → requirements changed since its latest record
         releasing=False,
         host=True,
         ran=[],
@@ -60,6 +61,14 @@ def world(monkeypatch):
         resolver,
         "stage_done_record",
         lambda c, sid, n: None if sid in state.unrecorded else object(),
+    )
+    monkeypatch.setattr(
+        resolver, "requirements_changed", lambda c, sid, n: state.changed.get(sid, [])
+    )
+    monkeypatch.setattr(
+        resolver,
+        "read_architecture",
+        lambda c: SimpleNamespace(meets={"publisher": ["REQ-0146"], "scheduler": ["REQ-0001"]}),
     )
     monkeypatch.setattr(resolver, "pending", lambda c: ["1.0.0"] if state.releasing else [])
     monkeypatch.setattr(resolver, "host_configured", lambda: state.host)
@@ -178,3 +187,28 @@ def test_an_event_stage_breaking_after_the_flow_fails(world, tmp_path):
     world.failing = {"check_problem_record_gate": ["MISSING_ANALYSIS"]}
     state = _resolve(tmp_path)
     assert (state["stage"], state["status"]) == ("problem_resolution", "gates_failing")
+
+
+def test_a_changed_requirement_sends_a_built_product_back_to_the_design(world, tmp_path):
+    world.changed = {s: ["REQ-0146"] for s in FLOW[3:7]}
+    state = _resolve(tmp_path)
+    assert (state["stage"], state["status"]) == ("detailed_design", "in_progress")
+    assert "REQ-0146 (components publisher)" in state["reason"]
+    assert "record_stage_done_tool.py --stage detailed_design" in state["reason"]
+
+
+def test_once_the_design_caught_up_the_next_stage_built_from_requirements_follows(world, tmp_path):
+    world.changed = {"unit_tests": ["REQ-0146"], "integration_verification": ["REQ-0146"]}
+    assert _resolve(tmp_path)["stage"] == "unit_tests"
+
+
+def test_a_reopened_stage_stays_enforced(world, tmp_path):
+    world.changed = {"detailed_design": ["REQ-0146"]}
+    world.failing = {"check_detailed_design_contract_gate": ["MISSING_DETAILED_DESIGN"]}
+    state = _resolve(tmp_path)
+    assert (state["stage"], state["status"]) == ("detailed_design", "gates_failing")
+
+
+def test_a_stage_not_built_from_requirements_ignores_their_change(world, tmp_path):
+    world.changed = {"quality_assurance": ["REQ-0146"]}
+    assert _resolve(tmp_path)["status"] == "complete"

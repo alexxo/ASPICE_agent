@@ -81,6 +81,7 @@ def test_the_method_and_the_diagram_plugin_are_loaded(repo_root, product):
     assert [p.split("/")[-2] for p in loaded["framework_skills"]] == [
         "write_detailed_design_skill",
         "validate_env_config_skill",
+        "record_decisions_skill",
     ]
 
 

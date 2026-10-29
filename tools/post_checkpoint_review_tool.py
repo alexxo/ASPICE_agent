@@ -8,8 +8,8 @@ the author, and readable without code: it mentions qf.yaml review.people, so
 the host notifies them, says what the pull request does (the record's
 summary), why they are asked in one plain sentence, and how to answer, then
 lists the questions, each a choice.v1 printed by agent/ask_person_tool.py —
-question, options, a box per option to select, the first the answer yes — the
-head and the files are folded under "Details for the record":
+question, options, a box per option to select, the first the answer yes — and
+last, nothing folded, the head and the files under "Details for the record":
 
 - checkpoint 4, the results, on the pull request that brings them (stage 8):
   one line per requirement it proves that is of criticality high or of kind
@@ -119,7 +119,7 @@ def render(config: ProductConfig, repo: str, pull: PullRequest, review, record: 
 
 
 def _details(pull: PullRequest, review, record: dict) -> str:
-    """What a machine reads and a person rarely needs, folded."""
+    """What a machine reads and a person rarely needs, last; nothing is folded."""
     lines = [f"- Head: `{pull.head}`", f"- Why, in full: {'; '.join(review.reasons)}"]
     for story in record.get("stories", []):
         sources = "; ".join(
@@ -127,11 +127,7 @@ def _details(pull: PullRequest, review, record: dict) -> str:
         )
         lines.append(f"- Story *{story['story']}* ({story['design']}): {sources}")
     lines.append(f"- Files: {', '.join(pull.files)}")
-    return (
-        "<details><summary>Details for the record</summary>\n\n"
-        + "\n".join(lines)
-        + ("\n\n</details>")
-    )
+    return "**Details for the record**\n\n" + "\n".join(lines)
 
 
 def _stamp(body: str) -> tuple[str, str] | None:

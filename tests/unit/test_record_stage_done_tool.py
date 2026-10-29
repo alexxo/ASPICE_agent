@@ -65,3 +65,52 @@ def test_a_stage_waiting_for_its_checkpoint_is_not_recorded(tmp_path):
 def test_the_command_names_an_unknown_stage(product, capsys):
     assert main(["--root", str(product), "--stage", "nine"]) == 2
     assert "No stage 'nine'" in capsys.readouterr().err
+
+
+# --- a stage built from the requirements, recorded again after a change request (FB-63) --
+
+
+def _decided(tmp_path, *records):
+    import copy
+
+    from product_builder import DECISIONS, baseline_requirements
+
+    requirements = baseline_requirements()
+    for records_of_file in requirements.values():
+        for req in records_of_file:
+            if req["uid"] == "REQ-0011":
+                req["criticality"] = "low"
+    decisions = copy.deepcopy(DECISIONS)
+    for record in records:
+        decisions[f"{record['id'][4:]}-record"] = copy.deepcopy(record)
+    root = build_product(
+        tmp_path, stack=STACK, decisions=decisions, requirements=requirements, git=False
+    )
+    return read_product_config(root)
+
+
+PREVIOUS = {"date": "2026-10-28T08:00:00+00:00"}
+
+
+def test_each_changed_requirement_needs_a_decision_since_the_record(tmp_path):
+    from product_builder import AGENT_DECISION
+
+    from agent.record_stage_done_tool import _undecided
+
+    config = _decided(tmp_path, AGENT_DECISION)
+    assert _undecided(config, ["REQ-0011"], PREVIOUS) == []
+    missing = _undecided(config, ["REQ-0011"], {"date": "2026-10-30T08:00:00+00:00"})
+    assert missing == ["REQ-0011: no decision record serves it (decided_by agent)"]
+
+
+def test_a_critical_changed_requirement_needs_the_person_s_answer(tmp_path):
+    from product_builder import PERSON_DECISION
+
+    from agent.record_stage_done_tool import _undecided
+
+    config = _decided(tmp_path, PERSON_DECISION)
+    [missing] = _undecided(config, ["REQ-0012"], PREVIOUS)
+    assert missing.startswith("REQ-0012 is critical: the person decides")
+    answered = {**PERSON_DECISION, "status": "accepted", "answered_by": "Alex"}
+    config = _decided(tmp_path / "answered", answered)
+    assert _undecided(config, ["REQ-0012"], PREVIOUS) == []

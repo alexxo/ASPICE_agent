@@ -4,7 +4,10 @@ The stages of agent/stages.yaml are walked in order. A stage is done when its
 implemented gates pass and, if it closes with a checkpoint, the latest decision
 there is an approval that still matches the files; a stage without a closing
 checkpoint is done only once its stage done record exists (stage_done.v1,
-written by record_stage_done_tool when its gates first pass). A stage whose
+written by record_stage_done_tool when its gates first pass); a stage built
+from the requirements (stages 4 to 7) is done only while no requirement was
+added or changed since its latest record — else it is the current stage again,
+still finished, so its work stays enforced. A stage whose
 checkpoint sits in the middle (stage 3: the stack is approved before components
 are designed) runs its gates_after_checkpoint only once that approval is current.
 The first stage that is not done is the current one. There is no state file: the
@@ -55,9 +58,11 @@ from agent.run_gates_tool import passed, run_gates  # noqa: E402
 from tools.read_approvals_tool import (  # noqa: E402
     checkpoint_due,
     ever_approved,
+    requirements_changed,
     stage_done_record,
 )
 from tools.read_host_tool import host_configured  # noqa: E402
+from tools.read_integration_tool import read_architecture  # noqa: E402
 from tools.read_product_config_tool import (  # noqa: E402
     ConfigError,
     ProductConfig,
@@ -145,6 +150,9 @@ def _walk(config: ProductConfig, root: Path) -> dict:
                 "the stage's gates pass; record it as done: "
                 f"python agent/record_stage_done_tool.py --stage {s.id}",
             )
+        changed = requirements_changed(config, s.id, s.number) if s.built_from_requirements else []
+        if changed:
+            return stop("in_progress", _catch_up(config, s, changed))
         done = [*done, s.id]
     planned = _not_run([*flow, *_events()], [], ())
     for s in _events():
@@ -202,6 +210,29 @@ def _failing(s: Stage, findings: list[dict], finished: bool, stop, skipped=()) -
     rest = [f for f in findings if f["rule"] not in SEALS]
     reason = f"{len(rest)} finding(s) reported: the stage is in progress"
     return stop("in_progress", reason, seals, rest, skipped)
+
+
+# What each stage built from the requirements brings up to a changed requirement.
+CATCH_UP = {
+    "detailed_design": "the detailed design — the person decides each choice a critical "
+    "requirement depends on, the agent the others, each in a decision record",
+    "unit_tests": "the unit tests, written first",
+    "unit_construction": "the code, until its unit tests pass",
+    "integration_verification": "the integration tests",
+}
+
+
+def _catch_up(config: ProductConfig, s: Stage, changed: list[str]) -> str:
+    """Why a finished stage is the current one again: requirements changed since it
+    was done (FB-63)."""
+    meets = read_architecture(config).meets
+    components = sorted(c for c, uids in meets.items() if set(uids) & set(changed))
+    work = CATCH_UP.get(s.id, "the stage's work")
+    return (
+        f"requirements added or changed since stage {s.number} was done: {', '.join(changed)}"
+        f" (components {', '.join(components) or 'none'}); bring {work} up to them, then "
+        f"record it as done: python agent/record_stage_done_tool.py --stage {s.id}"
+    )
 
 
 def _approved_once(config: ProductConfig, s: Stage) -> bool:

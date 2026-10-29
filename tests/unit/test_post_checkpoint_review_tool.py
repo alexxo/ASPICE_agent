@@ -62,7 +62,8 @@ def test_the_review_reads_without_code_what_why_how_then_the_questions(product, 
     what, why, how = (body.index(f"**{part}") for part in ("What this", "Why you", "How to"))
     assert what < why < how < body.index("### 1.")
     assert "It publishes the approved posts." in body
-    assert body.rstrip().endswith("</details>")  # the head and the files, folded at the end
+    assert "**Details for the record**" in body and "<details" not in body  # nothing folded
+    assert body.rstrip().endswith("- Files: src/auth_service/lockout.py")  # head and files last
     assert [title for title, _ in answers(body)] == [
         "1. Disagreement (disputed)",
         "2. The reviewer agent asks for a person",

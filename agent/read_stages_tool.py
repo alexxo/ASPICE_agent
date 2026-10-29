@@ -42,6 +42,8 @@ class Stage:
     implemented: bool
     trigger: str
     checkpoint_on_host: bool = False  # seal 4: a person's review on the host, checked by a gate
+    # stages 4 to 7: done only while no requirement changed since their stage done record
+    built_from_requirements: bool = False
 
     @property
     def built_gates(self) -> tuple[str, ...]:
@@ -68,6 +70,7 @@ def read_stages() -> tuple[Stage, ...]:
             implemented=bool(s["implemented"]),
             trigger=s["trigger"],
             checkpoint_on_host=bool(s.get("checkpoint_on_host", False)),
+            built_from_requirements=bool(s.get("built_from_requirements", False)),
         )
         for s in data["stages"]
     )

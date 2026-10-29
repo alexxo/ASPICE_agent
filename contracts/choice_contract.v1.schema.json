@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://quality-framework/contracts/choice_contract.v1.schema.json",
   "title": "choice.v1",
-  "description": "One decision put to a person, in plain words, always in the same three parts: the question, the options explained in sentences, and the options to select by number; a proposal when something decides one. Printed by agent/ask_person_tool.py — in the terminal, or in Markdown with a box per option on the code host — never written by hand. No requirement ID in the words: the person reads them without the requirements open.",
+  "description": "One decision put to a person, in plain words, always as the same card (tools/render_page_tool.py): the question; why this person is asked and what they answered before, when either applies; the options explained in sentences; the options to select by number; a proposal when something decides one. Printed by agent/ask_person_tool.py — in the terminal, or in Markdown with a box per option on the code host — never written by hand. No requirement ID in the words: the person reads them without the requirements open.",
   "type": "object",
   "additionalProperties": false,
   "required": ["question", "options", "select"],
@@ -13,6 +13,14 @@
     "question": {
       "description": "One question, ending with '?': 'What happens when the user enters a wrong password?'",
       "allOf": [{"$ref": "#/$defs/plain"}, {"pattern": "\\?$"}]
+    },
+    "why_you": {
+      "description": "Why this person is asked, in one plain sentence: the critical requirement it touches, or what else makes it theirs to decide: 'A security requirement changed: publishing now sends the site's password with every retry.'",
+      "allOf": [{"$ref": "#/$defs/plain"}, {"pattern": "^[^\\n]+$"}]
+    },
+    "before": {
+      "description": "What the person already answered on the same matter, when they did: 'On 2026-10-21 you answered: retry once, then tell the editor.' It shows that nothing is asked twice.",
+      "allOf": [{"$ref": "#/$defs/plain"}, {"pattern": "^[^\\n]+$"}]
     },
     "options": {
       "description": "The options explained in sentences: 'We could block the account immediately, or give the user two more chances.'",

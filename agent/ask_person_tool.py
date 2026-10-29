@@ -2,12 +2,16 @@
 
 Every decision the framework puts to a person — a question of a round, a
 checkpoint, an escalation, a review item on the code host, a stopped review —
-is one choice.v1: the question, the options explained in sentences, the
-options to select by number, and a proposal when something decides one. This
-tool checks it and prints it; the agent shows what it prints as it is, and
-takes only a listed number, or Y where a proposal is offered.
+is one choice.v1: the question, why this person is asked and what they answered
+before (when either applies), the options explained in sentences, the options
+to select by number, and a proposal when something decides one — printed as the
+one card of tools/render_page_tool.py. This tool checks it and prints it; the
+agent shows what it prints as it is, and takes only a listed number, or Y
+where a proposal is offered.
 
     Question: What happens when the user enters a wrong password?
+    Why you: A security requirement: who may sign in.
+    Before: You answered: "lock the account after three attempts".
     Options: We could block the account immediately, or give the user two more chances.
     Select your option: 1. block immediately, 2. give two more chances
     Proposed: 2. give two more chances — the sign-in diagram shows three attempts.
@@ -31,6 +35,7 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
 
 import yaml  # noqa: E402
 
+from tools.render_page_tool import card_markdown, card_text  # noqa: E402
 from tools.validate_contract_tool import validate  # noqa: E402
 
 __all__ = ["check", "read_choice", "render", "reply"]
@@ -60,35 +65,26 @@ def read_choice(path: Path) -> dict:
 
 
 def render(choice: dict, markdown: bool = False) -> str:
-    """The choice in its pattern: in the terminal, or in Markdown with a box per
-    option, which the person ticks on the code host."""
+    """The choice as the one card (tools/render_page_tool.py): in the terminal, or in
+    Markdown with a box per option, which the person ticks on the code host."""
     select = choice["select"]
     proposal = choice.get("proposal")
-    proposed = (
-        f"{proposal['choice']}. {select[proposal['choice'] - 1]} — {proposal['why'].rstrip('.')}."
-        if proposal
-        else ""
-    )
-    if markdown:
-        boxes = "\n".join(f"- [ ] {i}. {label}" for i, label in enumerate(select, 1))
-        parts = [
-            f"**Question:** {choice['question']}",
-            f"**Options:** {choice['options']}",
-            f"**Select your option:**\n{boxes}",
-        ]
-        if proposal:
-            parts.append(f"**Proposed:** {proposed}")
-        return "\n\n".join(parts)
-    numbers = " / ".join(str(i) for i in range(1, len(select) + 1))
-    lines = [
-        f"Question: {choice['question']}",
-        f"Options: {choice['options']}",
-        "Select your option: " + ", ".join(f"{i}. {label}" for i, label in enumerate(select, 1)),
-    ]
+    lines: dict[str, object] = {"Question": choice["question"]}
+    if choice.get("why_you"):
+        lines["Why you"] = choice["why_you"]
+    if choice.get("before"):
+        lines["Before"] = choice["before"]
+    lines["Options"] = choice["options"]
+    lines["Select"] = select
     if proposal:
-        lines.append(f"Proposed: {proposed}")
-    lines.append(f"Your answer [{'Y / ' if proposal else ''}{numbers}]:")
-    return "\n".join(lines)
+        lines["Proposed"] = (
+            f"{proposal['choice']}. {select[proposal['choice'] - 1]} — "
+            f"{proposal['why'].rstrip('.')}."
+        )
+    if markdown:
+        return card_markdown(lines)
+    numbers = " / ".join(str(i) for i in range(1, len(select) + 1))
+    return card_text(lines, ("Y / " if proposal else "") + numbers)
 
 
 def reply(choice: dict, text: str) -> int | None:

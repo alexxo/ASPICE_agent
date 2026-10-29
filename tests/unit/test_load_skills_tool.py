@@ -33,6 +33,7 @@ def test_detailed_design_stage_also_loads_the_diagram_plugin(tmp_path, repo_root
     assert loaded["framework_skills"] == [
         str(repo_root / "skills/swe/write_detailed_design_skill/SKILL.md"),
         str(repo_root / "skills/swe/validate_env_config_skill/SKILL.md"),
+        str(repo_root / "skills/swe/record_decisions_skill/SKILL.md"),
     ]
     (also,) = loaded["also_plugins"]
     assert (also["slot"], also["name"]) == ("create_diagram_plugin", "archify")

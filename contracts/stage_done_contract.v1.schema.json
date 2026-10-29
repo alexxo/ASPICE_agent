@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://quality-framework/contracts/stage_done_contract.v1.schema.json",
   "title": "stage_done.v1",
-  "description": "The record that a stage without a closing checkpoint was finished once: its gates passed. One YAML file in the approvals directory, written by the agent, no person needed. From then on the stage is enforced: a change that breaks its work fails CI. It never goes outdated; it says the stage was finished once.",
+  "description": "The record that a stage without a closing checkpoint was finished once: its gates passed. One YAML file in the approvals directory, written by the agent, no person needed. From then on the stage is enforced: a change that breaks its work fails CI. The first record says the stage was finished once. A stage built from the requirements (stages 4 to 7) is done only while no requirement was added or changed since its latest record; it is then recorded again, naming them.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -32,6 +32,15 @@
       "description": "The product's commit the stage's gates passed on.",
       "type": "string",
       "pattern": "^[0-9a-f]{40}$"
+    },
+    "requirements_changed": {
+      "description": "The requirements added or changed since the stage's previous record, which this record brings the stage's work up to.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^REQ-[0-9]{4,}$"
+      }
     }
   }
 }

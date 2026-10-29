@@ -47,7 +47,14 @@ problem caused it, that *problem*'s number (the problem names it back in its
 A person in *change_approvers* comments */approve-change* on the issue before
 anyone builds it; the agent asks with a choice commented on the issue
 (*agent/ask_person_tool.py --markdown*), each option naming its command. The change then enters the flow at stage 1 as a new or
-amended wish, and every commit that builds it names *#n*. Once its last commit
+amended wish, and every commit that builds it names *#n*. On a built product,
+once its requirements are approved again, each stage built from the
+requirements — the detailed design, the unit tests, the code, the integration
+tests — is the current stage again, in order, until it is brought up to the
+requirements added or changed and recorded again: the resolver names them and
+the components that meet them. The person decides only a choice a critical
+requirement depends on; the agent decides the others and writes each down
+(*record_decisions_skill*). Once its last commit
 is on the main branch, set the status to implemented; the initiator comments
 */confirm-change*, and the issue is closed.
 
