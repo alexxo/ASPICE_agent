@@ -56,7 +56,7 @@ Kind *observability* also states:
 | R5 | An observability requirement lists its events and what watches it | check_requirements_contract_gate · SCHEMA_VIOLATION |
 | R6 | The events include a start, an end and an error event for the feature | Checkpoint 2; verified at SWE.5 by verify_log_events_gate |
 | R7 | The threshold's unit is the unit the suite reports | Checkpoint 3 |
-| R8 | At SWE.6 the instrument's suite writes the measured value, in the threshold's unit, to its measurements file, and the value meets the threshold | Checkpoint 4; verified at SWE.6 by verify_nfr_thresholds_gate |
+| R8 | The instrument's stage writes the measuring test (unit: SWE.4, integration: SWE.5, the others: SWE.6); at SWE.6 the instrument's suite writes the measured value, in the threshold's unit, to its measurements file, and the value meets the threshold | Checkpoint 4; verified at SWE.6 by verify_nfr_thresholds_gate |
 
 ## Not checkable
 

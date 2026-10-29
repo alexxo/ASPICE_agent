@@ -3249,7 +3249,10 @@ definitions (principles #37–#39).
    unit suite, which runs at stage 6 before any software test exists.
 6. **Measured values in a measurements file.** A suite that measures writes
    JSON files (*measurements.v1*: per entry the requirement, the value and its
-   unit) to the path its plan entry names as *measurements*.
+   unit) to the path its plan entry names as *measurements*. The measuring
+   test is written at the stage of the suite the instrument names: a *unit*
+   one with the unit tests (stage 5, red on the stub), an *integration* one
+   with the integration tests (stage 7), every other one here.
    *verify_nfr_thresholds_gate* requires a measurement from the instrument's
    suite in the threshold's unit for every requirement with a
    *measurement_method* (MISSING_MEASUREMENT), meeting the threshold
@@ -4628,6 +4631,18 @@ label together.
 - **Observability definitions** (2026-10-11, D44 option A). *Chosen:* checked
   now; their deployment at release. *Not taken:* B — the whole gate at release,
   where a missing alarm shows up late.
+- **Who writes a unit or integration measurement** (2026-10-29, FB-67). The
+  plan, the suites and the gate already read a measurement from any suite,
+  but only stage 8's plugin said to write one, under the software tests
+  folder; a requirement measured by the *unit* or *integration* suite was
+  measured by nobody (S 6, O 7 — every such requirement, D 2 —
+  MISSING_MEASUREMENT: 84). *Chosen:* the instrument's stage writes the
+  measuring test — stage 5 with the unit tests, stage 7 with the integration
+  tests; the gate stays at stage 8. No code changes. *Not taken:* stage 8
+  adding unit and integration tests (a unit test written after its code
+  breaks test-first); dropping *unit* and *integration* from the instrument
+  vocabulary (every approved requirement naming them changes, and a
+  component's own limit is best measured where the component is tested).
 
 ### A.8 Quality assurance stage — stage 9
 

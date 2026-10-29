@@ -93,6 +93,11 @@ component at a time, every component of role component:
    marked *@env[&lt;NAME&gt;]*. For every template an external interface into the
    component names, tests of the unit that receives what crosses it, showing
    what the catalog asks, also marked *@security[&lt;template&gt;]*.
+   For every requirement measured by the *unit* suite (*instrument: unit*)
+   that a unit of the component serves, a test that measures its metric and
+   writes the value, in the threshold's unit, to the suite's *measurements*
+   file (*measurements.v1*), named in the plan's *unit* suite; it asserts the
+   threshold too, so it fails on the stub.
 4. **Red run** — run the unit suite: it must compile and write its results,
    and every new test must fail or error on the stubs; none may pass. A test
    that passes against a stub tests nothing; a suite that does not compile

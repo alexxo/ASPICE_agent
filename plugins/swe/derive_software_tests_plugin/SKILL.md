@@ -86,9 +86,14 @@ When in doubt, full.
    the suite's *test_files* under *paths.software_tests_dir*.
 3. **End-to-end tests** — the same for every system-level requirement, through
    the product's outside interfaces, run by the *e2e* suite.
-4. **Measurements** — per requirement with a measurement method, a test run by
-   its instrument's suite that measures the metric and writes the value, in
-   the threshold's unit, to that suite's *measurements* file.
+4. **Measurements** — per requirement measured by a suite of this section
+   (*software*, *e2e*, *bench*, *security*), a test run by that suite that
+   measures the metric and writes the value, in the threshold's unit, to the
+   suite's *measurements* file. A requirement measured by the *unit* or the
+   *integration* suite was measured by its own stage (5 or 7); a value
+   missing here is added there — an integration measurement in a commit with
+   no code; a unit one cannot be written first once the unit is built, so its
+   instrument changes by a change request.
 5. **Observability** — per observability requirement, a definition under
    *paths.observability_dir* for every *watched_by* entry, marked
    *@sdoc[&lt;REQ-UID&gt;]*.

@@ -93,6 +93,10 @@ When in doubt, full.
    *@flow[&lt;sequence-diagram-id&gt;]*. For every observability requirement of
    the flow, a test marked *@sdoc[&lt;REQ-UID&gt;]* that captures and asserts each
    of its events by name.
+   For every requirement measured by the *integration* suite (*instrument:
+   integration*), a test that measures its metric and writes the value, in the
+   threshold's unit, to the suite's *measurements* file (*measurements.v1*),
+   named in the plan's *integration* suite.
 4. **Run** — run the integration suite; a test that fails because the code is
    wrong stays as it is: the coder fixes the code.
 5. **Commit** — the plan and the tests, in one commit with no code.

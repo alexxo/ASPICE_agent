@@ -23,7 +23,7 @@ What proves each requirement:
 | Requirement | Proved by |
 |---|---|
 | Kind constraint | The materials seal (checkpoint 3) and the stack gates — no software test |
-| With a *measurement_method* (non-functional) | A value measured by the suite its *instrument* names, written to that suite's *measurements* file and meeting the *threshold* |
+| With a *measurement_method* (non-functional) | A value measured by the suite its *instrument* names, written to that suite's *measurements* file and meeting the *threshold* — the *unit* and *integration* suites' measuring tests are written at stages 5 and 7, the others' here |
 | Level system, otherwise | A passing test marked *@sdoc[&lt;REQ-UID&gt;]* in the *e2e* suite — the whole product, from outside |
 | Level software, otherwise | A passing test marked *@sdoc[&lt;REQ-UID&gt;]* in the *software* suite |
 
