@@ -35,6 +35,16 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.8.2] - 2026-10-29
+
+A test renamed after its code was built no longer blames the test before it.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none |
+
 ### Fixed
 
 - **A test renamed later made its neighbour judged at the commit that added it.** `verify_test_first_gate` cut each file at an older commit by the test names of the latest red run, so a test renamed since was no boundary there: its lines fell to the test above, which was judged at that commit and passed on the code it already had. In a Python file, the tests the file defines at the commit are boundaries too. `gates/swe/verify_test_first_gate.py`, design document § 5 SWE.4, Appendix A *A test renamed later*. Origin: FB-66 (wp_publisher).
