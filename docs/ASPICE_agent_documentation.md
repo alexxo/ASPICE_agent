@@ -1108,9 +1108,8 @@ and CI fails on three things:
    while no requirement was added or changed since its latest record: after a
    change request on a built product, it is the current stage again, its work
    still enforced, until it is brought up to the changed requirements and
-   recorded again, naming them. The detailed design is recorded again only
-   once each changed requirement is served by a decision record since then —
-   the person's, accepted, for a critical one.
+   recorded again, naming them. A changed requirement needs no decision
+   record of its own: a record is written only for a real choice.
 3. **A missing seal 4 or 5.** A pull request waiting for a person's approval
    — the results, or a question of what is wanted — or a release waiting for
    the customer's decision, fails, so it does not
@@ -2221,7 +2220,7 @@ and format).
 | *agent/run_gates_tool.py* | Runs the stage's gates and collects their findings, in the order asked for: the gates that run the product's commands one at a time first, the others in parallel |
 | *agent/count_retries_tool.py* | Counts attempts: 3 retries in a row, then the architect; a pass starts a new round |
 | *agent/record_checkpoint_tool.py* | Writes the checkpoint decision as *approval.v1* |
-| *agent/record_stage_done_tool.py* | Writes the stage done record as *stage_done.v1*, for a stage without a closing checkpoint once its gates pass; for a stage built from the requirements (stages 4 to 7), again after requirements changed, naming them — the detailed design only once each is served by a decision record |
+| *agent/record_stage_done_tool.py* | Writes the stage done record as *stage_done.v1*, for a stage without a closing checkpoint once its gates pass; for a stage built from the requirements (stages 4 to 7), again after requirements changed, naming them |
 | *agent/render_diagram_review_tool.py* | Renders the diagrams' review page for checkpoint 1 from the committed files: each diagram's pictures with its rules and wish links, what changed since the previous approval marked; the diagram contract gate renders it again to compare, and record_checkpoint_tool refuses an approval on a page the files no longer render |
 | *agent/render_decisions_tool.py* | Renders the decisions page from the decision records, in the one layout, nothing folded: waiting for the person, answered by them, decided by the agent (each with a *Change this* link), recorded with the architecture; prints the person's decision as the card and records their answer; the decision records gate renders it again to compare |
 | *agent/render_review_tool.py* | Renders the requirements' review page for checkpoint 2 from the committed files, what changed since the previous approval marked; the approval gate renders it again to compare, and record_checkpoint_tool refuses an approval on a page the files no longer render |
@@ -4357,12 +4356,17 @@ label together.
   their latest record, compared with the requirements at the record's commit;
   the resolver makes the first of them the current stage again, naming the
   requirements and the components that meet them, its work still enforced;
-  each is recorded again, naming them; the detailed design only once each is
-  served by a decision record since then. When git cannot show the record's
+  each is recorded again, naming them. When git cannot show the record's
   commit, the record counts. *Not taken:* withdrawing the records per
   component (the resolver walks stages, not components; the reason names the
   components); a gate tying each requirement to a unit (unit.v1 has no link
-  to requirements; SWE.6 checks them at stage 8).
+  to requirements; SWE.6 checks them at stage 8); a decision record per
+  changed requirement before the detailed design is recorded again (v3.8.0,
+  dropped in v3.8.1, FB-64: most changes hold no choice, so a critical one
+  became a card that asks nothing — the decision records gate already keeps a
+  critical choice the person's); a requirement counted as served when the
+  design names it since the record (FB-64's proposal: a second text search
+  for one check, and an already-named requirement would never count).
 - **Who decides a design choice** (2026-10-29, Alex, D1–D3 A). *Chosen:* the
   person only when a critical requirement depends on it — criticality high,
   or kind security, as checkpoint 2 approved — asked as the one card with a

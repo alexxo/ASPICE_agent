@@ -44,7 +44,8 @@ Ask the person only what a critical requirement depends on — criticality
 high, or kind security: write it as a decision record `decided_by: person`
 with a proposal, and ask it as the one card
 (`agent/render_decisions_tool.py --ask ADR-NNNN`); never ask again what they
-answered. Settle every other question yourself, write the choice as an
+answered. A critical requirement whose build leaves nothing to choose is no
+question: no record, no card. Settle every other question yourself, write the choice as an
 assumption in the design, as a decision of its own (`D<n> — assumed: …`) —
 a non-obvious one also as a decision record `decided_by: agent`
 (*record_decisions_skill*) — and go on; the reviewer agent judges every

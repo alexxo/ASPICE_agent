@@ -25,6 +25,11 @@ person can read it on the decisions page and change it with one link. The
 person is never asked again what they answered: a record that changes one
 supersedes it, and the page shows the earlier choice as *Before*.
 
+A record is written only for a real choice — at least two options with
+different outcomes. A requirement, even a critical one, whose build leaves
+nothing to choose needs no record and no card: the design and its review show
+it is met.
+
 ## Inputs
 
 - The **requirements** and **constraints** that force the decision.

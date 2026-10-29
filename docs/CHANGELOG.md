@@ -35,6 +35,18 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+A changed requirement no longer needs a decision record of its own: the person gets a card only for a real choice.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none. A detailed design brought up to a change request is recorded again once its gates pass; a decision record written only to satisfy the v3.8.0 rule may be kept or removed. |
+
+### Fixed
+
+- **A changed requirement asked a card with nothing to choose.** `record_stage_done_tool` recorded the detailed design again only once each changed requirement was served by a decision record since the previous record — the person's for a critical one — so a critical requirement whose build holds no choice became a card that asks nothing. The rule is gone: a decision record is written only for a real choice, and `verify_decision_records_gate` (AGENT_DECIDED_CRITICAL) keeps a critical choice the person's. `agent/record_stage_done_tool.py`, `record_decisions_skill`, `derive_detailed_design_plugin`, `agent/run_aspice_agent.md`, design document § 5 *What CI fails on*, Appendix A.4 *A change request on a built product*. Origin: FB-64 (wp_publisher).
+
 ## [3.8.0] - 2026-10-29
 
 A change request on a built product goes back through the design; the person is asked only what a critical requirement depends on, always as the same card, and every other decision is written down where they can read and change it.

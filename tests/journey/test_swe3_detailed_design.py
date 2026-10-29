@@ -8,7 +8,9 @@ agent's own tools; each attempt copies a scripted plugin output
 no checkpoint: the design is agreed at the pull request.
 
 - the method and the diagram plugin are both loaded;
-- a design that passes the gate moves the product to stage 5.
+- a design that passes the gate moves the product to stage 5;
+- after a change request it is recorded again, naming the changed requirements,
+  with no decision record of its own for each (FB-64).
 
 Each rule a step could break is its gate's unit tests' to prove, and the
 resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
@@ -17,6 +19,7 @@ resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 import shutil
 from datetime import datetime, timezone
 
+import yaml
 from product_builder import commit_all, render_reviews
 
 from agent.count_retries_tool import decide, record_attempt
@@ -98,3 +101,15 @@ def test_a_passing_design_moves_the_product_to_stage_5(repo_root, product):
     assert "MISSING_VERIFICATION_PLAN" in rules
     assert "MISSING_UNIT_TEST" not in rules
     assert state["done"] == ["diagram", "requirements", "architecture", "detailed_design"]
+
+
+def test_a_changed_requirement_needs_no_decision_record_of_its_own(repo_root, product, monkeypatch):
+    """A record only for a real choice (FB-64): the stage is recorded with the change named."""
+    import agent.record_stage_done_tool as tool
+
+    _architecture_done(repo_root, product)
+    _attempts(product, repo_root, ["correct"])
+    commit_all(product, "detailed design brought up to the change")
+    monkeypatch.setattr(tool, "requirements_changed", lambda *_: ["REQ-0001"])
+    path = record_stage_done(product, "detailed_design")
+    assert yaml.safe_load(path.read_text())["requirements_changed"] == ["REQ-0001"]

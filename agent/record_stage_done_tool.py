@@ -6,10 +6,9 @@ its gates pass (and its checkpoint, if one sits in the middle, is approved);
 from then on the stage is finished and enforced (§ 5 What CI fails on): the first
 record says the stage was finished once. A stage built from the requirements
 (stages 4 to 7) is recorded again after requirements were added or changed
-since its latest record (FB-63); the new record names them. The detailed design
-is recorded again only once each of them is served by a decision record dated
-since then — decided by the person, and accepted, when the requirement is
-critical (criticality high, or kind security); by the agent otherwise.
+since its latest record (FB-63); the new record names them. A changed
+requirement needs no decision record of its own: a record is written only for a
+real choice (FB-64), and the decision records gate checks who made it.
 
     python agent/record_stage_done_tool.py --stage ID|NUMBER [--root PRODUCT]
 """
@@ -29,12 +28,10 @@ import yaml  # noqa: E402
 
 from agent.read_stages_tool import UnknownStage, stage  # noqa: E402
 from agent.record_checkpoint_tool import current_approval  # noqa: E402
-from agent.render_decisions_tool import read_decisions  # noqa: E402
 from agent.resolve_stage_tool import needs_record, resolve_stage  # noqa: E402
 from agent.run_gates_tool import passed, reached_gates, run_gates  # noqa: E402
-from tools.read_approvals_tool import latest_stage_done, requirements_changed  # noqa: E402
+from tools.read_approvals_tool import requirements_changed  # noqa: E402
 from tools.read_product_config_tool import read_product_config  # noqa: E402
-from tools.read_requirements_tool import critical, read_requirements  # noqa: E402
 from tools.validate_contract_tool import validate  # noqa: E402
 
 __all__ = ["record_stage_done"]
@@ -62,13 +59,6 @@ def record_stage_done(root: Path, stage_id: str, now: datetime | None = None) ->
     if not passed(run_gates(root, reached_gates(root, s))):
         raise ValueError(f"stage {s.number} {s.id} is not done: its gates still fail")
     changed = requirements_changed(config, s.id, s.number) if s.built_from_requirements else []
-    if changed and s.id == "detailed_design":
-        undecided = _undecided(config, changed, latest_stage_done(config, s.id, s.number))
-        if undecided:
-            raise ValueError(
-                f"stage {s.number} {s.id} is not done for the changed requirements: "
-                f"{'; '.join(undecided)}"
-            )
     commit = subprocess.run(
         ["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, check=False
     )
@@ -91,30 +81,6 @@ def record_stage_done(root: Path, stage_id: str, now: datetime | None = None) ->
     path = config.approvals_dir / f"{now:%Y-%m-%dT%H%M%SZ}-stage-{s.number}-done.yaml"
     path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     return path
-
-
-def _undecided(config, changed: list[str], previous: dict) -> list[str]:
-    """Each changed requirement no decision record since the previous record serves
-    as it must: the person's, accepted, for a critical one; anyone's otherwise."""
-    since = previous["date"][:10]
-    requirements = {r.text("uid"): r.data for r in read_requirements(config) if r.text("uid")}
-    decisions = [
-        data
-        for _, data in read_decisions(config).values()
-        if "decided_by" in data and data["date"] >= since and data["status"] != "superseded"
-    ]
-    missing = []
-    for uid in changed:
-        serving = [d for d in decisions if uid in d.get("requirements", [])]
-        if critical(requirements.get(uid, {})):
-            if not any(d["decided_by"] == "person" and d["status"] == "accepted" for d in serving):
-                missing.append(
-                    f"{uid} is critical: the person decides — a decision record decided_by "
-                    "person, answered with agent/render_decisions_tool.py --ask"
-                )
-        elif not serving:
-            missing.append(f"{uid}: no decision record serves it (decided_by agent)")
-    return missing
 
 
 def main(argv: list[str] | None = None) -> int:
