@@ -272,6 +272,16 @@ def test_a_renamed_test_does_not_mark_its_neighbour(tmp_path):
     assert "test_more_renamed passes" in findings[0].message
 
 
+def test_a_test_renamed_later_still_bounds_its_neighbour_where_it_was_added(tmp_path):
+    """FB-66: at an older commit the test still has its old name; its lines are its own."""
+    root, path = _built(tmp_path)
+    path.write_text(path.read_text() + "\n\ndef test_last():\n    assert run(3) == 0\n")
+    commit_all(root, "test: one more, red on the built code")
+    path.write_text(path.read_text().replace("def test_last", "def test_last_renamed"))
+    commit_all(root, "test: its honest name")
+    assert _rules(root) == []
+
+
 def test_a_removed_test_judges_no_test(tmp_path):
     root, path = _built(tmp_path)
     first = "def test_count_failures():\n    assert run(1) == 2"

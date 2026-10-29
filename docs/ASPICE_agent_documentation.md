@@ -3067,7 +3067,9 @@ the product's own commands.
     that adds or changes one test of a built unit's file judges that test
     alone, since the file's other tests pass on the code they already have.
     A test is found in its file by its name; its lines run to the next test,
-    its annotations and the comments right above it included. It changed
+    its annotations and the comments right above it included. In a Python
+    file every test the file defines at the commit is a boundary there, so a
+    test renamed later still owns the lines it was added with. It changed
     when the commit changed code among its lines: blank lines, comments and
     docstrings change nothing, and a test removed between two others changes
     neither. Code changed before the first test (imports, fixtures, helpers)
@@ -4568,6 +4570,16 @@ label together.
   O 3, D 2 (the finding names the file) — 30. *Not taken:* cutting the
   parent's file by the parent's own test names — they need a red run of the
   parent or each language's test syntax, which the diff needs neither of.
+- **A test renamed later** (2026-10-29, FB-66). The test names came from the
+  latest red run, so at an older commit a test renamed since was no
+  boundary: its lines fell to the test above, which was judged there and
+  passed on its code — the only way past was a name saying the opposite of
+  the test (S 5, O 4, D 2 — 40, but it blocks the stage). Taken: in a Python
+  file the tests the file defines at that commit (pytest's *test\** rule)
+  are boundaries too; a test of another language keeps the latest names.
+  *Not taken:* following a rename through the history (a removed and an
+  added test in one commit read as one) — a second mechanism for what the
+  commit's own file already says.
   → § 5 unit stages, rule 18.
 
 ### A.6 Integration verification stage — stage 7

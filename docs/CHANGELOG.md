@@ -35,6 +35,10 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A test renamed later made its neighbour judged at the commit that added it.** `verify_test_first_gate` cut each file at an older commit by the test names of the latest red run, so a test renamed since was no boundary there: its lines fell to the test above, which was judged at that commit and passed on the code it already had. In a Python file, the tests the file defines at the commit are boundaries too. `gates/swe/verify_test_first_gate.py`, design document § 5 SWE.4, Appendix A *A test renamed later*. Origin: FB-66 (wp_publisher).
+
 ## [3.8.1] - 2026-10-29
 
 A changed requirement no longer needs a decision record of its own: the person gets a card only for a real choice.

@@ -12,7 +12,9 @@ a weakened one as weakened. The gate judges tests, not files: a commit that
 adds or changes one test of a built unit's file judges that test alone, since
 the file's other tests pass on the code they already have. A test is found in
 its file by its name, and its lines run to the next test, its annotations and
-the comments right above it included. It changed when the commit changed code
+the comments right above it included; in a Python file every test the file
+defines at that commit is a boundary, so a test renamed later still owns the
+lines it was added with (FB-66). It changed when the commit changed code
 among its lines; blank lines, comments and docstrings change nothing, and a
 test removed between two others changes neither (FB-52). Code changed before
 the first test (imports, fixtures, helpers) judges no test by itself, but one
@@ -261,6 +263,21 @@ def _prose(path: str, text: str) -> set[int]:
     return docs | {i for i, line in enumerate(text.splitlines()) if PROSE.match(line)}
 
 
+def _defined_tests(path: str, text: str) -> set[str]:
+    """The test functions a Python file defines (pytest's test* rule); none otherwise."""
+    if not path.endswith(".py"):
+        return set()
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return set()
+    return {
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and node.name.startswith("test")
+    }
+
+
 def _starts(path: str, text: str, names: set[str]) -> tuple[dict[str, int], set[str]]:
     """Each found test's first line — its annotations and the comments right above it
     included — and the names not found. A test's lines run to the next test's first
@@ -311,10 +328,12 @@ def _hunks(root: Path, commit: Commit, path: str) -> list[tuple[int, int, int, i
 def _changed_tests(root: Path, commit: Commit, path: str, names: set[str]):
     """The tests whose own code a commit added or changed in a file; whether it changed
     code before the first test (imports, fixtures, helpers); and the names not found.
-    Blank lines, comments and docstrings change nothing, and a test removed between
-    two others changes neither (FB-52)."""
+    Blank lines, comments and docstrings change nothing, a test removed between
+    two others changes neither (FB-52), and a test the file defines at the commit
+    under a name it no longer has bounds its neighbours there (FB-66)."""
     text = file_at(root, commit.sha, path) or ""
-    starts, missing = _starts(path, text, names)
+    starts, _ = _starts(path, text, names | _defined_tests(path, text))
+    missing = names - set(starts)
     before = file_at(root, f"{commit.sha}^", path)
     if before is None:
         return set(starts), False, missing
