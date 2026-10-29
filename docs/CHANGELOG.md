@@ -35,6 +35,28 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.8.0] - 2026-10-29
+
+A change request on a built product goes back through the design; the person is asked only what a critical requirement depends on, always as the same card, and every other decision is written down where they can read and change it.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Render the diagrams review page again (`agent/render_diagram_review_tool.py`) and commit it | `<diagrams_dir>/review.html`, only while checkpoint 1 waits for its approval | required: REVIEW_PAGE_OUTDATED until done; an approved page is held by its approval |
+| Render the requirements review page again (`agent/render_review_tool.py`) and commit it | `<requirements_dir>/review.html`, only while checkpoint 2 waits for its approval | required: REVIEW_PAGE_OUTDATED until done; an approved page is held by its approval |
+| — | — | none otherwise. A product whose requirements changed since its stage-4 record goes back to stage 4 (by design, FB-63). A pull request waiting for its checkpoint-4 review gets its comment rewritten, nothing folded; the person ticks and approves it again. |
+
+### Added
+
+- **Stages 4 to 7 follow a change of the requirements.** A stage done record never went outdated, so after a change request on a built product the resolver sent it to checkpoint 4 with none of the change built. Now the stages built from the requirements (`built_from_requirements` in `agent/stages.yaml`: detailed design, unit tests, code, integration tests) are done only while no requirement was added or changed since their latest record, compared with the requirements at the record's commit (`tools/read_requirements_tool.changed_since`); the first of them is the current stage again — its work still enforced — the reason naming the requirements and the components that meet them. `record_stage_done_tool` records it again, naming them (`stage_done.v1 requirements_changed`); the detailed design only once each is served by a decision record since the previous record — the person's, accepted, for a critical one. `agent/resolve_stage_tool.py`, `agent/record_stage_done_tool.py`, `tools/read_approvals_tool.py`, `manage_changes_skill`, `agent/run_aspice_agent.md`, design document § 5 *What CI fails on*, Appendix A.4 *A change request on a built product*. Origin: FB-63 (wp_publisher).
+- **Only a critical requirement asks the person; every decision on one page.** `decision.v1` gains `decided_by` (person | agent), `requirements`, `question`, `why_you`, `proposed_because`, `answered_by`, `not_critical`, `where` and `change_request`. The person decides only a choice a critical requirement depends on (criticality high, or kind security); the agent decides and writes down every other. New `agent/render_decisions_tool.py` writes `<decisions_dir>/index.html` — *Waiting for you*, *Answered by you*, *Decided by the agent* (each with a *Change this* link opening a change request filled in), *Recorded with the architecture* — asks the person's decision as the card (`--ask`) and records the answer (`--answer`, `--by`). A superseded choice is shown as *Before*, never asked again. `verify_decision_records_gate` gains INCOMPLETE_DECISION, UNKNOWN_REQUIREMENT, AGENT_DECIDED_CRITICAL, MISSING_DECISIONS_PAGE and DECISIONS_PAGE_OUTDATED; `record_decisions_skill` is loaded at stage 4 too (R6–R10); the detailed design plugin asks the person only on a critical requirement. Design document § 5 *Inside the ASPICE Agent*, Appendix A.4 *Who decides a design choice*. Origin: FB-63 (wp_publisher), Alex.
+- **One layout for the person.** New `tools/render_page_tool.py`: the page frame, the sections and the card — Question, Why you, Before, Options, Select, Proposed, Answer — in the browser, the terminal and on the code host alike; nothing folded. The diagrams and requirements review pages and the decisions page are built on it, the checkpoint-2 questions are cards, and `ask_person_tool` prints the card. `choice.v1` gains `why_you` and `before`. A framework test (`tests/consistency/test_one_layout.py`) fails on a page written any other way, or folded. Appendix A.1 *One layout for the person*. Origin: internal (Alex).
+
+### Changed
+
+- **Nothing folded on the checkpoint-4 comment.** The head, the stories' sources and the files were folded under *Details for the record*; they are now shown, last. `tools/post_checkpoint_review_tool.py`. Origin: internal (Alex).
+
 ## [3.7.0] - 2026-10-27
 
 Every decision put to a person has one plain pattern; review pages open themselves in the browser; *What you accepted* tells each answer as a short story.
