@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.9.1] - 2026-10-30
+
+The page where the person approves a pull request opens for them.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none |
+
+### Added
+
+- **The review watcher opens where the person acts.** When a pull request waits for a person's review, `tools/watch_reviews_tool.py` opens the checkpoint-4 comment, else the pull request's changes, in the browser of the computer it runs on, once per head, and says so on its line; the person never copies a link. `open_page` (`tools/render_page_tool.py`) opens a link on the code host as well as a file. Design document § 5 *One layout for the person*, Appendix A.8 *Who proves a recorded checkpoint decision*. Origin: FB-68 (wp_publisher).
+
 ## [3.9.0] - 2026-10-30
 
 A checkpoint decision recorded in the repository is proved the person's by their approval on the code host.
