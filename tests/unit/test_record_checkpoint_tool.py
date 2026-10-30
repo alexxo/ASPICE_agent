@@ -109,3 +109,74 @@ def test_seal_4_is_never_a_file_the_agent_writes(product):
     the quality assurance stage): a file the agent can write proves nothing."""
     with pytest.raises(ValueError, match="on the code host"):
         record_checkpoint(product, 4, "approved", "Lead", "reviewer", now=NOW)
+
+
+# --- the person decides on the code host; the tool copies the review (FB-69) ---
+
+
+def _host(tmp_path, monkeypatch, product, *reviews):
+    from product_builder import add_origin, git_head, pull_request, write_host
+
+    add_origin(product)
+    pull = pull_request(7, git_head(product), files=["docs/requirements/login.md"], reviews=reviews)
+    monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json", pulls=[pull])))
+    return git_head(product)
+
+
+def test_the_persons_approval_on_the_host_is_copied(product, tmp_path, monkeypatch):
+    from product_builder import PERSON, git_head, review
+
+    from agent.record_checkpoint_tool import record_from_host
+
+    head = git_head(product)
+    _host(tmp_path, monkeypatch, product, review(PERSON, head, id=41))
+    path = record_from_host(product, 2, 7, now=NOW)
+    data = read_yaml_file(path)
+    assert (data["decision"], data["approver"]) == (
+        "approved",
+        {"name": PERSON, "role": "architect"},
+    )
+    assert data["review"] == {"pull_request": 7, "id": 41, "commit": head}
+    assert validate(data, "approval") == []
+    assert record_from_host(product, 2, 7) == path  # copied once
+    approval, _ = current_approval(read_product_config(product), 2, "requirements")
+    assert approval == path
+
+
+def test_no_person_has_decided_yet(product, tmp_path, monkeypatch):
+    """The agent's, a bot's and the author's reviews decide nothing."""
+    from product_builder import AGENT, AUTHOR, git_head, review
+
+    from agent.record_checkpoint_tool import Waiting, main, record_from_host
+
+    head = git_head(product)
+    _host(tmp_path, monkeypatch, product, review(AGENT, head, id=1), review(AUTHOR, head, id=2))
+    with pytest.raises(Waiting, match="pull/7/files"):
+        record_from_host(product, 2, 7)
+    assert main(["--root", str(product), "--checkpoint", "2", "--pull-request", "7"]) == 3
+
+
+def test_a_review_of_files_changed_since_is_not_copied(product, tmp_path, monkeypatch):
+    from product_builder import PERSON, commit_all, git_head, review
+
+    from agent.record_checkpoint_tool import Waiting, record_from_host
+
+    reviewed = git_head(product)
+    glossary = product / "docs" / "glossary.md"
+    glossary.write_text(glossary.read_text() + "\n")
+    commit_all(product, "docs: a blank line")
+    _host(tmp_path, monkeypatch, product, review(PERSON, reviewed, id=41))
+    with pytest.raises(Waiting, match="docs/glossary.md changed since"):
+        record_from_host(product, 2, 7)
+
+
+def test_a_request_for_changes_is_copied_with_its_reason(product, tmp_path, monkeypatch):
+    from product_builder import PERSON, git_head, review
+
+    from agent.record_checkpoint_tool import record_from_host
+
+    _host(
+        tmp_path, monkeypatch, product, review(PERSON, git_head(product), "CHANGES_REQUESTED", id=9)
+    )
+    data = read_yaml_file(record_from_host(product, 2, 7, now=NOW))
+    assert (data["decision"], data["comment"]) == ("changes-requested", "Looks right.")

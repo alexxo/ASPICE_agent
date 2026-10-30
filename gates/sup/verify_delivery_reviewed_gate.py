@@ -19,8 +19,7 @@ for the results of software verification, on the pull request that brings
 them (checkpoint 4); for a question of what is wanted — a gap a story marks
 that the reviewer agent approved, a weakened test, a finding closed without a
 change, the reviewer agent's request, a change of qf.yaml or .gitmodules; and
-always for the architecture and for a recorded checkpoint decision (FB-68).
-Then a person approves the current head
+always for the architecture. Then a person approves the current head
 (MISSING_PERSON_APPROVAL): seal 4, the person's review on the host, never a
 file the agent could write (rules 1, 2, 7 and 14 of the quality assurance
 stage). When there is something to judge, CI's checkpoint-4 review comment for
@@ -30,8 +29,15 @@ tree's verification report is written — has every item answered yes
 (REVIEW_CHANGED_AFTER_APPROVAL). A person is an approver that is no declared
 agent, no bot and not the author. After the merge, the files are not classified
 again — the gates check before the merge proved them (GATES_NOT_PASSED) — so a
-merged pull request needs a person for the architecture, a checkpoint
-decision, the product's settings, or its review record's request and disputes.
+merged pull request needs a person for the architecture, the product's
+settings, or its review record's request and disputes.
+
+A checkpoint decision (checkpoints 1, 2, 3 and 5) is given on the host: every
+checkpoint record the open pull request adds or changes copies a review that
+exists there — the one it names, by the approver it names, a person (no review
+agent, no bot, not that pull request's author), deciding as the record says, on
+the commit it names (UNPROVEN_CHECKPOINT_DECISION, FB-69). Records written
+before v3.10.0 name no review and stay as they are on the main branch.
 
 No host setting is read (decision 6): on every push to the main branch, every
 commit it adds came from a merged pull request (MERGED_WITHOUT_PULL_REQUEST)
@@ -52,9 +58,10 @@ before it are exempt.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -82,7 +89,9 @@ from tools.read_commit_range_tool import (  # noqa: E402
 )
 from tools.read_host_tool import Delivery, Host, PullRequest, delivery, read_host  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
+from tools.read_yaml_blocks_tool import YamlReadError, read_yaml_file  # noqa: E402
 from tools.run_gate_command_tool import run_gate_command  # noqa: E402
+from tools.validate_contract_tool import validate  # noqa: E402
 from tools.write_release_tool import last_release, pending  # noqa: E402
 
 GATE = "verify_delivery_reviewed_gate"
@@ -110,6 +119,7 @@ def check(config: ProductConfig) -> list[Finding]:
             )
         else:
             findings += _reviewed(config, found.repo, found.pull_request)
+            findings += _decisions(config, host, found.repo, found.pull_request)
     merged: set[int] = set()
     late: list[tuple[int | str, Finding, str | None]] = []  # after the merge, with the author
     for sha in _main_commits(config, found):
@@ -215,6 +225,54 @@ def _start(root) -> str | None:
     )
     found = run.stdout.split() if run.returncode == 0 else []
     return found[-1] if found else None
+
+
+CHECKPOINT = re.compile(r"-checkpoint-\d+-")  # a decision record, not a stage done record
+STATES = {"approved": "APPROVED", "changes-requested": "CHANGES_REQUESTED"}
+
+
+def _decisions(config: ProductConfig, host: Host, repo: str, pull: PullRequest) -> list[Finding]:
+    """Each checkpoint record the pull request brings copies a person's review on the host."""
+    folder = config.relative(config.approvals_dir).rstrip("/") + "/"
+    agents = set(config.review_agents)
+    findings = []
+    for path in pull.files:
+        if not (path.startswith(folder) and CHECKPOINT.search(PurePosixPath(path).name)):
+            continue
+        try:
+            data = read_yaml_file(config.root / path)
+        except (OSError, YamlReadError):
+            continue  # removed, or unreadable: the approval gates say so
+        if not isinstance(data, dict) or validate(data, "approval"):
+            continue
+        copied = data.get("review")
+        why = "it names no review on the host"
+        if copied:
+            on = pull if copied["pull_request"] == pull.number else None
+            on = on or host.pull_request(repo, copied["pull_request"])
+            match = [r for r in (on.reviews if on else ()) if r.id == copied["id"]]
+            review = match[0] if match else None
+            if review is None:
+                why = f"#{copied['pull_request']} has no review {copied['id']}"
+            elif review.bot or review.author in agents or review.author == on.author:
+                why = f"{review.author} is no person who may decide (an agent, a bot or the author)"
+            elif review.author != data["approver"]["name"]:
+                why = f"review {review.id} is {review.author}'s, not {data['approver']['name']}'s"
+            elif review.state != STATES[data["decision"]] or review.commit != copied["commit"]:
+                why = f"review {review.id} is {review.state} on {review.commit[:7]}"
+            else:
+                continue
+        findings.append(
+            Finding(
+                "UNPROVEN_CHECKPOINT_DECISION",
+                path,
+                None,
+                f"{path} is no copy of a person's review: {why}. The person decides on the "
+                "pull request; copy it with agent/record_checkpoint_tool.py --checkpoint N "
+                "--pull-request N.",
+            )
+        )
+    return findings
 
 
 def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Finding]:

@@ -16,9 +16,7 @@ the gates'. So a person is called into a pull request only:
   changed design marks a gap (⚠) the reviewer agent approved, so no
   requirement answers it; or the product's settings change (qf.yaml,
   .gitmodules);
-- always for the architecture, and for a checkpoint decision recorded in the
-  repository (checkpoints 1, 2, 3 and 5): the person's approval on the host
-  confirms the decision is theirs, so no file alone can (FB-68).
+- always for the architecture.
 
 Never one chosen by number, and never for the build itself: a changed
 detailed design, unit or integration tests and code merge on the reviewer
@@ -176,20 +174,11 @@ def unsourced(config: ProductConfig, stories) -> list[str]:
     return found
 
 
-CHECKPOINT = re.compile(r"-checkpoint-\d+-")  # a decision record, not a stage done record
-
-
 def always(config: ProductConfig, files) -> str | None:
     """Why every pull request like this one is reviewed by a person, or None."""
     architecture = config.relative(config.architecture_dir).rstrip("/") + "/"
     if any(f.startswith(architecture) for f in files):
         return f"changes the architecture ({architecture})"
-    approvals = config.relative(config.approvals_dir).rstrip("/") + "/"
-    decisions = [
-        f for f in files if f.startswith(approvals) and CHECKPOINT.search(PurePosixPath(f).name)
-    ]
-    if decisions:
-        return f"records a checkpoint decision ({', '.join(decisions)})"
     touched = sorted({".gitmodules", "qf.yaml"} & set(files))
     if touched:
         return f"changes the product's settings ({', '.join(touched)})"
@@ -255,7 +244,6 @@ def classify(
 
 _ALWAYS_BRIEF = {
     "changes the architecture": "it changes the architecture",
-    "records a checkpoint decision": "it records your checkpoint decision",
     "changes the product's settings": "it changes the product's settings",
 }
 

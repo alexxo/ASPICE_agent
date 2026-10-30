@@ -1302,6 +1302,7 @@ def review(
     items=None,
     record: dict | None = NO_PERSON,
     submitted: str | None = None,
+    id: int = 0,
 ) -> dict:
     """A review as the host records it; the agent's carries the checklist (every
     item, or the items given) and its review record (none when None)."""
@@ -1318,6 +1319,7 @@ def review(
         "body": body,
         "bot": bot,
         "submitted": submitted,
+        "id": id,
     }
 
 

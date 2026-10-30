@@ -82,6 +82,17 @@
       "description": "Required when changes are requested: it becomes the findings for the plugin's next run.",
       "type": "string",
       "minLength": 1
+    },
+    "review": {
+      "description": "The person's review on the code host this record copies (FB-69): the decision is given there, never in this file; CI checks the review exists, by a person, on that commit (verify_delivery_reviewed_gate, UNPROVEN_CHECKPOINT_DECISION). Absent on records written before v3.10.0.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pull_request", "id", "commit"],
+      "properties": {
+        "pull_request": { "type": "integer", "minimum": 1 },
+        "id": { "type": "integer", "minimum": 1 },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
     }
   },
   "allOf": [

@@ -88,6 +88,7 @@ class Review:
     body: str = ""
     bot: bool = False
     submitted: str | None = None  # ISO 8601
+    id: int = 0  # the host's id of the review
 
 
 @dataclass(frozen=True)
@@ -249,6 +250,7 @@ class GitHubHost:
                     body=r.get("body") or "",
                     bot=(r.get("user") or {}).get("type") == "Bot",
                     submitted=r.get("submitted_at"),
+                    id=r.get("id") or 0,
                 )
                 for r in reviews
             ),

@@ -1830,11 +1830,10 @@ sequenceDiagram
         end
         OR->>REPO: Each criterion rewritten to the reading chosen, checked again, the page rendered again
       end
-      OR->>AP: The decision as a choice: approve, or request changes
-      AP->>H: Question, options, select your option, proposal
-      H-->>OR: Approve or request changes
-      OR->>CP: Record the decision the person gave
-      CP->>REPO: Approval (who, role, when, SHA-256 of every file covered)
+      OR->>CP: Copy the person's decision from the pull request
+      CP->>H: Opens the pull request's changes while no person decided
+      H-->>CP: Approve, or request changes with the reason, on the code host
+      CP->>REPO: Approval copied (who, which review, which commit, SHA-256 of every file covered)
     else not_implemented or invalid_config
       OR->>H: Report the reason, and stop
     end
@@ -1995,11 +1994,11 @@ gate can verify it happened:
 
 | # | Checkpoint | Who | What they decide | Recorded as |
 |---|---|---|---|---|
-| 1 | Diagram approval | Architect | "This is the shape I want" — before any requirement is derived | An approval file |
-| 2 | Approval of the derived requirements | Architect | "These requirements say what I meant" — the last point before the build where the architect can still read everything, because requirements are plain text | An approval file |
-| 3 | Approval of the tech stack | Architect | "This stack fits the requirements and the constraints" — before any component is designed | An approval file |
+| 1 | Diagram approval | Architect | "This is the shape I want" — before any requirement is derived | A review on the host, copied to an approval file that names it |
+| 2 | Approval of the derived requirements | Architect | "These requirements say what I meant" — the last point before the build where the architect can still read everything, because requirements are plain text | A review on the host, copied to an approval file that names it |
+| 3 | Approval of the tech stack | Architect | "This stack fits the requirements and the constraints" — before any component is designed | A review on the host, copied to an approval file that names it |
 | 4 | Approval of the results | A person | "What I wanted was achieved" — after software verification, requirement by requirement, on the pull request that brings the results: each high-criticality and security requirement it proves and every one that did not pass, with its test told in plain words and its result | A review on the host, with the answers in CI's review comment |
-| 5 | Acceptance of the release | Customer | "This is what I needed" (VAL.1) | An approval file on the release pull request |
+| 5 | Acceptance of the release | Customer | "This is what I needed" (VAL.1) | A review of the release pull request on the host, copied to an approval file that names it |
 
 ### Keeping concerns separate
 
@@ -2221,7 +2220,7 @@ and format).
 | *agent/load_skills_tool.py* | The slot's plugin plus the stage's framework skills |
 | *agent/run_gates_tool.py* | Runs the stage's gates and collects their findings, in the order asked for: the gates that run the product's commands one at a time first, the others in parallel |
 | *agent/count_retries_tool.py* | Counts attempts: 3 retries in a row, then the architect; a pass starts a new round |
-| *agent/record_checkpoint_tool.py* | Writes the checkpoint decision as *approval.v1* |
+| *agent/record_checkpoint_tool.py* | Copies the person's decision at checkpoint 1, 2, 3 or 5 — their review of the pull request on the code host — as *approval.v1*, naming the review; with none yet, opens the pull request's changes for them |
 | *agent/record_stage_done_tool.py* | Writes the stage done record as *stage_done.v1*, for a stage without a closing checkpoint once its gates pass; for a stage built from the requirements (stages 4 to 7), again after requirements changed, naming them |
 | *agent/render_diagram_review_tool.py* | Renders the diagrams' review page for checkpoint 1 from the committed files: each diagram's pictures with its rules and wish links, what changed since the previous approval marked; the diagram contract gate renders it again to compare, and record_checkpoint_tool refuses an approval on a page the files no longer render |
 | *agent/render_decisions_tool.py* | Renders the decisions page from the decision records, in the one layout, nothing folded: waiting for the person, answered by them, decided by the agent (each with a *Change this* link), recorded with the architecture; prints the person's decision as the card and records their answer; the decision records gate renders it again to compare |
@@ -3519,10 +3518,6 @@ and a person approves the results and answers the questions of what is wanted
       be undone, cannot be verified (or the same finding after three rounds);
       the product's settings change (*qf.yaml*, *.gitmodules*).
     - *Always for the architecture* (checkpoint 3's ground).
-    - *Always for a recorded checkpoint decision* — checkpoints 1, 2, 3 and
-      5 are recorded as files in the repository, which anyone could write;
-      the pull request that adds one is approved by a person on the code
-      host, so the decision is proved theirs, as seal 4 is.
 
     Nothing else is: a changed detailed design, unit and integration tests
     and code merge on the reviewer agent and the gates. The CI file is no
@@ -3690,9 +3685,10 @@ Stage 11 (VAL.1 Validation) is the village crossing: the customer checks, on
 a staging deployment, that the product serves what they wished for, and
 accepts or rejects the release (seal 5).
 
-1. **Seal 5 is an approval file.** The customer's decision is checkpoint 5,
-   recorded by *record_checkpoint_tool* in the approvals folder with the role
-   *customer* and committed to the release pull request. It covers, by hash,
+1. **Seal 5 is the customer's review.** The customer's decision is
+   checkpoint 5: they approve the release pull request on the code host, or
+   request changes with the reason; *record_checkpoint_tool* copies the
+   review to the approvals folder with the role *customer*. It covers, by hash,
    the release record and the validation record of the proposed release, so a
    changed record withdraws it.
 2. **One validation record per release.** *validation.v1* names the
@@ -5072,22 +5068,22 @@ label together.
   the file, which the author's session could run to post as the reviewer.
   → § 5 stage 9, rule 1.
 
-- **Who proves a recorded checkpoint decision** (2026-10-30, FB-68). The
-  decisions of checkpoints 1, 2, 3 and 5 are files: the agent, a pasted
+- **Who proves a recorded checkpoint decision** (2026-10-30, FB-68, FB-69).
+  The decisions of checkpoints 1, 2, 3 and 5 were files: the agent, a pasted
   command or a hand-written file gave the same record, and nothing but the
   instruction kept the agent from approving for the person (S 9 — unagreed
-  work built on, O 2, D 5 — the file shows in the pull request, but no person
-  had to approve it: 90). *Chosen:* the pull request that adds such a file
-  calls a person (*classify_pull_request_tool*), so it merges only with their
-  approval on the code host — the same proof as seal 4, one rule more. The
-  file stays the record the resolver reads, offline and without a token.
-  Records already merged stay as they are: the delivery desk has checked the
-  pull requests that brought them. *Not taken:* replacing the files by the
-  pull request's review (FB-68's proposal) — the resolver would need the host
-  for every stage, every checkpoint its own pull request, and checkpoint 5 a
-  new release pull request; the person's review proves the same with the
-  flow as it is. The page where they approve opens for them (the review
-  watcher, v3.9.1).
+  work built on, O 2, D 5: 90). v3.9.0 made the pull request that adds such
+  a file wait for a person's approval on the host; the person then decided
+  twice — a pasted command in the session, an approval on the host.
+  *Chosen* (Alex: every approval is given on the code host): the person
+  decides on the pull request — *Approve*, or *Request changes* with the
+  reason — and *record_checkpoint_tool* copies that review, naming it, as the
+  file the resolver reads offline; CI checks each copy against the review it
+  names (UNPROVEN_CHECKPOINT_DECISION). One act per decision, no paste, and
+  no decision the agent can write in the person's name. Records written
+  before stay as they are. *Not taken:* the resolver reading the host at every
+  stage (it stays offline; the copy is checked in CI); a decision file
+  approved again at the final head (v3.9.0's rule, dropped).
 
 ### A.9 Configuration management stage — stage 10
 
@@ -5152,7 +5148,9 @@ label together.
 
 - **Seal 5** (2026-10-12, D53 option A). *Chosen:* an approval file. *Not
   taken:* B — a review on the code host, which needs the customer to hold a
-  host account and use the pull request page.
+  host account and use the pull request page. *Superseded* (2026-10-30,
+  FB-69, Alex: every approval is given on the code host): the customer's
+  review of the release pull request, copied to the approval file.
 - **Validation records** (2026-10-12, D54 option B). *Chosen:* one record per
   release, automated results filled in by a tool, hand results by the person.
   *Not taken:* A — automated scenarios only, leaving out the guided demo and

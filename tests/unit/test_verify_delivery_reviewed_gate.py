@@ -531,3 +531,47 @@ def test_the_results_list_the_expected_cases_of_every_requirement_they_prove(
     assert "approves 1 expected case(s) no test checks, e.g. REQ-0049 criterion 1" in approved
     asked = {"condition": 2, "reason": "REQ-0049 criterion 1 reads two ways"}
     assert found({**record, "expected": untested, "person": asked}) == []
+
+
+# --- a checkpoint decision is a copy of a person's review on the host (FB-69) ---
+
+DECISION = "docs/approvals/2026-10-30T090000Z-checkpoint-2-requirements.yaml"
+
+
+def _decision(product, review=None, approver=PERSON):
+    import yaml
+
+    data = {
+        "checkpoint": 2,
+        "decision": "approved",
+        "approver": {"name": approver, "role": "architect"},
+        "date": "2026-10-30T09:00:00+00:00",
+        "subject": [{"path": "docs/requirements/login.md", "sha256": "0" * 64}],
+    }
+    if review:
+        data["review"] = review
+    path = product / DECISION
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump(data))
+    commit_all(product, "docs: checkpoint 2")
+    return git_head(product)
+
+
+def test_a_copied_persons_review_proves_the_decision(product, tmp_path, monkeypatch):
+    head = _decision(product, {"pull_request": 1, "id": 41, "commit": "a" * 40})
+    reviews = [review(AGENT, head), review(PERSON, "a" * 40, id=41)]
+    pull = pull_request(1, head, files=[DECISION], reviews=reviews)
+    assert _rules(product, tmp_path, monkeypatch, pull) == []
+
+
+def test_a_decision_naming_no_review_is_unproven(product, tmp_path, monkeypatch):
+    head = _decision(product)
+    pull = pull_request(1, head, files=[DECISION], reviews=[review(AGENT, head)])
+    assert _rules(product, tmp_path, monkeypatch, pull) == ["UNPROVEN_CHECKPOINT_DECISION"]
+
+
+def test_the_authors_own_review_decides_nothing(product, tmp_path, monkeypatch):
+    head = _decision(product, {"pull_request": 1, "id": 41, "commit": "a" * 40}, approver=AUTHOR)
+    reviews = [review(AGENT, head), review(AUTHOR, "a" * 40, id=41)]
+    pull = pull_request(1, head, files=[DECISION], reviews=reviews)
+    assert _rules(product, tmp_path, monkeypatch, pull) == ["UNPROVEN_CHECKPOINT_DECISION"]

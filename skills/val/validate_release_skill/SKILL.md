@@ -55,12 +55,14 @@ the deployment, run
 It runs the *validation* suite, writes the automated results and keeps the
 results already entered by hand; add the result of every guided demo or trial
 use you ran, then commit the record. Show the customer the report's validation section,
-ask for their decision as a choice (*agent/ask_person_tool.py*: accept the
-release, or reject it and say why), and record it:
+and ask them to decide on the release pull request — *Approve* to accept the
+release, *Request changes* with the reason to reject it — then copy their
+review:
 
-    python .framework/agent/record_checkpoint_tool.py --checkpoint 5 \
-        --decision approved|changes-requested --approver <name> --role customer \
-        [--comment <reason>] --root .
+    QF_HOST_TOKEN="$(gh auth token)" python .framework/agent/record_checkpoint_tool.py \
+        --checkpoint 5 --pull-request <number> --root .
+
+It opens the pull request for them while they have not decided.
 
 The decision covers the release record and the validation record by hash.
 

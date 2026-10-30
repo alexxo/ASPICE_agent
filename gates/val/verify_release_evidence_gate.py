@@ -163,8 +163,9 @@ def _decision(config: ProductConfig) -> list[Finding]:
             "MISSING_CUSTOMER_DECISION",
             config.relative(config.approvals_dir),
             None,
-            f"The release waits for the customer's decision ({state.reason}); record it with "
-            "agent/record_checkpoint_tool.py --checkpoint 5 --role customer.",
+            f"The release waits for the customer's decision ({state.reason}): they approve "
+            "the release pull request on the code host; copy it with "
+            "agent/record_checkpoint_tool.py --checkpoint 5 --pull-request N.",
         )
     ]
 

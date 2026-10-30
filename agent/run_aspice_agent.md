@@ -330,11 +330,20 @@ never show the raw files. What a page marks
 changed is what changed since the person's previous approval. At
 checkpoint 3 it is the stack as a table — `python
 <framework>/tools/write_stack_table_tool.py --root <product>` prints it —
-with the full path of its decision record. Then record it — never record a decision the person did
-not give. The record proves nothing alone: the pull request that brings it
-asks the person to approve it on the code host, which proves it is theirs:
+with the full path of its decision record. The person decides on the code
+host, never in this session: commit and push the work, open its pull request
+if it has none, and run
 
-`python <framework>/agent/record_checkpoint_tool.py --checkpoint <n> --decision approved|changes-requested --approver <name> --role <role> [--comment <text>] --root <product>`
+`QF_HOST_TOKEN="$(gh auth token)" python <framework>/agent/record_checkpoint_tool.py --checkpoint <n> --pull-request <number> --root <product>`
+
+With no decision yet it opens the pull request's changes in the browser —
+where the person chooses *Review changes → Approve*, or *Request changes* with
+the reason — prints the link and exits 3: wait, and run it again once they
+say they decided. Then it copies their review as the record (exit 0) and
+prints its path; commit and push it. Never write a record any other way, and
+never ask the person to paste a command: CI checks every record against the
+review it names (UNPROVEN_CHECKPOINT_DECISION). Changes requested: the review's
+reason is the findings for the next run.
 
 **Checkpoint 2 asks its questions first.** Open the review page; its
 questions are numbered top to bottom, as the page shows them. First the
