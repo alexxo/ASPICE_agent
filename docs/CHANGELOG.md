@@ -35,6 +35,24 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-10-30
+
+A checkpoint is its pull request: the architect approves it on GitHub, the agent merges it, and the merge is the record. No file, no copy, no paste; the customer needs no GitHub account.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Add `architect: <login>` under `review:`, and `customer: <name>` at the top level | `qf.yaml` | required: qf.v1 needs both |
+| Copy `templates/github/release.yml` again (it publishes the GitHub Release) | `.github/workflows/release.yml` | required for the GitHub Release |
+| For each checkpoint already approved by a file (1, 2, 3, in that order): branch `checkpoint/<n>` from main, delete that checkpoint's files (`<approvals_dir>/*-checkpoint-<n>-*.yaml`), push, open the pull request, run `record_checkpoint_tool.py --checkpoint <n> --pull-request <number>`; the architect approves it on GitHub | the product | required: until then the resolver finds no approval and sends the product back to checkpoint 1 |
+| A release pull request still open on `release/v<version>`: close it and open it again from `checkpoint/5` | the product | required for that release |
+| — | — | none for stage done records: they stay where they are and count as before |
+
+### Changed
+
+- **A checkpoint is its pull request, approved by the architect and merged.** v3.10.0 copied the person's review into an approval file and then needed CI to prove each copy — only for the copies a pull request changed, and the resolver trusted copies offline — while the customer at checkpoint 5 needed a GitHub account. Now the work of checkpoint *n* travels from branch `checkpoint/<n>`; qf.yaml `review.architect` approves its head on GitHub, or requests changes with the reason — at checkpoint 5 on behalf of qf.yaml `customer`. `record_checkpoint_tool --checkpoint N --pull-request N` waits for that decision (it checks every 30 seconds; the watcher opens the pull request for the person), merges the approved head with a merge commit once the crossing sign says *Ready to merge*, and prints the reason of a request for changes (exit 4). The merge commit is the record: the approval gates and the review pages read it from git history (`read_approvals_tool`), and a changed file withdraws it as before. `verify_delivery_reviewed_gate` holds a checkpoint pull request until the architect approves its head (MISSING_PERSON_APPROVAL), and checks the latest merge of every checkpoint against GitHub on every run (UNAPPROVED_MERGE). After the merge of `checkpoint/5`, the release workflow tags it and publishes the GitHub Release — *Release &lt;version&gt;. Accepted on behalf of &lt;customer&gt; by @&lt;architect&gt;, #&lt;number&gt;.* (`write_release_tool --notes`) — and the tool opens it. Works on GitHub's free plan for a private repository: no branch protection, no environment. Removed: `approval.v1` and its examples, the approval file of the example product, UNPROVEN_CHECKPOINT_DECISION, MISSING_CUSTOMER_DECISION, RELEASE_REJECTED, and APPROVED_TOO_LATE — the flow makes the order structural: derived work starts on the main branch after the checkpoint's merge. `create_product_tool` asks `--architect` and `--customer`. The branch form `release/v<version>` became `checkpoint/<n>` (BAD_BRANCH_NAME), and the track rule accepts `checkpoint/3`, the stack's checkpoint, as an architecture branch. `agent/record_checkpoint_tool.py`, `tools/read_approvals_tool.py`, `tools/check_approval_order_tool.py`, `tools/read_host_tool.py` (a pull request's branch, a release's page), `tools/write_release_tool.py`, `gates/sup/verify_delivery_reviewed_gate.py`, `gates/sup/check_commit_conventions_gate.py`, `gates/sup/check_track_rule_gate.py`, `gates/val/verify_release_evidence_gate.py`, `templates/github/release.yml`, `agent/run_aspice_agent.md` step 8, `agent/start_product.md`, QUICKSTART step 3, the rulebooks, design document § 5 *The checkpoints* and stages 10 and 11, Appendix A.8 *The checkpoint is its merged pull request*, A.9 *Branch names*, A.10 *Seal 5*. Origin: FB-69 (wp_publisher), Alex.
+
 ## [3.10.0] - 2026-10-30
 
 Every checkpoint decision is given on the code host: the person approves or requests changes on the pull request, once, and pastes nothing.
