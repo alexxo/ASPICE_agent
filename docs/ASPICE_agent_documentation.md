@@ -1729,7 +1729,9 @@ open the page they write in
 the browser of the computer the agent runs on and print its full path —
 never in CI or a test run — so the person never copies a path; the agent
 opens any other page it makes for them the same way, and the checkpoint-4
-comment on the code host.
+comment on the code host. When a pull request waits for a person's review,
+the review watcher opens where they act — the checkpoint-4 comment, else the
+pull request's changes, where *Review changes → Approve* is — once per head.
 
 ```mermaid
 sequenceDiagram
@@ -5084,7 +5086,8 @@ label together.
   pull request's review (FB-68's proposal) — the resolver would need the host
   for every stage, every checkpoint its own pull request, and checkpoint 5 a
   new release pull request; the person's review proves the same with the
-  flow as it is.
+  flow as it is. The page where they approve opens for them (the review
+  watcher, v3.9.1).
 
 ### A.9 Configuration management stage — stage 10
 

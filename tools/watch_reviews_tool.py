@@ -33,7 +33,8 @@ unchanged, adding to each expected case the test that checks it.
 Every event is one line with the time, and so is every change of a pull
 request's state, naming who acts next: waits for CI, gates red (the author
 fixes them), waits for a review by the people of qf.yaml review.people with
-the address where they act, ready to merge — and a warning when a head
+the address where they act — opened in the browser of this computer, once per
+head, so the person never copies a link (FB-68) — ready to merge — and a warning when a head
 has no crossing sign after 10 minutes, since CI may not run at all.
 
 A session that ends without a review —
@@ -82,6 +83,7 @@ from tools.read_product_config_tool import (  # noqa: E402
     ProductConfig,
     read_product_config,
 )
+from tools.render_page_tool import open_page  # noqa: E402
 
 __all__ = ["Stop", "Watcher", "banner", "claude_command", "due", "tools", "waits_for_person"]
 
@@ -299,6 +301,7 @@ class Watcher:
     paused: bool = False  # a reviewer changed the work: no review until the person types R
     copy: object = None  # (root, number, head, folder) -> bool; None: a git worktree of the head
     limited: dict = field(default_factory=dict)  # (number, head) -> when the usage limit stopped it
+    opener: object = open_page  # address -> the address, saying whether it opened
 
     def say(self, text: str) -> None:
         self.out(f"{datetime.now():%H:%M}  {text}")
@@ -332,6 +335,9 @@ class Watcher:
         if state is None or self.shown.get(number) == (head, state):
             return
         self.shown[number] = (head, state)
+        if sign is not None and waits_for_person(sign):  # where the person acts, opened
+            address = self.address(number, pull)
+            state = state.replace(address, self.opener(address))
         self.say(f"#{number} head {head[:7]}: {state}")
 
     def state(

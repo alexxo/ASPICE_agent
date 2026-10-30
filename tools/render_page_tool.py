@@ -148,10 +148,12 @@ def card_markdown(lines: dict[str, object]) -> str:
     return "\n\n".join(out)
 
 
-def open_page(path: Path) -> str:
-    """Open a page written for the person in the browser of this computer, and say
-    so; never in CI or a test run, where nobody looks."""
+def open_page(path: Path | str) -> str:
+    """Open a page for the person — a file written for them, or a link on the code
+    host — in the browser of this computer, and say so; never in CI or a test run,
+    where nobody looks."""
     if os.environ.get("CI") or os.environ.get("PYTEST_CURRENT_TEST"):
         return str(path)
-    opened = webbrowser.open(Path(path).resolve().as_uri())
+    link = str(path).startswith(("https://", "http://"))
+    opened = webbrowser.open(str(path) if link else Path(path).resolve().as_uri())
     return f"{path} (opened in the browser)" if opened else f"{path} (open it in the browser)"

@@ -239,6 +239,19 @@ def test_every_change_of_state_is_one_line_naming_who_acts(watcher):
     ]
 
 
+def test_the_page_where_the_person_acts_opens_once_per_head(watcher):
+    """FB-68: the person never copies a link."""
+    w, _, shown, _ = watcher
+    host = w.host = _Signs()
+    opened = []
+    w.opener = lambda address: opened.append(address) or f"{address} (opened in the browser)"
+    host.sign = "Wait: a review by lead-bob (it records your checkpoint decision): approve"
+    w.once()
+    w.once()
+    assert opened == [f"https://github.com/{HOST_REPO}/pull/9/files"]
+    assert shown[-1].endswith("/pull/9/files (opened in the browser)")
+
+
 def test_the_person_is_sent_to_cis_comment_when_there_is_one(watcher):
     """FB-43: the line pointed to "the link in the pull request", which did not exist."""
     from tools.post_checkpoint_review_tool import MARK
