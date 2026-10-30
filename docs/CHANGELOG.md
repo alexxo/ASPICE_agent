@@ -35,6 +35,22 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.10.0] - 2026-10-30
+
+Every checkpoint decision is given on the code host: the person approves or requests changes on the pull request, once, and pastes nothing.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Run `record_checkpoint_tool.py --checkpoint N --pull-request N` with `QF_HOST_TOKEN` set (e.g. `$(gh auth token)`) in place of `--decision/--approver/--role/--comment` | the agent's sessions | required: the old options are gone |
+| The customer of checkpoint 5 needs a code host account to review the release pull request | the product's people | required for the next release |
+| — | — | none for records already on the main branch: they stay as they are and count as before. A record a pull request adds or changes must name the person's review (UNPROVEN_CHECKPOINT_DECISION). |
+
+### Changed
+
+- **The person decides each checkpoint on the code host, once.** v3.9.0 kept the decision file and asked a person to approve the pull request that brought it, so the person decided twice — a pasted command in the session, an approval on the host. Now the person approves the pull request, or requests changes with the reason, and `record_checkpoint_tool --checkpoint N --pull-request N` copies that review — who, which review, which commit — as the approval file the resolver reads offline; with no person's decision yet it opens the pull request's changes in the browser and exits 3. A review by a review agent, a bot or the pull request's author decides nothing, and a review of files changed since is not copied. `approval.v1` gains `review` (pull_request, id, commit). `verify_delivery_reviewed_gate` checks every checkpoint record an open pull request adds or changes against the review it names (UNPROVEN_CHECKPOINT_DECISION); v3.9.0's rule calling a person for a decision file is gone. Seal 5 is the customer's review of the release pull request. `agent/record_checkpoint_tool.py`, `tools/read_host_tool.py` (a review's id), `validate_release_skill`, `verify_release_evidence_gate`, `agent/run_aspice_agent.md`, design document § 5 *The checkpoints*, Appendix A.8 *Who proves a recorded checkpoint decision*, A.10 *Seal 5*. Origin: FB-69 (wp_publisher), Alex.
+
 ## [3.9.1] - 2026-10-30
 
 The page where the person approves a pull request opens for them.
