@@ -38,6 +38,9 @@ slots:
 review:
   agents: [qf-reviewer-bot]
   people: [lead-bob]
+  architect: lead-bob
+
+customer: Carla Village
 
 config_items:
   - docs/runbooks

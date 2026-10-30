@@ -37,6 +37,9 @@ slots:
 
 review:
   people: [lead-bob]
+  architect: lead-bob
+
+customer: Carla Village
 
 urgent_approvers: [lead-bob]
 change_approvers: [lead-bob]

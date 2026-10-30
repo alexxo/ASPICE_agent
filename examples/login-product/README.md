@@ -1,7 +1,8 @@
 # login-product — example product
 
 A small product at the start of SWE.1: the wishes are written, the diagrams are
-drawn and approved at checkpoint 1, and the glossary exists. The requirements are
+drawn — the architect approves them at checkpoint 1, on the pull request from
+branch checkpoint/1 — and the glossary exists. The requirements are
 not written yet — producing them is the SWE.1 stage the ASPICE Agent runs next,
 followed by the architecture (SWE.2): the tech stack, approved at checkpoint 3,
 then the components and interfaces. What the plugins would write at each step is
@@ -9,10 +10,9 @@ scripted in `tests/journey/plugin_outputs/`.
 
 | Path | What it is |
 |---|---|
-| `qf.yaml` | Framework configuration: paths and slots |
+| `qf.yaml` | Framework configuration: paths, slots, who reviews and decides |
 | `docs/wishes.md` | The customer's wishes, W-01 … W-03 |
 | `docs/diagrams/` | Archify specs (architecture, sequence), their pictures (stand-ins, to keep the example small) and the invariants file |
-| `docs/approvals/` | The checkpoint-1 approval, bound to the SHA-256 of the diagrams and their pictures |
 | `docs/glossary.md` | The domain terms |
 
 The plugins are not part of the product: they are tools on the machine of

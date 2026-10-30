@@ -1,11 +1,9 @@
 """Layer 2 — the example product is a valid product at the start of SWE.1.
 
-Its configuration and approval follow their contracts, its diagrams read
-without a problem, its checkpoint-1 approval matches the current diagram files,
+Its configuration follows its contract, its diagrams read without a problem,
 and the scripted plugin output marked "correct" passes every SWE.1 gate.
 """
 
-import hashlib
 import shutil
 
 import pytest
@@ -17,8 +15,6 @@ from gates.swe import (
     verify_requirements_to_diagram_link_gate,
 )
 from tools.read_product_config_tool import read_product_config
-from tools.read_yaml_blocks_tool import read_yaml_file
-from tools.validate_contract_tool import validate
 
 pytestmark = pytest.mark.layer2
 
@@ -44,15 +40,6 @@ def test_diagrams_read_without_problems(example):
     results = read_archify_diagrams(example / "docs" / "diagrams", example)
     assert len(results) == 2
     assert all(r.diagram and not r.problems for _, r in results)
-
-
-def test_checkpoint_1_approval_matches_the_diagrams(example):
-    (approval,) = sorted((example / "docs" / "approvals").glob("*-checkpoint-1-*.yaml"))
-    data = read_yaml_file(approval)
-    assert validate(data, "approval") == []
-    for item in data["subject"]:
-        digest = hashlib.sha256((example / item["path"]).read_bytes()).hexdigest()
-        assert digest == item["sha256"], f"{item['path']} changed since it was approved"
 
 
 def test_every_framework_method_the_example_names_exists(example, repo_root):

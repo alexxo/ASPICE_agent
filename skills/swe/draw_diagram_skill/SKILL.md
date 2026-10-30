@@ -75,7 +75,7 @@ hyphens (*login.sequence.json* → *login*). An element is referenced as
 | R7 | A rule the drawing cannot show goes in the invariants file and names only elements that exist | check_diagram_contract_gate · INVALID_INVARIANTS, INVARIANTS_FOR_OTHER_DIAGRAM, UNKNOWN_CONSTRAINED_ELEMENT |
 | R8 | Every diagram has its wishes file, linking only elements and wishes that exist | verify_diagram_to_wishes_link_gate · MISSING_WISH_LINKS, INVALID_WISH_LINKS, UNKNOWN_ELEMENT, UNKNOWN_WISH |
 | R9 | Every wish of kind behaviour is realised by an element of some diagram; a constraint need not be | verify_diagram_to_wishes_link_gate · NO_WISHES, UNCOVERED_WISH |
-| R10 | The architect approves the diagrams at checkpoint 1 before any requirement is derived, and the approval covers their current content | verify_diagram_approval_gate · MISSING_APPROVAL, APPROVAL_OUTDATED, APPROVED_TOO_LATE, NOT_A_GIT_REPOSITORY |
+| R10 | The architect approves the diagrams at checkpoint 1 — the pull request from checkpoint/1, merged — before any requirement is derived, and the approval covers their current content | verify_diagram_approval_gate · MISSING_APPROVAL, APPROVAL_OUTDATED, NOT_A_GIT_REPOSITORY |
 | R11 | Every flow has its error path, and no flow is ambiguous | Checkpoint 1 |
 | R12 | There is at least one architecture diagram and at least one sequence diagram; a workflow, dataflow or lifecycle diagram may stand beside the architecture diagram, not replace it | check_diagram_contract_gate · NO_ARCHITECTURE_DIAGRAM, NO_SEQUENCE_DIAGRAM |
 | R13 | Every wish of kind behaviour is realised by an element of a sequence diagram, so every feature reaches the software level | verify_diagram_to_wishes_link_gate · WISH_NOT_IN_SEQUENCE |

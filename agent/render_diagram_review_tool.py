@@ -7,14 +7,16 @@ shown in place, as the diagram plugin rendered it — then its rules
 rules or the wish links, yet the approval covers them.
 
 What is new, changed or removed is marked against the previous approval of
-checkpoint 1: the latest approval of other content than the page shows, its
-files read from git at the commit that added it. A changed rule marks the
+checkpoint 1: the latest merged checkpoint/1 pull request that approved other
+content than the page shows, its files read from git at the head it approved.
+A changed rule marks the
 words removed and added; a picture is marked when its diagram changed. At the
 first approval nothing is marked.
 
 The page depends only on the files it shows and that commit, so the diagram
 contract gate renders it again and compares byte for byte, and
-record_checkpoint_tool refuses an approval on a page the files no longer render
+record_checkpoint_tool refuses to merge an approval of a page the files no
+longer render
 (§ 5 stages 1 and 2, rules 21–25). The agent never writes it by hand; it
 renders it, and commits it, before the person reviews.
 
@@ -38,9 +40,9 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agent.render_review_tool import STYLE as TABLES  # noqa: E402
-from agent.render_review_tool import _added_in, _git, _section  # noqa: E402
+from agent.render_review_tool import _git, _section  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
-from tools.read_approvals_tool import approval_state, sha256, subject_files  # noqa: E402
+from tools.read_approvals_tool import approval_state, previous_approval, sha256  # noqa: E402
 from tools.read_product_config_tool import ProductConfig, read_product_config  # noqa: E402
 from tools.read_yaml_blocks_tool import (  # noqa: E402
     YamlReadError,
@@ -69,7 +71,8 @@ def render_diagram_review(root: Path) -> Path:
 
 def render(config: ProductConfig) -> str:
     """The review page's text, from the files as they are and the previous approval."""
-    baseline, commit = _baseline(config)
+    previous = previous_approval(config, 1, "diagrams")
+    commit = previous.head if previous else None
     old = None
     if commit is not None:
         with tempfile.TemporaryDirectory() as folder:
@@ -111,7 +114,7 @@ def render(config: ProductConfig) -> str:
     else:
         summary = (
             f"<b>{counts['new']} new · {counts['changed']} changed · {counts['removed']} "
-            f"removed</b> since the previous approval, {html.escape(baseline)}, at commit "
+            f"removed</b> since the previous approval, #{previous.number}, at commit "
             f"<code>{commit}</code>."
         )
     return layout(TITLE, LEAD, summary, "".join(parts), STYLE)
@@ -223,36 +226,7 @@ def _shown(mark: str) -> str:
     return f"{mark} " if mark in ("new", "changed") else ""
 
 
-# --- the previous approval -----------------------------------------------------------------
-
-
-def _baseline(config: ProductConfig) -> tuple[str, str | None]:
-    """The previous approval and the commit that added it: the latest approval of
-    other content than the page shows. No commit when there is none."""
-    page = config.relative(diagram_review_page(config))
-    shown = {
-        config.relative(f): sha256(f)
-        for f in subject_files(config, "diagrams")
-        if config.relative(f) != page
-    }
-    folder = config.approvals_dir
-    for path in (
-        sorted(folder.glob("*-checkpoint-1-diagrams.yaml"), reverse=True)
-        if (folder.is_dir())
-        else []
-    ):
-        try:
-            data = read_yaml_file(path)
-        except YamlReadError:
-            continue
-        if validate(data, "approval") or data["decision"] != "approved":
-            continue
-        recorded = {s["path"]: s["sha256"] for s in data["subject"] if s["path"] != page}
-        if recorded == shown:
-            continue  # the approval of what the page shows, not the previous one
-        commit = _added_in(config.root, path)
-        return config.relative(path), commit
-    return "", None
+# --- the previous approval's files, from git -----------------------------------------------
 
 
 def _files_at(config: ProductConfig, commit: str, folder: Path) -> ProductConfig:

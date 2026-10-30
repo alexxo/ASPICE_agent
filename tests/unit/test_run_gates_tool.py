@@ -6,10 +6,9 @@ import subprocess
 import sys
 
 import pytest
-from product_builder import STACK, baseline_requirements, build_product
+from product_builder import STACK, approve_checkpoint, baseline_requirements, build_product
 
 from agent.read_stages_tool import stage
-from agent.record_checkpoint_tool import record_checkpoint
 from agent.run_gates_tool import GATES_DIR, RUN_ALONE, passed, reached_gates, run_gates
 from tools.validate_contract_tool import validate
 
@@ -122,7 +121,7 @@ def test_gates_after_a_checkpoint_run_only_once_it_is_approved(tmp_path):
     root = build_product(tmp_path, stack=STACK)
     architecture = stage("architecture")
     assert reached_gates(root, architecture) == architecture.gates
-    record_checkpoint(root, 3, "approved", "Alex", "architect")
+    approve_checkpoint(root, 3)
     assert reached_gates(root, architecture) == architecture.built_gates
 
 

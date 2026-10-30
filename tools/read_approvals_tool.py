@@ -1,11 +1,17 @@
 """Read checkpoint decisions: which files an approval covers, and whether it counts.
 
-A decision is approval.v1 in <approvals_dir>/<date>-checkpoint-<n>-<subject>.yaml.
-The latest file for a checkpoint and subject counts. It is current only while it
-approves, and every file it covers is unchanged and no file was added or
-removed — so editing approved work withdraws the approval. The customer's
-decision on a release (checkpoint 5) is due only while a release is proposed,
-and covers its release record and its validation record.
+The person decides on the code host (v4.0.0): the work of checkpoint <n> travels
+in a pull request from branch checkpoint/<n>, qf.yaml review.architect approves
+its head, and the agent merges it with a merge commit (record_checkpoint_tool).
+That merge commit is the record — GitHub's "Merge pull request #<number> from
+<owner>/checkpoint/<n>", its second parent the approved head — so a decision is
+read from git history alone, and verify_delivery_reviewed_gate checks every such
+merge against the host (UNAPPROVED_MERGE). The latest merge of a checkpoint
+counts. It is current only while every file it covers is what the approved head
+holds — so editing approved work withdraws the approval. The customer's
+decision on a release (checkpoint 5), given by the architect on their behalf, is
+due only while a release is proposed, and covers its release record and its
+validation record.
 
 Whether a stage was finished once is read here too: a checkpoint approved at
 least once, or a stage done record (stage_done.v1) in
@@ -16,6 +22,8 @@ checkpoint.
 from __future__ import annotations
 
 import hashlib
+import re
+import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -28,27 +36,97 @@ from tools.write_release_tool import pending
 
 __all__ = [
     "ApprovalState",
+    "Merge",
     "approval_state",
+    "changed_files",
     "checkpoint_due",
+    "checkpoint_merges",
+    "checkpoint_of",
     "ever_approved",
+    "previous_approval",
     "sha256",
     "stage_done_record",
     "subject_files",
 ]
 
+BRANCH = re.compile(r"^checkpoint/([1-9][0-9]*)$")
+# GitHub's subject of a merge commit: the pull request's number and its head branch
+MERGED = re.compile(r"^Merge pull request #([0-9]+) from \S+?/(checkpoint/[1-9][0-9]*)$")
+
+
+@dataclass(frozen=True)
+class Merge:
+    """A checkpoint's pull request, merged: the approval as git history holds it."""
+
+    checkpoint: int
+    number: int  # the pull request
+    commit: str  # the merge commit
+    head: str  # the approved head: the merge commit's second parent
+    date: datetime  # when it was merged
+
 
 @dataclass(frozen=True)
 class ApprovalState:
-    """status: approved, missing, changes_requested, outdated or invalid."""
+    """status: approved, missing or outdated."""
 
     status: str
     reason: str
-    path: Path | None = None
-    date: datetime | None = None
+    merge: Merge | None = None
+
+    @property
+    def date(self) -> datetime | None:
+        return self.merge.date if self.merge else None
 
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def checkpoint_of(branch: str) -> int | None:
+    """The checkpoint a pull request's head branch brings, e.g. 2 for checkpoint/2."""
+    found = BRANCH.match(branch)
+    return int(found.group(1)) if found else None
+
+
+def checkpoint_merges(root: Path, checkpoint: int | None = None) -> list[Merge]:
+    """The merged pull requests of a checkpoint (of every one, without checkpoint)
+    the head's history holds, oldest first: in the order of the history, never of
+    the clock."""
+    run = _git(root, "log", "--merges", "--topo-order", "--format=%H %P %cI%x00%s", "HEAD")
+    merges = []
+    for line in run.splitlines() if run else []:
+        ids, _, subject = line.partition("\0")
+        found = MERGED.match(subject.strip())
+        parts = ids.split()
+        if found is None or len(parts) != 4:
+            continue
+        number = checkpoint_of(found.group(2))
+        if checkpoint is None or number == checkpoint:
+            date = datetime.fromisoformat(parts[3].replace("Z", "+00:00"))
+            merges.append(Merge(number, int(found.group(1)), parts[0], parts[2], date))
+    return merges[::-1]
+
+
+def changed_files(config: ProductConfig, approves: str, commit: str) -> list[str]:
+    """The files a checkpoint's approval covers whose content is not what commit
+    holds — added since included, by repository path."""
+    paths = [config.relative(f) for f in subject_files(config, approves)]
+    if not paths:
+        return []
+    listed = _git(config.root, "ls-tree", "-r", commit, "--", *paths) or ""
+    held = {}
+    for line in listed.splitlines():
+        meta, _, path = line.partition("\t")
+        held[path] = meta.split()[2]
+    now = (_git(config.root, "hash-object", "--", *paths) or "").split()
+    if len(now) != len(paths):
+        return paths  # git cannot read them: nothing shows they are unchanged
+    return [p for p, blob in zip(paths, now, strict=True) if held.get(p) != blob]
+
+
+def _git(root: Path, *args: str) -> str | None:
+    run = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
+    return run.stdout.strip() if run.returncode == 0 else None
 
 
 def subject_files(config: ProductConfig, approves: str) -> list[Path]:
@@ -106,47 +184,36 @@ def _decision_record(config: ProductConfig) -> list[Path]:
 
 
 def approval_state(config: ProductConfig, checkpoint: int, approves: str) -> ApprovalState:
-    """Whether the latest decision at a checkpoint is an approval that still counts."""
-    pattern = f"*-checkpoint-{checkpoint}-{approves}.yaml"
-    folder = config.approvals_dir
-    candidates = sorted(folder.glob(pattern)) if folder.is_dir() else []
-    if not candidates:
-        return ApprovalState("missing", f"no checkpoint-{checkpoint} decision is recorded")
-    latest = candidates[-1]
-    shown = config.relative(latest)
-    try:
-        data = read_yaml_file(latest)
-    except YamlReadError as err:
-        return ApprovalState("invalid", f"{shown} cannot be read: {err.message}", latest)
-    if validate(data, "approval"):
-        return ApprovalState("invalid", f"{shown} is not a valid approval", latest)
-    date = datetime.fromisoformat(data["date"].replace("Z", "+00:00"))
-    if data["decision"] != "approved":
+    """Whether the latest merged pull request of a checkpoint is an approval that
+    still covers the files."""
+    merges = checkpoint_merges(config.root, checkpoint)
+    if not merges:
         return ApprovalState(
-            "changes_requested", f"changes requested: {data.get('comment', '')}", latest, date
+            "missing", f"no pull request from branch checkpoint/{checkpoint} is merged"
         )
-    recorded = {s["path"]: s["sha256"] for s in data["subject"]}
-    current = {config.relative(f): sha256(f) for f in subject_files(config, approves)}
-    if recorded != current:
-        paths = sorted({p for p, _ in set(recorded.items()) ^ set(current.items())})
+    latest = merges[-1]
+    changed = changed_files(config, approves, latest.head)
+    if changed:
         return ApprovalState(
-            "outdated", f"files changed since the approval: {', '.join(paths)}", latest, date
+            "outdated",
+            f"files changed since #{latest.number} was approved: {', '.join(changed)}",
+            latest,
         )
-    return ApprovalState("approved", "approved", latest, date)
+    return ApprovalState("approved", f"approved in #{latest.number}", latest)
 
 
 def ever_approved(config: ProductConfig, checkpoint: int, approves: str) -> bool:
-    """Whether any decision at the checkpoint approved, even one outdated since."""
-    folder = config.approvals_dir
-    pattern = f"*-checkpoint-{checkpoint}-{approves}.yaml"
-    for path in sorted(folder.glob(pattern)) if folder.is_dir() else []:
-        try:
-            data = read_yaml_file(path)
-        except YamlReadError:
-            continue
-        if not validate(data, "approval") and data["decision"] == "approved":
-            return True
-    return False
+    """Whether any pull request of the checkpoint was merged, even one outdated since."""
+    return bool(checkpoint_merges(config.root, checkpoint))
+
+
+def previous_approval(config: ProductConfig, checkpoint: int, approves: str) -> Merge | None:
+    """The latest approval of other content than the files hold now, review pages
+    left out: what a review page marks its changes against."""
+    for merge in reversed(checkpoint_merges(config.root, checkpoint)):
+        if any(not p.endswith(".html") for p in changed_files(config, approves, merge.head)):
+            return merge
+    return None
 
 
 def stage_done_record(config: ProductConfig, stage_id: str, number: int) -> Path | None:

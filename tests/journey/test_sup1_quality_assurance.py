@@ -16,11 +16,10 @@ Each rule a step could break is its gate's unit tests' to prove, and the
 resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
-from datetime import datetime, timezone
-
 import pytest
 from product_builder import (
     AGENT,
+    approve_checkpoint,
     build_python_product,
     commit_all,
     git_head,
@@ -38,13 +37,11 @@ from product_builder import (
 )
 
 from agent.load_skills_tool import load_skills
-from agent.record_checkpoint_tool import record_checkpoint
 from agent.record_stage_done_tool import record_stage_done
 from agent.resolve_stage_tool import resolve_stage
 from tools.read_product_config_tool import read_product_config
 from tools.write_verification_report_tool import write_report
 
-APPROVED = datetime(2026, 10, 4, 15, 0, tzinfo=timezone.utc)
 BUILT = [
     "diagram",
     "requirements",
@@ -70,10 +67,7 @@ def built(tmp_path_factory):
     root = build_python_product(work / "product")
     install_plugins(root)
     for checkpoint in (1, 2, 3):
-        record_checkpoint(
-            root, checkpoint, "approved", "Example Architect", "architect", now=APPROVED
-        )
-    commit_all(root, "docs(approvals): checkpoints 1 to 3 REQ-0047")
+        approve_checkpoint(root, checkpoint)
     for write, message in (
         (write_all_tests_and_stubs, "test(auth): every unit REQ-0047"),
         (write_all_code, "feat(auth): every unit REQ-0047"),

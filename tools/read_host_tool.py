@@ -112,6 +112,7 @@ class PullRequest:
     merged: bool = False
     merged_at: str | None = None  # ISO 8601
     notes: tuple[Note, ...] = ()
+    branch: str = ""  # the head branch, e.g. checkpoint/2
 
     def approvals(self) -> list[Review]:
         """The approvals that count: each reviewer's latest decision, when it
@@ -176,6 +177,7 @@ class Host(Protocol):
     def issues(self, repo: str, label: str) -> list[Issue]: ...
     def open_pull_requests(self, repo: str) -> list[int]: ...
     def merge_sign(self, repo: str, sha: str) -> str | None: ...
+    def release_page(self, repo: str, tag: str) -> str | None: ...
 
 
 class GitHubHost:
@@ -256,6 +258,7 @@ class GitHubHost:
             ),
             merged=bool(data.get("merged")),
             merged_at=data.get("merged_at"),
+            branch=data["head"].get("ref") or "",
             notes=tuple(
                 Note(
                     id=n["id"],
@@ -290,6 +293,11 @@ class GitHubHost:
 
     def release_tags(self, repo: str) -> dict[str, str]:
         return {t["name"]: t["commit"]["sha"] for t in self._pages(f"/repos/{repo}/tags")}
+
+    def release_page(self, repo: str, tag: str) -> str | None:
+        """The address of the GitHub Release of the tag, once it is published."""
+        data = self._get(f"/repos/{repo}/releases/tags/{urllib.parse.quote(tag)}")
+        return (data or {}).get("html_url")
 
     def issues(self, repo: str, label: str) -> list[Issue]:
         found = self._pages(f"/repos/{repo}/issues?state=all&labels={urllib.parse.quote(label)}")
@@ -362,6 +370,7 @@ class FileHost:
                     merged=p.get("merged", False),
                     merged_at=p.get("merged_at"),
                     notes=tuple(Note(**n) for n in p.get("notes", ())),
+                    branch=p.get("branch", ""),
                 )
         return None
 
@@ -381,6 +390,9 @@ class FileHost:
 
     def release_tags(self, repo: str) -> dict[str, str]:
         return dict(self._repo(repo).get("tags", {}))
+
+    def release_page(self, repo: str, tag: str) -> str | None:
+        return self._repo(repo).get("releases", {}).get(tag)
 
     def open_pull_requests(self, repo: str) -> list[int]:
         return [p["number"] for p in self._pulls(repo) if not p.get("merged", False)]

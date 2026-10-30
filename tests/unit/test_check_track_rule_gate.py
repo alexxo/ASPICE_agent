@@ -69,6 +69,12 @@ def test_the_feature_track_in_an_architecture_pull_request_is_caught(product, pa
     assert rules(product) == [("MIXED_TRACKS", path)]
 
 
+def test_the_stack_travels_on_its_checkpoints_branch(product):
+    on(product, "checkpoint/3")
+    change(product, "docs/architecture/stack.yaml")
+    assert rules(product) == []
+
+
 def test_the_architecture_off_an_arch_branch_is_caught(product):
     on(product, "feature/REQ-0047-lockout")
     change(product, "docs/architecture/stack.yaml")

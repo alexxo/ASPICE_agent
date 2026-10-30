@@ -368,7 +368,7 @@ and every piece of work must end up on them. These are the **contracts**:
 | The plan sheet | Every pillar and beam numbered, every joint labelled | *diagram.v1* |
 | The rules sheet | Rules no drawing can show: *no cart crosses before the railings are on* | *invariants.v1* |
 | The defect slip | Which rule, which card, which line, what to fix | *findings.v1* |
-| The seal | The chief architect's signature on the exact work approved | *approval.v1* |
+| The seal | The chief architect's signature on the exact work approved | the merge of the approved *checkpoint/&lt;n&gt;* pull request |
 
 **Two ways onto the standard forms:**
 
@@ -716,8 +716,9 @@ river (staging): realistic data, the same connections to outside parties
 (external systems). The crossings run there, and the crossing log (validation
 record) says which bridge was set up and how every crossing went; every wish
 the release touches has crossed, and none failed
-[verify_release_evidence_gate]. The village accepts or rejects the release,
-with a reason (checkpoint 5); the baseline is stamped only after it accepts. A
+[verify_release_evidence_gate]. The chief architect accepts or rejects the
+release for the village, with a reason (checkpoint 5); the baseline is stamped
+only after the acceptance, and its notice says who accepted on whose behalf. A
 rejection comes back as a new or changed village wish.
 
 **Step 12 — the repair book** · SUP.9, the repair book · no seal
@@ -798,20 +799,20 @@ belongs to another process group and is referenced, not repeated.
 |  | BP5: Summarize and communicate the results | The results of software verification are summarised and communicated **the same way as unit results** (SWE.4 BP5: a summary in the report generated on every CI run, shown in the pull request and kept for every release), extended to this level:<br>• **Summary** — the generated report includes, **per requirement** (system and software level), its software-level tests and their latest pass/fail, and for non-functional ones, the measured value next to its threshold.<br>• **Communication** — as in SWE.4 BP5, the summary appears in the CI run and is kept as an artifact for every release.<br>• **Approval of the results** — checkpoint 4: on the pull request that brings the results, CI posts them in plain words and a person approves them requirement by requirement — every requirement of criticality high or of kind security it proves, and every one that did not pass, with its software-level tests described from the test alone, the measured value next to its threshold and the result, answered *achieved* or *not achieved*; the other requirements only counted. | **Statement:** Summary generated<br>**Evidence:** The report of the CI run<br>**Gate:** check_verification_report_gate<br>**What it verifies:** The report exists for the run, with the per-requirement section and the measured values<br>────────────────<br>**Statement:** Kept for every release<br>**Evidence:** Artifacts of the release<br>**Gate:** verify_release_evidence_gate<br>**What it verifies:** Every release tag has its report stored<br>────────────────<br>**Statement:** The results approved by a person<br>**Evidence:** The verification report of the head + CI's checkpoint-4 review + the person's answers and approval<br>**Gate:** verify_delivery_reviewed_gate<br>**What it verifies:** The pull request that brings the results has a person's approval of its head, with every requirement asked answered *achieved*<br>────────────────<br>**Not checkable:** that the person read each line — the page asks only where judgement matters |
 | VAL.1 | BP1: Specify validation measures for the product validation | Validation is specified in advance, from the customer's wishes:<br>• **From the wishes** — every wish in the wishes document (the stakeholder requirements) has at least one validation scenario showing, in the customer's terms, that the product serves its intended use. For example, wish *W-03 "cross with loaded carts"* → scenario *"a 1-tonne cart crosses on market day"*. A scenario is a file under the scenarios folder that names its wish with a marker (e.g. *@wish[W-03]*): an automated test, or the written steps of a guided demo or a trial use.<br>• **Written from the wishes only** — the scenarios are written by a crew that reads the wishes, the diagrams and the outside interfaces, never the requirements or the code, so validation does not repeat verification.<br>• **In the plan** — the validation section of the verification plan (SWE.4 BP1: one document with a section per level) states, for each scenario in the order they run, the technique (e.g. *guided demo, acceptance test, trial use*), the pass/fail criteria, the entry criteria and the environment: the product running in conditions close to the customer's (e.g. *staging with realistic data*). | **Statement:** Every wish has its validation scenario<br>**Evidence:** *@wish[...]* markers in the scenarios + the identifiers in the wishes document<br>**Gate:** verify_acceptance_to_wishes_link_gate<br>**What it verifies:** On every pull request, every wish has ≥ 1 scenario, and no marker names a wish that does not exist<br>────────────────<br>**Statement:** Defined in the plan<br>**Evidence:** The validation section of the verification plan<br>**Gate:** check_verification_plan_gate<br>**What it verifies:** Once scenarios exist, the section exists, with technique, criteria, entry criteria and environment for every scenario, and names no scenario that does not exist<br>────────────────<br>**Not checkable:** whether the scenario truly reflects the customer's intended use — the customer decides that at acceptance (checkpoint 5) |
 |  | BP2: Select validation measures | The validation scenarios to run are chosen **the same way as unit tests** (SWE.4 BP2: selection criteria, regression and release coverage, documented in the verification plan), applied to validation:<br>• **Selection and regression** — the validation section of the verification plan states which scenarios run before each release, and which ones run again after a change. Every automated scenario runs at every release; the plan chooses among the scenarios run by hand (e.g. *every scenario of a wish touched by the release*).<br>• **Coverage of the release** — every wish affected by the release has at least one scenario with a result. A release that changes what the customer gets (the wishes, the diagrams, the requirements, the design, the stack, the configuration, the observability or the code) affects every wish; one that changes only the framework, the tests or the records affects none. | **Statement:** Selection and regression defined<br>**Evidence:** The validation section of the verification plan<br>**Gate:** check_verification_plan_gate<br>**What it verifies:** The section states the selection and the regression rule<br>────────────────<br>**Statement:** Coverage of the release<br>**Evidence:** *@wish[...]* markers + the wishes affected by the release + the validation record<br>**Gate:** verify_acceptance_to_wishes_link_gate<br>**What it verifies:** At release, every wish affected by the release has ≥ 1 scenario with a result<br>────────────────<br>**Not checkable:** whether the selection among the scenarios run by hand is good — left to the reviewer |
-|  | BP3: Perform the validation and evaluate the results | Before every release, the customer validates the product in conditions close to real use:<br>• **Deployment** — the release candidate, with its release record (SUP.8 BP5), is deployed to a staging environment that resembles the customer's (e.g. *realistic data, the same integrations*). The framework never deploys: the product's own pipeline does.<br>• **Run and record** — the selected validation scenarios (VAL.1 BP2) run against that deployment, and one validation record per release names the environment, the deployed commit and every result, pass or fail, with its scenario and technique. The automated results are filled in by a tool; the results of a guided demo or a trial use are entered by the person who ran it. After the deployed commit, nothing changes but the validation record and the decision, so what was validated is what is released.<br>• **Customer's decision** — the customer evaluates the results and records their decision, **accept** or **reject** with a reason (checkpoint 5), bound by hash to the release record and the validation record. A rejection closes the release pull request and goes back as a new or amended wish. | **Statement:** Deployed and run<br>**Evidence:** The validation record of the release<br>**Gate:** verify_release_evidence_gate<br>**What it verifies:** The record exists, its deployed commit is in the release's history with nothing but the record and the decision changed since, every automated scenario has a result and none failed<br>────────────────<br>**Statement:** Customer's decision recorded<br>**Evidence:** The checkpoint 5 approval of the release<br>**Gate:** verify_release_evidence_gate<br>**What it verifies:** The release has a current decision from a person in the customer role, and it is accept<br>────────────────<br>**Not checkable:** that the deployment was really made, and the hand results really observed — the customer's decision covers the record; the customer's judgement itself — that is what the decision is for |
+|  | BP3: Perform the validation and evaluate the results | Before every release, the customer validates the product in conditions close to real use:<br>• **Deployment** — the release candidate, with its release record (SUP.8 BP5), is deployed to a staging environment that resembles the customer's (e.g. *realistic data, the same integrations*). The framework never deploys: the product's own pipeline does.<br>• **Run and record** — the selected validation scenarios (VAL.1 BP2) run against that deployment, and one validation record per release names the environment, the deployed commit and every result, pass or fail, with its scenario and technique. The automated results are filled in by a tool; the results of a guided demo or a trial use are entered by the person who ran it. After the deployed commit, nothing changes but the validation record, so what was validated is what is released.<br>• **Acceptance** — the architect evaluates the results on the customer's behalf and decides on the release pull request on the code host, **approve** or **request changes** with a reason (checkpoint 5); the agent merges it only after the approval, and the GitHub Release says who accepted it on whose behalf. The customer needs no host account. A rejection closes the release pull request and goes back as a new or amended wish. | **Statement:** Deployed and run<br>**Evidence:** The validation record of the release<br>**Gate:** verify_release_evidence_gate<br>**What it verifies:** The record exists, its deployed commit is in the release's history with nothing but the record changed since, every automated scenario has a result and none failed<br>────────────────<br>**Statement:** Acceptance given<br>**Evidence:** The architect's approval of the release pull request's head on the code host, and its merge<br>**Gate:** verify_delivery_reviewed_gate<br>**What it verifies:** The release pull request waits for the architect's approval of its head, and every checkpoint merge merged a head they approved<br>────────────────<br>**Not checkable:** that the deployment was really made, and the hand results really observed — the acceptance covers the record; the judgement itself — that is what the acceptance is for |
 |  | BP4: Ensure consistency and establish bidirectional traceability | Validation scenarios, wishes and results are traceable to each other **the same way as unit tests** (SWE.4 BP4: what is verified is named with a marker, and results name their test), applied to the wishes:<br>• **Scenarios ↔ wishes** — every scenario names its wish (VAL.1 BP1: marker *@wish[W-03]*), and every wish has at least one scenario.<br>• **Results ↔ scenarios** — every recorded result names the scenario that produced it (VAL.1 BP3: results recorded next to their scenario).<br>• **Consistency** — no marker names a wish that does not exist, and no result names a scenario that does not exist. | **Statement:** Scenarios linked to wishes in both directions<br>**Evidence:** *@wish[...]* markers + the identifiers in the wishes document<br>**Gate:** verify_acceptance_to_wishes_link_gate<br>**What it verifies:** Every wish has ≥ 1 scenario, and no marker names a wish that does not exist<br>────────────────<br>**Statement:** Results linked to scenarios<br>**Evidence:** The validation record of the release<br>**Gate:** verify_release_evidence_gate<br>**What it verifies:** Every result belongs to an existing scenario, and every automated scenario has a result |
-|  | BP5: Summarize and communicate the results | The validation results are summarised and communicated **the same way as unit results** (SWE.4 BP5: a summary in the generated report, shown and kept for every release), extended to validation:<br>• **Summary** — while a release is proposed, the report includes, **per wish**, its scenarios and their pass/fail, and the customer's decision.<br>• **Communication** — the summary is delivered to the customer together with the decision request (checkpoint 5), and the validation record is kept in the release. | **Statement:** Summary generated<br>**Evidence:** The verification report of the release pull request<br>**Gate:** check_verification_report_gate<br>**What it verifies:** The report exists for the current tree, generated with the per-wish section and the customer's decision<br>────────────────<br>**Statement:** Kept for every release<br>**Evidence:** Release tags + validation records<br>**Gate:** verify_release_evidence_gate<br>**What it verifies:** Every release tag holds its validation record |
+|  | BP5: Summarize and communicate the results | The validation results are summarised and communicated **the same way as unit results** (SWE.4 BP5: a summary in the generated report, shown and kept for every release), extended to validation:<br>• **Summary** — while a release is proposed, the report includes, **per wish**, its scenarios and their pass/fail, and whether checkpoint 5 is approved.<br>• **Communication** — the summary is shown to the architect, who decides for the customer (checkpoint 5), and the validation record is kept in the release. | **Statement:** Summary generated<br>**Evidence:** The verification report of the release pull request<br>**Gate:** check_verification_report_gate<br>**What it verifies:** The report exists for the current tree, generated with the per-wish section and the state of checkpoint 5<br>────────────────<br>**Statement:** Kept for every release<br>**Evidence:** Release tags + validation records<br>**Gate:** verify_release_evidence_gate<br>**What it verifies:** Every release tag holds its validation record |
 | SUP.1 | BP1: Ensure independence of quality assurance | Quality assurance is independent of whoever does the work:<br>• **Gates, not agents** — the rules are checked by deterministic scripts that no agent can influence.<br>• **Gates cannot be touched** — they live in the framework, a pinned, read-only submodule; a product can only change the framework version through its own pull request.<br>• **Gates cannot be switched off unnoticed** — every pull request and every push to the main branch runs the gates, the product's CI file keeps every step of the framework's template, the framework pin moves only to a released tag, a change of *qf.yaml* or *.gitmodules* needs a person's approval, and every change that reached the main branch without a passing gates check or its reviews is caught there and blocks the release.<br>• **Independent review** — every pull request is reviewed by an agent that is not its author; a person answers the questions of what is wanted and approves the results (checkpoint 4). | **Statement:** Gates intact<br>**Evidence:** The framework submodule's SHA and its working tree<br>**Gate:** verify_framework_integrity_gate<br>**What it verifies:** The framework matches the pinned SHA, with no local changes<br>────────────────<br>**Statement:** Gates cannot be switched off unnoticed<br>**Evidence:** The CI file + every merged pull request's checks and reviews<br>**Gate:** verify_required_checks_gate · verify_delivery_reviewed_gate<br>**What it verifies:** The CI file runs the gates and keeps the template's steps, triggers and permissions; every commit new on the main branch came from a merged pull request whose head passed the gates check, with a person's approval when it changed *qf.yaml* or *.gitmodules*<br>────────────────<br>**Not checkable:** conflicts of interest between people — left to the organisation |
 |  | BP2: Define the criteria for quality assurance | The quality criteria are written down, complete and published:<br>• **The rulebook** — every practice, its evidence and its gate are published in the framework's practice table, versioned with the framework.<br>• **Complete** — every practice has a gate, and every gate belongs to a practice. The framework checks this before every framework release.<br>• **Known to the product** — a product uses exactly the rulebook of the framework version it pins. | **Statement:** Rulebook complete<br>**Evidence:** The practice table + the gate scripts in the framework<br>**Gate:** Framework test (rulebook completeness) — runs in the framework's CI, not the product's<br>**What it verifies:** Every practice names an existing gate, and every gate script belongs to a practice<br>────────────────<br>**Statement:** Product uses a known rulebook<br>**Evidence:** The pinned framework SHA<br>**Gate:** verify_framework_integrity_gate<br>**What it verifies:** The product runs the rulebook of a released framework version |
 |  | BP3: Assure quality of the work products | Every work product is checked against its criteria by the gates defined for it in the engineering and validation processes (SWE.1–SWE.6, VAL.1: requirements, architecture, detailed design, code, tests and validation results). SUP.1 adds no check of its own here; it relies on those gates being intact and required (BP1). | **No gate of its own:** relies on the SWE and VAL gates, kept intact and required by BP1 |
-|  | BP4: Assure quality of the process activities | Every process step that matters is checked by the gates defined for it in the engineering and validation processes — for example, the diagram approved before requirements are derived (SWE.1 BP6), the test committed before the code (SWE.4 BP1), the customer's decision before a release (VAL.1 BP3). SUP.1 adds no check of its own here. | **No gate of its own:** relies on the SWE and VAL gates, kept intact and required by BP1 |
+|  | BP4: Assure quality of the process activities | Every process step that matters is checked by the gates defined for it in the engineering and validation processes — for example, the diagram approved before requirements are derived (SWE.1 BP6), the test committed before the code (SWE.4 BP1), the acceptance before a release (VAL.1 BP3). SUP.1 adds no check of its own here. | **No gate of its own:** relies on the SWE and VAL gates, kept intact and required by BP1 |
 |  | BP5: Summarize and communicate quality assurance activities and results | The results of quality assurance are summarised and communicated:<br>• **Per run** — every CI run shows which gates passed and which failed.<br>• **Trends per release** — the release report counts the faults opened and closed since the previous release, by gate and by type (e.g. *4 failures of the requirement gate, 1 escalated fault*), so repeated weaknesses become visible. | **Statement:** Trends in the release report<br>**Evidence:** The fault issues opened and closed since the previous release<br>**Gate:** report_quality_trends_gate<br>**What it verifies:** The release report contains the trend section, generated from the tracker<br>────────────────<br>**Not checkable:** whether anyone acts on the trends — left to the organisation |
 |  | BP6: Ensure the resolution of non-conformances | Every fault found by quality assurance is fixed:<br>• **Found by a gate** — a failing gate keeps the pull request red until the fault is fixed; a merge with a red gate is caught on the main branch and blocks the release.<br>• **Found outside a gate** — a fault found by the reviewer or a person is recorded as an issue labelled *non-conformance* whose *nonconformance* block (*nonconformance.v1*) names the pull request it was found in (or, for a commit pushed straight to the main branch, the commit), and is closed only once the block names the merged pull request that fixed it (*fixed_by*) — or, for a delivery that reached the main branch without the desk and was right, once an urgent approver has accepted it (*/accept-delivery*). | **Statement:** Failing gates block<br>**Evidence:** The checks of every merged pull request's head<br>**Gate:** verify_delivery_reviewed_gate<br>**What it verifies:** Every pull request merged into the main branch passed the gates check on its final head before the merge; until a person in urgent_approvers accepts one that did not (*/accept-delivery* on its non-conformance issue), the release is blocked<br>────────────────<br>**Statement:** Faults outside gates closed with their fix<br>**Evidence:** Non-conformance issues + their links<br>**Gate:** check_nonconformances_gate<br>**What it verifies:** At release, every closed non-conformance issue links the pull request that fixed it, or, for a delivery that was right, carries its acceptance |
 |  | BP7: Escalate non-conformances | No fault is forgotten:<br>• **Limit** — the product declares how long a non-conformance may stay open (*qf.yaml escalate_after_days*, e.g. *30*).<br>• **Escalation** — a non-conformance older than the limit must be escalated: labelled *escalated* and assigned to a person who can decide.<br>• **Checked at release** — a release cannot go out while an over-age non-conformance is not escalated. | **Statement:** Over-age faults escalated<br>**Evidence:** Non-conformance issues: age, label, owner<br>**Gate:** check_escalations_gate<br>**What it verifies:** At release, every non-conformance older than the limit is labelled escalated and has an owner<br>────────────────<br>**Not checkable:** that the escalation leads to a decision — left to the organisation |
 | SUP.8 | BP1: Identify the configuration items | The work products under configuration management are declared:<br>• **The list** — the framework declares which work products are configuration items: the wishes, the diagrams, the requirements, the architecture and detailed designs, the verification plan, the code, the tests, the product configuration and the framework version.<br>• **Extensions** — a product may add its own items to the list, never remove the framework's. | **Statement:** Every declared item is under version control<br>**Evidence:** The list of configuration items + the repository<br>**Gate:** check_config_items_gate<br>**What it verifies:** Every declared item exists and is tracked by git — none is missing, untracked or ignored |
 |  | BP2: Define the configuration item properties | Every configuration item has a status, given by where it is:<br>• **In work** — it exists only on a branch.<br>• **Agreed** — it has been merged into the main branch (after the approvals of SWE.1 BP6 and SWE.2 BP5, where they apply).<br>• **Released** — it is contained in a release tag.<br>• **Superseded** — a later version replaced it; git keeps the history. | **No gate of its own:** the status is derived from git, which records exactly where every item is |
 |  | BP3: Establish the configuration management | Configuration management uses git:<br>• **Repository** — every configuration item lives in the product's git repository.<br>• **Parallel work** — every change is made on its own branch; conflicts between parallel changes are resolved when merging, and architecture changes travel on their own branch (SWE.2 BP5).<br>• **Main branch** — the main branch is the only source of what is agreed. | **Statement:** The main branch takes only reviewed changes<br>**Evidence:** Every commit new on the main branch + its merged pull request<br>**Gate:** verify_delivery_reviewed_gate<br>**What it verifies:** Every commit a push adds to the main branch came from a reviewed pull request that passed the gates |
-|  | BP4: Control the modifications | No configuration item changes without control:<br>• **Through a pull request** — every change reaches the main branch through a reviewed pull request; a commit that did not is caught on the push.<br>• **History is never rewritten** — every push to the main branch keeps the previous main branch in its history, so every past state stays recoverable; a rewrite is caught on the push, and the lost commits come back from any clone.<br>• **Conventional commits** — every commit message follows Conventional Commits and names the requirement or issue it serves (e.g. *feat(parser): reject empty files REQ-0047*). A branch carries meaning only on the architecture track (*arch/slug*) and for a release (*release/v&lt;version&gt;*); any other branch name is free, because every commit already names its reason. | **Statement:** History kept<br>**Evidence:** The main branch before and after every push<br>**Gate:** verify_history_kept_gate<br>**What it verifies:** Every push to the main branch keeps the previous main branch in its history<br>────────────────<br>**Statement:** Commit and branch conventions<br>**Evidence:** Commit messages of the pull request + its branch name<br>**Gate:** check_commit_conventions_gate<br>**What it verifies:** Every non-merge commit of a pull request and of a push to the main branch is a Conventional Commit naming a requirement or issue, and an architecture or release branch has its form |
+|  | BP4: Control the modifications | No configuration item changes without control:<br>• **Through a pull request** — every change reaches the main branch through a reviewed pull request; a commit that did not is caught on the push.<br>• **History is never rewritten** — every push to the main branch keeps the previous main branch in its history, so every past state stays recoverable; a rewrite is caught on the push, and the lost commits come back from any clone.<br>• **Conventional commits** — every commit message follows Conventional Commits and names the requirement or issue it serves (e.g. *feat(parser): reject empty files REQ-0047*). A branch carries meaning only on the architecture track (*arch/slug*) and for a checkpoint's work (*checkpoint/&lt;n&gt;*, the release's included); any other branch name is free, because every commit already names its reason. | **Statement:** History kept<br>**Evidence:** The main branch before and after every push<br>**Gate:** verify_history_kept_gate<br>**What it verifies:** Every push to the main branch keeps the previous main branch in its history<br>────────────────<br>**Statement:** Commit and branch conventions<br>**Evidence:** Commit messages of the pull request + its branch name<br>**Gate:** check_commit_conventions_gate<br>**What it verifies:** Every non-merge commit of a pull request and of a push to the main branch is a Conventional Commit naming a requirement or issue, and an architecture or checkpoint branch has its form |
 |  | BP5: Establish baselines | Baselines are recorded as git tags:<br>• **Release baseline** — every release is an annotated tag on the main branch (e.g. *v1.4.0*), recording what was delivered.<br>• **Internal baseline** — every merge into the main branch is an agreed state that can be referenced. | **Statement:** Every release has its baseline<br>**Evidence:** Release tags<br>**Gate:** verify_baseline_gate<br>**What it verifies:** Every release is an annotated tag that points to a commit on the main branch |
 |  | BP6: Summarize and communicate the configuration status | The configuration status is communicated with every release:<br>• **What changed** — the release record lists the configuration items changed since the previous release.<br>• **What is pinned** — it states the framework version the release was built with. | **Statement:** Status in the release record<br>**Evidence:** The release record<br>**Gate:** verify_baseline_gate<br>**What it verifies:** The release record lists exactly the items changed since the previous release, and the pinned framework version |
 |  | BP7: Ensure completeness and consistency | Every baseline is complete and consistent:<br>• **Complete** — the release tag contains every declared configuration item (BP1).<br>• **Consistent** — the framework version is pinned in the tag (the framework commit), so the release can be rebuilt exactly. | **Statement:** The baseline is complete<br>**Evidence:** The release tag + the list of configuration items<br>**Gate:** verify_baseline_gate<br>**What it verifies:** Every declared item is present in the tag, and the framework commit is recorded |
@@ -1010,10 +1011,10 @@ flowchart TD
   subgraph P11["11 · VAL.1 Validation"]
     x1["Agent triggers create_validation_scenarios_plugin<br/>scenarios from the wishes only;<br/>for a release: the person deploys the PR head to staging,<br/>write_validation_record_tool records the results<br/>rules: validate_release_skill"]:::agent
     g10{"verify_acceptance_to_wishes_link_gate · verify_release_evidence_gate<br/>at release: check_nonconformances_gate · check_escalations_gate<br/>report_quality_trends_gate · check_retro_actions_gate"}:::gate
-    h5(("Checkpoint 5<br/>Customer accepts<br/>or rejects")):::human
+    h5(("Checkpoint 5<br/>Architect accepts or rejects<br/>for the customer")):::human
     x1 --> g10
     g10 -. "fail: a scenario failed — back to the crew of its stage" .-> x1
-    g10 -- "only finding: no decision yet" --> h5
+    g10 -- pass --> h5
   end
 
   subgraph P12["12 · SUP.9 Problem resolution management — on a reported defect"]
@@ -1075,7 +1076,7 @@ The always-on gates run on every change, whatever the stage (§ 5 *What CI fails
 | 8 Software verification (SWE.6 Software verification) | create_software_tests_plugin writes the software section of the verification plan, a software-level test per requirement (system-level ones end-to-end), the measurements of the measured ones and the observability definitions, in a test-only commit; then create_unit_code_plugin changes the code until they pass, never editing a test | check_verification_plan_gate, verify_test_first_gate, verify_software_tests_to_requirements_link_gate, verify_nfr_thresholds_gate, check_verification_report_gate, check_time_budget_gate; principle: check_observability_gate | — |
 | 9 Quality assurance (SUP.1 Quality assurance) | Opens the PR; CI re-runs every gate; review_pull_request_plugin reviews from its own account with the checklist | principle: scan_security_gate (check_nonconformances_gate, check_escalations_gate, report_quality_trends_gate, check_retro_actions_gate run at release, step 11) | A person, on every architecture PR and 1 in N others |
 | 10 Configuration management (SUP.8 Configuration management) | Merges to the main branch; for a release, opens the release pull request with the release record (write_release_tool), and CI tags the merge | check_config_items_gate, check_track_rule_gate; principle: verify_architecture_tests_gate; at release: verify_baseline_gate | — |
-| 11 Validation (VAL.1 Validation) | create_validation_scenarios_plugin writes, from the wishes only, the validation scenarios and the validation section of the verification plan; for a release, after the deployment to staging, write_validation_record_tool records the deployed commit and the results, and the customer decides | verify_acceptance_to_wishes_link_gate, verify_release_evidence_gate; at release, for SUP.1: check_nonconformances_gate, check_escalations_gate, report_quality_trends_gate, check_retro_actions_gate | Customer accepts or rejects the release |
+| 11 Validation (VAL.1 Validation) | create_validation_scenarios_plugin writes, from the wishes only, the validation scenarios and the validation section of the verification plan; for a release, after the deployment to staging, write_validation_record_tool records the deployed commit and the results, and the architect decides for the customer on the pull request from checkpoint/5 | verify_acceptance_to_wishes_link_gate, verify_release_evidence_gate; at release, for SUP.1: check_nonconformances_gate, check_escalations_gate, report_quality_trends_gate, check_retro_actions_gate | Architect accepts or rejects the release, on behalf of the customer |
 | 12 Problem resolution (SUP.9 Problem resolution management) | On a defect: records and analyses the problem as an issue; create_unit_tests_plugin reproduces it with a failing test marked *@problem[n]*, then create_unit_code_plugin fixes it; its gates run on every pull request once the flow is done | check_problem_record_gate, check_urgent_fix_gate, verify_problem_closure_gate; at release: report_problem_trends_gate | — |
 | 13 Change request (SUP.10 Change request management) | On a changed wish: records and analyses the change request as an issue; once the architect approves it, the change re-enters the flow at stage 1, and every pull request that builds it names it; its gates run on every pull request once the flow is done | check_change_record_gate, verify_change_approval_gate, verify_change_trace_gate; at release: verify_change_closure_gate | Architect approves the change (*/approve-change*) |
 
@@ -1110,9 +1111,9 @@ and CI fails on three things:
    still enforced, until it is brought up to the changed requirements and
    recorded again, naming them. A changed requirement needs no decision
    record of its own: a record is written only for a real choice.
-3. **A missing seal 4 or 5.** A pull request waiting for a person's approval
-   — the results, or a question of what is wanted — or a release waiting for
-   the customer's decision, fails, so it does not
+3. **A missing seal.** A pull request waiting for a person's approval
+   — the results, a question of what is wanted, or a checkpoint's pull
+   request waiting for the architect — fails, so it does not
    merge before it.
 
 The **current stage**, the first one not done and never finished, is work in
@@ -1153,8 +1154,8 @@ contradict a constraint; it decides only what is still open.
 
 **Who.** The agent proposes the stack, through *create_architecture_plugin*, with
 a decision record naming the alternatives considered and why this one fits the
-requirements. The architect approves it at **checkpoint 3**, recorded like every
-other approval (*approval.v1*). Checkpoints are numbered in the order they occur:
+requirements. The architect approves it at **checkpoint 3**, on its pull request
+from *checkpoint/3*, like every other checkpoint. Checkpoints are numbered in the order they occur:
 1 diagram, 2 requirements, 3 tech stack, 4 the results of software
 verification, 5 acceptance.
 
@@ -1830,10 +1831,12 @@ sequenceDiagram
         end
         OR->>REPO: Each criterion rewritten to the reading chosen, checked again, the page rendered again
       end
-      OR->>CP: Copy the person's decision from the pull request
-      CP->>H: Opens the pull request's changes while no person decided
-      H-->>CP: Approve, or request changes with the reason, on the code host
-      CP->>REPO: Approval copied (who, which review, which commit, SHA-256 of every file covered)
+      OR->>CP: Wait for the architect on the pull request from checkpoint/n
+      H-->>CP: Approve, or request changes with the reason, on the code host (the watcher opens it)
+      CP->>REPO: The approved head merged: the merge commit is the record
+      opt seal 5
+        CP->>H: The GitHub Release opens: accepted on behalf of the customer
+      end
     else not_implemented or invalid_config
       OR->>H: Report the reason, and stop
     end
@@ -1986,19 +1989,21 @@ Customer: wishes ──► Agent: draft diagram ──► Architect: corrects + 
    ──► Reviewer agent on every PR; a person on a question of what is wanted
    ──► Person: approves the results of software verification (4)
    ──► Merge (baseline) ──► Release pull request deployed to staging by the person
-   ──► Customer: acceptance (5) ──► merged, tagged by CI
+   ──► Architect, for the customer: acceptance (5) ──► merged, tagged and published by CI
 ```
 
-**Human checkpoints.** Five points where a person decides, each recorded so a
-gate can verify it happened:
+**Human checkpoints.** Five points where a person decides, each on the code
+host, so a gate can verify it happened. Checkpoints 1, 2, 3 and 5 are one
+person, qf.yaml *review.architect*; each travels in a pull request from
+*checkpoint/&lt;n&gt;*, which the agent merges only after their approval:
 
 | # | Checkpoint | Who | What they decide | Recorded as |
 |---|---|---|---|---|
-| 1 | Diagram approval | Architect | "This is the shape I want" — before any requirement is derived | A review on the host, copied to an approval file that names it |
-| 2 | Approval of the derived requirements | Architect | "These requirements say what I meant" — the last point before the build where the architect can still read everything, because requirements are plain text | A review on the host, copied to an approval file that names it |
-| 3 | Approval of the tech stack | Architect | "This stack fits the requirements and the constraints" — before any component is designed | A review on the host, copied to an approval file that names it |
+| 1 | Diagram approval | Architect | "This is the shape I want" — before any requirement is derived | The architect's approval of the *checkpoint/&lt;n&gt;* pull request, and its merge |
+| 2 | Approval of the derived requirements | Architect | "These requirements say what I meant" — the last point before the build where the architect can still read everything, because requirements are plain text | The architect's approval of the *checkpoint/&lt;n&gt;* pull request, and its merge |
+| 3 | Approval of the tech stack | Architect | "This stack fits the requirements and the constraints" — before any component is designed | The architect's approval of the *checkpoint/&lt;n&gt;* pull request, and its merge |
 | 4 | Approval of the results | A person | "What I wanted was achieved" — after software verification, requirement by requirement, on the pull request that brings the results: each high-criticality and security requirement it proves and every one that did not pass, with its test told in plain words and its result | A review on the host, with the answers in CI's review comment |
-| 5 | Acceptance of the release | Customer | "This is what I needed" (VAL.1) | A review of the release pull request on the host, copied to an approval file that names it |
+| 5 | Acceptance of the release | Architect, on behalf of the customer | "This is what the customer needed" (VAL.1) | The architect's approval of the *checkpoint/5* pull request, its merge, and the GitHub Release naming both |
 
 ### Keeping concerns separate
 
@@ -2220,11 +2225,11 @@ and format).
 | *agent/load_skills_tool.py* | The slot's plugin plus the stage's framework skills |
 | *agent/run_gates_tool.py* | Runs the stage's gates and collects their findings, in the order asked for: the gates that run the product's commands one at a time first, the others in parallel |
 | *agent/count_retries_tool.py* | Counts attempts: 3 retries in a row, then the architect; a pass starts a new round |
-| *agent/record_checkpoint_tool.py* | Copies the person's decision at checkpoint 1, 2, 3 or 5 — their review of the pull request on the code host — as *approval.v1*, naming the review; with none yet, opens the pull request's changes for them |
+| *agent/record_checkpoint_tool.py* | Waits for the architect's decision at checkpoint 1, 2, 3 or 5 on the pull request from *checkpoint/&lt;n&gt;*, and merges its approved head with a merge commit once the crossing sign is ready — the record of the checkpoint; prints the reason of a request for changes; at checkpoint 5 opens the published GitHub Release |
 | *agent/record_stage_done_tool.py* | Writes the stage done record as *stage_done.v1*, for a stage without a closing checkpoint once its gates pass; for a stage built from the requirements (stages 4 to 7), again after requirements changed, naming them |
-| *agent/render_diagram_review_tool.py* | Renders the diagrams' review page for checkpoint 1 from the committed files: each diagram's pictures with its rules and wish links, what changed since the previous approval marked; the diagram contract gate renders it again to compare, and record_checkpoint_tool refuses an approval on a page the files no longer render |
+| *agent/render_diagram_review_tool.py* | Renders the diagrams' review page for checkpoint 1 from the committed files: each diagram's pictures with its rules and wish links, what changed since the previous approval marked; the diagram contract gate renders it again to compare, and record_checkpoint_tool merges no approval of a page the files no longer render |
 | *agent/render_decisions_tool.py* | Renders the decisions page from the decision records, in the one layout, nothing folded: waiting for the person, answered by them, decided by the agent (each with a *Change this* link), recorded with the architecture; prints the person's decision as the card and records their answer; the decision records gate renders it again to compare |
-| *agent/render_review_tool.py* | Renders the requirements' review page for checkpoint 2 from the committed files, what changed since the previous approval marked; the approval gate renders it again to compare, and record_checkpoint_tool refuses an approval on a page the files no longer render |
+| *agent/render_review_tool.py* | Renders the requirements' review page for checkpoint 2 from the committed files, what changed since the previous approval marked; the approval gate renders it again to compare, and record_checkpoint_tool merges no approval of a page the files no longer render |
 | *agent/run_aspice_agent.md* | The orchestrator: the only LLM part; holds ODD's common steps — Authorize, Classify, Track before write, Close |
 | *agent/describe_tests_prompt.md* | The prompt of the session that describes each test from the test alone, never the requirement, for the person's review (§ 5 stage 9, rule 14) |
 | *agent/expect_cases_prompt.md* | The prompt of the session that lists the cases each acceptance criterion needs tested, from the criteria alone, never the tests or the code, for the reviewer agent's comparison (§ 5 stage 9, rule 14) |
@@ -2379,7 +2384,6 @@ where it is stored and who reads it. The core ones:
 | **qf.v1** | The framework configuration | *qf.yaml* | The paths of every work product, the slots, the reviewers and the people called in, the approvers |
 | **review.v1** | What the reviewer agent hands to the person's review | A *```yaml review* block in the reviewer agent's approval | *person* (*none*, or a condition 1–5 with its reason), *findings* (each with its outcome: fixed, withdrawn, disputed), *summary*, *stories* (each changed design told: steps with their sources, gaps marked), *tests* (each software-level test described: prepares, does, checks, not) |
 | **stack.v2** | The product's tech stack: one row per tool, in its area | A YAML work product of stage 3, approved at checkpoint 3 | See *The tech stack* |
-| **approval.v1** | One checkpoint decision | One YAML file under the approvals path | Checkpoint 1–5 with the role it needs (architect for 1–3, reviewer for 4, customer for 5); *approved* or *changes-requested* (which requires a comment, fed back as findings); **SHA-256 of every file approved**, so an approval is bound to the exact content |
 | **findings.v1** | A gate's result | JSON on the gate's stdout | *gate*, *result* (pass / fail) and *findings*: each with *gate*, *rule* (UPPER_SNAKE_CASE), *file*, *line* (or null for the whole file) and *message*. Pass has no findings; fail has at least one |
 
 **One record per schema.** A schema checks one record; rules across records (a
@@ -2622,8 +2626,11 @@ requirements).
 7. **Retries are logged.** Every attempt is written to *.qf/attempts/&lt;stage&gt;/*
    in the product (ignored by git), so the agent can resume and the escalation
    carries the findings of every attempt.
-8. **Approval files are dated.** *&lt;approvals_dir&gt;/&lt;date&gt;-checkpoint-&lt;n&gt;-&lt;subject&gt;.yaml*;
-   the latest one for a checkpoint and subject counts.
+8. **A checkpoint's record is its merge.** The pull request from
+   *checkpoint/&lt;n&gt;*, merged with GitHub's merge commit (*Merge pull
+   request #&lt;number&gt; from &lt;owner&gt;/checkpoint/&lt;n&gt;*, its second
+   parent the approved head); the latest merge of a checkpoint in the history
+   counts.
 9. **Acceptance criteria state their case.** Every acceptance criterion is
    *happy* (the intended behaviour), *edge* (a boundary or unusual input) or
    *error* (a failure and how it is handled). Every requirement has a happy
@@ -2718,8 +2725,8 @@ requirements).
     committed files and the baseline commit only: no clock, no machine, a
     fixed order. While it awaits approval, a gate renders it again from the
     committed files and compares byte for byte, so a page that is stale or
-    edited by hand fails, and an approval is not recorded on a page the
-    files no longer render. Once approved, the approval's hashes hold it,
+    edited by hand fails, and an approval of a page the files no longer
+    render is not merged. Once approved, the approved head holds it,
     so a later framework version that renders differently withdraws no
     approval. That every field of every contract appears on the page is a
     test of the framework, not a gate of the product.
@@ -2727,16 +2734,14 @@ requirements).
     approval of checkpoint 1 covers the pictures and the diagrams' review
     page with the diagrams; that of
     checkpoint 2 covers the review page with the requirements and the
-    glossary, and the diagrams they are derived from — all through the
-    hashes every approval already holds. Changing any of them withdraws
+    glossary, and the diagrams they are derived from — all as the approved
+    head holds them. Changing any of them withdraws
     it: a changed diagram sends the product back to checkpoint 1, then to
     checkpoint 2, where the requirements are reviewed against it. Approving
-    again restores it, at every checkpoint: the order — the approval before
-    the work derived from it (APPROVED_TOO_LATE) — is checked against the
-    first approval at the checkpoint, so a corrected input approved again
-    needs only an approval of its current content. The derived work's
-    moment is its first commit's author date, which a rebase, amend or
-    cherry-pick keeps.
+    again restores it, at every checkpoint: a corrected input approved again
+    needs only an approval of its current content. The order — the approval
+    before the work derived from it — follows from the flow: the derived
+    work starts on the main branch after the checkpoint's merge.
 26. **A participant is a part of the architecture diagram.** Every
     participant of a sequence diagram is a node of an architecture diagram,
     under the same ID (*check_diagram_contract_gate*, UNKNOWN_PARTICIPANT).
@@ -3622,9 +3627,10 @@ joins the main branch, and a release is recorded as the official baseline.
 
 1. **A release is a pull request.** A release pull request adds a release
    record: the version, the configuration items changed since the previous
-   release, and the framework version. The release gates run on it, and the
-   customer accepts it there (seal 5, stage 11). After the merge, CI tags the
-   merge commit with an annotated tag and checks it.
+   release, and the framework version. It comes from *checkpoint/5*; the
+   release gates run on it, and the architect accepts it there on behalf of
+   the customer (seal 5, stage 11). After the merge, CI tags the merge commit
+   with an annotated tag, checks it, and publishes the GitHub Release.
 2. **The version number is computed.** SemVer from the Conventional Commits
    since the previous release tag: a breaking change (*!* or *BREAKING
    CHANGE:*) is major, *feat* is minor, anything else is patch; the first
@@ -3632,12 +3638,13 @@ joins the main branch, and a release is recorded as the official baseline.
 3. **What runs on every pull request.** *check_commit_conventions_gate*
    (every non-merge commit is a Conventional Commit naming a requirement or
    issue; only the branch names that carry meaning are checked — *arch/slug*
-   for the architecture track and *release/v&lt;version&gt;* for a release — and
+   for the architecture track and *checkpoint/&lt;n&gt;* for a checkpoint's
+   work, the release's included — and
    any other name is free, since every commit names its reason),
    *verify_history_kept_gate* (rule 7),
    *check_config_items_gate*, *check_track_rule_gate*
    (architecture and feature paths never in one pull request; architecture
-   changes from an *arch/* branch) and *verify_architecture_tests_gate* (an
+   changes from an *arch/* branch, the stack from *checkpoint/3*) and *verify_architecture_tests_gate* (an
    architecture pull request contains no code).
 4. **The configuration items.** Every path declared in *qf.v1* plus the
    framework pin and *qf.yaml* itself; a product may add items in *qf.v1
@@ -3671,8 +3678,8 @@ joins the main branch, and a release is recorded as the official baseline.
     of losing the repository or the framework repository (Appendix A.9).
 11. **Names.** The release record *releases/&lt;version&gt;.yaml* (*qf.v1
    releases_dir*, *release.v1* with *version*, *changed* and *framework*); the
-   *qf.v1* field *config_items*; the release branch
-   *release/v&lt;version&gt;*; the tool *write_release_tool*; the rulebook
+   *qf.v1* field *config_items*; the release branch *checkpoint/5*; the tool
+   *write_release_tool* (with *--notes*, the GitHub Release's text); the rulebook
    *record_baseline_skill*; the CI template *templates/github/release.yml*;
    the rule IDs NOT_CONVENTIONAL, MISSING_REQUIREMENT_TOKEN, BAD_BRANCH_NAME,
    MAIN_REWRITTEN, MISSING_CONFIG_ITEM, UNTRACKED_CONFIG_ITEM, MIXED_TRACKS,
@@ -3681,15 +3688,16 @@ joins the main branch, and a release is recorded as the official baseline.
 
 #### Validation stage — stage 11
 
-Stage 11 (VAL.1 Validation) is the village crossing: the customer checks, on
-a staging deployment, that the product serves what they wished for, and
-accepts or rejects the release (seal 5).
+Stage 11 (VAL.1 Validation) is the village crossing: the product is checked,
+on a staging deployment, against what the customer wished for, and the
+architect accepts or rejects the release on the customer's behalf (seal 5).
 
-1. **Seal 5 is the customer's review.** The customer's decision is
-   checkpoint 5: they approve the release pull request on the code host, or
-   request changes with the reason; *record_checkpoint_tool* copies the
-   review to the approvals folder with the role *customer*. It covers, by hash,
-   the release record and the validation record of the proposed release, so a
+1. **Seal 5 is the architect's review, for the customer.** Checkpoint 5:
+   qf.yaml *review.architect* approves the release pull request from
+   *checkpoint/5* on the code host on behalf of qf.yaml *customer*, or
+   requests changes with the reason; the customer needs no host account.
+   *record_checkpoint_tool* merges the approved head; the merge covers the
+   release record and the validation record as that head holds them, so a
    changed record withdraws it.
 2. **One validation record per release.** *validation.v1* names the
    environment, the deployed commit and, per scenario, the technique and the
@@ -3734,21 +3742,22 @@ accepts or rejects the release (seal 5).
    fix after the deployment means a new deployment and a new record.
 9. **The release's own evidence is not a configuration change.** The
    validation records, like the release records, are evidence of a baseline,
-   not items of it; checkpoint 5 approvals are left out when the changed items
-   are computed, since they are written after the release record.
-10. **Seal 5 blocks the merge.** A recorded checkpoint does not fail CI by
-    itself, so *verify_release_evidence_gate* checks the decision while a
-    release is proposed: none yet, or one that no longer matches the records,
-    is MISSING_CUSTOMER_DECISION; a rejection is RELEASE_REJECTED. The resolver
-    shows *awaiting_checkpoint* while MISSING_CUSTOMER_DECISION is the only
-    finding. Checkpoint 5 is due only while a release is proposed; a delivery
-    passes stage 11 without it.
+   not items of it.
+10. **Seal 5 holds the merge.** The release pull request waits for the
+    architect's approval of its head (*verify_delivery_reviewed_gate*,
+    MISSING_PERSON_APPROVAL), and only the agent merges it, after that
+    approval; a merge without it is UNAPPROVED_MERGE. Checkpoint 5 is due
+    only while a release is proposed; a delivery passes stage 11 without it.
+    After the merge, the release workflow tags it and publishes the GitHub
+    Release: *Release &lt;version&gt;. Accepted on behalf of &lt;customer&gt;
+    by @&lt;architect&gt;, #&lt;number&gt;.* A request for changes closes the
+    pull request, and its reason comes back as a new or changed wish.
 11. **A failed scenario blocks the release.** The customer is asked only about
     a release whose recorded results all pass; a failure is fixed, deployed
     and run again, or the release is dropped (FAILED_SCENARIO).
 12. **The per-wish summary.** While a release is proposed, the verification
     report has a validation section: per wish, its scenarios and their
-    results, and the customer's decision.
+    results, and whether checkpoint 5 is approved.
 13. **The SUP.1 release gates run here.** *check_nonconformances_gate*,
     *check_escalations_gate*, *report_quality_trends_gate* and
     *check_retro_actions_gate* run at stage 11 and act while a release is
@@ -3765,8 +3774,8 @@ accepts or rejects the release (seal 5).
     *--environment* and *--commit*); the rule IDs MISSING_SCENARIO,
     UNKNOWN_WISH, UNVALIDATED_WISH, MISSING_VALIDATION_RECORD,
     WRONG_DEPLOYED_COMMIT, MISSING_RESULT, UNKNOWN_SCENARIO, FAILED_SCENARIO,
-    MISSING_CUSTOMER_DECISION, RELEASE_REJECTED, MISSING_VALIDATION_SECTION and
-    UNSELECTED_SCENARIO. UNSELECTED_SCENARIO is a scenario the plan's
+    MISSING_VALIDATION_SECTION and UNSELECTED_SCENARIO; the *qf.v1* field
+    *customer*. UNSELECTED_SCENARIO is a scenario the plan's
     validation section does not list; MISSING_RESULT an automated scenario
     without a result; UNVALIDATED_WISH an affected wish without one.
 15. **The scenarios folder is required once it exists.** It is the one
@@ -4162,9 +4171,9 @@ label together.
 
   | # | Scenario | O | S | D | Risk | Decision | Residual |
   |---|---|---|---|---|---|---|---|
-  | S1 | Work derived before the first approval; the approval stamps it | 7 | 7 | 6 | 294 | The first approval at the checkpoint precedes the first derived file (APPROVED_TOO_LATE) | low |
+  | S1 | Work derived before the first approval; the approval stamps it | 7 | 7 | 6 | 294 | The first approval at the checkpoint precedes the first derived file (APPROVED_TOO_LATE); since v4.0.0 the flow itself: the derived work starts on the main branch after the checkpoint's merge, and work brought into the checkpoint's pull request is in front of the architect | low |
   | S4 | A correction approved, the downstream review skipped | 6 | 7 | 7 | 294 | Already closed: the downstream approval hashes its input (APPROVAL_OUTDATED); a journey test walks the whole correction | low |
-  | S5 | Commit dates rewritten by a rebase, amend or cherry-pick make a late approval look on time | 5 | 5 | 8 | 200 | The author date, which they keep | a deliberate *--date* |
+  | S5 | Commit dates rewritten by a rebase, amend or cherry-pick make a late approval look on time | 5 | 5 | 8 | 200 | The author date, which they keep; since v4.0.0 no date is compared: the merge's place in the history counts | — |
   | S3 | Derived work edited before the corrected input is approved | 7 | 4 | 6 | 168 | Accepted: the downstream checkpoint reviews it against the corrected input | 168 |
   | S2 | A correction can never be approved | 8 | 9 | 2 | 144 | Only the first approval is ordered; a later one covers the current content | low |
 
@@ -5083,7 +5092,30 @@ label together.
   no decision the agent can write in the person's name. Records written
   before stay as they are. *Not taken:* the resolver reading the host at every
   stage (it stays offline; the copy is checked in CI); a decision file
-  approved again at the final head (v3.9.0's rule, dropped).
+  approved again at the final head (v3.9.0's rule, dropped). *Superseded*
+  (v4.0.0): no copy at all, the next entry.
+
+- **The checkpoint is its merged pull request** (2026-10-30, v4.0.0, Alex:
+  start greenfield, the user experience first; no customer GitHub account, no
+  paste). A copy needs a proof, and the proof was checked only in CI and only
+  for the copies a pull request changed; the customer at checkpoint 5 needed a
+  host account. *Chosen:* the work of checkpoint *n* travels from branch
+  *checkpoint/n*; qf.yaml *review.architect* approves its head on the host —
+  at checkpoint 5 on behalf of qf.yaml *customer*; the agent merges with a
+  merge commit only after that approval and a *Ready to merge* sign
+  (*record_checkpoint_tool*), and the merge is the record. Every gate reads it
+  from git, offline; *verify_delivery_reviewed_gate* checks the latest merge
+  of every checkpoint against the host on every run (UNAPPROVED_MERGE), and
+  a checkpoint pull request waits for the architect (MISSING_PERSON_APPROVAL).
+  The release workflow publishes the GitHub Release, which names who accepted
+  on whose behalf, and the tool opens it. It works on GitHub's free plan for a
+  private repository. *Not taken:* branch protection with required reviewers
+  and a GitHub Environment for the release — the usual setup, a paid plan for
+  a private repository; the customer's own approval on the host, which needs
+  their account; a written acceptance committed by a representative, a paste
+  in another form; the date check APPROVED_TOO_LATE, which the flow makes
+  structural and which an existing product's checkpoints, approved again as
+  pull requests, would fail.
 
 ### A.9 Configuration management stage — stage 10
 
@@ -5142,7 +5174,10 @@ label together.
   *chore/&lt;n&gt;-&lt;slug&gt;* form for work outside the requirements (tooling,
   documentation, a framework bump), one more rule repeating what the commits
   say; the former *feature/* and *bugfix/REQ-&lt;n&gt;-&lt;slug&gt;* forms, which
-  left such work without a valid branch.
+  left such work without a valid branch. *Changed* (v4.0.0): *checkpoint/&lt;n&gt;*
+  replaces *release/v&lt;version&gt;* — the release is checkpoint 5's pull
+  request — and *checkpoint/3* carries the stack, so the track rule accepts it
+  as an architecture branch.
 
 ### A.10 Validation stage — stage 11
 
@@ -5151,6 +5186,9 @@ label together.
   host account and use the pull request page. *Superseded* (2026-10-30,
   FB-69, Alex: every approval is given on the code host): the customer's
   review of the release pull request, copied to the approval file.
+  *Superseded again* (2026-10-30, v4.0.0, Alex: no customer GitHub account):
+  the architect approves the release pull request on the customer's behalf;
+  its merge is the record (A.8).
 - **Validation records** (2026-10-12, D54 option B). *Chosen:* one record per
   release, automated results filled in by a tool, hand results by the person.
   *Not taken:* A — automated scenarios only, leaving out the guided demo and

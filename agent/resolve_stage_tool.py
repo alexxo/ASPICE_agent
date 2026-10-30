@@ -20,8 +20,7 @@ What fails (findings) and what is only reported (reported), § 5 What CI fails o
   code host run only where one is configured;
 - every finished stage: a checkpoint approved once, or a stage done record —
   breaking its work fails;
-- a missing seal 4 or 5: a pull request waiting for a person's approval, a
-  release waiting for the customer's decision.
+- a missing seal 4: a pull request waiting for a person's approval.
 The current stage, never finished, is work in progress (status in_progress): its
 findings are reported and enforced where it ends — at its checkpoint and at the
 release: while a release is proposed, every stage is enforced. Every gate not
@@ -70,13 +69,11 @@ from tools.read_product_config_tool import (  # noqa: E402
 )
 from tools.write_release_tool import pending  # noqa: E402
 
-__all__ = ["CUSTOMER_DECISION", "HOST_APPROVAL", "needs_record", "resolve_stage"]
+__all__ = ["HOST_APPROVAL", "needs_record", "resolve_stage"]
 
 HOST_APPROVAL = "MISSING_PERSON_APPROVAL"  # verify_delivery_reviewed_gate: seal 4 not given yet
 # the person's review of seal 4 not answered, or changed after their approval: still seal 4
 PERSON_REVIEW = {HOST_APPROVAL, "REVIEW_ITEMS_UNANSWERED", "REVIEW_CHANGED_AFTER_APPROVAL"}
-CUSTOMER_DECISION = "MISSING_CUSTOMER_DECISION"  # verify_release_evidence_gate: seal 5 not yet
-SEALS = PERSON_REVIEW | {CUSTOMER_DECISION}
 
 
 def resolve_stage(root: Path) -> dict:
@@ -198,16 +195,11 @@ def _stop(s, walked, ahead, done, status, reason, findings=(), reported=(), skip
 
 def _failing(s: Stage, findings: list[dict], finished: bool, stop, skipped=()) -> dict:
     """A stage's failing gates: enforced once it was finished, else reported."""
-    waiting = _awaited(s, {f["rule"] for f in findings})
-    if waiting:
-        return stop(
-            "awaiting_checkpoint", f"checkpoint {s.checkpoint}: {waiting}", findings, (), skipped
-        )
     if finished:
         reason = f"{len(findings)} finding(s) in a finished stage"
         return stop("gates_failing", reason, findings, (), skipped)
-    seals = [f for f in findings if f["rule"] in SEALS]
-    rest = [f for f in findings if f["rule"] not in SEALS]
+    seals = [f for f in findings if f["rule"] in PERSON_REVIEW]
+    rest = [f for f in findings if f["rule"] not in PERSON_REVIEW]
     reason = f"{len(rest)} finding(s) reported: the stage is in progress"
     return stop("in_progress", reason, seals, rest, skipped)
 
@@ -269,15 +261,6 @@ def _not_run(walked, ahead, skipped) -> list[dict]:
             seen.add(entry["gate"])
             unique.append(entry)
     return unique
-
-
-def _awaited(s, rules: set[str]) -> str | None:
-    """What the stage waits for when the only finding is the customer's decision on
-    the release (seal 5), checked by a gate so CI blocks the merge. Seal 4, a
-    person's review on the host, is an always-on gate's finding."""
-    if s.checkpoint and not s.checkpoint_on_host and rules == {CUSTOMER_DECISION}:
-        return "the customer's decision on the release"
-    return None
 
 
 def main(argv: list[str] | None = None) -> int:

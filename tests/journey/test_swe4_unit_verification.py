@@ -15,10 +15,9 @@ Each rule a step could break is its gate's unit tests' to prove, and the
 resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
-from datetime import datetime, timezone
-
 import pytest
 from product_builder import (
+    approve_checkpoint,
     build_python_product,
     commit_all,
     install_plugins,
@@ -30,12 +29,10 @@ from product_builder import (
 from agent.count_retries_tool import decide, record_attempt
 from agent.load_skills_tool import load_skills
 from agent.read_stages_tool import stage
-from agent.record_checkpoint_tool import record_checkpoint
 from agent.record_stage_done_tool import record_stage_done
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import reached_gates, run_gates
 
-APPROVED = datetime(2026, 10, 4, 15, 0, tzinfo=timezone.utc)
 DESIGNED = ["diagram", "requirements", "architecture", "detailed_design"]
 
 
@@ -50,10 +47,7 @@ def product(tmp_path):
     root = build_python_product(tmp_path / "product")
     install_plugins(root)
     for checkpoint in (1, 2, 3):
-        record_checkpoint(
-            root, checkpoint, "approved", "Example Architect", "architect", now=APPROVED
-        )
-    commit_all(root, "docs(approvals): checkpoints 1 to 3 REQ-0047")
+        approve_checkpoint(root, checkpoint)
     record_stages_done(root, "architecture", "detailed_design")
     commit_all(root, "docs(approvals): stages 3 and 4 done REQ-0047")
     state = resolve_stage(root)

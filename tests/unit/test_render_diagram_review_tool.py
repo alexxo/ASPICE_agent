@@ -1,10 +1,8 @@
 """agent/render_diagram_review_tool.py — the page a person reads before checkpoint 1."""
 
-import pytest
 import yaml
-from product_builder import commit_all
+from product_builder import approve_checkpoint
 
-from agent.record_checkpoint_tool import record_checkpoint
 from agent.render_diagram_review_tool import (
     diagram_review_findings,
     diagram_review_page,
@@ -43,11 +41,10 @@ def test_the_page_shows_the_pictures_rules_and_wish_links(product):
 
 def test_a_changed_rule_is_marked_against_the_previous_approval(product):
     """FB-57: a rule changes, the picture does not; the page shows it."""
-    record_checkpoint(product, 1, "approved", "Alex", "architect")
-    commit_all(product, "checkpoint 1 approved")
+    approve_checkpoint(product, 1, number=4)
     _add_rule(product)
     page = render(_config(product))
-    assert "1 new · 1 changed · 0 removed" in page
+    assert "1 new · 1 changed · 0 removed</b> since the previous approval, #4" in page
     rule = page[page.index("INV-1") : page.index("</tr>", page.index("INV-1"))]
     assert "<del>" in rule and "<ins>three" in rule
     assert '<tr class="term new"><td class="mark">new</td><td class="rule"><div>INV-2' in page
@@ -57,15 +54,14 @@ def test_the_page_is_required_and_kept_current_until_approved(product):
     assert _rules(product) == []
     _add_rule(product)
     assert _rules(product) == ["REVIEW_PAGE_OUTDATED"]
-    with pytest.raises(ValueError, match="docs/diagrams/review.html is missing or not what"):
-        record_checkpoint(product, 1, "approved", "Alex", "architect")
     render_diagram_review(product)
-    record_checkpoint(product, 1, "approved", "Alex", "architect")
+    approve_checkpoint(product, 1)
     diagram_review_page(_config(product)).unlink()
     assert _rules(product) == ["MISSING_REVIEW_PAGE"]
 
 
 def test_the_approval_covers_the_page(product):
-    path = record_checkpoint(product, 1, "approved", "Alex", "architect")
-    covered = [s["path"] for s in yaml.safe_load(path.read_text())["subject"]]
+    from tools.read_approvals_tool import subject_files
+
+    covered = [_config(product).relative(f) for f in subject_files(_config(product), "diagrams")]
     assert "docs/diagrams/review.html" in covered

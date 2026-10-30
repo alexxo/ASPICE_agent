@@ -3,7 +3,7 @@
 import shutil
 
 import pytest
-from product_builder import commit_all
+from product_builder import approve_checkpoint, commit_all
 
 
 @pytest.fixture
@@ -23,4 +23,5 @@ def product(repo_root, tmp_path, isolated_home):
     standin.parent.mkdir(parents=True)
     standin.write_text("---\nname: archify\ndescription: stand-in for the test\n---\n")
     commit_all(root, "example product at the start of SWE.1")  # the approval gate needs history
+    approve_checkpoint(root, 1)  # the architect approved the diagrams on the host
     return root

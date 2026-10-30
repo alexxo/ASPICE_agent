@@ -15,15 +15,13 @@ resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
 import shutil
-from datetime import datetime, timezone
 
-from product_builder import render_reviews
+from product_builder import approve_checkpoint, render_reviews
 
 from agent.count_retries_tool import decide, record_attempt
 from agent.load_skills_tool import load_skills
 from agent.read_config_tool import read_config
 from agent.read_stages_tool import stage
-from agent.record_checkpoint_tool import record_checkpoint
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import run_gates
 
@@ -74,8 +72,7 @@ def test_requirements_that_pass_the_gates_move_on_after_checkpoint_2(repo_root, 
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("requirements", "awaiting_checkpoint")
 
-    now = datetime(2026, 10, 4, 15, 0, tzinfo=timezone.utc)
-    record_checkpoint(product, 2, "approved", "Example Architect", "architect", now=now)
+    approve_checkpoint(product, 2)
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("architecture", "in_progress")
     assert state["reported"][0]["rule"] == "MISSING_STACK"

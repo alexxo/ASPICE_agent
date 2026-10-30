@@ -95,6 +95,8 @@ slots:
 review:
   agents: [qf-reviewer-bot]
   people: [lead-bob]
+  architect: lead-bob
+customer: Carla Village
 urgent_approvers: [lead-bob]
 change_approvers: [lead-bob]
 escalate_after_days: 30

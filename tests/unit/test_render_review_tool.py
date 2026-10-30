@@ -2,26 +2,21 @@
 
 import html
 import re
-from datetime import datetime, timezone
 
-from product_builder import build_product, commit_all
+from product_builder import approve_checkpoint, build_product, commit_all
 
-from agent.record_checkpoint_tool import record_checkpoint
 from agent.render_review_tool import main, render, render_review, review_page
 from tools.read_product_config_tool import read_product_config
 from tools.read_requirements_tool import read_requirements
 from tools.read_yaml_blocks_tool import read_yaml_blocks
-
-NOW = datetime(2026, 10, 4, 9, 0, tzinfo=timezone.utc)
 
 
 def _page(root):
     return render(read_product_config(root))
 
 
-def _approve(root, hour=9):
-    record_checkpoint(root, 2, "approved", "Alex", "architect", now=NOW.replace(hour=hour))
-    commit_all(root, "checkpoint 2 approved")
+def _approve(root, number=2):
+    approve_checkpoint(root, 2, number=number)
 
 
 def _leaves(value):
@@ -142,14 +137,14 @@ def test_the_approval_of_what_the_page_shows_is_not_its_baseline(product):
 
 
 def test_a_second_approval_compares_with_the_first(product):
-    _approve(product, hour=9)
+    _approve(product, number=3)
     _change(product, "Five failed", "Three failed")
     render_review(product)
     commit_all(product, "requirements changed")
-    _approve(product, hour=10)
+    _approve(product, number=8)
     _change(product, "Three failed", "Four failed")
     page = _page(product)
-    assert "2026-10-04T100000Z-checkpoint-2-requirements.yaml" in page
+    assert "since the previous approval, #8" in page
     assert "<del>Three</del><ins>Four</ins> failed" in page
 
 

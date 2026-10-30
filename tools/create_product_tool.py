@@ -7,8 +7,8 @@ framework exists once (decisions 1 and 3 of starting a product):
 
     git clone --branch v3.10.0 <framework repository> my-product/.framework
     python my-product/.framework/tools/create_product_tool.py --root my-product \\
-        --reviewer-agent LOGIN --person LOGIN --urgent-approver LOGIN \\
-        --change-approver LOGIN \\
+        --reviewer-agent LOGIN --person LOGIN --architect LOGIN --customer NAME \\
+        --urgent-approver LOGIN --change-approver LOGIN \\
         --code-owner @LOGIN-OR-@ORG/TEAM
 
 The setup makes the folder a git repository if it is none, and adopts the clone
@@ -127,7 +127,12 @@ def product_config(args: argparse.Namespace) -> dict:
         "contract": "qf.v1",
         "paths": dict(PATHS),
         "slots": dict(SLOTS),
-        "review": {"agents": args.reviewer_agent, "people": args.person},
+        "review": {
+            "agents": args.reviewer_agent,
+            "people": args.person,
+            "architect": args.architect,
+        },
+        "customer": args.customer,
         "urgent_approvers": args.urgent_approver,
         "change_approvers": args.change_approver,
         "escalate_after_days": ESCALATE_AFTER_DAYS,
@@ -288,6 +293,10 @@ def main(argv: list[str] | None = None) -> int:
         ("--code-owner", "an owner of the CI file, the framework pin and the architecture"),
     ):
         parser.add_argument(flag, action="append", required=True, help=f"{what}; repeatable")
+    parser.add_argument(
+        "--architect", required=True, help="the host account that decides every checkpoint"
+    )
+    parser.add_argument("--customer", required=True, help="who the product is built for, by name")
     args = parser.parse_args(argv)
     root = args.root.resolve()
     kept = (root / FEEDBACK).exists()

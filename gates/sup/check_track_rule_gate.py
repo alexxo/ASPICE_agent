@@ -4,9 +4,10 @@ A pull request that changes qf.yaml paths.architecture_dir is an architecture
 pull request (as for the person's sample, verify_delivery_reviewed_gate). It changes
 no feature-track work product — the detailed design, the verification plan, the
 environment variables, the integration and software tests, the observability
-definitions (MIXED_TRACKS) — and comes from an arch/<slug> branch
-(ARCHITECTURE_OFF_BRANCH). The code is verify_architecture_tests_gate's. The
-pull request is base..HEAD, as for every history gate.
+definitions (MIXED_TRACKS) — and comes from an arch/<slug> branch, or from
+checkpoint/3, the stack's checkpoint (ARCHITECTURE_OFF_BRANCH). The code is
+verify_architecture_tests_gate's. The pull request is base..HEAD, as for every
+history gate.
 
     python gates/sup/check_track_rule_gate.py [--root PRODUCT] [--base REF]
 """
@@ -25,7 +26,7 @@ from tools.read_product_config_tool import ProductConfig  # noqa: E402
 from tools.run_gate_command_tool import run_gate_command  # noqa: E402
 
 GATE = "check_track_rule_gate"
-ARCH_PREFIX = "arch/"
+ARCH_BRANCHES = ("arch/", "checkpoint/3")
 
 
 def changed_paths(config: ProductConfig, base: str | None) -> list[str]:
@@ -72,7 +73,7 @@ def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
             )
         )
     name = branch(config.root)
-    if not (name or "").startswith(ARCH_PREFIX):
+    if not (name or "").startswith(ARCH_BRANCHES):
         findings.append(
             Finding(
                 "ARCHITECTURE_OFF_BRANCH",

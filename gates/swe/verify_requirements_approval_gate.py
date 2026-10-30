@@ -1,11 +1,10 @@
 """verify_requirements_approval_gate — SWE.1: requirements approved at checkpoint 2 before design.
 
 While no design work exists, nothing has to be approved yet. Once the stack,
-an architecture file or a detailed-design file exists, the latest checkpoint-2
-decision must approve the current requirements, glossary and the diagrams they
-are derived from, and the first approval at checkpoint 2 must be dated before
-the first of those files appeared (from git history): a changed diagram
-withdraws the approval, and approving again restores it.
+an architecture file or a detailed-design file exists, the latest
+merged checkpoint/2 pull request must approve the current requirements,
+glossary and the diagrams they are derived from (from git history): a changed
+diagram withdraws the approval, and approving again restores it.
 
 Once requirements exist, the person reviews them on the review page: it must
 exist, and while no current approval covers it, match what

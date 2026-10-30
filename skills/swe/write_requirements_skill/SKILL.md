@@ -24,8 +24,9 @@ contract.
 - The **approved diagrams** — their element lists (*diagram.v1*): the
   system-level diagrams (architecture, workflow, dataflow, lifecycle) for
   system-level requirements, the feature's sequence diagram for software-level
-  requirements. A diagram without a recorded
-  checkpoint-1 approval (*approval.v1*) is not an input.
+  requirements. A diagram without a current
+  checkpoint-1 approval (the merged pull request from *checkpoint/1*) is not
+  an input.
 - The **customer's wishes** (*W-01*, *W-02*, …) — the origin of constraint
   requirements the diagram cannot show (e.g. *must run on Java 21*).
 - **qf.yaml** — *paths.requirements_dir* and *paths.glossary_file*.

@@ -8,19 +8,15 @@ the gates not run.
 import subprocess
 import sys
 from dataclasses import replace
-from datetime import datetime, timezone
 
-from product_builder import baseline_requirements, build_product
+from product_builder import approve_checkpoint, baseline_requirements, build_product
 
 from agent.read_stages_tool import flow_stages
-from agent.record_checkpoint_tool import record_checkpoint
 from agent.resolve_stage_tool import resolve_stage
-
-NOW = datetime(2026, 10, 4, 9, 0, tzinfo=timezone.utc)
 
 
 def _approve_diagrams(root):
-    record_checkpoint(root, 1, "approved", "Alex", "architect", now=NOW)
+    approve_checkpoint(root, 1)
 
 
 def test_a_diagram_without_requirements_awaits_checkpoint_1(tmp_path):
@@ -31,7 +27,7 @@ def test_a_diagram_without_requirements_awaits_checkpoint_1(tmp_path):
 
 def _approve_requirements(root):
     _approve_diagrams(root)
-    record_checkpoint(root, 2, "approved", "Alex", "architect", now=NOW.replace(hour=10))
+    approve_checkpoint(root, 2)
 
 
 def test_planned_gates_are_reported_as_not_run(product, monkeypatch):

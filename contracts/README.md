@@ -31,8 +31,7 @@ versioned in its name, with valid and invalid examples under `examples/<name>/`.
 | `change_request.v1` | One change request (SUP.10 BP1, BP2, BP4): what, initiator, reason, status; then the affected wishes, diagram elements and requirements, dependencies, size, the problem that caused it | A fenced `yaml change_request` block in the body of a host issue labelled *change-request*; its commits name it `#<n>` | check_change_record_gate, verify_change_approval_gate, verify_change_trace_gate, verify_change_closure_gate |
 | `choice.v1` | One decision put to a person, in plain words: the question, the options in sentences, the options to select by number, and a proposal when something decides one | none on disk: written by the agent or a tool, printed by agent/ask_person_tool.py | agent/ask_person_tool.py, tools/post_checkpoint_review_tool.py, tools/watch_reviews_tool.py |
 | `env_variable.v1` | One environment variable the code reads (principle #23): description, required, example, valid values | A fenced `yaml env_variable` block in `paths.env_variables_file`, written with the detailed design | check_detailed_design_contract_gate, check_env_config_gate |
-| `question.v1` | The unclear criteria of the requirements and the person's answers (SWE.1 BP1): the criteria and terms checked, each question with its readings, examples, proposal and source, and the answer | `<requirements_dir>/questions.yaml`, written by agent/record_answer_tool.py | verify_requirements_approval_gate, render_review_tool, record_checkpoint_tool |
-| `approval.v1` | One human decision at a checkpoint | One YAML file under `paths.approvals_dir` | verify_diagram_approval_gate, verify_requirements_approval_gate, checkpoint recorder |
+| `question.v1` | The unclear criteria of the requirements and the person's answers (SWE.1 BP1): the criteria and terms checked, each question with its readings, examples, proposal and source, and the answer | `<requirements_dir>/questions.yaml`, written by agent/record_answer_tool.py | verify_requirements_approval_gate, render_review_tool, record_checkpoint_tool (refuses to merge while one is open) |
 | `stage_done.v1` | The record that a stage without a closing checkpoint was finished once: its gates passed (§ 5 *What CI fails on*) | One YAML file `<date>-stage-<n>-done.yaml` under `paths.approvals_dir`, written by the agent | resolve_stage_tool, record_stage_done_tool |
 | `findings.v1` | A gate's result | JSON on the gate's stdout | Gate runner, retry policy |
 
@@ -57,8 +56,10 @@ versioned in its name, with valid and invalid examples under `examples/<name>/`.
   validation scenarios against a deployed release and which no requirement
   names. Each suite runs with a test runner of `stack.v2`, which pins its
   version.
-- **An approval is bound to content.** It lists the SHA-256 of every file it
-  covers; a changed file no longer matches its approval.
+- **An approval is no file.** The architect approves a checkpoint's pull
+  request on the code host; its merge commit is the record, and the approval
+  covers the files as the approved head holds them: a changed file withdraws
+  it.
 
 ## Tests
 

@@ -2,13 +2,10 @@
 
 While no requirement exists, there is nothing to have been approved yet, and the
 gate passes — a pull request with a diagram awaiting review is not blocked. Once
-requirements exist, the latest checkpoint-1 decision must be an approval of the
-diagrams' current content, and the first approval at checkpoint 1 must be dated
-no later than the moment the first requirement file was derived: its first
-commit, or now if it is not committed yet. Corrected diagrams approved again
-need only that approval to be current (§ 5 stages 1 and 2, rule 25). That
-moment comes from the product's git history, so outside a git repository the
-order cannot be shown and the gate fails closed.
+requirements exist, the latest merged checkpoint/1 pull request must approve
+the diagrams' current content (§ 5 stages 1 and 2, rule 25). The approval is
+read from the product's git history, so outside a git repository it cannot be
+shown and the gate fails closed.
 
     python gates/swe/verify_diagram_approval_gate.py [--root PRODUCT]
 """

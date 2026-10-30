@@ -6,8 +6,9 @@ glossary terms. Every field of every record is shown; glossary terms are in
 italics, each acceptance criterion coloured by its case, a threshold in bold.
 
 What is new, changed or removed is marked against the previous approval of
-checkpoint 2: the latest approval of other content than the page shows, its
-files read from git at the commit that added it. A changed row marks the words
+checkpoint 2: the latest merged checkpoint/2 pull request that approved other
+content than the page shows, its files read from git at the head it approved.
+A changed row marks the words
 removed and added; a summary counts the changes and names the diagram files
 changed since that approval, which the requirements are derived from. At the
 first approval nothing is marked.
@@ -21,8 +22,8 @@ ones.
 
 The page depends only on the files it shows and that commit — no clock, no
 machine, a fixed order — so the approval gate renders it again and compares
-byte for byte, and record_checkpoint_tool refuses an approval on a page the
-files no longer render (§ 5 stages 1 and 2, rules 22–25). The agent never
+byte for byte, and record_checkpoint_tool refuses to merge an approval of a
+page the files no longer render (§ 5 stages 1 and 2, rules 22–25). The agent never
 writes it by hand; it renders it, and commits it, before the person reviews.
 The diagrams have their own page (agent/render_diagram_review_tool.py).
 
@@ -52,19 +53,21 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
 
 from agent.record_answer_tool import items, neither, place, read_questions  # noqa: E402
 from agent.record_answer_tool import label as about_label  # noqa: E402
-from tools.check_approval_order_tool import in_git  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
-from tools.read_approvals_tool import approval_state, sha256, subject_files  # noqa: E402
+from tools.read_approvals_tool import (  # noqa: E402
+    approval_state,
+    changed_files,
+    checkpoint_merges,
+    previous_approval,
+)
 from tools.read_product_config_tool import ProductConfig, read_product_config  # noqa: E402
 from tools.read_requirements_tool import read_requirements  # noqa: E402
 from tools.read_yaml_blocks_tool import (  # noqa: E402
-    YamlReadError,
     read_yaml_blocks,
-    read_yaml_file,
 )
 from tools.render_page_tool import card, open_page  # noqa: E402
 from tools.render_page_tool import page as layout  # noqa: E402
-from tools.validate_contract_tool import contract_path, validate  # noqa: E402
+from tools.validate_contract_tool import contract_path  # noqa: E402
 
 __all__ = ["open_page", "render", "render_review", "review_page", "review_page_findings"]
 
@@ -95,7 +98,8 @@ def render_review(root: Path) -> Path:
 
 def render(config: ProductConfig) -> str:
     """The review page's text, from the files as they are and the previous approval."""
-    baseline, commit, recorded = _baseline(config)
+    previous = previous_approval(config, 2, "requirements")
+    commit = previous.head if previous else None
     old: list[dict] | None = None
     if commit is not None:
         with tempfile.TemporaryDirectory() as folder:
@@ -113,8 +117,8 @@ def render(config: ProductConfig) -> str:
         counts = {mark: sum(c[mark] for _, c in rendered) for mark in ("new", "changed", "removed")}
         summary = (
             f"<b>{counts['new']} new · {counts['changed']} changed · {counts['removed']} "
-            f"removed</b> since the previous approval, {html.escape(baseline)}, at commit "
-            f"<code>{commit}</code>. {_diagrams_changed(config, recorded)}"
+            f"removed</b> since the previous approval, #{previous.number}, at commit "
+            f"<code>{commit}</code>. {_diagrams_changed(config, commit)}"
             '<label><input type="checkbox" '
             "onchange=\"document.body.classList.toggle('only', this.checked)\"> "
             "Show changes only</label>"
@@ -205,22 +209,9 @@ def page_order(config: ProductConfig) -> list[str]:
 
 def approved_config(config: ProductConfig, folder: Path) -> ProductConfig | None:
     """The requirements and the glossary as the latest approval of checkpoint 2
-    approved them, copied under folder; None when none is committed."""
-    approvals = config.approvals_dir
-    for path in (
-        sorted(approvals.glob("*-checkpoint-2-requirements.yaml"), reverse=True)
-        if (approvals.is_dir())
-        else []
-    ):
-        try:
-            data = read_yaml_file(path)
-        except YamlReadError:
-            continue
-        if validate(data, "approval") or data["decision"] != "approved":
-            continue
-        commit = _added_in(config.root, path)
-        return _config_at(config, commit, folder) if commit else None
-    return None
+    approved them, copied under folder; None before the first."""
+    merges = checkpoint_merges(config.root, 2)
+    return _config_at(config, merges[-1].head, folder) if merges else None
 
 
 def _block_row(file: str, block) -> dict:
@@ -247,58 +238,14 @@ def _label(field: str) -> str:
 # --- the baseline: the previous approval's files, from git -------------------------------
 
 
-def _baseline(config: ProductConfig) -> tuple[str, str | None, dict[str, str]]:
-    """The previous approval, the commit that added it and the hashes it records: the
-    latest approval of other content than the page shows. No commit when there is
-    none, or it is not committed."""
-    shown = {
-        config.relative(f): sha256(f)
-        for f in subject_files(config, "requirements")
-        if f.suffix != ".html"
-    }
-    folder = config.approvals_dir
-    pattern = "*-checkpoint-2-requirements.yaml"
-    for path in sorted(folder.glob(pattern), reverse=True) if folder.is_dir() else []:
-        try:
-            data = read_yaml_file(path)
-        except YamlReadError:
-            continue
-        if validate(data, "approval") or data["decision"] != "approved":
-            continue
-        recorded = {
-            s["path"]: s["sha256"] for s in data["subject"] if not s["path"].endswith(".html")
-        }
-        if recorded == shown:
-            continue  # the approval of what the page shows, not the previous one
-        commit = _added_in(config.root, path)
-        return config.relative(path), commit, recorded if commit else {}
-    return "", None, {}
-
-
-def _diagrams_changed(config: ProductConfig, recorded: dict[str, str]) -> str:
-    """The diagram files changed since the previous approval, if it recorded them."""
+def _diagrams_changed(config: ProductConfig, commit: str) -> str:
+    """The diagram files changed since the previous approval."""
     folder = config.relative(config.diagrams_dir) + "/"
-    before = {p: h for p, h in recorded.items() if p.startswith(folder)}
-    if not before:
-        return ""
-    now = {
-        config.relative(f): sha256(f)
-        for f in subject_files(config, "requirements")
-        if config.relative(f).startswith(folder)
-    }
-    changed = sorted(p for p in set(before) | set(now) if before.get(p) != now.get(p))
+    changed = [p for p in changed_files(config, "requirements", commit) if p.startswith(folder)]
     if not changed:
         return "The diagrams are unchanged. "
     names = ", ".join(f"<code>{html.escape(p)}</code>" for p in changed)
     return f"<b>The diagrams changed:</b> {names} — check the requirements derived from them. "
-
-
-def _added_in(root: Path, file: Path) -> str | None:
-    if not in_git(root):
-        return None
-    added = _git(root, "log", "--diff-filter=A", "--format=%H", "--", str(file.resolve()))
-    commits = added.split()
-    return commits[-1] if commits else None
 
 
 def _config_at(config: ProductConfig, commit: str, folder: Path) -> ProductConfig:

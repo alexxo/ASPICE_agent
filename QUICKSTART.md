@@ -84,18 +84,25 @@ keep the answers for step 5. This file calls them *reviewer*, *developer* and
   approves every architecture change and every change to `qf.yaml` or
   `.gitmodules`, and gives the checkpoints, urgent fixes and change
   requests. The setup names them as `--person`, so CI's review comments
-  mention them and GitHub notifies them.
+  mention them and GitHub notifies them, and as `--architect`: they decide
+  every checkpoint on its pull request, and accept each release on behalf of
+  the customer.
+- **customer**: who the product is built for, by name (`--customer`). They
+  need no GitHub account: the GitHub Release of each release says who
+  accepted it on their behalf.
 - **developer**: works with the agent and opens the pull requests.
 - **reviewer-bot**: the reviewer agent's own GitHub account, which posts the
   agent's reviews. Its approvals never count as a person's.
 
-**Three accounts are enough.** The setup in step 5 asks for five values, but
-one account can fill several of them:
+**Three accounts are enough.** The setup in step 5 asks for seven values, but
+one account can fill several of them, and the customer is only a name:
 
 | The setup asks for | Filled by |
 |---|---|
 | reviewer agent | the **reviewer-bot** account |
 | person | the **reviewer** account |
+| architect | the **reviewer** account |
+| customer | a name, no account |
 | code owner | the **reviewer** account |
 | urgent approver | the **reviewer** account |
 | change approver | the **reviewer** account |
@@ -368,7 +375,12 @@ wishes. Tell the person how the work runs from now on:
   question, then **Review changes → Approve** — or **Request changes** with
   the reason. Only an approval reads the ticks: after changing a tick, they
   approve again. With nothing to tick, the comment says so: they only approve.
-  They also give the checkpoint decisions the agent asks for.
+  They also decide each checkpoint on its pull request from branch
+  `checkpoint/<n>` — the diagrams (1), the requirements (2), the stack (3)
+  and the release (5), the last on behalf of the customer: **Approve**, or
+  **Request changes** with the reason. The watcher opens the pull request for
+  them; once they approve, the agent merges it, and after a release the
+  GitHub Release opens on its own.
 - **The agent merges**, never a person: only when the pull request's check
   **qf/merge** on its current head says *Ready to merge*, and exactly that
   head (`--match-head-commit`). While it says *Wait: …* it names what

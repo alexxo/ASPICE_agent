@@ -17,21 +17,18 @@ resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
 import shutil
-from datetime import datetime, timezone
 
 import yaml
-from product_builder import commit_all, render_reviews
+from product_builder import approve_checkpoint, commit_all, render_reviews
 
 from agent.count_retries_tool import decide, record_attempt
 from agent.load_skills_tool import load_skills
 from agent.read_stages_tool import stage
-from agent.record_checkpoint_tool import record_checkpoint
 from agent.record_stage_done_tool import record_stage_done
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import reached_gates, run_gates
 
 OUTPUTS = "tests/journey/plugin_outputs"
-APPROVED = datetime(2026, 10, 4, 15, 0, tzinfo=timezone.utc)
 
 
 def _write(repo_root, product, output):
@@ -45,12 +42,10 @@ def _architecture_done(repo_root, product):
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(repo_root / OUTPUTS / "requirements" / "correct" / "login.md", target)
     render_reviews(product)
-    record_checkpoint(product, 2, "approved", "Example Architect", "architect", now=APPROVED)
-    commit_all(product, "requirements approved at checkpoint 2")
+    approve_checkpoint(product, 2)
     _write(repo_root, product, "architecture/stack")
     commit_all(product, "stack written")
-    record_checkpoint(product, 3, "approved", "Example Architect", "architect")
-    commit_all(product, "stack approved at checkpoint 3")
+    approve_checkpoint(product, 3)
     _write(repo_root, product, "architecture/correct")
     commit_all(product, "architecture written")
     record_stage_done(product, "architecture")

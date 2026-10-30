@@ -10,6 +10,7 @@
     "paths",
     "slots",
     "review",
+    "customer",
     "urgent_approvers",
     "change_approvers",
     "escalate_after_days"
@@ -183,7 +184,8 @@
       "additionalProperties": false,
       "required": [
         "agents",
-        "people"
+        "people",
+        "architect"
       ],
       "properties": {
         "agents": {
@@ -205,8 +207,18 @@
             "type": "string",
             "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$"
           }
+        },
+        "architect": {
+          "description": "The host account of the person who decides every checkpoint (1, 2, 3 and 5): they approve the pull request from branch checkpoint/<n>, or request changes with the reason; at checkpoint 5 on behalf of the customer. The agent merges only after their approval (record_checkpoint_tool), and CI checks every checkpoint merge against it (UNAPPROVED_MERGE).",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$"
         }
       }
+    },
+    "customer": {
+      "description": "Who the product is built for, by name: the architect accepts each release on their behalf at checkpoint 5, and the GitHub Release says so (\"Accepted on behalf of <customer> by @<architect>\"). The customer needs no host account.",
+      "type": "string",
+      "minLength": 1
     },
     "config_items": {
       "description": "The product's own configuration items, added to the framework's list (every path above and qf.yaml); never a way to remove one (SUP.8 BP1).",

@@ -5,14 +5,12 @@ a release is proposed — a release record with no tag yet — it has a validati
 record that follows validation.v1 and is named after its version
 (MISSING_VALIDATION_RECORD); the deployed commit is in the pull request's
 history and holds the release record, and since it nothing changed but the
-validation record and the customer's decision (WRONG_DEPLOYED_COMMIT, decision 8
-of the validation stage); every result names an existing scenario
-(UNKNOWN_SCENARIO), every automated scenario has a result (MISSING_RESULT), and
-none failed (FAILED_SCENARIO, decision 11). The customer accepted the release —
-checkpoint 5, given in the customer role as approval.v1 requires, still matching
-both records — or the merge
-waits: MISSING_CUSTOMER_DECISION, or RELEASE_REJECTED with the customer's reason
-(decision 10). Without a release there is nothing to check.
+validation record (WRONG_DEPLOYED_COMMIT, decision 8 of the validation stage);
+every result names an existing scenario (UNKNOWN_SCENARIO), every automated
+scenario has a result (MISSING_RESULT), and none failed (FAILED_SCENARIO,
+decision 11). The acceptance itself is checkpoint 5: the architect approves the
+release's pull request from branch checkpoint/5 on behalf of the customer, and
+the agent merges it (decision 10). Without a release there is nothing to check.
 
     python gates/val/verify_release_evidence_gate.py [--root PRODUCT]
 """
@@ -28,14 +26,12 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tools.emit_findings_tool import Finding  # noqa: E402
-from tools.read_approvals_tool import approval_state  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
 from tools.run_gate_command_tool import run_gate_command  # noqa: E402
 from tools.run_stack_commands_tool import read_stack  # noqa: E402
 from tools.write_release_tool import (  # noqa: E402
     in_tree,
     pending,
-    release_decisions,
     release_tags,
 )
 from tools.write_validation_record_tool import (  # noqa: E402
@@ -60,8 +56,6 @@ def check(config: ProductConfig) -> list[Finding]:
     versions = pending(config)
     for version in versions:
         findings += _proposed(config, version)
-    if versions:
-        findings += _decision(config)
     return findings
 
 
@@ -124,7 +118,7 @@ def _deployed(config: ProductConfig, version: str, commit: str, shown: str) -> l
         why = f"the deployed commit {commit[:12]} is not in this release's history"
     else:
         # The release record is no exception: a deployment before it was no release.
-        allowed = [shown, release_decisions(config)]
+        allowed = [shown]
         changed = _git(root, "diff", "--name-only", commit, "--").stdout.split()
         changed += _git(root, "ls-files", "--others", "--exclude-standard").stdout.split()
         later = sorted(p for p in changed if not any(fnmatch.fnmatch(p, a) for a in allowed))
@@ -140,32 +134,6 @@ def _deployed(config: ProductConfig, version: str, commit: str, shown: str) -> l
             shown,
             None,
             f"Release {version}: {why}. Deploy the release's head and record the run again.",
-        )
-    ]
-
-
-def _decision(config: ProductConfig) -> list[Finding]:
-    state = approval_state(config, 5, "release")
-    if state.status == "changes_requested":
-        return [
-            Finding(
-                "RELEASE_REJECTED",
-                config.relative(state.path),
-                None,
-                f"The customer rejected the release ({state.reason}); close its pull request "
-                "and bring the reason back as a new or changed wish.",
-            )
-        ]
-    if state.status == "approved":
-        return []
-    return [
-        Finding(
-            "MISSING_CUSTOMER_DECISION",
-            config.relative(config.approvals_dir),
-            None,
-            f"The release waits for the customer's decision ({state.reason}): they approve "
-            "the release pull request on the code host; copy it with "
-            "agent/record_checkpoint_tool.py --checkpoint 5 --pull-request N.",
         )
     ]
 

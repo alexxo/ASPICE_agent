@@ -10,6 +10,7 @@ from product_builder import (
     HOST_REPO,
     PERSON,
     add_origin,
+    approve_checkpoint,
     build_product,
     comment,
     commit_all,
@@ -533,45 +534,55 @@ def test_the_results_list_the_expected_cases_of_every_requirement_they_prove(
     assert found({**record, "expected": untested, "person": asked}) == []
 
 
-# --- a checkpoint decision is a copy of a person's review on the host (FB-69) ---
-
-DECISION = "docs/approvals/2026-10-30T090000Z-checkpoint-2-requirements.yaml"
+# --- a checkpoint is decided by the architect on the host (v4.0.0) ---
 
 
-def _decision(product, review=None, approver=PERSON):
-    import yaml
-
-    data = {
-        "checkpoint": 2,
-        "decision": "approved",
-        "approver": {"name": approver, "role": "architect"},
-        "date": "2026-10-30T09:00:00+00:00",
-        "subject": [{"path": "docs/requirements/login.md", "sha256": "0" * 64}],
-    }
-    if review:
-        data["review"] = review
-    path = product / DECISION
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data))
-    commit_all(product, "docs: checkpoint 2")
-    return git_head(product)
-
-
-def test_a_copied_persons_review_proves_the_decision(product, tmp_path, monkeypatch):
-    head = _decision(product, {"pull_request": 1, "id": 41, "commit": "a" * 40})
-    reviews = [review(AGENT, head), review(PERSON, "a" * 40, id=41)]
-    pull = pull_request(1, head, files=[DECISION], reviews=reviews)
+def test_a_checkpoint_pull_request_waits_for_the_architect(product, tmp_path, monkeypatch):
+    subprocess.run(["git", "-C", str(product), "checkout", "-q", "-b", "checkpoint/2"], check=True)
+    head = git_head(product)
+    other = [review(AGENT, head), review("lead-eve", head)]
+    pull = pull_request(1, head, branch="checkpoint/2", reviews=other)
+    monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json", pulls=[pull])))
+    (finding,) = check(read_product_config(product))
+    assert finding.rule == "MISSING_PERSON_APPROVAL"
+    assert f"needs {PERSON}'s decision (why: checkpoint 2)" in finding.message
+    pull = pull_request(1, head, branch="checkpoint/2", reviews=[*other, review(PERSON, head)])
     assert _rules(product, tmp_path, monkeypatch, pull) == []
 
 
-def test_a_decision_naming_no_review_is_unproven(product, tmp_path, monkeypatch):
-    head = _decision(product)
-    pull = pull_request(1, head, files=[DECISION], reviews=[review(AGENT, head)])
-    assert _rules(product, tmp_path, monkeypatch, pull) == ["UNPROVEN_CHECKPOINT_DECISION"]
+def _checkpoint_merged(product, number, *reviewers):
+    """The checkpoint's pull request, merged into the history, as the host shows it."""
+    merge = approve_checkpoint(product, 2, number=number)
+    head = subprocess.run(
+        ["git", "-C", str(product), "rev-parse", f"{merge}^2"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    reviews = [review(r, head) for r in (AGENT, *reviewers)]
+    return pull_request(
+        number, head, branch="checkpoint/2", reviews=reviews, merged=True, commits=[head]
+    )
 
 
-def test_the_authors_own_review_decides_nothing(product, tmp_path, monkeypatch):
-    head = _decision(product, {"pull_request": 1, "id": 41, "commit": "a" * 40}, approver=AUTHOR)
-    reviews = [review(AGENT, head), review(AUTHOR, "a" * 40, id=41)]
-    pull = pull_request(1, head, files=[DECISION], reviews=reviews)
-    assert _rules(product, tmp_path, monkeypatch, pull) == ["UNPROVEN_CHECKPOINT_DECISION"]
+def _delivered(product):
+    head = git_head(product)
+    return pull_request(1, head, reviews=[review(AGENT, head)])
+
+
+def test_a_checkpoint_merged_without_the_architect_is_caught(product, tmp_path, monkeypatch):
+    unapproved = _checkpoint_merged(product, 5, "lead-eve")
+    pulls = (unapproved, _delivered(product))
+    assert _rules(product, tmp_path, monkeypatch, *pulls) == ["UNAPPROVED_MERGE"]
+
+
+def test_a_checkpoint_the_architect_approved_passes(product, tmp_path, monkeypatch):
+    approved = _checkpoint_merged(product, 5, PERSON)
+    assert _rules(product, tmp_path, monkeypatch, approved, _delivered(product)) == []
+
+
+def test_a_later_approved_merge_of_the_checkpoint_counts(product, tmp_path, monkeypatch):
+    unapproved = _checkpoint_merged(product, 5)
+    approved = _checkpoint_merged(product, 6, PERSON)
+    pulls = (unapproved, approved, _delivered(product))
+    assert _rules(product, tmp_path, monkeypatch, *pulls) == []

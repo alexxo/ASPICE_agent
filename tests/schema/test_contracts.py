@@ -88,7 +88,6 @@ def test_contracts_exist(repo_root):
         "retro_action",
         "change_request",
         "env_variable",
-        "approval",
         "findings",
     ):
         assert required in names, f"missing contract {required}"

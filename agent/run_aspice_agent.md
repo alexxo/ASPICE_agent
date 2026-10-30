@@ -229,12 +229,12 @@ never worked around.
 Commit naming its requirement or issue, on a branch named by convention; the
 architecture travels alone on an `arch/` branch. Once the accepted pull request
 is merged, the stage is done for a delivery. When the architect asks for a
-release, branch `release/v<version>` from main, run
+release, branch `checkpoint/5` from main, run
 `python <framework>/tools/write_release_tool.py --root <product>` — it works out
 the version and writes the record; never choose or edit either — commit it as
 `chore(release): <version>` naming the release's issue, and open its pull
-request. The village accepts it there (seal 5, stage 11); after the merge CI
-tags it. Never tag a release yourself, and never rewrite a pushed branch: no
+request. The architect accepts it there on behalf of the customer (seal 5,
+stage 11, step 8); after the merge CI tags it and publishes the GitHub Release. Never tag a release yourself, and never rewrite a pushed branch: no
 force-push, no reset of it — CI catches a rewrite of the main branch on the
 push itself. When main moved under your pull request, merge main into its
 branch; rebase only a branch you have never pushed, since its stage done
@@ -251,10 +251,10 @@ pipeline — never deploy yourself. Then run
 `python <framework>/tools/write_validation_record_tool.py --root <product> --environment <name> --commit <deployed sha>`,
 ask whoever ran each guided demo or trial use for its result, enter it in the
 record, and commit it. Nothing else may change after the deployment: a fix
-means a new deployment and a new record. Show the customer the validation
-section of the report (*tools/write_verification_report_tool.py*) and ask for
-their decision as a choice — accept the release, or reject it and say why
-(step 8). A failed scenario goes to the crew of the stage it
+means a new deployment and a new record. Show the architect the validation
+section of the report (*tools/write_verification_report_tool.py*); they accept
+the release on the pull request on behalf of the customer, or request changes
+with the reason (step 8). A failed scenario goes to the crew of the stage it
 belongs to; a rejection closes the release pull request, and its reason comes
 back as a new or changed wish.
 
@@ -312,13 +312,13 @@ for them (step 6, *Every pull request*), tell them which pull request waits and
 why (`reason`), and stop; once they approve, CI runs again and
 step 3 finds the stage done.
 
-Seal 5 is recorded here, with `--role customer`, and only the customer gives
-it. Until then CI stays red on the release pull request, so it cannot merge
-before the village accepts. Commit the decision to the pull request.
+Checkpoints 1, 2, 3 and 5 are decided on the code host by qf.yaml
+`review.architect` — at checkpoint 5 on behalf of qf.yaml `customer` — never in
+this session. The work of checkpoint `<n>` travels in a pull request from
+branch `checkpoint/<n>`; you never ask for the decision in the terminal and
+never write it down.
 
-For the other checkpoints, show the person the work product of the stage and
-ask for their decision as a choice: approve, or request changes (the reason
-follows), with a proposal and its reason. At checkpoint 1 that is the diagrams review page —
+First show the person the work product of the stage. At checkpoint 1 that is the diagrams review page —
 `python <framework>/agent/render_diagram_review_tool.py --root <product>`
 renders it: each diagram's pictures with its rules and wish links — at
 checkpoint 2 the requirements review page (step 6). Each render tool opens
@@ -330,20 +330,32 @@ never show the raw files. What a page marks
 changed is what changed since the person's previous approval. At
 checkpoint 3 it is the stack as a table — `python
 <framework>/tools/write_stack_table_tool.py --root <product>` prints it —
-with the full path of its decision record. The person decides on the code
-host, never in this session: commit and push the work, open its pull request
-if it has none, and run
+with the full path of its decision record; at checkpoint 5 the verification
+report's validation section (`validate_release_skill`). Then commit and push
+the work on `checkpoint/<n>`, open its pull request if it has none, and run, in
+the background:
 
 `QF_HOST_TOKEN="$(gh auth token)" python <framework>/agent/record_checkpoint_tool.py --checkpoint <n> --pull-request <number> --root <product>`
 
-With no decision yet it opens the pull request's changes in the browser —
-where the person chooses *Review changes → Approve*, or *Request changes* with
-the reason — prints the link and exits 3: wait, and run it again once they
-say they decided. Then it copies their review as the record (exit 0) and
-prints its path; commit and push it. Never write a record any other way, and
-never ask the person to paste a command: CI checks every record against the
-review it names (UNPROVEN_CHECKPOINT_DECISION). Changes requested: the review's
-reason is the findings for the next run.
+The watcher opens the pull request in the person's browser, where they choose
+*Review changes → Approve*, or *Request changes* with the reason. The tool
+checks every 30 seconds; tell the person once which pull request waits, then
+wait for it to end — never ask them to paste or confirm anything here.
+
+- **exit 0** — the architect approved the head and the crossing sign said
+  *Ready to merge*: the tool merged it with a merge commit, the record of the
+  checkpoint. Switch to the main branch and pull (`git switch main && git pull
+  --ff-only`); go back to step 3. At checkpoint 5 the tool waits for the
+  GitHub Release the release workflow publishes, and opens it.
+- **exit 4** — changes requested: the printed reason is the finding. Fix the
+  work on the same branch, push, and run the tool again. At checkpoint 2, if
+  the person says the diagram is wrong, the product goes back to the diagram
+  stage; at checkpoint 5, close the pull request and bring the reason back as a
+  new or changed wish.
+
+Never merge a checkpoint pull request any other way: CI checks every
+checkpoint merge against the architect's approval of the merged head
+(UNAPPROVED_MERGE).
 
 **Checkpoint 2 asks its questions first.** Open the review page; its
 questions are numbered top to bottom, as the page shows them. First the
@@ -382,22 +394,15 @@ back to step 4 with it — have the rewritten criteria checked again
 (*derive_requirements_plugin*, step 7), once: a criterion rewritten after its
 recheck is not checked a third time, and `--unchecked` no longer lists it.
 Render the page and show it: each
-question settled, its criterion marked changed. Ask for the decision as a
-choice — *Do you approve the requirements?*, approve or request changes —
-with the proposal and its reason (*every question settled, no open
-findings*). The approval is never part of the list of proposals. An approval is refused while a question is open.
+question settled, its criterion marked changed. Then commit, push and run
+record_checkpoint_tool as above: the architect decides on the pull request,
+and the tool never merges while a question is open or the page is not what
+the files render.
 
-- **approved** — commit the approval with the stage's work, in the same pull
-  request: the next stage is work in progress, so CI stays green. Go back to
-  step 3; the product moves to the next stage.
-- **changes-requested** — the comment is the finding: go back to step 4 with it.
-  At checkpoint 2, if the person says the diagram is wrong, the product goes back
-  to the diagram stage.
-
-The approval records the SHA-256 of every file it covers — at checkpoint 1
-the pictures and the diagrams review page, at checkpoint 2 the requirements
-review page, so it covers what the person saw;
-at checkpoint 2 also the diagrams the requirements are derived from. If any of
+The approval covers every file of the checkpoint as the approved head holds
+it — at checkpoint 1 the pictures and the diagrams review page, at checkpoint
+2 the requirements review page, so it covers what the person saw; at
+checkpoint 2 also the diagrams the requirements are derived from. If any of
 them changes later, the approval no longer counts and step 3 sends the product
 back here: a changed diagram brings back checkpoint 1, then checkpoint 2.
 

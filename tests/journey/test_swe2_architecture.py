@@ -17,21 +17,18 @@ resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
 import shutil
-from datetime import datetime, timezone
 
-from product_builder import commit_all, render_reviews, write_picture
+from product_builder import approve_checkpoint, commit_all, render_reviews, write_picture
 
 from agent.count_retries_tool import decide, record_attempt
 from agent.load_skills_tool import load_skills
 from agent.read_stages_tool import stage
-from agent.record_checkpoint_tool import record_checkpoint
 from agent.record_stage_done_tool import record_stage_done
 from agent.render_diagram_review_tool import render_diagram_review
 from agent.resolve_stage_tool import resolve_stage
 from agent.run_gates_tool import reached_gates, run_gates
 
 OUTPUTS = "tests/journey/plugin_outputs"
-APPROVED = datetime(2026, 10, 4, 15, 0, tzinfo=timezone.utc)
 
 
 def _write(repo_root, product, output):
@@ -45,8 +42,7 @@ def _requirements_approved(repo_root, product):
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(repo_root / OUTPUTS / "requirements" / "correct" / "login.md", target)
     render_reviews(product)
-    record_checkpoint(product, 2, "approved", "Example Architect", "architect", now=APPROVED)
-    commit_all(product, "requirements approved at checkpoint 2")
+    approve_checkpoint(product, 2)
 
 
 def _stack_written(repo_root, product):
@@ -72,8 +68,7 @@ def _stack_written(repo_root, product):
 def _stack_approved(repo_root, product):
     _requirements_approved(repo_root, product)
     _stack_written(repo_root, product)
-    record_checkpoint(product, 3, "approved", "Example Architect", "architect")
-    commit_all(product, "stack approved at checkpoint 3")
+    approve_checkpoint(product, 3)
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("architecture", "in_progress")
     assert [f["rule"] for f in state["reported"]] == ["NO_ARCHITECTURE"] * 2  # design + testability
@@ -123,15 +118,14 @@ def test_a_corrected_diagram_is_approved_again_and_the_product_resumes(repo_root
     assert (state["stage"], state["status"]) == ("diagram", "gates_failing")
     assert [f["rule"] for f in state["findings"]] == ["APPROVAL_OUTDATED"]
 
-    record_checkpoint(product, 1, "approved", "Example Architect", "architect")
+    approve_checkpoint(product, 1)
     render_reviews(product)
-    commit_all(product, "diagrams approved again at checkpoint 1")
+    commit_all(product, "docs: the requirements page against the new diagram #2")
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("requirements", "gates_failing")
-    assert [f["rule"] for f in state["findings"]] == ["APPROVAL_OUTDATED"]  # not APPROVED_TOO_LATE
+    assert [f["rule"] for f in state["findings"]] == ["APPROVAL_OUTDATED"]
 
-    record_checkpoint(product, 2, "approved", "Example Architect", "architect")
-    commit_all(product, "requirements approved again at checkpoint 2")
+    approve_checkpoint(product, 2)
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("detailed_design", "in_progress")
     assert state["done"] == ["diagram", "requirements", "architecture"]

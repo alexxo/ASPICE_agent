@@ -42,8 +42,9 @@ def record_stage_done(root: Path, stage_id: str, now: datetime | None = None) ->
     s = stage(stage_id)
     if not needs_record(s):
         raise ValueError(
-            f"stage {s.number} {s.id} closes with checkpoint {s.checkpoint}: its approval "
-            "records it, with record_checkpoint_tool"
+            f"stage {s.number} {s.id} closes with checkpoint {s.checkpoint}: the merge of its "
+            f"approved pull request from branch checkpoint/{s.checkpoint} records it "
+            "(record_checkpoint_tool)"
         )
     state = resolve_stage(root)
     if state["stage"] != s.id:

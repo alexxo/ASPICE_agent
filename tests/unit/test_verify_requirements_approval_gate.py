@@ -1,22 +1,17 @@
 """gates/swe/verify_requirements_approval_gate.py — requirements approved before the design."""
 
-from datetime import datetime, timedelta, timezone
+from product_builder import STACK, approve_checkpoint, build_product, detailed_design_doc
 
-from product_builder import STACK, build_product, detailed_design_doc
-
-from agent.record_checkpoint_tool import record_checkpoint
 from gates.swe.verify_requirements_approval_gate import GATE, check
 from tools.read_product_config_tool import read_product_config
-
-EARLIER = datetime(2026, 1, 1, 9, 0, tzinfo=timezone.utc)
 
 
 def _rules(root):
     return sorted(f.rule for f in check(read_product_config(root)))
 
 
-def _approve(root, when=EARLIER):
-    record_checkpoint(root, 2, "approved", "Alex", "architect", now=when)
+def _approve(root):
+    approve_checkpoint(root, 2)
 
 
 def test_gate_name_follows_the_convention():
@@ -52,13 +47,7 @@ def test_a_changed_requirement_makes_the_approval_outdated(tmp_path):
     _approve(root)
     login = next((root / "docs/requirements").glob("*.md"))
     login.write_text(login.read_text() + "\n")
-    assert _rules(root) == ["APPROVAL_OUTDATED"]
-
-
-def test_an_approval_given_after_the_design_is_reported(tmp_path):
-    root = build_product(tmp_path, stack=STACK)
-    _approve(root, when=datetime.now(timezone.utc) + timedelta(days=1))
-    assert _rules(root) == ["APPROVED_TOO_LATE"]
+    assert _rules(root) == ["APPROVAL_OUTDATED", "REVIEW_PAGE_OUTDATED"]  # marked against it
 
 
 def test_requirements_without_their_review_page_are_reported(tmp_path):
@@ -79,7 +68,7 @@ def test_a_changed_diagram_withdraws_the_approval(tmp_path):
     _approve(root)
     links = root / "docs/diagrams/login.wishes.yaml"
     links.write_text(links.read_text() + "\n")
-    assert _rules(root) == ["APPROVAL_OUTDATED"]
+    assert _rules(root) == ["APPROVAL_OUTDATED", "REVIEW_PAGE_OUTDATED"]
 
 
 def test_an_approved_review_page_is_held_by_the_approval(tmp_path, monkeypatch):

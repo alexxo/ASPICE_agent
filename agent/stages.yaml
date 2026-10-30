@@ -13,14 +13,16 @@
 #                 (stage 3: components only after the stack is approved); run
 #                 only while that approval is current
 #   planned_gates the stage's other gates, designed but not built; reported as not run
-#   checkpoint    the human checkpoint closing the stage, if any (1–5)
+#   checkpoint    the human checkpoint closing the stage, if any (1–5); the architect
+#                 approves the pull request from branch checkpoint/<n> on the code host
+#                 and its merge is the record (record_checkpoint_tool)
 #   approves      which files that checkpoint's approval covers; release (seal 5) is due
-#                 only while a release is proposed, and a gate checks it so CI blocks
-#                 the merge until the customer accepts
+#                 only while a release is proposed
 #   checkpoint_on_host
-#                 true: the checkpoint is a person's review on the code host, not a
-#                 file the agent records (seal 4); a gate checks it, and the stage
-#                 waits for it while that gate's only finding is the missing approval
+#                 true: the checkpoint is a person's review of a feature's pull request
+#                 that CI asks for (seal 4), with no branch of its own; a gate checks
+#                 it, and the stage waits for it while that gate's only finding is the
+#                 missing approval
 #   built_from_requirements
 #                 true: the stage builds from the requirements (stages 4 to 7); its
 #                 stage done record counts only while no requirement was added or

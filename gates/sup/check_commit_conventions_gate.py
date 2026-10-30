@@ -5,7 +5,8 @@ Commit, type(scope)?!?: subject (NOT_CONVENTIONAL), and names the requirement
 or issue it serves — REQ-<n> or #<n> — in its header or body
 (MISSING_REQUIREMENT_TOKEN); a revert git wrote (Revert "...") is exempt. Only
 the branch names that carry meaning are checked: arch/<slug> on the
-architecture track and release/v<version> for a release (BAD_BRANCH_NAME); any
+architecture track and checkpoint/<n> for a checkpoint's work, the release's
+(checkpoint 5) included (BAD_BRANCH_NAME); any
 other name is free, since every commit names its reason (decision 3 of the
 configuration management stage). On a push to the main branch the commits it
 adds are checked the same way, so a commit that reached it without a pull
@@ -53,10 +54,7 @@ _SLUG = r"[a-z0-9]+(-[a-z0-9]+)*"
 # The branch names that carry meaning: prefix → (the form it must have, shown).
 BRANCHES = {
     "arch/": (re.compile(rf"^arch/{_SLUG}$"), "arch/<slug>, e.g. arch/session-store"),
-    "release/": (
-        re.compile(r"^release/v[0-9]+\.[0-9]+\.[0-9]+$"),
-        "release/v<version>, e.g. release/v1.4.0",
-    ),
+    "checkpoint/": (re.compile(r"^checkpoint/[1235]$"), "checkpoint/<n>, n 1, 2, 3 or 5"),
 }
 
 

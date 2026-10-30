@@ -35,7 +35,9 @@ A commit message is a Conventional Commit, *type(scope)?!?: subject*, with type
 one of feat, fix, docs, style, refactor, perf, test, build, ci, chore or revert,
 and names the requirement or issue it serves (*REQ-0047*, *#12*) in its header
 or body. Two branch names carry meaning: *arch/&lt;slug&gt;* on the
-architecture track and *release/v&lt;version&gt;* for a release. Any other
+architecture track and *checkpoint/&lt;n&gt;* for a checkpoint's work —
+*checkpoint/5* for a release, *checkpoint/3* for the stack, which is
+architecture too. Any other
 name is free (e.g. *feature/REQ-0047-lockout*, *chore/ignore-archify*): every
 commit already names its reason.
 
@@ -49,7 +51,7 @@ minor, anything else the patch; the first release is 1.0.0. Run
 
     python .framework/tools/write_release_tool.py --root .
 
-on a *release/v&lt;version&gt;* branch to write the record, and commit it as
+on a *checkpoint/5* branch to write the record, and commit it as
 *chore(release): &lt;version&gt;* naming the release's issue.
 
 ## Rules
@@ -58,10 +60,10 @@ on a *release/v&lt;version&gt;* branch to write the record, and commit it as
 |---|---|---|
 | R1 | Every non-merge commit of the pull request, and of every push to the main branch, is a Conventional Commit | check_commit_conventions_gate · NOT_CONVENTIONAL |
 | R2 | Every such commit names the requirement or issue it serves, so every change on the main branch has a traceable reason | check_commit_conventions_gate · MISSING_REQUIREMENT_TOKEN |
-| R3 | A branch named *arch/* or *release/* has its form: *arch/&lt;slug&gt;* or *release/v&lt;version&gt;*; any other name is free | check_commit_conventions_gate · BAD_BRANCH_NAME |
+| R3 | A branch named *arch/* or *checkpoint/* has its form: *arch/&lt;slug&gt;* or *checkpoint/&lt;n&gt;*, n 1, 2, 3 or 5; any other name is free | check_commit_conventions_gate · BAD_BRANCH_NAME |
 | R4 | A push to the main branch keeps the previous main branch in its history; a rewrite is caught on the push, and the lost commits come back from any clone | verify_history_kept_gate · MAIN_REWRITTEN |
 | R5 | Every configuration item exists and is tracked by git — not missing, untracked or ignored | check_config_items_gate · MISSING_CONFIG_ITEM, UNTRACKED_CONFIG_ITEM |
-| R6 | A pull request that changes the architecture changes no feature-track work product, and comes from an arch/ branch | check_track_rule_gate · MIXED_TRACKS, ARCHITECTURE_OFF_BRANCH |
+| R6 | A pull request that changes the architecture changes no feature-track work product, and comes from an arch/ branch or, for the stack, from checkpoint/3 | check_track_rule_gate · MIXED_TRACKS, ARCHITECTURE_OFF_BRANCH |
 | R7 | A pull request that changes the architecture contains no code | verify_architecture_tests_gate · CODE_IN_ARCHITECTURE_PR |
 | R8 | A release record follows release.v1, is named after its version, lists exactly the items changed since the previous release, and names the pinned framework release | verify_baseline_gate · INCOMPLETE_RELEASE_RECORD |
 | R9 | A release's version is the one its commits give | verify_baseline_gate · WRONG_VERSION |

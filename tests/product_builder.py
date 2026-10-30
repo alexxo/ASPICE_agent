@@ -55,7 +55,8 @@ QF = {
             "quality-framework/derive_validation_scenarios_plugin"
         ),
     },
-    "review": {"agents": ["qf-reviewer-bot"], "people": ["lead-bob"]},
+    "review": {"agents": ["qf-reviewer-bot"], "people": ["lead-bob"], "architect": "lead-bob"},
+    "customer": "Carla Village",
     "urgent_approvers": ["lead-bob"],
     "change_approvers": ["lead-bob"],
     "escalate_after_days": 30,
@@ -659,6 +660,53 @@ def record_stages_done(root: Path, *stage_ids: str) -> None:
         record["commit"] = commit
         name = f"2026-10-04T0800{s.number:02d}Z-stage-{s.number}-done.yaml"
         (folder / name).write_text(yaml.safe_dump(record, sort_keys=False))
+
+
+def approve_checkpoint(root: Path, checkpoint: int, number: int | None = None) -> str:
+    """What merging an approved checkpoint pull request leaves in git
+    (record_checkpoint_tool): GitHub's merge commit of branch checkpoint/<n>, its
+    second parent the approved head — everything under root, committed first.
+    The pull request is #9<n> unless number says otherwise, apart from the
+    deliveries' numbers. Returns the merge commit."""
+    import subprocess
+
+    number = number or 90 + checkpoint
+    commit_all(root, f"docs: the work of checkpoint {checkpoint} #{number}")
+    git = ["git", "-C", str(root), "-c", "user.name=test", "-c", "user.email=test@example.org"]
+
+    def run(*args: str) -> str:
+        return subprocess.run([*git, *args], capture_output=True, text=True, check=True).stdout
+
+    parents = run("rev-list", "--parents", "-n", "1", "HEAD").split()
+    if len(parents) > 1:
+        base = parents[1]
+    else:  # the first commit: the main branch starts empty
+        empty = run("hash-object", "-t", "tree", "/dev/null").strip()
+        base = run("commit-tree", empty, "-m", "start").strip()
+    owner = HOST_REPO.split("/")[0]
+    message = f"Merge pull request #{number} from {owner}/checkpoint/{checkpoint}"
+    merge = run("commit-tree", "HEAD^{tree}", "-p", base, "-p", "HEAD", "-m", message).strip()
+    run("reset", "-q", "--soft", merge)
+    return merge
+
+
+def checkpoint_pulls(root: Path, approver: str = "lead-bob") -> list[dict]:
+    """The merged checkpoint pull requests of root's history as the host records
+    them: each head approved by the reviewer agent and the architect (approver)."""
+    from tools.read_approvals_tool import checkpoint_merges
+
+    return [
+        pull_request(
+            m.number,
+            m.head,
+            branch=f"checkpoint/{m.checkpoint}",
+            files=(),
+            reviews=[review(AGENT, m.head), review(approver, m.head)],
+            merged=True,
+            commits=[m.head, m.commit],
+        )
+        for m in checkpoint_merges(Path(root))
+    ]
 
 
 def commit_all(root: Path, message: str, env: dict[str, str] | None = None) -> None:
@@ -1458,7 +1506,8 @@ def open_delivery(
         reviews=[review(r, head) for r in reviewers],
         **({"files": files} if files is not None else {}),
     )
-    return write_host(Path(workdir) / "host.json", pulls=[pull], tags={"v6.0.0": framework})
+    pulls = [pull, *checkpoint_pulls(root)]
+    return write_host(Path(workdir) / "host.json", pulls=pulls, tags={"v6.0.0": framework})
 
 
 # ── configuration management (stage 10) ─────────────────────────────────────
@@ -1569,7 +1618,7 @@ def propose_release(root: Path, version: str = "1.0.0") -> None:
 
     from tools.write_release_tool import main as write_release
 
-    subprocess.run(["git", "-C", str(root), "checkout", "-q", "-b", f"release/v{version}"])
+    subprocess.run(["git", "-C", str(root), "checkout", "-q", "-b", "checkpoint/5"])
     assert write_release(["--root", str(root)]) == 0
     commit_all(root, f"chore(release): {version} #2")
 

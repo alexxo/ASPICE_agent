@@ -2,7 +2,7 @@
 
 import pytest
 import yaml
-from product_builder import check_criteria, commit_all, render_reviews
+from product_builder import approve_checkpoint, check_criteria, commit_all, render_reviews
 
 from agent.ask_person_tool import check as valid_choice
 from agent.record_answer_tool import (
@@ -14,7 +14,7 @@ from agent.record_answer_tool import (
     record_answer,
     summary,
 )
-from agent.record_checkpoint_tool import record_checkpoint
+from agent.record_checkpoint_tool import _reviewed as merge_allowed
 from agent.render_review_tool import render, render_review
 from gates.swe.verify_requirements_approval_gate import check
 from tools.read_product_config_tool import read_product_config
@@ -107,7 +107,7 @@ def test_an_open_question_sits_in_its_requirements_row_with_its_options(asked):
 
 def test_an_approval_waits_for_every_answer(asked):
     with pytest.raises(ValueError, match="Q1 about REQ-0012 criterion 2 is not answered"):
-        record_checkpoint(asked, 2, "approved", "Alex", "architect")
+        merge_allowed(_config(asked))
 
 
 def test_an_answer_records_whether_it_took_the_proposal(asked):
@@ -124,7 +124,7 @@ def test_an_answer_records_whether_it_took_the_proposal(asked):
     assert '<span class="answer">2. locked at the 4th attempt' in page
     assert "proposal changed, Alex" in render(_config(asked))
     assert _rules(asked) == []
-    record_checkpoint(asked, 2, "approved", "Alex", "architect")
+    merge_allowed(_config(asked))
 
 
 def test_without_a_proposal_the_answer_says_so(product):
@@ -181,8 +181,7 @@ def test_a_criterion_unchanged_since_the_approval_is_not_checked_again(asked, ca
     record_answer(asked, "Q1", 1, "Alex", "architect")
     render_review(asked)
     commit_all(asked, "Q1 answered")
-    record_checkpoint(asked, 2, "approved", "Alex", "architect")
-    commit_all(asked, "checkpoint 2 approved")
+    approve_checkpoint(asked, 2)
     (asked / "docs/requirements/questions.yaml").unlink()  # approved before the check existed
     _rewrite(asked)
     assert main(["--unchecked", "--root", str(asked)]) == 0
@@ -275,8 +274,7 @@ def test_questions_settled_before_the_previous_approval_are_not_shown_again(aske
     record_answer(asked, "Q1", 1, "Alex", "architect")
     render_review(asked)
     commit_all(asked, "Q1 answered")
-    record_checkpoint(asked, 2, "approved", "Alex", "architect")
-    commit_all(asked, "checkpoint 2 approved")
+    approve_checkpoint(asked, 2)
     _rewrite(asked)
     render_reviews(asked)
     page = render(_config(asked))

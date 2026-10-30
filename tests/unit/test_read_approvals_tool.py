@@ -1,54 +1,59 @@
-"""tools/read_approvals_tool.py — whether a checkpoint's latest decision still counts."""
+"""tools/read_approvals_tool.py — whether a checkpoint's latest decision still counts.
 
-from datetime import datetime, timezone
+The decision is the merge of the checkpoint's pull request, read from git history.
+"""
 
-from agent.record_checkpoint_tool import record_checkpoint
-from tools.read_approvals_tool import approval_state, subject_files
+from product_builder import approve_checkpoint, commit_all
+
+from tools.read_approvals_tool import approval_state, checkpoint_merges, subject_files
 from tools.read_product_config_tool import read_product_config
-
-NOW = datetime(2026, 10, 4, 9, 0, tzinfo=timezone.utc)
 
 
 def _state(root):
     return approval_state(read_product_config(root), 1, "diagrams")
 
 
-def test_no_decision_is_missing(product):
+def test_no_merged_checkpoint_pull_request_is_missing(product):
+    state = _state(product)
+    assert state.status == "missing" and "checkpoint/1" in state.reason
+
+
+def test_the_merge_of_the_checkpoints_pull_request_approves(product):
+    merge = approve_checkpoint(product, 1, number=7)
+    state = _state(product)
+    assert (state.status, state.merge.number, state.merge.commit) == ("approved", 7, merge)
+    assert state.merge.head != merge  # the approved head is the merge's second parent
+
+
+def test_a_merge_of_another_branch_approves_nothing(product):
+    approve_checkpoint(product, 2)
     assert _state(product).status == "missing"
 
 
-def test_a_current_approval_is_approved_with_its_date(product):
-    record_checkpoint(product, 1, "approved", "Alex", "architect", now=NOW)
-    state = _state(product)
-    assert (state.status, state.date) == ("approved", NOW)
-
-
-def test_changes_requested_counts_as_not_approved(product):
-    record_checkpoint(
-        product, 1, "changes-requested", "Alex", "architect", "Add an error path.", now=NOW
-    )
-    assert _state(product).status == "changes_requested"
-
-
 def test_a_changed_file_makes_the_approval_outdated(product):
-    record_checkpoint(product, 1, "approved", "Alex", "architect", now=NOW)
+    approve_checkpoint(product, 1)
     (product / "docs/diagrams/login.wishes.yaml").write_text(
         "diagram: login\nlinks: {user: [W-01]}\n"
     )
     state = _state(product)
     assert state.status == "outdated" and "login.wishes.yaml" in state.reason
+    commit_all(product, "docs: a committed change counts the same")
+    assert _state(product).status == "outdated"
 
 
 def test_an_added_file_makes_the_approval_outdated(product):
-    record_checkpoint(product, 1, "approved", "Alex", "architect", now=NOW)
+    approve_checkpoint(product, 1)
     (product / "docs/diagrams/extra.invariants.yaml").write_text("diagram: extra\n")
     assert _state(product).status == "outdated"
 
 
-def test_an_unreadable_decision_is_invalid(product):
-    folder = product / "docs/approvals"
-    (folder / "2026-10-04T090000Z-checkpoint-1-diagrams.yaml").write_text("checkpoint: [\n")
-    assert _state(product).status == "invalid"
+def test_the_latest_merge_counts(product):
+    approve_checkpoint(product, 1, number=3)
+    (product / "docs/diagrams/extra.invariants.yaml").write_text("diagram: extra\n")
+    approve_checkpoint(product, 1, number=9)
+    state = _state(product)
+    assert (state.status, state.merge.number) == ("approved", 9)
+    assert [m.number for m in checkpoint_merges(product, 1)] == [3, 9]
 
 
 def test_the_release_decision_covers_both_records_and_is_due_only_for_a_release(

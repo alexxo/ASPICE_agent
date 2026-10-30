@@ -6,20 +6,22 @@ listed in the plan's validation section. The host is a recorded one
 (QF_HOST_FILE), as in the gates' tests.
 
 - the agent loads the village crew's method and the validation rulebook;
-- a release is validated on its pull request: the tool records the deployed
-  commit and the automated results, a person adds the demo's, and the merge
-  waits for the customer's decision (seal 5), red in CI until it is given;
-- after the merge and the tag, the release keeps its validation record.
+- a release is validated on its pull request from branch checkpoint/5: the
+  tool records the deployed commit and the automated results, a person adds
+  the demo's, and the merge waits for the architect's approval on behalf of the
+  customer (seal 5), red in CI until it is given;
+- after the merge, the merge is the acceptance and the GitHub Release says so;
+  after the tag, the release keeps its validation record.
 
 Each rule a step could break is its gate's unit tests' to prove, and the
 resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
 import json
+import os
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -27,7 +29,10 @@ import yaml
 from product_builder import (
     AGENT,
     DEMO,
+    PERSON,
+    approve_checkpoint,
     build_python_product,
+    checkpoint_pulls,
     commit_all,
     git_head,
     install_plugins,
@@ -46,20 +51,19 @@ from product_builder import (
 )
 
 from agent.load_skills_tool import load_skills
-from agent.record_checkpoint_tool import record_checkpoint
 from agent.resolve_stage_tool import main as resolve_main
 from agent.resolve_stage_tool import resolve_stage
 from gates.val import verify_release_evidence_gate
+from tools.read_approvals_tool import approval_state
 from tools.read_product_config_tool import read_product_config
 from tools.write_release_tool import main as write_release
+from tools.write_release_tool import release_notes
 from tools.write_validation_record_tool import main as write_validation_record
 from tools.write_verification_report_tool import PAGE, write_report
 
-APPROVED = datetime(2026, 10, 4, 15, 0, tzinfo=timezone.utc)
-DECIDED = datetime(2026, 10, 12, 9, 0, tzinfo=timezone.utc)
 STAGE = "validation"
 FEATURE = "feature/REQ-0047-lockout"
-RELEASE = "release/v1.0.0"
+RELEASE = "checkpoint/5"  # the release's pull request is checkpoint 5
 RECORD = "validation/records/1.0.0.yaml"
 WORKFLOW = "templates/github/release.yml"
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -96,10 +100,7 @@ def built(tmp_path_factory):
     root = build_python_product(work / "product", branch=FEATURE)
     install_plugins(root)
     for checkpoint in (1, 2, 3):
-        record_checkpoint(
-            root, checkpoint, "approved", "Example Architect", "architect", now=APPROVED
-        )
-    commit_all(root, "docs(approvals): checkpoints 1 to 3 REQ-0047")
+        approve_checkpoint(root, checkpoint)
     for write, message in (
         (write_all_tests_and_stubs, "test(auth): every unit REQ-0047"),
         (write_all_code, "feat(auth): every unit REQ-0047"),
@@ -133,24 +134,31 @@ def _state(root):
 
 def _merge(root, branch, number):
     git(root, "checkout", "-q", "main")
-    git(root, "merge", "-q", "--no-ff", "-m", f"Merge pull request #{number}", branch)
+    message = f"Merge pull request #{number} from acme/{branch}"  # GitHub's
+    git(root, "merge", "-q", "--no-ff", "-m", message, branch)
     return git_head(root)
 
 
-def _push(root, tmp_path, monkeypatch, merged, message):
+def _push(root, tmp_path, monkeypatch, merged, message, people=()):
     """Commit to the release branch; the host shows its pull request reviewed at
-    the new head, and the feature's pull request merged."""
-    commit_all(root, message)
+    the new head — by the people too, if any — and the feature's pull request merged."""
+    if message:
+        commit_all(root, message)
     write_report(read_product_config(root))
     head = git_head(root)
     delivery = pull_request(
         1, merged, branch=FEATURE, merged=True, commits=[merged], reviews=[review(AGENT, merged)]
     )
     release = pull_request(
-        2, head, branch=RELEASE, files=["releases/1.0.0.yaml"], reviews=[review(AGENT, head)]
+        2,
+        head,
+        branch=RELEASE,
+        files=["releases/1.0.0.yaml"],
+        reviews=[review(r, head) for r in (AGENT, *people)],
     )
     tags = {"v6.0.0": git_head(root / ".framework")}
-    host = write_host(tmp_path / "release.json", pulls=[delivery, release], tags=tags)
+    pulls = [delivery, release, *checkpoint_pulls(root)]
+    host = write_host(tmp_path / "release.json", pulls=pulls, tags=tags)
     monkeypatch.setenv("QF_HOST_FILE", str(host))
 
 
@@ -176,9 +184,9 @@ def _validate(root, tmp_path, monkeypatch, merged):
     _push(root, tmp_path, monkeypatch, merged, "chore(release): validation of 1.0.0 #2")
 
 
-def _decide(root, tmp_path, monkeypatch, merged, decision="approved", comment=None):
-    record_checkpoint(root, 5, decision, "Carla Village", "customer", comment, now=DECIDED)
-    _push(root, tmp_path, monkeypatch, merged, "docs(approvals): the village decides #2")
+def _accept(root, tmp_path, monkeypatch, merged):
+    """The architect approves the release's head on the host, for the village."""
+    _push(root, tmp_path, monkeypatch, merged, None, people=(PERSON,))
 
 
 def _tag_script(root):
@@ -186,7 +194,8 @@ def _tag_script(root):
     steps = yaml.safe_load((REPO_ROOT / WORKFLOW).read_text())["jobs"]["release"]["steps"]
     (step,) = (s for s in steps if s.get("name") == "Tag the accepted release")
     script = step["run"].replace("python .framework/", f"{sys.executable} {REPO_ROOT}/")
-    return subprocess.run(["bash", "-c", script], cwd=root, capture_output=True, text=True)
+    env = {**os.environ, "GITHUB_OUTPUT": os.devnull}
+    return subprocess.run(["bash", "-c", script], cwd=root, capture_output=True, text=True, env=env)
 
 
 def _checked(root, capsys):
@@ -206,30 +215,34 @@ def test_the_village_crew_has_its_method_and_rulebook(product):
     assert [p.split("/")[-2] for p in loaded["framework_skills"]] == ["validate_release_skill"]
 
 
-def test_a_release_is_validated_and_waits_for_the_customer(product, tmp_path, monkeypatch, capsys):
+def test_a_release_is_validated_and_waits_for_the_architect(product, tmp_path, monkeypatch, capsys):
     merged = _propose(product, tmp_path, monkeypatch)
     assert _state(product) == (
         STAGE,
         "gates_failing",
-        ["MISSING_CUSTOMER_DECISION", "MISSING_VALIDATION_RECORD"],
+        ["MISSING_PERSON_APPROVAL", "MISSING_VALIDATION_RECORD"],
     )
 
     _validate(product, tmp_path, monkeypatch, merged)
     results = yaml.safe_load((product / RECORD).read_text())["results"]
     assert {r["result"] for r in results} == {"pass"} and len(results) == 3
-    # the merge waits
+    # the merge waits for the architect, who accepts on behalf of the customer
     assert _checked(product, capsys) == (
         1,
-        (STAGE, "awaiting_checkpoint", ["MISSING_CUSTOMER_DECISION"]),
+        (STAGE, "awaiting_checkpoint", ["MISSING_PERSON_APPROVAL"]),
     )
     page = (product / ".qf/runs").glob(f"*/{PAGE}")
     assert any("## Validation of release 1.0.0 — staging" in p.read_text() for p in page)
 
-    _decide(product, tmp_path, monkeypatch, merged)
-    assert _checked(product, capsys) == (0, (None, "complete", []))
+    _accept(product, tmp_path, monkeypatch, merged)
+    assert _checked(product, capsys) == (0, (STAGE, "awaiting_checkpoint", []))  # ready to merge
 
     # After the merge, the release workflow tags it; the tag keeps the record.
     _merge(product, RELEASE, 2)
+    config = read_product_config(product)
+    assert approval_state(config, 5, "release").status == "approved"
+    notes = release_notes(config, "1.0.0")
+    assert notes == "Release 1.0.0. Accepted on behalf of Carla Village by @lead-bob, #2."
     origin = tmp_path / "origin.git"
     subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
     git(product, "remote", "set-url", "--push", "origin", str(origin))

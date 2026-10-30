@@ -33,15 +33,20 @@ and *stop the setup for now*:
    reviews from (`--reviewer-agent`).
 2. **The people** — the accounts CI calls in when a pull request needs a
    person's review: the review comment mentions them (`--person`).
-3. **The urgent approvers** — the accounts that may authorize an urgent fix
+3. **The architect** — the one account that decides every checkpoint on its
+   pull request, the release on behalf of the customer (`--architect`).
+4. **The customer** — who the product is built for, by name; they need no
+   code host account (`--customer`).
+5. **The urgent approvers** — the accounts that may authorize an urgent fix
    (`--urgent-approver`).
-4. **The change approvers** — the accounts that may approve a change request
+6. **The change approvers** — the accounts that may approve a change request
    (`--change-approver`).
-5. **The code owners** — who must approve a change to the gates, the framework
+7. **The code owners** — who must approve a change to the gates, the framework
    pin and the architecture: `@login`, `@org/team` or an e-mail
    (`--code-owner`).
 
-Each may name several; repeat the flag once per name.
+The people, the approvers and the code owners may name several; repeat the
+flag once per name.
 **Never invent a value, and never fill in a placeholder**: a value the person
 did not give is a question you ask again.
 
@@ -49,7 +54,7 @@ did not give is a question you ask again.
 
 Show the person the command with their answers, then run it:
 
-`python <framework>/tools/create_product_tool.py --root <product> --reviewer-agent <login> --person <login> --urgent-approver <login> --change-approver <login> --code-owner <owner>`
+`python <framework>/tools/create_product_tool.py --root <product> --reviewer-agent <login> --person <login> --architect <login> --customer <name> --urgent-approver <login> --change-approver <login> --code-owner <owner>`
 
 - **Exit 0** — go to step 4.
 - **Exit 2** — nothing was changed. Report every problem it printed, word for

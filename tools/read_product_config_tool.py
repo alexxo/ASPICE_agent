@@ -61,6 +61,8 @@ class ProductConfig:
     slots: dict[str, str]
     review_agents: tuple[str, ...] = ()
     review_people: tuple[str, ...] = ()  # the people CI calls in for a person's review
+    review_architect: str = ""  # who decides every checkpoint, on the host
+    customer: str = ""  # on whose behalf the architect accepts a release
     config_items: tuple[str, ...] = ()  # the product's own, added to the framework's
     urgent_approvers: tuple[str, ...] = ()
     change_approvers: tuple[str, ...] = ()
@@ -119,6 +121,8 @@ def read_product_config(root: Path) -> ProductConfig:
         slots=dict(data["slots"]),
         review_agents=tuple(data["review"]["agents"]),
         review_people=tuple(data["review"]["people"]),
+        review_architect=data["review"]["architect"],
+        customer=data["customer"],
         config_items=tuple(data.get("config_items") or ()),
         urgent_approvers=tuple(data["urgent_approvers"]),
         change_approvers=tuple(data["change_approvers"]),

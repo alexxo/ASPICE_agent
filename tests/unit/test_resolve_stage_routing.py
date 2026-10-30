@@ -167,8 +167,7 @@ def test_a_missing_review_beside_the_person_fails(world, tmp_path):
     assert _resolve(tmp_path)["status"] == "gates_failing"
 
 
-def test_a_release_waits_for_the_customer(world, tmp_path):
-    world.failing = {"verify_release_evidence_gate": [resolver.CUSTOMER_DECISION]}
+def test_a_release_waits_for_the_architects_acceptance(world, tmp_path):
     world.unapproved = {5}
     world.releasing = True
     state = _resolve(tmp_path)

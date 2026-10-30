@@ -14,17 +14,20 @@ Each rule a step could break is its gate's unit tests' to prove, and the
 resolver's routing the routing tests' (Appendix A.5, *Fast by design*).
 """
 
+import os
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 import yaml
 from product_builder import (
     AGENT,
+    PERSON,
+    approve_checkpoint,
     build_python_product,
+    checkpoint_pulls,
     commit_all,
     git_head,
     install_plugins,
@@ -43,14 +46,12 @@ from product_builder import (
 )
 
 from agent.load_skills_tool import load_skills
-from agent.record_checkpoint_tool import record_checkpoint
 from agent.resolve_stage_tool import resolve_stage
 from gates.sup import verify_baseline_gate
 from tools.read_product_config_tool import read_product_config
 from tools.write_release_tool import main as write_release
 from tools.write_verification_report_tool import write_report
 
-APPROVED = datetime(2026, 10, 4, 15, 0, tzinfo=timezone.utc)
 STAGE = "configuration_management"
 FEATURE = "feature/REQ-0047-lockout"
 RELEASE = "templates/github/release.yml"
@@ -88,10 +89,7 @@ def built(tmp_path_factory):
     root = build_python_product(work / "product", branch=FEATURE)
     install_plugins(root)
     for checkpoint in (1, 2, 3):
-        record_checkpoint(
-            root, checkpoint, "approved", "Example Architect", "architect", now=APPROVED
-        )
-    commit_all(root, "docs(approvals): checkpoints 1 to 3 REQ-0047")
+        approve_checkpoint(root, checkpoint)
     for write, message in (
         (write_all_tests_and_stubs, "test(auth): every unit REQ-0047"),
         (write_all_code, "feat(auth): every unit REQ-0047"),
@@ -124,13 +122,15 @@ def _state(root):
 
 def _merge(root, branch, number):
     git(root, "checkout", "-q", "main")
-    git(root, "merge", "-q", "--no-ff", "-m", f"Merge pull request #{number}", branch)
+    message = f"Merge pull request #{number} from acme/{branch}"  # GitHub's
+    git(root, "merge", "-q", "--no-ff", "-m", message, branch)
     return git_head(root)
 
 
 def _propose(root, tmp_path, monkeypatch, merged, message):
     """Commit to the release branch; the host shows its pull request reviewed at
-    the new head, and the feature's pull request merged."""
+    the new head — approved by the architect too — and the feature's pull request
+    merged."""
     commit_all(root, message)
     write_report(read_product_config(root))
     head = git_head(root)
@@ -140,12 +140,13 @@ def _propose(root, tmp_path, monkeypatch, merged, message):
     release = pull_request(
         2,
         head,
-        branch="release/v1.0.0",
+        branch="checkpoint/5",
         files=["releases/1.0.0.yaml"],
-        reviews=[review(AGENT, head)],
+        reviews=[review(AGENT, head), review(PERSON, head)],
     )
     tags = {"v6.0.0": git_head(root / ".framework")}
-    host = write_host(tmp_path / "release.json", pulls=[delivery, release], tags=tags)
+    pulls = [delivery, release, *checkpoint_pulls(root)]
+    host = write_host(tmp_path / "release.json", pulls=pulls, tags=tags)
     monkeypatch.setenv("QF_HOST_FILE", str(host))
 
 
@@ -154,7 +155,8 @@ def _tag_script(root):
     steps = yaml.safe_load((REPO_ROOT / RELEASE).read_text())["jobs"]["release"]["steps"]
     (step,) = (s for s in steps if s.get("name") == "Tag the accepted release")
     script = step["run"].replace("python .framework/", f"{sys.executable} {REPO_ROOT}/")
-    return subprocess.run(["bash", "-c", script], cwd=root, capture_output=True, text=True)
+    env = {**os.environ, "GITHUB_OUTPUT": os.devnull}
+    return subprocess.run(["bash", "-c", script], cwd=root, capture_output=True, text=True, env=env)
 
 
 def test_the_librarian_has_a_rulebook_and_no_plugin(product):
@@ -173,7 +175,7 @@ def test_a_release_is_proposed_and_tagged_after_its_merge(product, tmp_path, mon
     merged = _merge(product, FEATURE, 1)
 
     # The release pull request: the tool writes the record, nobody chooses the number.
-    git(product, "checkout", "-q", "-b", "release/v1.0.0")
+    git(product, "checkout", "-q", "-b", "checkpoint/5")
     assert write_release(["--root", str(product)]) == 0
     record = product / "releases/1.0.0.yaml"
     written = record.read_text()
@@ -186,7 +188,7 @@ def test_a_release_is_proposed_and_tagged_after_its_merge(product, tmp_path, mon
     assert resolve_stage(product)["stage"] == "validation"
 
     # After the merge, the release workflow stamps the baseline.
-    _merge(product, "release/v1.0.0", 2)
+    _merge(product, "checkpoint/5", 2)
     origin = tmp_path / "origin.git"
     subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
     git(product, "remote", "set-url", "--push", "origin", str(origin))

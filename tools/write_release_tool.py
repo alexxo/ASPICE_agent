@@ -12,6 +12,7 @@ submodule is pinned at, read from the host.
 
     python tools/write_release_tool.py [--root PRODUCT]   # writes the record
     python tools/write_release_tool.py --pending          # versions not yet tagged
+    python tools/write_release_tool.py --notes VERSION    # the GitHub Release's text
 
 verify_baseline_gate recomputes all three with the same functions.
 """
@@ -48,7 +49,7 @@ __all__ = [
     "pending",
     "pinned_framework",
     "record_path",
-    "release_decisions",
+    "release_notes",
     "release_tags",
 ]
 
@@ -127,23 +128,26 @@ def next_version(root: Path, rev: str = "HEAD") -> str:
 
 def changed_items(config: ProductConfig, rev: str = "HEAD") -> list[str]:
     """The configuration items changed since the last release tag; for the first
-    release, every item rev contains. The customer's decision on the release
-    (checkpoint 5) is written after its record, so it is no change of an item."""
+    release, every item rev contains."""
     last = last_release(config.root, rev)
     items = config_items(config)
     if last is None:
         return [i for i in items if in_tree(config.root, rev, i)]
-    decision = f":(exclude,glob){release_decisions(config)}"
     return [
-        i
-        for i in items
-        if _git(config.root, "diff", "--quiet", last, rev, "--", i, decision).returncode != 0
+        i for i in items if _git(config.root, "diff", "--quiet", last, rev, "--", i).returncode != 0
     ]
 
 
-def release_decisions(config: ProductConfig) -> str:
-    """The glob of the customer's decisions on releases (checkpoint 5)."""
-    return f"{config.relative(config.approvals_dir).rstrip('/')}/*-checkpoint-5-release.yaml"
+def release_notes(config: ProductConfig, version: str, rev: str = "HEAD") -> str:
+    """The text of the GitHub Release: who accepted it, on whose behalf, in which
+    pull request — the merge of branch checkpoint/5 that rev is."""
+    subject = _git(config.root, "log", "-1", "--format=%s", rev).stdout.strip()
+    found = re.match(r"^Merge pull request #([0-9]+) from \S+?/checkpoint/5$", subject)
+    where = f", #{found.group(1)}" if found else ""
+    return (
+        f"Release {version}. Accepted on behalf of {config.customer} by "
+        f"@{config.review_architect}{where}."
+    )
 
 
 def in_tree(root: Path, rev: str, path: str) -> bool:
@@ -180,12 +184,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--pending", action="store_true", help="print the versions recorded but not yet tagged"
     )
+    parser.add_argument("--notes", metavar="VERSION", help="print the GitHub Release's text")
     args = parser.parse_args(argv)
     try:
         config = read_product_config(args.root)
     except ConfigError as err:
         print(err.message, file=sys.stderr)
         return 2
+    if args.notes:
+        print(release_notes(config, args.notes))
+        return 0
     if args.pending:
         for version in pending(config):
             print(version)

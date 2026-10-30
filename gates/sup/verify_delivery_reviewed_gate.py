@@ -32,12 +32,13 @@ again — the gates check before the merge proved them (GATES_NOT_PASSED) — so
 merged pull request needs a person for the architecture, the product's
 settings, or its review record's request and disputes.
 
-A checkpoint decision (checkpoints 1, 2, 3 and 5) is given on the host: every
-checkpoint record the open pull request adds or changes copies a review that
-exists there — the one it names, by the approver it names, a person (no review
-agent, no bot, not that pull request's author), deciding as the record says, on
-the commit it names (UNPROVEN_CHECKPOINT_DECISION, FB-69). Records written
-before v3.10.0 name no review and stay as they are on the main branch.
+A checkpoint decision (checkpoints 1, 2, 3 and 5) is given on the host: a
+pull request from branch checkpoint/<n> waits until qf.yaml review.architect
+approves its head (MISSING_PERSON_APPROVAL), and the latest merge of every
+checkpoint the history holds — the record the approval gates read — merged a
+head the architect approved on that pull request (UNAPPROVED_MERGE). A merge
+without it counts once a later pull request of that checkpoint is approved and
+merged: revert, and bring the work again.
 
 No host setting is read (decision 6): on every push to the main branch, every
 commit it adds came from a merged pull request (MERGED_WITHOUT_PULL_REQUEST)
@@ -58,10 +59,9 @@ before it are exempt.
 
 from __future__ import annotations
 
-import re
 import subprocess
 import sys
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -80,6 +80,7 @@ from tools.classify_pull_request_tool import (  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.post_merge_status_tool import CHANGES_REQUESTED  # noqa: E402
 from tools.post_review_tool import checklist, required_items  # noqa: E402
+from tools.read_approvals_tool import checkpoint_merges, checkpoint_of  # noqa: E402
 from tools.read_commit_range_tool import (  # noqa: E402
     first_parents,
     is_ancestor,
@@ -89,9 +90,7 @@ from tools.read_commit_range_tool import (  # noqa: E402
 )
 from tools.read_host_tool import Delivery, Host, PullRequest, delivery, read_host  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
-from tools.read_yaml_blocks_tool import YamlReadError, read_yaml_file  # noqa: E402
 from tools.run_gate_command_tool import run_gate_command  # noqa: E402
-from tools.validate_contract_tool import validate  # noqa: E402
 from tools.write_release_tool import last_release, pending  # noqa: E402
 
 GATE = "verify_delivery_reviewed_gate"
@@ -119,7 +118,7 @@ def check(config: ProductConfig) -> list[Finding]:
             )
         else:
             findings += _reviewed(config, found.repo, found.pull_request)
-            findings += _decisions(config, host, found.repo, found.pull_request)
+    findings += _checkpoints(config, host, found.repo)
     merged: set[int] = set()
     late: list[tuple[int | str, Finding, str | None]] = []  # after the merge, with the author
     for sha in _main_commits(config, found):
@@ -227,49 +226,25 @@ def _start(root) -> str | None:
     return found[-1] if found else None
 
 
-CHECKPOINT = re.compile(r"-checkpoint-\d+-")  # a decision record, not a stage done record
-STATES = {"approved": "APPROVED", "changes-requested": "CHANGES_REQUESTED"}
-
-
-def _decisions(config: ProductConfig, host: Host, repo: str, pull: PullRequest) -> list[Finding]:
-    """Each checkpoint record the pull request brings copies a person's review on the host."""
-    folder = config.relative(config.approvals_dir).rstrip("/") + "/"
-    agents = set(config.review_agents)
+def _checkpoints(config: ProductConfig, host: Host, repo: str) -> list[Finding]:
+    """The latest merge of each checkpoint merged a head the architect approved."""
+    latest = {m.checkpoint: m for m in checkpoint_merges(config.root)}
+    architect = config.review_architect
     findings = []
-    for path in pull.files:
-        if not (path.startswith(folder) and CHECKPOINT.search(PurePosixPath(path).name)):
+    for n, merge in sorted(latest.items()):
+        pull = host.pull_request(repo, merge.number)
+        approvers = {r.author for r in pull.approvals()} if pull else set()
+        if pull is not None and pull.head == merge.head and architect in approvers:
             continue
-        try:
-            data = read_yaml_file(config.root / path)
-        except (OSError, YamlReadError):
-            continue  # removed, or unreadable: the approval gates say so
-        if not isinstance(data, dict) or validate(data, "approval"):
-            continue
-        copied = data.get("review")
-        why = "it names no review on the host"
-        if copied:
-            on = pull if copied["pull_request"] == pull.number else None
-            on = on or host.pull_request(repo, copied["pull_request"])
-            match = [r for r in (on.reviews if on else ()) if r.id == copied["id"]]
-            review = match[0] if match else None
-            if review is None:
-                why = f"#{copied['pull_request']} has no review {copied['id']}"
-            elif review.bot or review.author in agents or review.author == on.author:
-                why = f"{review.author} is no person who may decide (an agent, a bot or the author)"
-            elif review.author != data["approver"]["name"]:
-                why = f"review {review.id} is {review.author}'s, not {data['approver']['name']}'s"
-            elif review.state != STATES[data["decision"]] or review.commit != copied["commit"]:
-                why = f"review {review.id} is {review.state} on {review.commit[:7]}"
-            else:
-                continue
         findings.append(
             Finding(
-                "UNPROVEN_CHECKPOINT_DECISION",
-                path,
+                "UNAPPROVED_MERGE",
+                ".",
                 None,
-                f"{path} is no copy of a person's review: {why}. The person decides on the "
-                "pull request; copy it with agent/record_checkpoint_tool.py --checkpoint N "
-                "--pull-request N.",
+                f"Checkpoint {n}: #{merge.number} was merged ({merge.commit[:7]}) without "
+                f"{architect}'s approval of its head {merge.head[:7]}. Revert the merge, bring "
+                f"the work again from branch checkpoint/{n} and let the agent merge it once "
+                f"{architect} approved (agent/record_checkpoint_tool.py).",
             )
         )
     return findings
@@ -357,7 +332,24 @@ def _reviewed(config: ProductConfig, repo: str, pull: PullRequest) -> list[Findi
             for wrong in unsourced(config, record.get("stories", []))
         ]
         findings += _expected_findings(review, record, where)
-    if review.needed and not people:
+    checkpoint = checkpoint_of(pull.branch)
+    if (
+        checkpoint is not None
+        and not pull.merged
+        and config.review_architect not in {r.author for r in people}
+    ):
+        behalf = f" on behalf of {config.customer}" if checkpoint == 5 else ""
+        findings.append(
+            Finding(
+                "MISSING_PERSON_APPROVAL",
+                ".",
+                None,
+                f"{where} needs {config.review_architect}'s decision (why: checkpoint "
+                f"{checkpoint}): they approve its head {pull.head[:7]}{behalf}, or request "
+                "changes with the reason; it waits at the delivery desk until they do.",
+            )
+        )
+    elif review.needed and not people:
         why = f" (why: {headline(review.brief)})" if review.brief else ""
         findings.append(
             Finding(

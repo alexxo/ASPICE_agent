@@ -130,18 +130,15 @@ def test_pending_lists_the_records_without_a_tag(product, capsys):
     assert capsys.readouterr().out == ""
 
 
-def test_the_release_evidence_is_no_changed_item(tmp_path, monkeypatch):
-    from datetime import datetime, timezone
-
+def test_the_release_evidence_is_no_changed_item(tmp_path, monkeypatch, capsys):
     from product_builder import (
         ALL_SCENARIOS,
+        approve_checkpoint,
         build_releasable_product,
         passed,
         propose_release,
         record_validation,
     )
-
-    from agent.record_checkpoint_tool import record_checkpoint
 
     root, host = build_releasable_product(tmp_path)
     monkeypatch.setenv("QF_HOST_FILE", str(host))
@@ -152,8 +149,11 @@ def test_the_release_evidence_is_no_changed_item(tmp_path, monkeypatch):
     config = read_product_config(root)
     assert changed_items(config) == ["src"]
     record_validation(root, passed(*ALL_SCENARIOS), version="1.0.1")
-    now = datetime(2026, 10, 12, 9, 0, tzinfo=timezone.utc)
-    record_checkpoint(root, 5, "approved", "Carla Village", "customer", now=now)
-    commit_all(root, "docs(approvals): the customer accepts #2")
+    approve_checkpoint(root, 5, number=4)  # the merge of the accepted release
     assert changed_items(config) == ["src"]
     assert next_version(root) == "1.0.1"
+    capsys.readouterr()
+    assert main(["--root", str(root), "--notes", "1.0.1"]) == 0
+    assert capsys.readouterr().out == (
+        "Release 1.0.1. Accepted on behalf of Carla Village by @lead-bob, #4.\n"
+    )

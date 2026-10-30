@@ -76,7 +76,7 @@ checkpoint-3 request and the pull request.
 | R2 | Its decision record exists | check_stack_decision_gate · MISSING_DECISION_RECORD |
 | R3 | Every area has a row: its tools, or not needed with the reason; language, test runner, lint, format and the two scanners always name a tool | check_stack_decision_gate · MISSING_STACK_AREA, MISSING_REASON |
 | R4 | Every area the framework gives names the tool the framework uses | check_stack_decision_gate · GIVEN_AREA_MISMATCH |
-| R5 | The architect approves the stack at checkpoint 3 before any component is designed, and the approval covers its current content | verify_stack_approval_gate · MISSING_APPROVAL, APPROVAL_OUTDATED, APPROVED_TOO_LATE, NOT_A_GIT_REPOSITORY |
+| R5 | The architect approves the stack at checkpoint 3 — the pull request from checkpoint/3, merged — before any component is designed, and the approval covers its current content | verify_stack_approval_gate · MISSING_APPROVAL, APPROVAL_OUTDATED, NOT_A_GIT_REPOSITORY |
 | R6 | The stack respects every constraint requirement and fits the non-functional requirements; its test runners can run every suite a requirement names | Checkpoint 3 |
 
 ## Not checkable
