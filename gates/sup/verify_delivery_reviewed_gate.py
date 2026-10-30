@@ -19,7 +19,8 @@ for the results of software verification, on the pull request that brings
 them (checkpoint 4); for a question of what is wanted — a gap a story marks
 that the reviewer agent approved, a weakened test, a finding closed without a
 change, the reviewer agent's request, a change of qf.yaml or .gitmodules; and
-always for the architecture. Then a person approves the current head
+always for the architecture and for a recorded checkpoint decision (FB-68).
+Then a person approves the current head
 (MISSING_PERSON_APPROVAL): seal 4, the person's review on the host, never a
 file the agent could write (rules 1, 2, 7 and 14 of the quality assurance
 stage). When there is something to judge, CI's checkpoint-4 review comment for
@@ -29,8 +30,8 @@ tree's verification report is written — has every item answered yes
 (REVIEW_CHANGED_AFTER_APPROVAL). A person is an approver that is no declared
 agent, no bot and not the author. After the merge, the files are not classified
 again — the gates check before the merge proved them (GATES_NOT_PASSED) — so a
-merged pull request needs a person for the architecture, the product's
-settings, or its review record's request and disputes.
+merged pull request needs a person for the architecture, a checkpoint
+decision, the product's settings, or its review record's request and disputes.
 
 No host setting is read (decision 6): on every push to the main branch, every
 commit it adds came from a merged pull request (MERGED_WITHOUT_PULL_REQUEST)

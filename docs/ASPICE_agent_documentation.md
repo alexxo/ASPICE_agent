@@ -3517,6 +3517,10 @@ and a person approves the results and answers the questions of what is wanted
       be undone, cannot be verified (or the same finding after three rounds);
       the product's settings change (*qf.yaml*, *.gitmodules*).
     - *Always for the architecture* (checkpoint 3's ground).
+    - *Always for a recorded checkpoint decision* — checkpoints 1, 2, 3 and
+      5 are recorded as files in the repository, which anyone could write;
+      the pull request that adds one is approved by a person on the code
+      host, so the decision is proved theirs, as seal 4 is.
 
     Nothing else is: a changed detailed design, unit and integration tests
     and code merge on the reviewer agent and the gates. The CI file is no
@@ -5065,6 +5069,22 @@ label together.
   folder, in the author's working folder (T1); a framework tool that reads
   the file, which the author's session could run to post as the reviewer.
   → § 5 stage 9, rule 1.
+
+- **Who proves a recorded checkpoint decision** (2026-10-30, FB-68). The
+  decisions of checkpoints 1, 2, 3 and 5 are files: the agent, a pasted
+  command or a hand-written file gave the same record, and nothing but the
+  instruction kept the agent from approving for the person (S 9 — unagreed
+  work built on, O 2, D 5 — the file shows in the pull request, but no person
+  had to approve it: 90). *Chosen:* the pull request that adds such a file
+  calls a person (*classify_pull_request_tool*), so it merges only with their
+  approval on the code host — the same proof as seal 4, one rule more. The
+  file stays the record the resolver reads, offline and without a token.
+  Records already merged stay as they are: the delivery desk has checked the
+  pull requests that brought them. *Not taken:* replacing the files by the
+  pull request's review (FB-68's proposal) — the resolver would need the host
+  for every stage, every checkpoint its own pull request, and checkpoint 5 a
+  new release pull request; the person's review proves the same with the
+  flow as it is.
 
 ### A.9 Configuration management stage — stage 10
 

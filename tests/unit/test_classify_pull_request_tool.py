@@ -93,6 +93,14 @@ def test_the_architecture_always_calls_a_person(product):
     assert review.reasons == ("changes the architecture (docs/architecture/)",)
 
 
+def test_a_recorded_checkpoint_decision_calls_a_person(product):
+    """FB-68: the person's approval on the host proves the decision is theirs."""
+    decision = "docs/approvals/2026-10-30T090000Z-checkpoint-2-requirements.yaml"
+    review = _classify(product, [decision])
+    assert review.reasons == (f"records a checkpoint decision ({decision})",)
+    assert not _classify(product, ["docs/approvals/2026-10-30T090000Z-stage-4-done.yaml"]).needed
+
+
 def test_the_products_settings_call_a_person(product):
     review = _classify(product, ["qf.yaml", ".gitmodules"])
     assert review.reasons == ("changes the product's settings (.gitmodules, qf.yaml)",)

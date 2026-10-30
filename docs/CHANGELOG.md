@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [3.9.0] - 2026-10-30
+
+A checkpoint decision recorded in the repository is proved the person's by their approval on the code host.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| — | — | none. A pull request that adds or changes a checkpoint decision (`<approvals_dir>/*-checkpoint-<n>-*.yaml`) now needs a person's approval on the code host before it merges: MISSING_PERSON_APPROVAL until they approve. Records already on the main branch stay as they are. |
+
+### Changed
+
+- **A recorded checkpoint decision calls a person.** The decisions of checkpoints 1, 2, 3 and 5 are files anyone could write, and the gates counted each alike. A pull request that adds or changes one now calls a person (`classify_pull_request_tool`), so `verify_delivery_reviewed_gate` merges it only with their approval on the code host — the proof seal 4 already has. `agent/run_aspice_agent.md`, design document § 5 rule 14 of the quality assurance stage, Appendix A.8 *Who proves a recorded checkpoint decision*. Origin: FB-68 (wp_publisher).
+
 ## [3.8.3] - 2026-10-29
 
 A requirement measured by the unit or the integration suite now has a stage that writes its measurement.

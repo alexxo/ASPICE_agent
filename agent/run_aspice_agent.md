@@ -331,7 +331,8 @@ changed is what changed since the person's previous approval. At
 checkpoint 3 it is the stack as a table — `python
 <framework>/tools/write_stack_table_tool.py --root <product>` prints it —
 with the full path of its decision record. Then record it — never record a decision the person did
-not give:
+not give. The record proves nothing alone: the pull request that brings it
+asks the person to approve it on the code host, which proves it is theirs:
 
 `python <framework>/agent/record_checkpoint_tool.py --checkpoint <n> --decision approved|changes-requested --approver <name> --role <role> [--comment <text>] --root <product>`
 
