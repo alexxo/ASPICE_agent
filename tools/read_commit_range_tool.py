@@ -131,16 +131,22 @@ class Push:
     after: str
 
 
-def main_push() -> Push | None:
-    """The push to the default branch this CI run is for, or None (a pull request,
-    another branch, or no CI event)."""
+def _event() -> dict:
+    """The event this CI run is for (GITHUB_EVENT_PATH); empty outside CI."""
     path = os.environ.get("GITHUB_EVENT_PATH")
     if not path or not os.path.isfile(path):
-        return None
+        return {}
     try:
         event = json.loads(Path(path).read_text(encoding="utf-8"))
     except ValueError:
-        return None
+        return {}
+    return event if isinstance(event, dict) else {}
+
+
+def main_push() -> Push | None:
+    """The push to the default branch this CI run is for, or None (a pull request,
+    another branch, or no CI event)."""
+    event = _event()
     default = (event.get("repository") or {}).get("default_branch")
     if not default or event.get("ref") != f"refs/heads/{default}":
         return None
@@ -162,8 +168,12 @@ def first_parents(root: Path, base: str | None, tip: str = "HEAD") -> list[str]:
 
 
 def branch(root: Path) -> str | None:
-    """The branch the work is on: the pull request's head branch in CI
-    (GITHUB_HEAD_REF), else the checked-out branch; None when detached."""
+    """The branch the work is on: the pull request's head branch in CI — from the
+    event, which names it on a review's run too, where GITHUB_HEAD_REF is empty
+    (FB-73) — else the checked-out branch; None when detached."""
+    head = ((_event().get("pull_request") or {}).get("head") or {}).get("ref")
+    if head:
+        return head
     if os.environ.get("GITHUB_HEAD_REF"):
         return os.environ["GITHUB_HEAD_REF"]
     run = _git(root, "rev-parse", "--abbrev-ref", "HEAD")

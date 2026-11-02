@@ -5,6 +5,7 @@ real gates and files: the --check exit code, the approvals read from disk, and
 the gates not run.
 """
 
+import json
 import subprocess
 import sys
 from dataclasses import replace
@@ -139,3 +140,18 @@ def test_on_its_checkpoint_branch_the_other_findings_still_fail(product, monkeyp
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("requirements", "gates_failing")
     assert state["findings"] and not _rules(state["findings"]) & {"APPROVAL_OUTDATED"}
+
+
+def test_a_review_run_finds_the_checkpoint_branch_in_the_event(product, tmp_path, monkeypatch):
+    """FB-73: a review's run has no GITHUB_HEAD_REF and checks out a detached merge
+    ref; the event still names the pull request's head branch."""
+    _approve_diagrams(product)
+    _change_the_approved_diagram(product)
+    subprocess.run(["git", "-C", str(product), "checkout", "-q", "--detach"], check=True)
+    event = tmp_path / "event.json"
+    review = {"action": "submitted", "review": {"state": "approved"}}
+    event.write_text(json.dumps({**review, "pull_request": {"head": {"ref": "checkpoint/1"}}}))
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event))
+    state = resolve_stage(product)
+    assert "APPROVAL_OUTDATED" in _rules(state["reported"])
+    assert "APPROVAL_OUTDATED" not in _rules(state["findings"])

@@ -5125,7 +5125,8 @@ label together.
   FB-72). A pull request from *checkpoint/n* that changed approved work could
   never merge: the stage counted as finished, so its approval gate's
   APPROVAL_OUTDATED failed CI, and only the merge makes the approval current.
-  *Chosen:* on *checkpoint/n* (the pull request's branch in CI, else the
+  *Chosen:* on *checkpoint/n* (in CI the head branch the run's event names —
+  a review's run too, which has no GITHUB_HEAD_REF (FB-73) — else the
   checked-out one) the stage closing checkpoint *n* is the current one again;
   its approval findings are reported, every other finding of its work fails,
   and the architect's approval of the head is still required
