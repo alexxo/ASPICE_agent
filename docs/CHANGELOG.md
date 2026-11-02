@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [4.0.4] - 2026-11-02
+
+An answer names no one: the agent records the option the person chose, and the person's approval of the pull request that carries it says who answered.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| None: answers and decision records written before keep their `approver` or `answered_by`, which nothing reads any more | — | — |
+
+### Fixed
+
+- **Answers were written in the person's name.** `agent/record_answer_tool.py --question Q<n> --choice N` no longer takes `--approver` and `--role`, and `agent/render_decisions_tool.py --ask ADR-NNNN --answer TEXT` no longer takes `--by`. The agent's permission check refused to write a decision in the person's name, and the name proved nothing. The person still answers in the terminal. The architect's approval of the `checkpoint/2` pull request, or the person's approval of the results review, covers the answers it carries. question.v1 no longer requires `answer.approver`. verify_decision_records_gate no longer requires `answered_by`. The pages show the answer without a name. Origin: FB-74 (wp_publisher).
+
 ## [4.0.3] - 2026-11-02
 
 FB-72's fix also holds on the CI run a review starts: the checkpoint branch is read from the run's event.
