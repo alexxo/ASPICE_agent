@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-11-02
+
+A choice asked on an issue shows no boxes: the person answers with their own comment, and the card says so first.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| None | — | — |
+
+### Fixed
+
+- **A tick on an issue's choice looked like an approval.** `agent/ask_person_tool.py --markdown` showed a box per option, but only the person's own comment (`/approve-change`, `/confirm-change`) answers on an issue: a tick edits the agent's comment and proves no person. The card now starts with *How to answer: comment on this issue exactly the command your option names. Ticking or editing this comment answers nothing.* and lists the options by number. `record_checkpoint_tool` names the clicks: *Files changed → Review changes → Approve, or Request changes with the reason*. `tools/render_page_tool.py`, `agent/record_checkpoint_tool.py`. Origin: FB-71 (wp_publisher).
+
 ## [4.0.0] - 2026-10-30
 
 A checkpoint is its pull request: the architect approves it on GitHub, the agent merges it, and the merge is the record. No file, no copy, no paste; the customer needs no GitHub account.
