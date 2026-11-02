@@ -120,7 +120,8 @@ class Checkpoint:
         if review is None:
             raise Waiting(
                 f"checkpoint {self.checkpoint} waits for {architect}'s review of the head of "
-                f"#{self.number}: Approve, or Request changes with the reason"
+                f"#{self.number}: Files changed → Review changes → Approve, or Request changes "
+                "with the reason"
             )
         if review.state == "CHANGES_REQUESTED":
             raise ChangesRequested(review.body.strip() or "changes requested, no reason given")

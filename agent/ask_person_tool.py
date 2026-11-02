@@ -18,7 +18,8 @@ where a proposal is offered.
     Your answer [Y / 1 / 2]:
 
     python agent/ask_person_tool.py --file CHOICE.yaml [--markdown]
-        prints the choice; --markdown with a box per option, for the code host
+        prints the choice; --markdown for an issue on the code host: numbered
+        options, answered by the person's own comment, never by a tick
     python agent/ask_person_tool.py --file CHOICE.yaml --answer TEXT
         prints the number the answer selects; exits 1 when it selects none:
         ask again
@@ -64,9 +65,10 @@ def read_choice(path: Path) -> dict:
         raise ValueError(f"{path} does not read: {err}") from err
 
 
-def render(choice: dict, markdown: bool = False) -> str:
+def render(choice: dict, markdown: bool = False, ticks: bool = False) -> str:
     """The choice as the one card (tools/render_page_tool.py): in the terminal, or in
-    Markdown with a box per option, which the person ticks on the code host."""
+    Markdown for an issue on the code host, which the person answers by comment — or,
+    with ticks, a box per option that an approval reads (checkpoint 4)."""
     select = choice["select"]
     proposal = choice.get("proposal")
     lines: dict[str, object] = {"Question": choice["question"]}
@@ -82,7 +84,7 @@ def render(choice: dict, markdown: bool = False) -> str:
             f"{proposal['why'].rstrip('.')}."
         )
     if markdown:
-        return card_markdown(lines)
+        return card_markdown(lines, ticks)
     numbers = " / ".join(str(i) for i in range(1, len(select) + 1))
     return card_text(lines, ("Y / " if proposal else "") + numbers)
 

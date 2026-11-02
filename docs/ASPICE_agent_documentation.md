@@ -1686,7 +1686,8 @@ Proposed: 2. give two more chances — the sign-in diagram shows three attempts.
 ```
 
 *agent/ask_person_tool.py* checks a choice and prints it — in the terminal,
-or in Markdown with a box per option on the code host — and reads the answer:
+or in Markdown on an issue, where the person answers with their own comment
+(a tick edits someone else's comment and proves no person) — and reads the answer:
 only a listed number, or Y where a proposal is offered. It holds everywhere a
 person decides: the questions of a round (the assumption the work would take
 as the proposal), the questions of checkpoint 2, the decision at checkpoints
@@ -5116,6 +5117,14 @@ label together.
   in another form; the date check APPROVED_TOO_LATE, which the flow makes
   structural and which an existing product's checkpoints, approved again as
   pull requests, would fail.
+- **A tick is never the approval** (2026-11-02, v4.0.1, FB-71). A person
+  ticked a box of the agent's choice on a change request and took the change
+  as approved; only their own comment approves there. *Chosen:* a choice on an
+  issue shows no box, says first that the person comments the command their
+  option names, and that a tick answers nothing. A pull request is approved
+  only by the person's review; ticks are read only at checkpoint 4, by that
+  approval. *Not taken:* reading ticks on an issue — a tick edits someone
+  else's comment, and the host does not plainly show who made the edit.
 
 ### A.9 Configuration management stage — stage 10
 

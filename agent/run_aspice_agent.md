@@ -43,8 +43,9 @@ Take only a listed number, or Y where a proposal is offered:
 the number, or exits 1 — ask again. An option that needs words (*request
 changes*, *give guidance*) asks for them once it is chosen. What the person
 needs to decide — a review page, a summary, an escalation report — comes
-before the choice, never inside it. On the code host, write the choice with
-`--markdown`: a box per option, and an option to comment names its command.
+before the choice, never inside it. On an issue, write the choice with
+`--markdown`: no boxes, each option names the command the person comments —
+a tick edits your comment and approves nothing.
 This holds for every decision: the questions of a round, the checkpoints, an
 escalation, a stopped review, and the approvals you ask for on an issue.
 

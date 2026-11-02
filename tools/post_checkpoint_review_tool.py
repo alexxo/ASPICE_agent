@@ -84,7 +84,7 @@ def render(config: ProductConfig, repo: str, pull: PullRequest, review, record: 
     items, counted = results
     items = items + _items(review, record)
     body = "\n\n".join(
-        f"### {i}. {title}\n\n{text}\n\n{ask(choice, markdown=True)}"
+        f"### {i}. {title}\n\n{text}\n\n{ask(choice, markdown=True, ticks=True)}"
         for i, (title, text, choice) in enumerate(items, 1)
     )
     people = " ".join(f"@{p}" for p in config.review_people)

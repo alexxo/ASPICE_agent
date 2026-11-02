@@ -132,17 +132,29 @@ def card_text(lines: dict[str, object], answer: str = "") -> str:
     return "\n".join(out)
 
 
-def card_markdown(lines: dict[str, object]) -> str:
-    """The card in Markdown for the code host: one bold label each, Select as a box
-    per option, which the person ticks."""
-    out = []
+# A tick edits someone else's comment and proves no person (FB-71): on an issue the
+# person answers with their own comment, so the card shows no box. Boxes only where
+# an approval reads them: the questions of checkpoint 4, on its pull request.
+HOW_TO_ANSWER = (
+    "**How to answer:** comment on this issue exactly the command your option names. "
+    "Ticking or editing this comment answers nothing."
+)
+
+
+def card_markdown(lines: dict[str, object], ticks: bool = False) -> str:
+    """The card in Markdown for the code host, one bold label each. On an issue: how
+    to answer first, Select as a numbered list — no box, since only the person's own
+    comment answers. With ticks (checkpoint 4, whose comment says how to answer):
+    Select as a box per option, read by the person's approval."""
+    out = [] if ticks else [HOW_TO_ANSWER]
     for label in [label for label in LINES if label in lines]:
         value = lines[label]
         if label == "Answer":
             continue
         if label == "Select":
-            boxes = "\n".join(f"- [ ] {i}. {item}" for i, item in enumerate(value, 1))
-            out.append(f"**Select your option:**\n{boxes}")
+            box = "- [ ] " if ticks else ""
+            options = "\n".join(f"{box}{i}. {item}" for i, item in enumerate(value, 1))
+            out.append(f"**Select your option:**\n{options}")
             continue
         out.append(f"**{label}:** {value}")
     return "\n\n".join(out)

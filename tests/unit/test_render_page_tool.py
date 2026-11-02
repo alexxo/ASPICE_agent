@@ -45,7 +45,14 @@ def test_the_terminal_prints_the_same_card():
     ]
 
 
-def test_the_code_host_gets_a_box_per_option():
+def test_an_issue_gets_no_box_to_tick():
     text = card_markdown(LINES)
     assert "**Why you:** A security requirement." in text
+    assert "1. keep trying\n2. stop" in text
+    assert "[ ]" not in text and "Ticking or editing this comment answers nothing." in text
+
+
+def test_checkpoint_4_gets_a_box_per_option_its_approval_reads():
+    text = card_markdown(LINES, ticks=True)
     assert "- [ ] 1. keep trying\n- [ ] 2. stop" in text
+    assert "How to answer" not in text

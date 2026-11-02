@@ -23,9 +23,11 @@ def test_the_terminal_shows_question_options_select_and_proposal():
     ]
 
 
-def test_the_code_host_gets_a_box_per_option():
+def test_an_issue_gets_numbered_options_answered_by_comment():
     text = render(PASSWORD, markdown=True)
-    assert "**Select your option:**\n- [ ] 1. block immediately\n- [ ] 2. give two" in text
+    assert text.startswith("**How to answer:** comment on this issue exactly the command")
+    assert "**Select your option:**\n1. block immediately\n2. give two" in text
+    assert "[ ]" not in text
     assert text.endswith(
         "**Proposed:** 2. give two more chances — the sign-in diagram shows three attempts."
     )
