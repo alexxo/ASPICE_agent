@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [4.0.3] - 2026-11-02
+
+FB-72's fix also holds on the CI run a review starts: the checkpoint branch is read from the run's event.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| None | — | — |
+
+### Fixed
+
+- **A review's CI run did not find the checkpoint branch.** `branch()` read `GITHUB_HEAD_REF`, which GitHub sets only on `pull_request` runs. A `pull_request_review` run has it empty and checks out a detached merge ref, so the approval of a `checkpoint/<n>` pull request turned its approval gate red again. `branch()` now reads the head branch from the event file (`pull_request.head.ref`, present on both events) first. `tools/read_commit_range_tool.py`. Origin: FB-73 (wp_publisher).
+
 ## [4.0.2] - 2026-11-02
 
 A pull request from `checkpoint/<n>` that changes approved work can merge: its approval waits for that merge instead of failing CI.
