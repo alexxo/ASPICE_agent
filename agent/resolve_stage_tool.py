@@ -7,7 +7,10 @@ checkpoint is done only once its stage done record exists (stage_done.v1,
 written by record_stage_done_tool when its gates first pass); a stage built
 from the requirements (stages 4 to 7) is done only while no requirement was
 added or changed since its latest record — else it is the current stage again,
-still finished, so its work stays enforced. A stage whose
+still finished, so its work stays enforced. On branch checkpoint/<n>, the
+stage closing checkpoint n is the current one again: the walk stops there, and
+its approval's own findings (APPROVAL_RULES) are only reported, since that pull
+request's merge is the approval the architect gives (FB-72). A stage whose
 checkpoint sits in the middle (stage 3: the stack is approved before components
 are designed) runs its gates_after_checkpoint only once that approval is current.
 The first stage that is not done is the current one. There is no state file: the
@@ -56,10 +59,12 @@ from agent.record_checkpoint_tool import current_approval  # noqa: E402
 from agent.run_gates_tool import passed, run_gates  # noqa: E402
 from tools.read_approvals_tool import (  # noqa: E402
     checkpoint_due,
+    checkpoint_of,
     ever_approved,
     requirements_changed,
     stage_done_record,
 )
+from tools.read_commit_range_tool import branch  # noqa: E402
 from tools.read_host_tool import host_configured  # noqa: E402
 from tools.read_integration_tool import read_architecture  # noqa: E402
 from tools.read_product_config_tool import (  # noqa: E402
@@ -74,6 +79,8 @@ __all__ = ["HOST_APPROVAL", "needs_record", "resolve_stage"]
 HOST_APPROVAL = "MISSING_PERSON_APPROVAL"  # verify_delivery_reviewed_gate: seal 4 not given yet
 # the person's review of seal 4 not answered, or changed after their approval: still seal 4
 PERSON_REVIEW = {HOST_APPROVAL, "REVIEW_ITEMS_UNANSWERED", "REVIEW_CHANGED_AFTER_APPROVAL"}
+# a checkpoint's approval not current yet: on its own pull request, what the merge gives
+APPROVAL_RULES = {"MISSING_APPROVAL", "APPROVAL_OUTDATED"}
 
 
 def resolve_stage(root: Path) -> dict:
@@ -120,10 +127,13 @@ def _walk(config: ProductConfig, root: Path) -> dict:
     done: list[str] = []
     flow = flow_stages()
     releasing = bool(pending(config))  # no release while any finding remains
+    approving = checkpoint_of(branch(root) or "")  # the checkpoint this pull request is
     for index, s in enumerate(flow):
         stop = partial(_stop, s, flow[: index + 1], [*flow[index + 1 :], *_events()], done)
         if s.gates:
             results = run_gates(root, s.gates)
+            if s.checkpoint and s.checkpoint == approving:
+                return _approving(s, _flat(results), stop)
             if not passed(results):
                 finished = releasing or _approved_once(config, s) or _recorded(config, s)
                 return _failing(s, _flat(results), finished, stop, s.gates_after_checkpoint)
@@ -202,6 +212,21 @@ def _failing(s: Stage, findings: list[dict], finished: bool, stop, skipped=()) -
     rest = [f for f in findings if f["rule"] not in PERSON_REVIEW]
     reason = f"{len(rest)} finding(s) reported: the stage is in progress"
     return stop("in_progress", reason, seals, rest, skipped)
+
+
+def _approving(s: Stage, findings: list[dict], stop) -> dict:
+    """The stage on its own checkpoint pull request: the approval's findings wait
+    for the merge, every other finding fails."""
+    rest = [f for f in findings if f["rule"] not in APPROVAL_RULES]
+    awaited = [f for f in findings if f["rule"] in APPROVAL_RULES]
+    if rest:
+        reason = f"{len(rest)} finding(s) in the work of checkpoint {s.checkpoint}"
+        return stop("gates_failing", reason, rest, awaited, s.gates_after_checkpoint)
+    reason = (
+        f"checkpoint {s.checkpoint}: this pull request's merge, once the architect "
+        "approves its head, is the approval"
+    )
+    return stop("awaiting_checkpoint", reason, (), awaited, s.gates_after_checkpoint)
 
 
 # What each stage built from the requirements brings up to a changed requirement.

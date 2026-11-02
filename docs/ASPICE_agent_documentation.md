@@ -1100,7 +1100,11 @@ and CI fails on three things:
    a change that breaks its work fails CI. A stage with a checkpoint is
    finished once its checkpoint has been approved, even if a later change
    made that approval outdated; changing a sealed stage's work therefore
-   needs the seal again, in the same pull request. A stage without a
+   needs the seal again: the change travels on *checkpoint/&lt;n&gt;*, whose
+   merge is the new approval. On that pull request the stage is the current
+   one again, the walk stops there, and only its approval's own findings
+   (MISSING_APPROVAL, APPROVAL_OUTDATED) wait for the merge; every other
+   finding of its work fails. A stage without a
    checkpoint is finished once its *stage done* record exists: the agent
    writes it, as it records an approval, when the stage's gates first pass.
    The resolver counts such a stage as done only with its record, so the
@@ -5117,6 +5121,18 @@ label together.
   in another form; the date check APPROVED_TOO_LATE, which the flow makes
   structural and which an existing product's checkpoints, approved again as
   pull requests, would fail.
+- **A changed checkpoint waits for its own merge** (2026-11-02, v4.0.2,
+  FB-72). A pull request from *checkpoint/n* that changed approved work could
+  never merge: the stage counted as finished, so its approval gate's
+  APPROVAL_OUTDATED failed CI, and only the merge makes the approval current.
+  *Chosen:* on *checkpoint/n* (the pull request's branch in CI, else the
+  checked-out one) the stage closing checkpoint *n* is the current one again;
+  its approval findings are reported, every other finding of its work fails,
+  and the architect's approval of the head is still required
+  (MISSING_PERSON_APPROVAL). *Not taken:* treating the approval findings as
+  a person's review to wait for — the architect's approval already is one,
+  and the findings stay until the merge, so the sign could never turn *Ready
+  to merge*.
 - **A tick is never the approval** (2026-11-02, v4.0.1, FB-71). A person
   ticked a box of the agent's choice on a change request and took the change
   as approved; only their own comment approves there. *Chosen:* a choice on an

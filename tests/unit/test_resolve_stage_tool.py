@@ -96,3 +96,46 @@ def test_check_passes_when_an_approval_moves_the_product_to_an_empty_stage(repo_
     _approve_diagrams(root)  # the approval is committed with stage 1's work (FB-15)
     assert resolve_stage(root)["status"] == "in_progress"
     assert _check(repo_root, root) == 0
+
+
+def _change_the_approved_diagram(root):
+    spec = root / "docs/diagrams/login.sequence.json"
+    spec.write_text(spec.read_text().replace("submit", "send"))
+
+
+def _rules(found):
+    return {f["rule"] for f in found}
+
+
+def test_a_changed_approved_diagram_fails_off_its_checkpoint_branch(product, monkeypatch):
+    monkeypatch.delenv("GITHUB_HEAD_REF", raising=False)
+    _approve_diagrams(product)
+    _change_the_approved_diagram(product)
+    state = resolve_stage(product)
+    assert state["status"] == "gates_failing"
+    assert "APPROVAL_OUTDATED" in _rules(state["findings"])
+
+
+def test_on_its_checkpoint_branch_the_approval_waits_for_the_merge(product, monkeypatch):
+    """FB-72: the merge of checkpoint/1 is the approval, so its pull request cannot
+    wait to be green until it merged."""
+    monkeypatch.delenv("GITHUB_HEAD_REF", raising=False)
+    _approve_diagrams(product)
+    subprocess.run(["git", "-C", str(product), "checkout", "-q", "-b", "checkpoint/1"], check=True)
+    _change_the_approved_diagram(product)
+    state = resolve_stage(product)
+    assert "APPROVAL_OUTDATED" in _rules(state["reported"])
+    assert not _rules(state["findings"]) & {"MISSING_APPROVAL", "APPROVAL_OUTDATED"}
+    monkeypatch.setenv("GITHUB_HEAD_REF", "checkpoint/1")  # CI reads the pull request's branch
+    subprocess.run(["git", "-C", str(product), "checkout", "-q", "-b", "elsewhere"], check=True)
+    assert "APPROVAL_OUTDATED" in _rules(resolve_stage(product)["reported"])
+
+
+def test_on_its_checkpoint_branch_the_other_findings_still_fail(product, monkeypatch):
+    monkeypatch.setenv("GITHUB_HEAD_REF", "checkpoint/2")
+    _approve_requirements(product)
+    login = product / "docs/requirements/login.md"
+    login.write_text(login.read_text().replace("size: S", "size: XXL", 1))
+    state = resolve_stage(product)
+    assert (state["stage"], state["status"]) == ("requirements", "gates_failing")
+    assert state["findings"] and not _rules(state["findings"]) & {"APPROVAL_OUTDATED"}
