@@ -98,9 +98,10 @@ def test_a_record_lacking_what_its_card_needs_is_reported(tmp_path):
     assert _rules(_who(tmp_path, lacking)) == ["INCOMPLETE_DECISION"]
 
 
-def test_the_person_s_answered_record_names_who_answered(tmp_path):
+def test_the_person_s_answered_record_names_no_one(tmp_path):
+    """FB-74: who answered is the approval of the pull request that carries it."""
     accepted = {k: v for k, v in PERSON.items() if k != "proposed_because"}
-    assert _rules(_who(tmp_path, {**accepted, "status": "accepted"})) == ["INCOMPLETE_DECISION"]
+    assert _rules(_who(tmp_path, {**accepted, "status": "accepted"})) == []
 
 
 def test_a_record_serving_no_requirement_of_the_product_is_reported(tmp_path):

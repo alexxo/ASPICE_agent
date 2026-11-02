@@ -131,7 +131,7 @@
       "pattern": "^[^\\n]+$"
     },
     "answered_by": {
-      "description": "decided_by person, once accepted: who answered, by name.",
+      "description": "Written before v4.0.4; not read. Who answered is the person's approval of the pull request that carries the record.",
       "type": "string",
       "minLength": 1,
       "pattern": "^[^\\n]+$"

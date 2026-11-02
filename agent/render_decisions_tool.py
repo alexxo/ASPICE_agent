@@ -23,9 +23,10 @@ verify_decision_records_gate renders it again and compares.
         writes the page and opens it in the browser
     python agent/render_decisions_tool.py --ask ADR-NNNN [--root PRODUCT]
         prints the person's decision as the card, for the terminal
-    python agent/render_decisions_tool.py --ask ADR-NNNN --answer TEXT --by NAME
+    python agent/render_decisions_tool.py --ask ADR-NNNN --answer TEXT
         records the answer (Y, or an option's number): status accepted, the
-        choice, who answered and when; then renders the page again
+        choice and when; then renders the page again. It names no one: who
+        answered is the person's approval of the pull request that carries it
 """
 
 from __future__ import annotations
@@ -151,9 +152,9 @@ def choice_of(record: dict, records: dict[str, dict]) -> dict:
     return check(choice)
 
 
-def record_answer(config: ProductConfig, ident: str, text: str, by: str, today: date) -> dict:
+def record_answer(config: ProductConfig, ident: str, text: str, today: date) -> dict:
     """Record the person's answer to their proposed decision: status accepted, the
-    option chosen, who answered and when. ValueError when it is no such decision,
+    option chosen and when. ValueError when it is no such decision,
     or the answer selects no option."""
     found = read_decisions(config).get(ident)
     if found is None:
@@ -170,7 +171,6 @@ def record_answer(config: ProductConfig, ident: str, text: str, by: str, today: 
         "status": "accepted",
         "date": today.isoformat(),
         "choice": record["options"][selected - 1]["name"],
-        "answered_by": by,
     }
     updated.pop("proposed_because", None)
     source = path.read_text(encoding="utf-8")
@@ -241,10 +241,7 @@ def _person_card(record: dict, records: dict[str, dict], requirements: dict) -> 
         lines["Answer"] = f"{answers} in the terminal"
         kind = "open"
     else:
-        lines["Answer"] = (
-            f"{number}. {html.escape(record['choice'])}, on {record['date']}, "
-            f"by {html.escape(record.get('answered_by', ''))}"
-        )
+        lines["Answer"] = f"{number}. {html.escape(record['choice'])}, on {record['date']}"
         kind = "answered"
     return card(kind, lines, meta=_meta(record, requirements), anchor=record["id"])
 
@@ -349,7 +346,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-open", action="store_true")
     parser.add_argument("--ask", metavar="ADR-NNNN")
     parser.add_argument("--answer")
-    parser.add_argument("--by")
     args = parser.parse_args(argv)
     config = read_product_config(args.root)
     if args.ask and args.answer is None:
@@ -366,11 +362,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Page: {config.relative(decisions_page(config))}")
         return 0
     if args.ask:
-        if not args.by:
-            print("--answer needs --by NAME: who answered", file=sys.stderr)
-            return 2
         try:
-            record_answer(config, args.ask, args.answer, args.by, date.today())
+            record_answer(config, args.ask, args.answer, date.today())
         except ValueError as err:
             print(str(err), file=sys.stderr)
             return 1

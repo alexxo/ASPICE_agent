@@ -50,8 +50,8 @@ From stage 4 on, also: *decided_by*, the *requirements* it serves, and the
   *why_you* (the critical requirement it touches), and while *proposed* the
   *choice* proposed with *proposed_because*. Ask it with
   *agent/render_decisions_tool.py --ask ADR-NNNN*, the one card; record the
-  answer with *--answer Y|n --by NAME* — status *accepted*, the chosen option,
-  *answered_by*.
+  answer with *--answer Y|n* — status *accepted*, the chosen option; who
+  answered is the person's approval of the pull request that carries it.
 - **decided_by: agent** — status *accepted*, *not_critical* (why no critical
   requirement depends on it) and *where* (path:line in the work).
 
@@ -67,7 +67,7 @@ After every change, render the decisions page,
 | R3 | The choice is one of the options | verify_decision_records_gate · CHOICE_NOT_AN_OPTION |
 | R4 | A superseded record exists; a record is changed by superseding it, not by rewriting it | verify_decision_records_gate · UNKNOWN_SUPERSEDED |
 | R5 | The options are real alternatives, and the consequences honest | Checkpoint 3; Review |
-| R6 | A record saying who decides has what its card needs: the requirements; the person's, the question, why they are asked, the proposal while proposed and who answered once accepted; the agent's, why it is not critical and where it is in the work | verify_decision_records_gate · INCOMPLETE_DECISION |
+| R6 | A record saying who decides has what its card needs: the requirements; the person's, the question, why they are asked, the proposal while proposed; the agent's, why it is not critical and where it is in the work | verify_decision_records_gate · INCOMPLETE_DECISION |
 | R7 | Each requirement a record serves exists | verify_decision_records_gate · UNKNOWN_REQUIREMENT |
 | R8 | The agent decides no choice a critical requirement depends on | verify_decision_records_gate · AGENT_DECIDED_CRITICAL |
 | R9 | The decisions page exists and is what the records render now | verify_decision_records_gate · MISSING_DECISIONS_PAGE, DECISIONS_PAGE_OUTDATED |

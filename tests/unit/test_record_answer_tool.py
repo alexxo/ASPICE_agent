@@ -111,42 +111,38 @@ def test_an_approval_waits_for_every_answer(asked):
 
 
 def test_an_answer_records_whether_it_took_the_proposal(asked):
-    record_answer(asked, "Q1", 2, "Alex", "architect")
+    record_answer(asked, "Q1", 2)
     (question,) = read_questions(_config(asked))["questions"]
-    assert question["answer"] == {
-        "choice": 2,
-        "approver": {"name": "Alex", "role": "architect"},
-        "proposal": "changed",
-    }
+    assert question["answer"] == {"choice": 2, "proposal": "changed"}
     render_review(asked)
     page = render(_config(asked))
     assert '<div class="card answered" id="Q1">' in page
     assert '<span class="answer">2. locked at the 4th attempt' in page
-    assert "proposal changed, Alex" in render(_config(asked))
+    assert "(proposal changed)" in render(_config(asked))
     assert _rules(asked) == []
     merge_allowed(_config(asked))
 
 
 def test_without_a_proposal_the_answer_says_so(product):
     check_criteria(product, [TERM])
-    record_answer(product, "Q1", 1, "Alex", "architect")
+    record_answer(product, "Q1", 1)
     assert read_questions(_config(product))["questions"][0]["answer"]["proposal"] == "none"
 
 
 @pytest.mark.parametrize("choice", [0, 4])
 def test_only_a_listed_number_is_an_answer(asked, choice):
     with pytest.raises(ValueError, match="choose 1 to 3"):
-        record_answer(asked, "Q1", choice, "Alex", "architect")
+        record_answer(asked, "Q1", choice)
 
 
 def test_a_question_is_answered_once(asked):
-    record_answer(asked, "Q1", 1, "Alex", "architect")
+    record_answer(asked, "Q1", 1)
     with pytest.raises(ValueError, match="Q1 is not open"):
-        record_answer(asked, "Q1", 2, "Alex", "architect")
+        record_answer(asked, "Q1", 2)
 
 
 def test_neither_holds_until_the_criterion_is_rewritten_and_checked_again(asked):
-    record_answer(asked, "Q1", 3, "Alex", "architect")
+    record_answer(asked, "Q1", 3)
     assert _rules(asked) == ["QUESTION_UNANSWERED", "REVIEW_PAGE_OUTDATED"]
     _rewrite(asked, "REQ-0012")
     render_review(asked)
@@ -178,7 +174,7 @@ def test_questions_are_numbered_as_the_page_shows_them(product):
 
 def test_a_criterion_unchanged_since_the_approval_is_not_checked_again(asked, capsys):
     """FB-59: a change request checks what it changed, not every criterion."""
-    record_answer(asked, "Q1", 1, "Alex", "architect")
+    record_answer(asked, "Q1", 1)
     render_review(asked)
     commit_all(asked, "Q1 answered")
     approve_checkpoint(asked, 2)
@@ -190,7 +186,7 @@ def test_a_criterion_unchanged_since_the_approval_is_not_checked_again(asked, ca
 
 def test_a_criterion_rewritten_to_settle_a_question_names_it(asked, capsys):
     """FB-59: the recheck asks only about the wording the rewrite added."""
-    record_answer(asked, "Q1", 1, "Alex", "architect")
+    record_answer(asked, "Q1", 1)
     _rewrite(asked, "REQ-0012")
     assert main(["--unchecked", "--root", str(asked)]) == 0
     assert capsys.readouterr().out.splitlines() == [
@@ -203,8 +199,8 @@ def test_what_was_accepted_is_told_in_plain_words_the_risky_first(product):
     """Alex: a batch of proposals accepted with one Y is told back, risky ones first."""
     convention = {**TERM, "proposal": {"choice": 1, "source": "convention: closed is listed"}}
     check_criteria(product, [LOCK, convention])
-    record_answer(product, "Q1", 1, "Alex", "architect")
-    record_answer(product, "Q2", 1, "Alex", "architect")
+    record_answer(product, "Q1", 1)
+    record_answer(product, "Q2", 1)
     lines = summary(_config(product))
     assert lines[0].startswith("⚠ Q1 — When is the account locked?")
     assert "\n    Risky: a requirement of high criticality.\n" in lines[0]
@@ -220,7 +216,7 @@ def test_a_plain_answer_is_not_marked_risky(product):
     at = text.index("criticality: high", text.index("uid: REQ-0012"))
     path.write_text(text[:at] + "criticality: low" + text[at + len("criticality: high") :])
     check_criteria(product, [LOCK])
-    record_answer(product, "Q1", 1, "Alex", "architect")
+    record_answer(product, "Q1", 1)
     assert summary(_config(product)) == [
         "Q1 — When is the account locked?\n"
         "    the product will — locked at the 3rd failure (e.g. ✗ ✗ ✗ → locked)\n"
@@ -239,7 +235,7 @@ def test_each_answer_is_told_as_a_story_in_the_persons_words(product):
         ],
     }
     check_criteria(product, [told])
-    record_answer(product, "Q1", 1, "Alex", "architect")
+    record_answer(product, "Q1", 1)
     assert summary(_config(product))[0].splitlines() == [
         "⚠ Q1 — When is the account locked?",
         "    When you type a wrong password three times:",
@@ -251,13 +247,13 @@ def test_each_answer_is_told_as_a_story_in_the_persons_words(product):
 
 
 def test_an_answer_can_be_given_again_until_the_criterion_is_rewritten(asked):
-    record_answer(asked, "Q1", 1, "Alex", "architect")
-    record_answer(asked, "Q1", 2, "Alex", "architect", again=True)
+    record_answer(asked, "Q1", 1)
+    record_answer(asked, "Q1", 2, again=True)
     assert read_questions(_config(asked))["questions"][0]["answer"]["choice"] == 2
     _rewrite(asked, "REQ-0012")
     assert summary(_config(asked)) == []
     with pytest.raises(ValueError, match="Q1 has no answer to change"):
-        record_answer(asked, "Q1", 1, "Alex", "architect", again=True)
+        record_answer(asked, "Q1", 1, again=True)
 
 
 def test_a_question_about_something_that_does_not_exist_is_refused(product):
@@ -271,7 +267,7 @@ def test_a_proposal_must_be_one_of_the_readings(product):
 
 
 def test_questions_settled_before_the_previous_approval_are_not_shown_again(asked):
-    record_answer(asked, "Q1", 1, "Alex", "architect")
+    record_answer(asked, "Q1", 1)
     render_review(asked)
     commit_all(asked, "Q1 answered")
     approve_checkpoint(asked, 2)
@@ -285,7 +281,7 @@ def test_questions_settled_before_the_previous_approval_are_not_shown_again(aske
 def test_one_rule_is_one_question_that_settles_each_criterion_it_names(product, capsys):
     """FB-60: the same convention is asked once, not once per criterion."""
     check_criteria(product, [{**LOCK, "also": [{"requirement": "REQ-0011", "criterion": 2}]}])
-    record_answer(product, "Q1", 1, "Alex", "architect")
+    record_answer(product, "Q1", 1)
     assert summary(_config(product))[0].endswith("(REQ-0012, criterion 2), and 1 more")
     _rewrite(product)
     assert main(["--unchecked", "--root", str(product)]) == 0
@@ -299,10 +295,10 @@ def test_a_rule_naming_a_criterion_that_does_not_exist_is_refused(product):
 
 def test_a_criterion_is_checked_again_once_after_its_rewrite(asked, capsys):
     """FB-60: the check, one recheck of the rewrite, and no third round."""
-    record_answer(asked, "Q1", 1, "Alex", "architect")
+    record_answer(asked, "Q1", 1)
     _rewrite(asked, "REQ-0012")
     check_criteria(asked, [{**LOCK, "question": "Is a refused sign-in a failure?"}])
-    record_answer(asked, "Q2", 1, "Alex", "architect")
+    record_answer(asked, "Q2", 1)
     path = _login(asked)
     path.write_text(path.read_text().replace("it reports the failure", "it reports the sign-in"))
     assert main(["--unchecked", "--root", str(asked)]) == 0

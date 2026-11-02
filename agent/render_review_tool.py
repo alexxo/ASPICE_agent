@@ -342,9 +342,7 @@ def _question(q: dict) -> str:
             "changed": "proposal changed",
             "none": "no proposal",
         }[answer["proposal"]]
-        lines["Answer"] = (
-            f"{choice}. {html.escape(chosen)} ({taken}, {html.escape(answer['approver']['name'])})"
-        )
+        lines["Answer"] = f"{choice}. {html.escape(chosen)} ({taken})"
         return card("answered", lines, meta=meta, anchor=q["id"])
     lines["Select"] = [
         f"{html.escape(r['reading'])} <span class=\"example\">{html.escape(r['example'])}</span>"

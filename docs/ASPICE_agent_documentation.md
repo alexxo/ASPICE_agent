@@ -5134,6 +5134,17 @@ label together.
   a person's review to wait for — the architect's approval already is one,
   and the findings stay until the merge, so the sign could never turn *Ready
   to merge*.
+- **An answer names no one** (2026-11-02, v4.0.4, FB-74). The agent
+  recorded checkpoint 2's answers, and the person's decisions at stage 4,
+  with the person's name passed by whoever ran the tool. The agent's
+  permission check refused to write a decision in the person's name, and the
+  name proved nothing. *Chosen:* the person answers in the terminal as before.
+  The agent records only the option chosen. Who answered is the person's
+  approval, on the code host, of the pull request that carries the answer:
+  *checkpoint/2* for the questions, the results review for the decisions.
+  *Not taken:* answers as review comments read from the host (`/answer Q38
+  1`) — a second place to answer, a command syntax to learn, and a parser, for
+  a decision the approval already covers.
 - **A tick is never the approval** (2026-11-02, v4.0.1, FB-71). A person
   ticked a box of the agent's choice on a change request and took the change
   as approved; only their own comment approves there. *Chosen:* a choice on an

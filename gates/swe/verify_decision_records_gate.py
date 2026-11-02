@@ -120,7 +120,7 @@ def check(config: ProductConfig) -> list[Finding]:
 # once accepted; the agent's.
 NEEDS = {
     ("person", "proposed"): ["question", "why_you", "proposed_because"],
-    ("person", "accepted"): ["question", "why_you", "answered_by"],
+    ("person", "accepted"): ["question", "why_you"],
     ("person", "superseded"): ["question", "why_you"],
     ("agent", "proposed"): ["not_critical", "where"],
     ("agent", "accepted"): ["not_critical", "where"],

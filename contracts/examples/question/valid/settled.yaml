@@ -17,5 +17,4 @@ questions:
       source: 'diagram message "3rd failure → lock"'
     answer:
       choice: 1
-      approver: {name: Alex, role: architect}
       proposal: accepted

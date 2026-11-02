@@ -81,13 +81,10 @@ def test_the_person_s_decision_is_the_card_with_its_proposal(tmp_path):
 
 def test_the_answer_is_recorded_and_the_card_moves_to_answered(tmp_path):
     config = _product(tmp_path, PERSON)
-    record_answer(config, "ADR-0003", "2", "Alex", date(2026, 10, 30))
+    record_answer(config, "ADR-0003", "2", date(2026, 10, 30))
     record = _records(config)["ADR-0003"]
-    assert (record["status"], record["choice"], record["answered_by"]) == (
-        "accepted",
-        "password first",
-        "Alex",
-    )
+    assert (record["status"], record["choice"]) == ("accepted", "password first")
+    assert "answered_by" not in record
     assert "proposed_because" not in record
     assert "Answered by you (1)" in render(config)
 
@@ -95,13 +92,13 @@ def test_the_answer_is_recorded_and_the_card_moves_to_answered(tmp_path):
 def test_an_answer_selecting_no_option_is_refused(tmp_path):
     config = _product(tmp_path, PERSON)
     with pytest.raises(ValueError, match="selects no option"):
-        record_answer(config, "ADR-0003", "7", "Alex", date(2026, 10, 30))
+        record_answer(config, "ADR-0003", "7", date(2026, 10, 30))
 
 
 def test_the_agent_s_decision_waits_for_no_answer(tmp_path):
     config = _product(tmp_path, AGENT)
     with pytest.raises(ValueError, match="waits for no answer"):
-        record_answer(config, "ADR-0002", "1", "Alex", date(2026, 10, 30))
+        record_answer(config, "ADR-0002", "1", date(2026, 10, 30))
 
 
 def test_the_command_prints_the_card_in_the_terminal(tmp_path, capsys):

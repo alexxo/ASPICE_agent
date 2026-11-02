@@ -107,13 +107,14 @@
             ]
           },
           "answer": {
-            "description": "The person's answer: a reading's number, or the one after the last for 'neither'; who gave it; whether it took the proposal.",
+            "description": "The person's answer: a reading's number, or the one after the last for 'neither'; whether it took the proposal. It names no one: the architect's approval of the checkpoint/2 pull request that carries it is who gave it.",
             "type": "object",
             "additionalProperties": false,
-            "required": ["choice", "approver", "proposal"],
+            "required": ["choice", "proposal"],
             "properties": {
               "choice": {"type": "integer", "minimum": 1},
               "approver": {
+                "description": "Written before v4.0.4; not read.",
                 "type": "object",
                 "additionalProperties": false,
                 "required": ["name", "role"],

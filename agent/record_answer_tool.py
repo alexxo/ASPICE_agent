@@ -19,8 +19,7 @@ checked when it is rewritten again, so the rounds end.
     python agent/record_answer_tool.py --questions FILE [--root PRODUCT]
         records the session's questions (a YAML list, without id and asked)
         and every criterion and term as checked
-    python agent/record_answer_tool.py --question Q1 --choice N --approver NAME \\
-        --role ROLE [--again] [--root PRODUCT]
+    python agent/record_answer_tool.py --question Q1 --choice N [--again] [--root PRODUCT]
         records the person's answer: a reading's number, or the one after the
         last for 'neither: the requirement goes back to be rewritten'; --again
         changes an answer whose criterion is not rewritten yet
@@ -29,6 +28,9 @@ checked when it is rewritten again, so the rounds end.
     python agent/record_answer_tool.py --summary [--root PRODUCT]
         prints, as a short story per answer, what the answers not yet written
         into the criteria decide, the risky ones first, each with why
+
+The answer names no one: who gave it is the architect's approval of the
+checkpoint/2 pull request that carries it, on the code host (FB-74).
 
 An unanswered question whose criterion or term changed since it was asked no
 longer counts: the changed text is unchecked, and is checked again (§ 5 stages 1
@@ -298,9 +300,7 @@ def record_check(root: Path, session_file: Path) -> Path:
     return _write(config, data)
 
 
-def record_answer(
-    root: Path, question: str, choice: int, approver: str, role: str, again: bool = False
-) -> Path:
+def record_answer(root: Path, question: str, choice: int, again: bool = False) -> Path:
     """Record the person's answer to one open question, or, again, change the answer
     to one whose criterion is not rewritten yet."""
     config = read_product_config(root)
@@ -321,11 +321,7 @@ def record_answer(
         if proposal == "none"
         else ("accepted" if proposal["choice"] == choice else "changed")
     )
-    found["answer"] = {
-        "choice": choice,
-        "approver": {"name": approver, "role": role},
-        "proposal": taken,
-    }
+    found["answer"] = {"choice": choice, "proposal": taken}
     return _write(config, data)
 
 
@@ -460,8 +456,6 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--ask")
     parser.add_argument("--choice", type=int)
     parser.add_argument("--again", action="store_true")
-    parser.add_argument("--approver")
-    parser.add_argument("--role", choices=["architect", "reviewer", "customer"])
     args = parser.parse_args(argv)
     try:
         if args.unchecked:
@@ -482,13 +476,9 @@ def main(argv: list[str] | None = None) -> int:
             for line in summary(read_product_config(args.root)):
                 print(line)
             return 0
-        if args.choice is None or not args.approver or not args.role:
-            parser.error("--question needs --choice, --approver and --role")
-        print(
-            record_answer(
-                args.root, args.question, args.choice, args.approver, args.role, args.again
-            )
-        )
+        if args.choice is None:
+            parser.error("--question needs --choice")
+        print(record_answer(args.root, args.question, args.choice, args.again))
         return 0
     except ValueError as err:
         print(str(err), file=sys.stderr)
