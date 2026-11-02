@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [4.0.2] - 2026-11-02
+
+A pull request from `checkpoint/<n>` that changes approved work can merge: its approval waits for that merge instead of failing CI.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| None | — | — |
+
+### Fixed
+
+- **A changed checkpoint deadlocked.** Once checkpoint *n* had been approved, its stage counted as finished, so on a new `checkpoint/<n>` pull request the approval gate's own APPROVAL_OUTDATED (or MISSING_APPROVAL) failed CI. Only the merge makes the approval current, and the merge waited for a green CI. On branch `checkpoint/<n>` (`GITHUB_HEAD_REF` in CI, else the checked-out branch), the resolver now stops at the stage closing checkpoint *n*: those two findings are reported, every other finding of its work fails, and the architect's approval of the head is still required. `agent/resolve_stage_tool.py`. Origin: FB-72 (wp_publisher).
+
 ## [4.0.1] - 2026-11-02
 
 A choice asked on an issue shows no boxes: the person answers with their own comment, and the card says so first.
