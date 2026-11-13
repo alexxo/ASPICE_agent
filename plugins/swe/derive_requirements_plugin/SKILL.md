@@ -101,9 +101,12 @@ requirements, each with its own criteria and tests.
    criteria and terms not checked yet
    (`python <framework>/agent/record_answer_tool.py --unchecked`) checked in a
    fresh session that sees only the requirements, the glossary and the
-   approved diagrams (`<framework>/agent/clarify_criteria_prompt.md`); never
-   check them yourself, since you wrote them. Record its questions with
-   `record_answer_tool.py --questions <file>`, then render the review page.
+   approved diagrams:
+   `python <framework>/tools/start_session_tool.py --session clarify --task "Check these: <the list>"`
+   (`<framework>/agent/clarify_criteria_prompt.md`); never check them
+   yourself, since you wrote them. Record its questions with
+   `record_answer_tool.py --questions .qf/sessions/clarify.yaml`, then render
+   the review page.
    The questions go to the person at checkpoint 2; after each answer rewrite
    the criterion to the reading chosen — and every criterion under the
    question's `also` — and have the rewritten criteria checked again the same

@@ -20,6 +20,21 @@ def test_three_retries_are_allowed():
     assert MAX_RETRIES == 3
 
 
+def test_each_component_counts_its_own_attempts(tmp_path):
+    """Stages 5 and 6: one stuck component reaches the architect alone."""
+    for n in range(1, 5):
+        record_attempt(tmp_path, "unit_tests", _fail(n), "auth-service")
+    record_attempt(tmp_path, "unit_tests", _fail(1), "billing")
+    stuck = decide(tmp_path, "unit_tests", "auth-service")
+    assert stuck["decision"] == "escalate" and stuck["component"] == "auth-service"
+    assert "component auth-service" in (tmp_path / stuck["escalation_report"]).read_text()
+    assert decide(tmp_path, "unit_tests", "billing")["decision"] == "retry"
+    assert decide(tmp_path, "unit_tests")["decision"] == "run"  # the stage's own count: none
+    reset(tmp_path, "unit_tests", "auth-service")
+    assert decide(tmp_path, "unit_tests", "auth-service")["decision"] == "run"
+    assert decide(tmp_path, "unit_tests", "billing")["attempts"] == 1
+
+
 def test_a_passing_attempt_passes(tmp_path):
     record_attempt(tmp_path, "requirements", PASS)
     assert decide(tmp_path, "requirements")["decision"] == "pass"

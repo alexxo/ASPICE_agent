@@ -153,8 +153,10 @@ Then the person does, on GitHub:
      (and **Checks: read** where GitHub offers it), nothing else. It can
      review and read CI, but not push or merge.
 
-   Copy the token once and save it like an SSH key, in your home folder,
-   one file per repository owner (the organization, or the bot's account).
+   Copy the token once and save it like an SSH key, in your home folder's
+   `.aspice_agent_secrets` — the one folder for every secret of the ASPICE
+   Agent — one file per repository owner (the organization, or the bot's
+   account).
    `<owner>` is the part before the `/` in the repository's address, e.g.
    `Trazodigital` for `github.com/Trazodigital/Team_repo_wp_publisher`:
 
@@ -166,23 +168,23 @@ Then the person does, on GitHub:
    macOS:
 
    ```sh
-   mkdir -p ~/.aspice_agent_reviewer_bot_token
-   chmod 700 ~/.aspice_agent_reviewer_bot_token
-   nano ~/.aspice_agent_reviewer_bot_token/<owner>
+   mkdir -p ~/.aspice_agent_secrets/reviewer_bot_github_token
+   chmod 700 ~/.aspice_agent_secrets ~/.aspice_agent_secrets/reviewer_bot_github_token
+   nano ~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>
    #   paste the token, then Ctrl+O, Enter (save) and Ctrl+X (close)
-   chmod 600 ~/.aspice_agent_reviewer_bot_token/<owner>
+   chmod 600 ~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>
    ```
 
    Windows (PowerShell; your user folder is readable only by you):
 
    ```powershell
-   New-Item -ItemType Directory -Force "$HOME\.aspice_agent_reviewer_bot_token"
-   notepad "$HOME\.aspice_agent_reviewer_bot_token\<owner>"
+   New-Item -ItemType Directory -Force "$HOME\.aspice_agent_secrets\reviewer_bot_github_token"
+   notepad "$HOME\.aspice_agent_secrets\reviewer_bot_github_token\<owner>"
    #   answer Yes to create the file, paste the token, save and close
    ```
 
-   Never put it in the developer's session, a `.env` or any file in the
-   repository.
+   Never put it in the developer's session, a `.env` — the product's or
+   yours — or any file in the repository.
 6. *Organization's repository, if item 4 asks for approval:* an organization
    owner opens the organization → Settings → Third-party Access → Personal
    access tokens → *Pending requests*, checks that the reviewer-bot's request
@@ -200,7 +202,7 @@ Then the person does, on GitHub:
    macOS:
 
    ```sh
-   export GH_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)"
+   export GH_TOKEN="$(cat ~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>)"
    gh api repos/<owner>/<repo> -q .full_name
    gh api repos/<owner>/<repo>/commits/main/status -q .state
    gh api "repos/<owner>/<repo>/actions/runs?per_page=1" -q .total_count
@@ -210,7 +212,7 @@ Then the person does, on GitHub:
    Windows (PowerShell):
 
    ```powershell
-   $env:GH_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"
+   $env:GH_TOKEN = Get-Content "$HOME\.aspice_agent_secrets\reviewer_bot_github_token\<owner>"
    gh api repos/<owner>/<repo> -q .full_name
    gh api repos/<owner>/<repo>/commits/main/status -q .state
    gh api "repos/<owner>/<repo>/actions/runs?per_page=1" -q .total_count
@@ -283,8 +285,9 @@ The pushing account needs write access. With read access only, GitHub answers
 It is a complete tool: its `archify/` folder holds the agent's instructions
 (`SKILL.md`) and the command-line tool that renders and checks the diagrams. It
 needs Node 18 or later and no npm packages. The person installs it in their own
-clone, for this product only. `.gitignore` excludes `.claude/`, so it is never
-committed, and `.archify/`, its working folders (drafts, previews).
+clone, for this product only, in `.agents/skills` — the folder every agent
+host can use. `.gitignore` excludes `.agents/`, so it is never committed, and
+`.archify/`, its working folders (drafts, previews).
 
 Show the person these commands. They pick an Archify release tag, e.g.
 `v3.1.0`:
@@ -292,21 +295,21 @@ Show the person these commands. They pick an Archify release tag, e.g.
 ```sh
 TMP=$(mktemp -d)
 git clone --depth 1 --branch <archify release> https://github.com/tt-a1i/archify.git "$TMP/archify"
-mkdir -p .claude/skills
-cp -R "$TMP/archify/archify" .claude/skills/archify
+mkdir -p .agents/skills
+cp -R "$TMP/archify/archify" .agents/skills/archify
 rm -rf "$TMP"
 ```
 
 Then check, yourself:
 
 ```sh
-node .claude/skills/archify/bin/archify.mjs doctor
+node .agents/skills/archify/bin/archify.mjs doctor
 python3 .framework/agent/read_config_tool.py --root .
 ```
 
-The second command must report no `PLUGIN_NOT_INSTALLED`. Another agent host
-looks for skills in `.agents/skills`; a plugin installed anywhere else is named
-in `.qf/environment.yaml` (see the README of `examples/login-product`).
+The second command must report no `PLUGIN_NOT_INSTALLED`. The framework also
+looks in `.claude/skills`; a plugin installed anywhere else is named in
+`.qf/environment.yaml` (see the README of `examples/login-product`).
 
 ### Step 8 — Every developer keeps a clone
 
@@ -319,7 +322,45 @@ git clone --recurse-submodules <repository URL>
 git submodule update --init
 ```
 
-Each developer installs Archify in their own clone (step 7).
+Each developer installs Archify in their own clone (step 7), and chooses the
+LLMs of the independent sessions in two `.env` files — one per side, so the
+side that does the work never configures the side that checks it:
+
+- **The product's `.env`** (ignored by git) — the author's side: the sessions
+  the agent starts, clarify (stage 2), the tester (stage 5) and the coder
+  (stage 6).
+- **`~/.aspice_agent_secrets/.env`** — the person's side: the sessions the
+  watcher starts, the reviewer and its describe sessions. It sits next to the
+  reviewer token, out of the agent's reach.
+
+Each line names the command that starts a session: the agent's command line,
+with `{prompt}` where the prompt goes. No LLM is the default: each side's
+fallback is required, and a session may name its own LLM. The key of each LLM
+goes in the same file, under the name its command-line tool reads. The person
+writes both files with an editor, never the agent: the keys never land in the
+shell's history or the agent's session. For example:
+
+```sh
+# <product>/.env
+QF_COMMAND_TO_START_AUTHOR_SESSIONS=claude -p {prompt}
+QF_COMMAND_TO_START_TESTER_SESSION=codex exec --model gpt-5 {prompt}
+OPENAI_API_KEY=<the key>
+#   optional: QF_COMMAND_TO_START_CLARIFY_SESSION, QF_COMMAND_TO_START_CODER_SESSION
+```
+
+```sh
+# ~/.aspice_agent_secrets/.env   (chmod 600)
+QF_COMMAND_TO_START_REVIEW_SESSIONS=gemini -p {prompt}
+GEMINI_API_KEY=<the key>
+#   optional: QF_COMMAND_TO_START_REVIEWER_SESSION,
+#   QF_COMMAND_TO_START_DESCRIBE_TESTS_SESSION,
+#   QF_COMMAND_TO_START_DESCRIBE_DESIGN_SESSION,
+#   QF_COMMAND_TO_START_EXPECT_CASES_SESSION
+```
+
+Each command-line tool has its own flags: check them in its documentation.
+Running the reviewer's side on a different LLM than the author's keeps the
+review more independent: one model tends to miss what the same model missed.
 
 ### Step 9 — Hand over to the ASPICE Agent
 
@@ -338,9 +379,9 @@ wishes. Tell the person how the work runs from now on:
   developer starts the watcher in a second terminal in the product folder,
   giving the token to the watcher only, in one line — macOS (zsh or bash)
   and Linux:
-  `QF_HOST_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)" python .framework/tools/watch_reviews_tool.py --root .`
+  `QF_HOST_TOKEN="$(cat ~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>)" python .framework/tools/watch_reviews_tool.py --root .`
   — Windows (PowerShell):
-  `try { $env:QF_HOST_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"; python .framework\tools\watch_reviews_tool.py --root . } finally { Remove-Item Env:QF_HOST_TOKEN }`
+  `try { $env:QF_HOST_TOKEN = Get-Content "$HOME\.aspice_agent_secrets\reviewer_bot_github_token\<owner>"; python .framework\tools\watch_reviews_tool.py --root . } finally { Remove-Item Env:QF_HOST_TOKEN }`
   — and leaves it running. The token then lives in the watcher and its
   reviewer sessions only: the terminal itself never holds it, the shell's
   history keeps the command, not the token, and it is gone when the watcher
@@ -351,9 +392,10 @@ wishes. Tell the person how the work runs from now on:
   request's state changes, naming who acts next: *waits for CI*, *gates red:
   the author fixes them*, *waits for your review*, *ready to merge* — and
   warns when a head has no crossing sign after 10 minutes, since CI may not
-  run. A reviewer never changes the work: the watcher runs Claude Code with
-  the reviewer's tools only; with another agent (`--command`), configure it
-  read-only. Each review runs in a copy of the pull request's head, so you
+  run. Its sessions start with the commands of `~/.aspice_agent_secrets/.env`
+  (step 8). A reviewer never changes the work: configure its command
+  read-only, as its command-line tool allows. Each review runs in a copy of
+  the pull request's head, so you
   and the developer go on working in the product folder. If that copy
   changes during a review anyway, the watcher shows **REVIEWER CHANGED THE
   WORK**, keeps the copy, and pauses until you have verified your LLM
@@ -399,3 +441,30 @@ wishes. Tell the person how the work runs from now on:
 
 The rules behind all of this are in `.framework/docs/ASPICE_agent_documentation.md`,
 section *Starting a product*.
+
+## Upgrading an existing product
+
+A product built with a framework before 5.0.0 keeps all its work: no gate and
+no record changes. Two things move — the independent sessions take their LLM
+from a `.env`, and the reviewer token joins the one folder of secrets.
+
+In the product:
+
+1. Update the framework submodule to the new release and commit the pin.
+2. Write the product's `.env` with at least
+   `QF_COMMAND_TO_START_AUTHOR_SESSIONS` and that LLM's key (step 8).
+3. Add `.env` to the product's `.gitignore`.
+
+As the user who runs the watcher, on their machine:
+
+4. Move the token into the folder of secrets:
+
+   ```sh
+   mkdir -p -m 700 ~/.aspice_agent_secrets
+   mv ~/.aspice_agent_reviewer_bot_token ~/.aspice_agent_secrets/reviewer_bot_github_token
+   ```
+
+5. Write `~/.aspice_agent_secrets/.env` with at least
+   `QF_COMMAND_TO_START_REVIEW_SESSIONS` and that LLM's key (step 8).
+6. Stop the watcher (Ctrl+C) and start it again with the line of step 9: it
+   no longer takes `--command`.

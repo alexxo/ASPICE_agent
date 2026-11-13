@@ -11,11 +11,15 @@ adds or changes software-level tests, which name their requirements with
 `@sdoc`. The session runs in a temporary folder outside the product that
 holds only `criteria.yaml` — the statement and acceptance criteria of each
 requirement those tests prove, each criterion numbered from 1 — and the
-glossary, with the reading tool only and these instructions in the prompt, so
+glossary, with these instructions in the prompt, so
 it has no path to the tests or the code. Without the watcher, the reviewer
 agent starts it itself with those requirements, for example:
 
-`claude -p "Follow <framework>/agent/expect_cases_prompt.md for REQ-0047 REQ-0048 of <product>: read only their criteria and the glossary"`
+`Follow <framework>/agent/expect_cases_prompt.md for REQ-0047 REQ-0048 of <product>: read only their criteria and the glossary`
+
+as the prompt of the command in *QF_COMMAND_TO_START_EXPECT_CASES_SESSION*,
+else *QF_COMMAND_TO_START_REVIEW_SESSIONS*, of the person's
+*~/.aspice_agent_secrets/.env*.
 
 The list goes into the review record's `expected` (`review.v1`), and the
 reviewer agent adds to each case the test that checks it, or `missing`. The

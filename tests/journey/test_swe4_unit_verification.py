@@ -129,3 +129,76 @@ def test_tests_first_then_the_units_move_the_product_to_stage_7(product):
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("integration_verification", "in_progress")
     assert state["done"] == [*DESIGNED, "unit_tests", "unit_construction"]
+
+
+# ── the same, each role in a session of its own, on whatever LLM ────────────
+
+SESSION = """
+import re, sys
+from pathlib import Path
+sys.path[:0] = [{tests!r}, {framework!r}]
+import product_builder as pb
+
+prompt = sys.argv[1]
+component = re.search(r"component (\\S+?)[ .]", prompt).group(1)
+root = Path('.')
+units = pb.design_units_by_component()[component]
+if prompt.startswith('Write the unit tests'):
+    code = [p for p in root.rglob('src/**/*.py') if not p.name.startswith('test_')]
+    assert not code, code  # the tester's copy holds no code
+    for unit in units:
+        pb.write_stub(root, component, unit)
+        pb.write_unit_test(root, component, unit)
+    if component == 'auth-service':
+        pb.write_settings_stub(root)
+        pb.write_settings_test(root)
+    if component == 'web-app':
+        pb.write_security_test(root)
+else:
+    for unit in units:
+        pb.write_code(root, component, unit)
+    if component == 'auth-service':
+        pb.write_settings_code(root)
+"""
+
+
+def test_a_session_per_component_brings_the_product_to_stage_7(product, tmp_path):
+    """Stages 5 and 6 as run_aspice_agent.md runs them: a tester session per
+    component, each test-only commit judged; then a coder session per component."""
+    import shlex
+    import sys
+    from pathlib import Path
+
+    from product_builder import design_units_by_component
+
+    from tools.start_session_tool import start
+
+    llm = tmp_path / "llm.py"
+    here = Path(__file__).resolve()
+    llm.write_text(SESSION.format(tests=str(here.parents[1]), framework=str(here.parents[2])))
+    (product / ".gitignore").write_text((product / ".gitignore").read_text() + ".env\n")
+    (product / ".env").write_text(
+        f"QF_COMMAND_TO_START_AUTHOR_SESSIONS={shlex.quote(sys.executable)} {llm} {{prompt}}\n"
+    )
+    commit_all(product, "chore: the author's sessions stay out of git REQ-0047")
+    components = list(design_units_by_component())
+
+    for component in components:
+        tested = start(product, "tester", component)
+        assert tested.returncode == 0 and not tested.refused, tested.output
+        commit_all(product, f"test({component}): unit tests first REQ-0047")
+    results = run_gates(product, reached_gates(product, stage("unit_tests")))
+    record_attempt(product, "unit_tests", results)
+    assert decide(product, "unit_tests")["decision"] == "pass"
+    record_stage_done(product, "unit_tests")
+
+    for component in components:
+        coded = start(product, "coder", component)
+        assert coded.returncode == 0, coded.output
+        commit_all(product, f"feat({component}): the units REQ-0047")
+    results = run_gates(product, reached_gates(product, stage("unit_construction")))
+    record_attempt(product, "unit_construction", results)
+    assert decide(product, "unit_construction")["decision"] == "pass"
+    record_stage_done(product, "unit_construction")
+    state = resolve_stage(product)
+    assert (state["stage"], state["status"]) == ("integration_verification", "in_progress")

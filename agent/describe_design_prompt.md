@@ -8,12 +8,15 @@ description: "Tell a detailed design as stories from the design alone, never the
 The watcher (`tools/watch_reviews_tool.py`) starts a fresh session with this
 prompt in a temporary folder outside the product that holds only the changed
 designs — each component's `<component>.md` and `<component>.sequence.json`,
-copied from the pull request's head — with the reading tool only and these
-instructions in the prompt, so the session has no path to the requirements.
+copied from the pull request's head — with these instructions in the prompt, so the session has no path to the requirements.
 Without the watcher, the reviewer agent starts it itself with those files (the
 `designs` of `classify_pull_request_tool`'s result), for example:
 
-`claude -p "Follow <framework>/agent/describe_design_prompt.md for these files: <file> <file>"`
+`Follow <framework>/agent/describe_design_prompt.md for these files: <file> <file>`
+
+as the prompt of the command in *QF_COMMAND_TO_START_DESCRIBE_DESIGN_SESSION*, else
+*QF_COMMAND_TO_START_REVIEW_SESSIONS*, of the person's
+*~/.aspice_agent_secrets/.env*.
 
 The stories go into the review record's `stories` (`review.v1`), and the
 person reads each one next to the approved requirements it must satisfy.

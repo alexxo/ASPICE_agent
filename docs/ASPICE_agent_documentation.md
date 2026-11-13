@@ -1860,7 +1860,7 @@ questions, two places, the same for every plugin:
 | Question | Where | Example |
 |---|---|---|
 | Which skill fills which stage? | The **slot table** in *qf.yaml* | *create_requirements_plugin: quality-framework/derive_requirements_plugin* |
-| Where is it installed? | On the machine: the conventional skill folders, or an *environment.yaml* that is never committed | *~/.claude/skills/archify/SKILL.md* |
+| Where is it installed? | On the machine: the conventional skill folders, or an *environment.yaml* that is never committed | *~/.agents/skills/archify/SKILL.md* |
 
 The slot table, one entry per slot:
 
@@ -2009,6 +2009,64 @@ person, qf.yaml *review.architect*; each travels in a pull request from
 | 3 | Approval of the tech stack | Architect | "This stack fits the requirements and the constraints" — before any component is designed | The architect's approval of the *checkpoint/&lt;n&gt;* pull request, and its merge |
 | 4 | Approval of the results | A person | "What I wanted was achieved" — after software verification, requirement by requirement, on the pull request that brings the results: each high-criticality and security requirement it proves and every one that did not pass, with its test told in plain words and its result | A review on the host, with the answers in CI's review comment |
 | 5 | Acceptance of the release | Architect, on behalf of the customer | "This is what the customer needed" (VAL.1) | The architect's approval of the *checkpoint/5* pull request, its merge, and the GitHub Release naming both |
+
+### Independent sessions — one launcher, any LLM
+
+Seven sessions run apart from the orchestrator, each seeing only what its
+role may read, so its judgement is not the author's. They start through one
+launcher, *tools/start_session_tool.py*, with the command the person names;
+no LLM is the default.
+
+| Side | Session | Stage | Sees only | Its own command | Else |
+|---|---|---|---|---|---|
+| Author — the product's *.env* | Clarify | 2, before checkpoint 2 | the requirements, the glossary, the approved diagrams | *QF_COMMAND_TO_START_CLARIFY_SESSION* | *QF_COMMAND_TO_START_AUTHOR_SESSIONS* |
+| | Tester | 5 | a copy of the committed head without its code | *QF_COMMAND_TO_START_TESTER_SESSION* | *QF_COMMAND_TO_START_AUTHOR_SESSIONS* |
+| | Coder | 6 | the product | *QF_COMMAND_TO_START_CODER_SESSION* | *QF_COMMAND_TO_START_AUTHOR_SESSIONS* |
+| Person — *~/.aspice_agent_secrets/.env* | Reviewer | every pull request | a copy of the head, with the reviewer token | *QF_COMMAND_TO_START_REVIEWER_SESSION* | *QF_COMMAND_TO_START_REVIEW_SESSIONS* |
+| | Describe tests | before each review | the tests | *QF_COMMAND_TO_START_DESCRIBE_TESTS_SESSION* | *QF_COMMAND_TO_START_REVIEW_SESSIONS* |
+| | Describe design | before each review | the changed designs | *QF_COMMAND_TO_START_DESCRIBE_DESIGN_SESSION* | *QF_COMMAND_TO_START_REVIEW_SESSIONS* |
+| | Expect cases | before each review | the criteria and the glossary | *QF_COMMAND_TO_START_EXPECT_CASES_SESSION* | *QF_COMMAND_TO_START_REVIEW_SESSIONS* |
+
+1. **A command, not a model.** Each setting is the agent's command line with
+   *{prompt}* where the prompt goes (e.g. *codex exec --model gpt-5
+   {prompt}*); the LLM's key sits in the same *.env* under the name its
+   command-line tool reads, and reaches the session's environment only. A
+   session's own command wins, else its side's; the side's is required, and a
+   session that has neither does not start.
+2. **Two files, because two sides.** The author's sessions produce or prepare
+   the work, and the gates check what they produce, whatever model wrote it:
+   their commands are the product's, in its *.env*, ignored by git. The
+   person's sessions are the checks on the work: their commands are the
+   person's, in *~/.aspice_agent_secrets/.env*, which the author's session
+   cannot read or change — the side that is checked never chooses who checks
+   it. The reviewer token stays a file of its own in that folder, read by no
+   framework tool (stage 9, rule 1).
+3. **Isolation by construction.** A session's folder holds only what its role
+   may read: clarify and the three describe sessions run in temporary folders
+   of their files, the reviewer in its copy of the head, the tester in a copy
+   of the committed head with every code file removed — a file under
+   *code_dir* matching the stack's *code_files* and not the unit suite's
+   *test_files*. The rule *the tester never reads the code* holds also when a
+   changed requirement brings stage 5 back after the code exists. Its method
+   and rules travel into its copy; the framework does not.
+4. **What comes back.** From the tester's copy only what the tester may write
+   reaches the product: the verification plan, and in the component's folder
+   test files and the stub of a unit that has no code yet; a stub for a unit
+   with code is skipped and the code kept, and any other file is refused and
+   listed. The reviewer's copy is compared before and after (stage 9, rule
+   1). The coder works in the product: it must see the tests, and the gates
+   keep them as the tester wrote them.
+5. **One component at a time, one after another.** At stages 5 and 6 the
+   orchestrator starts a tester session per component, commits what comes
+   back as its test-only commit and runs the gates; once every component's
+   tests are committed, a coder session per component. Each component counts
+   its own attempts (*count_retries_tool --component*). Sessions never run in
+   parallel: the product's commands would compete, and one branch takes one
+   commit at a time.
+6. **Two models are enough for independence.** One model per side keeps the
+   review independent of the work; a session's own command is for when a
+   different model makes sense — a cheaper one to describe, another for the
+   tester than for the coder.
 
 ### Keeping concerns separate
 
@@ -2320,7 +2378,9 @@ and format).
 | *tools/post_merge_status_tool.py* | The crossing sign: the commit status *qf/merge* on a pull request's head — wait, with what is missing, or ready to merge — posted by CI from the gates' result |
 | *tools/post_review_tool.py* | The reviewer agent's review of the current head, with the checklist in its fixed form: the items the pull request asks for, logging only with code, and the review record (*--record*, *review.v1*) |
 | *tools/post_checkpoint_review_tool.py* | The checkpoint-4 review in plain words, posted by CI on a pull request a person must review, after the verification report: the results requirement by requirement, or the questions of what is wanted, each with a pair of boxes; rewritten only when the head or the items change (§ 5 stage 9, rule 14) |
-| *tools/watch_reviews_tool.py* | The watcher the person starts once a working day with the reviewer agent's token: a fresh reviewer session for every new head that waits for it, each once; a stopped review shown as a banner (§ 5 stage 9, rule 1) |
+| *tools/watch_reviews_tool.py* | The watcher the person starts once a working day with the reviewer agent's token: a fresh reviewer session for every new head that waits for it, each once, started with the commands of *~/.aspice_agent_secrets/.env*; a stopped review shown as a banner (§ 5 stage 9, rule 1) |
+| *tools/start_session_tool.py* | The one launcher of the independent sessions: the command from its side's *.env* (its own, else the side's), the session's folder holding only what its role may read, and from the tester's copy only what the tester may write brought back (*Independent sessions*) |
+| *agent/write_unit_tests_prompt.md*, *agent/write_unit_code_prompt.md* | The prompts of the tester's and the coder's sessions, one component at a time (stages 5 and 6) |
 | *gates/sup/verify_framework_integrity_gate.py* | Always-on, from the quality assurance stage: the framework a pinned submodule, unchanged, at a released commit |
 | *gates/sup/verify_required_checks_gate.py* | Always-on, from the quality assurance stage: the CI file runs the gates |
 | *gates/sup/scan_security_gate.py* | Quality assurance stage: both scanners ran, no critical or high finding (principle #29) |
@@ -2447,7 +2507,9 @@ a test. The method is swappable through the slot, so a team can bring its own.
 | OpenSpec | Behaviour, not implementation; depth by risk (lite or full); deltas against a source of truth |
 | The framework | Gates as evidence, the ASPICE stages, files on disk, the ODD frame |
 
-Left out on purpose: Gentle-AI's sub-agent roles and its persistence (Engram,
+Left out on purpose — except the independent sessions (*Independent
+sessions*), which keep a judgement apart from the author's —: Gentle-AI's
+sub-agent roles and its persistence (Engram,
 OpenSpec folders), and OpenSpec's tool and its "no phase gates" principle — the
 framework's gates are hard because ASPICE needs evidence that a stage is done
 before the next depends on it.
@@ -2578,7 +2640,8 @@ Its rules, numbered as the code cites them (*decision N of starting a product*):
    *.gitmodules*), *qf.yaml* and the architecture folder — what
    *verify_delivery_reviewed_gate* guards — and
    the *.gitignore* lines for *.qf/*, *.agents/*, *.claude/* and *.archify/*
-   (the diagram plugin's working folders). No work
+   (the diagram plugin's working folders), and *.env* (the commands that
+   start the author's sessions and their LLMs' keys). No work
    product — wishes, diagrams and requirements are the stages' work — and no
    empty folder.
 5. **Nothing is overwritten.** It refuses when *qf.yaml* or any file it would
@@ -2757,7 +2820,8 @@ requirements).
     one per participant.
 27. **Unclear criteria are settled before the build.** Once the other gates
     of stage 2 pass, a fresh session that sees only the requirements, the
-    glossary and the approved diagrams flags each acceptance criterion or
+    glossary and the approved diagrams — a temporary folder of them, started
+    through *tools/start_session_tool.py* (*Independent sessions*) — flags each acceptance criterion or
     glossary term whose readings would need different tests
     (*agent/clarify_criteria_prompt.md*): two or more readings, each with a
     short example, a reading that contradicts another requirement marked, a
@@ -2963,9 +3027,11 @@ the product's own commands.
 2. **Test first, proven by an independent tester and a red run.** TDD's own
    proof that a test bites is the red step: the test fails while the code is
    missing. Two plugins work in turn, one component at a time, as two stages:
-   - **The tester** (*create_unit_tests_plugin*, stage 5) sees the
-     requirements, the detailed design, the interfaces and the verification
-     plan — never the code. In **one test-only commit** per component it
+   - **The tester** (*create_unit_tests_plugin*, stage 5), in a session of
+     its own per component, sees the requirements, the detailed design, the
+     interfaces and the verification plan — never the code: its session runs
+     in a copy of the committed head without a code file (*Independent
+     sessions*). In **one test-only commit** per component it
      writes the unit section of the verification plan (first time only), one
      unit test per acceptance criterion and per range limit (min, max, just
      outside), each with *@unit[x]*, and **one stub per unit** of the detailed
@@ -3016,9 +3082,13 @@ the product's own commands.
    path-based tools — code owners per component, dependency rules, test scope
    — work.
 7. **Two stages.** The tester and the coder are stages 5 and 6 of
-   *agent/stages.yaml*, each with its own slot, gates and retry counter. The
-   tester writes every component's tests before the coder starts, one
-   test-only commit per component, each with its own red run.
+   *agent/stages.yaml*, each with its own slot, gates and retry counter, one
+   per component. The tester writes every component's tests before the coder
+   starts, one test-only commit per component, each with its own red run,
+   made by the gates in the product: without the code, the tester's copy
+   cannot build. Each works in a fresh session per component
+   (*agent/write_unit_tests_prompt.md*, *agent/write_unit_code_prompt.md*),
+   started through *tools/start_session_tool.py*.
    *verify_test_first_gate* finds the test commits in the history, so it
    keeps checking at stage 6 and when the pull request re-runs every gate.
 8. **The rulebooks.** *enforce_test_first_skill* (stage 5, again at 6),
@@ -3322,9 +3392,9 @@ and a person approves the results and answers the questions of what is wanted
    when the watcher stops: for every head of the
    product's open pull requests whose crossing sign waits for the reviewer
    agent and that it has not reviewed, it starts one fresh session, one at a
-   time, each head once, with the reviewer's tools only — reading, the host,
-   the framework's own commands, its record's folder; no edit of the work, no
-   commit, no push. Every change of a pull request's state is one line naming
+   time, each head once. The reviewer may read, use the host and the
+   framework's own commands, and write its record's folder; no edit of the
+   work, no commit, no push. Every change of a pull request's state is one line naming
    who acts next — waits for CI, gates red (the author fixes them), waits for
    your review, ready to merge — and a head without a crossing sign after 10
    minutes is a warning, since CI may not run. A line every 5 minutes says a
@@ -3336,9 +3406,10 @@ and a person approves the results and answers the questions of what is wanted
    system has one; the head is reviewed again only when the person types *R*,
    except after the agent's usage limit: the watcher then tries it again
    every 10 minutes, one line each time, until the limit resets.
-   A reviewer never changes the work, and the agent's settings must prevent
-   it — Claude Code's allowed tools by default; another agent (*--command*)
-   is configured read-only by the person. The session runs in a copy of the
+   **No LLM is the default** (*Independent sessions*): the watcher starts every session with
+   the command the person names in *~/.aspice_agent_secrets/.env*, out of
+   the author's reach. A reviewer never changes the work, and that command
+   keeps it read-only, as its command-line tool allows. The session runs in a copy of the
    head of its own, a git worktree the watcher makes under *.qf/reviews/*,
    never in the author's folder, where the author and the framework go on
    working. Whatever the agent, the watcher compares that copy's commit and
@@ -3353,8 +3424,9 @@ and a person approves the results and answers the questions of what is wanted
    review and read CI (pull requests, contents, commit statuses, actions),
    and not push. Like an SSH key, the token lives in the person's home
    folder, one file per repository owner:
-   *~/.aspice_agent_reviewer_bot_token/<owner>* (on Windows
-   *%USERPROFILE%\.aspice_agent_reviewer_bot_token\<owner>*), readable only
+   *~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>* (on Windows
+   *%USERPROFILE%\.aspice_agent_secrets\reviewer_bot_github_token\<owner>*),
+   in the one folder for every secret of the ASPICE Agent, readable only
    by the person, outside every product folder, so it is never committed.
    The person loads it into the reviewer's session with one line; no
    framework tool reads it, so the author's session cannot post as the
@@ -4087,6 +4159,41 @@ label together.
   contract, which fixes the content, not the look, on top of *choice.v1* and
   *decision.v1*; O3 — the renderer alone, without the rule and the test that
   keep the next page from drifting. → § 5 *Inside the ASPICE Agent*.
+- **Independent sessions on any LLM** (2026-11-13, Alex). The tester and the
+  coder worked in the orchestrator's session, so *the tester never reads the
+  code* held only by the order of the stages: when a changed requirement
+  brought stage 5 back, the code existed and the session could read it, or
+  still held the coder's work. And every independent session ran on Claude
+  Code, the reviewer's alone replaceable.
+
+  | # | Scenario | S | O | D | RPN |
+  |---|---|---|---|---|---|
+  | M1 | The tester reads the code on a rerun after a requirement change | 8 | 5 | 7 | 280 |
+  | M2 | Components drift apart, each session choosing its own conventions | 7 | 6 | 5 | 210 |
+  | M3 | Parallel sessions collide in git and in the product's commands | 7 | 7 | 3 | 147 |
+  | M7 | One stuck component escalates the whole stage | 6 | 5 | 3 | 90 |
+
+  *Chosen:* D8 B — a fresh session per component for the tester (stage 5)
+  and the coder (stage 6), the tester in a copy of the committed head without
+  its code, so the rule holds by construction whatever the LLM (M1); the
+  method, the rules, the existing tests and the gates keep the components
+  alike (M2); one after another, never in parallel (M3); attempts counted per
+  component (M7). Only stages 5 and 6: they alone hold a rule that two roles
+  stay apart. D10 A — every independent session is LLM-agnostic: no
+  default, a command per session with a fallback per side; the names say
+  what they are (*QF_COMMAND_TO_START_&lt;SESSION&gt;_SESSION*, the prefix
+  marking a setting the framework reads, not the product's code). D11 —
+  two *.env* files, the product's for the author's sessions, the person's
+  *~/.aspice_agent_secrets/.env* for the checks: the side that is checked
+  never configures who checks it; the reviewer token joins that folder as a
+  file of its own (FB-34). Vendor flags left out: the framework names no
+  model and no tool's options, and isolation comes from the folders. *Not
+  taken:* D8 A — a fresh session holding the code back by instruction only,
+  too weak once another LLM's command-line tool may not restrict its reads;
+  D8 C — the order of the stages alone; one setting per side only (Alex: a
+  different LLM per session when it makes sense); the commands on the
+  watcher's command line (Alex: no key or setting typed into a command).
+  → § 5 *Independent sessions*.
 
 ### A.2 Diagram and requirements stages — stages 1 and 2
 
@@ -5071,7 +5178,8 @@ label together.
 
   *Chosen:* like an SSH key, in the person's home folder, one file per
   repository owner (a fine-grained token belongs to one owner):
-  *~/.aspice_agent_reviewer_bot_token/<owner>*, readable only by the
+  *~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>* (since
+  2026-11-13, in the one folder for the agent's secrets), readable only by the
   person; loaded into the reviewer's session with one line, read by no
   framework tool, never named in the author's guide. Outside every product
   folder it is never committed (T3), and the author's session would have to

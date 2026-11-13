@@ -35,6 +35,32 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+Every independent session runs on the LLM the person names, and the tester never sees the code: the tester and the coder work in sessions of their own, one component at a time, the tester in a copy of the product without its code.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Update the framework submodule to this release and commit the pin | the product | required |
+| Write `QF_COMMAND_TO_START_AUTHOR_SESSIONS=<agent command with {prompt}>` and that LLM's key | the product's `.env` | required — clarify, the tester and the coder do not start without it |
+| Add `.env` | the product's `.gitignore` | required — the keys must never be committed |
+| `mkdir -p -m 700 ~/.aspice_agent_secrets && mv ~/.aspice_agent_reviewer_bot_token ~/.aspice_agent_secrets/reviewer_bot_github_token` | the machine of the user who runs the watcher | required |
+| Write `QF_COMMAND_TO_START_REVIEW_SESSIONS=<agent command with {prompt}>` and that LLM's key | `~/.aspice_agent_secrets/.env` | required — the watcher does not start without it |
+| Restart the watcher with the line of QUICKSTART step 9; drop `--command` | the watcher's terminal | required |
+
+### Added
+
+- **One launcher for the independent sessions.** `tools/start_session_tool.py` starts clarify, the tester and the coder; the watcher uses its settings for the reviewer and its three describe sessions. A session's command is its own setting, else its side's: the product's `.env` for the author's side (`QF_COMMAND_TO_START_CLARIFY_SESSION`, `…_TESTER_SESSION`, `…_CODER_SESSION`, else `QF_COMMAND_TO_START_AUTHOR_SESSIONS`), `~/.aspice_agent_secrets/.env` for the person's (`…_REVIEWER_SESSION`, `…_DESCRIBE_TESTS_SESSION`, `…_DESCRIBE_DESIGN_SESSION`, `…_EXPECT_CASES_SESSION`, else `QF_COMMAND_TO_START_REVIEW_SESSIONS`). The LLM's key sits in the same file and reaches the session's environment only. Origin: internal.
+- **The tester and the coder in sessions of their own (stages 5 and 6).** One fresh session per component, one after another: the tester (`agent/write_unit_tests_prompt.md`) in a copy of the committed head without a code file, so it never reads the code, also on a rerun after a requirement change; only the component's test files, the stub of a unit with no code yet and the verification plan come back, anything else is refused and listed. The coder (`agent/write_unit_code_prompt.md`) works in the product. The red run is the gates', on the commit. `agent/count_retries_tool.py --component` counts each component's attempts. Origin: internal.
+- **Clarify in a folder of its own files.** The clarify session runs through the launcher in a temporary folder of the requirements, the glossary and the diagrams; its questions land in `.qf/sessions/clarify.yaml`. Origin: internal.
+
+### Changed
+
+- **No LLM is the default.** The watcher reads `~/.aspice_agent_secrets/.env`; `--command`, the Claude Code commands and their allowed-tools lists are gone. The reviewer's read-only setting is the person's command. Origin: internal.
+- **One folder for the agent's secrets.** The reviewer token moved to `~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>`, still a file of its own that no framework tool reads. Origin: internal.
+- **`.env` in the product's `.gitignore`.** `tools/create_product_tool.py` adds it with the agent's other lines. Origin: internal.
+- **Archify in `.agents/skills`.** QUICKSTART step 7 installs it in the folder every agent host can use; `.claude/skills` is still searched. The session prompts' examples name no agent. Origin: internal.
+
 ## [4.0.4] - 2026-11-02
 
 An answer names no one: the agent records the option the person chose, and the person's approval of the pull request that carries it says who answered.

@@ -18,7 +18,9 @@ consistent with the detailed design and passes the stack's checks.
 
 You are the coder. The tests are fixed: they were written from the requirements
 before the code. Changing one to make it pass would hide the very fault it is
-there to catch.
+there to catch. You work in a session of your own per component, in the
+product (*agent/write_unit_code_prompt.md*); the orchestrator commits your
+work.
 
 Not this method's job: the tests (the previous stage, by the tester), the form
 (the rules skills loaded with it), the checks (the stage's gates), the

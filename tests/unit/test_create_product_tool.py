@@ -185,6 +185,7 @@ def test_the_agent_files_stay_out_of_git(product):
     assert lines[:2] == ["node_modules/", ".qf/"]
     assert lines.count(".qf/") == 1
     assert {".agents/", ".claude/", ".archify/"} <= set(lines)
+    assert lines.count(".env") == 1  # the author's session commands and LLM keys
 
 
 def test_no_work_product_and_no_empty_folder_is_created(product):

@@ -51,7 +51,8 @@ __all__ = ["COPIED", "PATHS", "SLOTS", "create_product", "product_config", "rele
 FRAMEWORK = Path(__file__).resolve().parent.parent
 FRAMEWORK_DIR = ".framework"
 CODEOWNERS = ".github/CODEOWNERS"
-IGNORED = (".qf/", ".agents/", ".claude/", ".archify/")  # .archify/: Archify's drafts
+IGNORED = (".qf/", ".agents/", ".claude/", ".archify/", ".env")  # .archify/: Archify's drafts;
+# .env: the commands that start the author's sessions and their LLMs' keys
 FEEDBACK = "FRAMEWORK_FEEDBACK.md"
 
 PATHS = {

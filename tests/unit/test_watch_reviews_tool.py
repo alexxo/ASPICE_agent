@@ -8,7 +8,7 @@ from product_builder import AGENT, HOST_REPO, build_product, pull_request, write
 
 from tools.read_host_tool import FileHost, Review
 from tools.read_product_config_tool import read_product_config
-from tools.watch_reviews_tool import Stop, Watcher, banner, claude_command, due, tools
+from tools.watch_reviews_tool import Stop, Watcher, banner, due
 
 WAITING = "Wait: the reviewer agent's approval"
 
@@ -43,15 +43,53 @@ def test_the_banner_says_why_what_to_do_and_where_the_log_is():
     assert banner(stop, colour=True).startswith("\033[1;31m")
 
 
-def test_the_reviewer_runs_with_its_own_tools_only():
-    allowed = tools(".framework")
-    assert "Bash(python .framework/tools/post_review_tool.py:*)" in allowed
-    edits = [t for t in allowed if t.startswith(("Edit", "Write"))]
-    assert edits == ["Edit(.qf/reviews/**)"]  # its record's folder only
-    assert not any(t.startswith(("Bash(git push", "Bash(git commit")) for t in allowed)
-    assert not any(t in ("Bash(python:*)", "Bash", "Write") for t in allowed)
-    argv = claude_command(".framework")("review #7")
-    assert argv[:3] == ["claude", "-p", "review #7"]
+def test_no_llm_is_the_default(tmp_path, monkeypatch, capsys):
+    """Without the person's .env the watcher starts nothing — no agent is assumed."""
+    from product_builder import add_origin
+
+    from tools import watch_reviews_tool
+
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("QF_HOST_TOKEN", "reviewer-token")
+    monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json")))
+    root = build_product(tmp_path / "product")
+    add_origin(root)
+    started = []
+    monkeypatch.setattr(watch_reviews_tool, "Watcher", lambda *a, **k: started.append(a))
+    assert watch_reviews_tool.main(["--root", str(root), "--once"]) == 2
+    err = capsys.readouterr().err
+    assert "QF_COMMAND_TO_START_REVIEW_SESSIONS" in err and ".aspice_agent_secrets" in err
+    assert not started
+
+
+def test_each_watcher_session_takes_its_own_command_else_the_fallback(tmp_path, monkeypatch):
+    from product_builder import add_origin
+
+    from tools import watch_reviews_tool
+
+    home = tmp_path / "home"
+    (home / ".aspice_agent_secrets").mkdir(parents=True)
+    (home / ".aspice_agent_secrets/.env").write_text(
+        "QF_COMMAND_TO_START_REVIEW_SESSIONS=claude -p {prompt}\n"
+        "QF_COMMAND_TO_START_DESCRIBE_DESIGN_SESSION=codex exec {prompt}\n"
+        "OPENAI_API_KEY=sk-test\n"
+    )
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("QF_HOST_TOKEN", "reviewer-token")
+    monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json")))
+    root = build_product(tmp_path / "product")
+    add_origin(root)
+    built = []
+    real = watch_reviews_tool.Watcher
+    monkeypatch.setattr(
+        watch_reviews_tool, "Watcher", lambda *a, **k: built.append(real(*a, **k)) or built[-1]
+    )
+    assert watch_reviews_tool.main(["--root", str(root), "--once"]) == 0
+    (w,) = built
+    assert w.command("review #7") == ["claude", "-p", "review #7"]
+    assert w.describe["describe_design"]("tell") == ["codex", "exec", "tell"]
+    assert w.describe["describe_tests"]("describe") == ["claude", "-p", "describe"]
+    assert w.settings["OPENAI_API_KEY"] == "sk-test"
 
 
 class _Host:
@@ -159,12 +197,6 @@ def test_a_long_review_says_it_is_alive_and_a_stuck_one_stops(watcher):
     ]
     assert "The session ran longer than 0 minutes." in shown[-1]
     assert notes == ["Review stopped: #7"]
-
-
-def test_the_reviewer_writes_its_record_by_an_edit_rule():
-    """FB-47: Claude Code matches file permissions by Edit rules only."""
-    allowed = tools(".framework")
-    assert "Edit(.qf/reviews/**)" in allowed and "Write(.qf/reviews/**)" not in allowed
 
 
 def test_a_usage_limit_is_tried_again_on_its_own(watcher):
@@ -484,6 +516,32 @@ def test_the_watcher_tells_the_design_as_stories_in_a_folder_of_designs_only(
     assert "approved" in shown[-1]
 
 
+def test_each_describe_session_runs_its_own_command_with_the_keys_not_the_token(
+    redesigned, monkeypatch
+):
+    """The person's .env reaches a describe session, its token never does."""
+    w, shown, head = redesigned
+    monkeypatch.setenv("QF_HOST_TOKEN", "reviewer-token")
+    w.settings = {"OPENAI_API_KEY": "sk-test"}
+    keyed = STORYTELLER.replace(
+        "print('- design: auth-service')",
+        "assert os.environ['OPENAI_API_KEY'] == 'sk-test'\nprint('- design: auth-service')",
+    )
+    w.describe = {
+        "describe_tests": lambda prompt: pytest.fail("no test to describe"),
+        "describe_design": lambda prompt: [sys.executable, "-c", keyed],
+        "expect_cases": lambda prompt: pytest.fail("no result to expect"),
+    }
+
+    def review(prompt):
+        w.host.posted.append(Review(AGENT, "APPROVED", head))
+        return [sys.executable, "-c", "print('reviewed')"]
+
+    w.command = review
+    w.once()
+    assert "approved" in shown[-1]
+
+
 def test_a_story_with_an_invented_source_stops_the_review(redesigned):
     w, shown, head = redesigned
     invented = STORYTELLER.replace("decision:D1", "unit:send-email")
@@ -579,6 +637,12 @@ def test_the_watcher_starts_as_quickstart_says(tmp_path, monkeypatch, capsys):
     add_origin(root)
     monkeypatch.setenv("QF_HOST_TOKEN", "reviewer-token")
     monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json")))
+    home = tmp_path / "home"
+    (home / ".aspice_agent_secrets").mkdir(parents=True)
+    (home / ".aspice_agent_secrets/.env").write_text(
+        "QF_COMMAND_TO_START_REVIEW_SESSIONS=agent {prompt}\n"
+    )
+    monkeypatch.setenv("HOME", str(home))
     built = []
     real = watch_reviews_tool.Watcher
 
@@ -591,5 +655,5 @@ def test_the_watcher_starts_as_quickstart_says(tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert f"Watching {HOST_REPO}" in out and "Today: 0 review session(s)" in out
     (w,) = built
-    assert w.out is print and callable(w.command) and callable(w.describe)
+    assert w.out is print and callable(w.command) and all(map(callable, w.describe.values()))
     assert callable(w.notify) and isinstance(w.colour, bool)

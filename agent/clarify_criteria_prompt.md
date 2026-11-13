@@ -6,18 +6,20 @@ description: "Before checkpoint 2, flag each acceptance criterion or glossary te
 # clarify_criteria_prompt
 
 The agent (the last step of *derive_requirements_plugin*, stage 2) starts a fresh
-session with this prompt once the stage's other gates pass. The session sees
-the requirement files, the glossary and the approved diagrams with their
-invariants — never the agent's reasoning, the plugin's notes or the
-conversation — and it gets the list of criteria and terms not checked yet:
+session with this prompt once the stage's other gates pass, through the
+launcher. The session runs in a temporary folder that holds the requirement
+files, the glossary and the approved diagrams with their invariants, and
+nothing else — never the agent's reasoning, the plugin's notes or the
+conversation — and it gets the list of criteria and terms not checked yet
+(`python <framework>/agent/record_answer_tool.py --unchecked --root <product>`):
 
-`python <framework>/agent/record_answer_tool.py --unchecked --root <product>`
+`python <framework>/tools/start_session_tool.py --session clarify --task "Check these: <the list>" --root <product>`
 
-For example:
-
-`claude -p "Follow <framework>/agent/clarify_criteria_prompt.md for <product>. Check these: <the list>"`
-
-Its questions are recorded with `record_answer_tool.py --questions <file>`,
+The command that starts it is the product's choice, in its *.env*
+(*QF_COMMAND_TO_START_CLARIFY_SESSION*, else
+*QF_COMMAND_TO_START_AUTHOR_SESSIONS*). The launcher keeps its answer in
+*.qf/sessions/clarify.yaml*, and the questions are recorded with
+`record_answer_tool.py --questions .qf/sessions/clarify.yaml`,
 which also marks every criterion and term as checked and numbers the questions
 in the review page's order. A criterion unchanged since the latest approval of
 checkpoint 2 is not on the list: the person read it. At checkpoint 2 the

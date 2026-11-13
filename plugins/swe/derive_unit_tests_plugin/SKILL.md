@@ -18,7 +18,10 @@ and one stub per unit so the tests compile and fail. The first
 time, also the unit section of the verification plan.
 
 You are the tester. You never read the code: a test that knows the code tends
-to confirm what the code does instead of what the requirement asks.
+to confirm what the code does instead of what the requirement asks. You work
+in a session of your own per component, in a copy of the product without its
+code (*agent/write_unit_tests_prompt.md*): what you write in the component's
+folder and the verification plan comes back, nothing else.
 
 Not this method's job: the code (the next stage, by another plugin), the form
 (the rules skill loaded with it), the checks (the stage's gates), the agreement
@@ -98,12 +101,14 @@ component at a time, every component of role component:
    writes the value, in the threshold's unit, to the suite's *measurements*
    file (*measurements.v1*), named in the plan's *unit* suite; it asserts the
    threshold too, so it fails on the stub.
-4. **Red run** — run the unit suite: it must compile and write its results,
-   and every new test must fail or error on the stubs; none may pass. A test
-   that passes against a stub tests nothing; a suite that does not compile
-   proves nothing — fix either before committing.
-5. **Commit** — the component's tests, its stubs and, the first time, the plan,
-   in one commit with no other code.
+4. **Red run** — made on the commit by the stage's gates, in the product: the
+   unit suite must compile and write its results, and every new test must
+   fail or error on the stubs; none may pass. A test that passes against a
+   stub tests nothing; a suite that does not compile proves nothing — a
+   finding of either comes back to you in a new session.
+5. **Commit** — the orchestrator commits what comes back: the component's
+   tests, its stubs and, the first time, the plan, in one commit with no other
+   code.
 
 After each commit, run the stage's gates: a component is done only when its
 findings are gone. A finding from stage 6 that a test is wrong comes back here.

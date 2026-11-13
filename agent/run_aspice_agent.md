@@ -148,6 +148,26 @@ own format disagrees with a framework skill, the framework skill wins.
 On a retry, also read the findings of the previous attempt and fix exactly what
 they name — the rule, the file and the line are in every finding.
 
+**Stages 5 and 6, a session per component.** The tester and the coder are
+not you: each works in a fresh session of its own, one component at a time,
+started by the launcher. At stage 5, for every component in turn:
+
+`python <framework>/tools/start_session_tool.py --session tester --component <id> --root <product>`
+
+The tester works in a copy of the committed head without a single code file,
+so commit everything before you start it. Only what it may write comes back:
+commit that as the component's test-only commit, then run the gates (step 7,
+with `--component <id>`). A file it lists under `refused` never reached the
+product: tell the person, and start the session again. At stage 6, once every
+component's tests are committed, the same for the coder (`--session coder`):
+it works in the product; commit its work, then run the gates. A test the
+coder reports wrong goes back to a new tester session. The command that
+starts a session is the product's, in its *.env*
+(`QF_COMMAND_TO_START_TESTER_SESSION`, `QF_COMMAND_TO_START_CODER_SESSION`,
+else `QF_COMMAND_TO_START_AUTHOR_SESSIONS`); when none is set the launcher
+exits 2 — ask the person to set it, never set it yourself, and never read the
+*.env*.
+
 **Stages 1 and 2, what the person reads.** At stage 1 the diagram plugin
 renders every diagram's picture next to it (*&lt;id&gt;.&lt;type&gt;.html*);
 commit the picture with the diagram, never one without the other; then render
@@ -174,7 +194,7 @@ comes, ask the person, as a choice, whether the watcher runs and shows a
 shows the banner, it does not run); without the watcher, they start
 the reviewer's own session by hand, following
 `<framework>/agent/run_reviewer_agent.md`. That token is never in your
-session: never read `~/.aspice_agent_reviewer_bot_token`, and you never post
+session: never read `~/.aspice_agent_secrets`, and you never post
 a review. A finding the reviewer requests is fixed in the pull request by the
 crew of the stage it belongs to; the watcher reviews the new head.
 
@@ -295,7 +315,9 @@ initiator for `/confirm-change`; then close the issue.
 1. From stage 8 on, write the verification report of the tree first (step 3).
    Then run `python <framework>/agent/run_gates_tool.py --stage <stage> --root <product>`.
 2. Pipe its output to
-   `python <framework>/agent/count_retries_tool.py record --stage <stage> --root <product>`.
+   `python <framework>/agent/count_retries_tool.py record --stage <stage> --root <product>`;
+   at stages 5 and 6 add `--component <id>`: each component counts its own
+   attempts.
 3. Act on `decision`:
 
 | decision | What you do |

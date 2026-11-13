@@ -25,8 +25,8 @@ product root.
 and ask the person to load it into this session from the owner's file in
 their home folder — never a developer's token, and never read the file
 yourself:
-`export QF_HOST_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)"`
-(PowerShell: `$env:QF_HOST_TOKEN = Get-Content "$HOME\.aspice_agent_reviewer_bot_token\<owner>"`),
+`export QF_HOST_TOKEN="$(cat ~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>)"`
+(PowerShell: `$env:QF_HOST_TOKEN = Get-Content "$HOME\.aspice_agent_secrets\reviewer_bot_github_token\<owner>"`),
 where `<owner>` is the owner of the product's repository. Without the file,
 send the person to the framework's `QUICKSTART.md` step 3, item 5.
 

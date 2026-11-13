@@ -8,9 +8,13 @@ starts a new one with the full budget. After the fourth failing attempt in a row
 the decision is escalate, and an escalation report for the architect is written
 next to the log.
 
-    python agent/count_retries_tool.py record --stage ID [--root PRODUCT] < results.json
-    python agent/count_retries_tool.py decide --stage ID [--root PRODUCT]
-    python agent/count_retries_tool.py reset  --stage ID [--root PRODUCT]
+At stages 5 and 6 the tester and the coder work one component at a time, in a
+session each, so each component counts its own attempts (--component): one
+stuck component reaches the architect without the others' retries.
+
+    python agent/count_retries_tool.py record --stage ID [--component ID] [--root P] < results.json
+    python agent/count_retries_tool.py decide --stage ID [--component ID] [--root P]
+    python agent/count_retries_tool.py reset  --stage ID [--component ID] [--root P]
 """
 
 from __future__ import annotations
@@ -32,28 +36,33 @@ MAX_RETRIES = 3
 ATTEMPTS_DIR = Path(".qf") / "attempts"
 
 
-def _dir(root: Path, stage_id: str) -> Path:
-    return Path(root) / ATTEMPTS_DIR / stage_id
+def _dir(root: Path, stage_id: str, component: str | None = None) -> Path:
+    directory = Path(root) / ATTEMPTS_DIR / stage_id
+    return directory / component if component else directory
 
 
-def _attempts(root: Path, stage_id: str) -> list[list[dict]]:
-    directory = _dir(root, stage_id)
+def _attempts(root: Path, stage_id: str, component: str | None = None) -> list[list[dict]]:
+    directory = _dir(root, stage_id, component)
     files = sorted(directory.glob("attempt-*.json"), key=lambda p: int(p.stem.split("-")[1]))
     return [json.loads(p.read_text(encoding="utf-8")) for p in files]
 
 
-def record_attempt(root: Path, stage_id: str, gate_results: list[dict]) -> int:
+def record_attempt(
+    root: Path, stage_id: str, gate_results: list[dict], component: str | None = None
+) -> int:
     """Log one attempt's gate results; return its number (1 = the first run)."""
-    directory = _dir(root, stage_id)
+    directory = _dir(root, stage_id, component)
     directory.mkdir(parents=True, exist_ok=True)
-    number = len(_attempts(root, stage_id)) + 1
+    number = len(_attempts(root, stage_id, component)) + 1
     (directory / f"attempt-{number}.json").write_text(json.dumps(gate_results, indent=2))
     return number
 
 
-def decide(root: Path, stage_id: str) -> dict:
-    attempts = _attempts(root, stage_id)
+def decide(root: Path, stage_id: str, component: str | None = None) -> dict:
+    attempts = _attempts(root, stage_id, component)
     state = {"stage": stage_id, "attempts": len(attempts), "escalation_report": None}
+    if component:
+        state["component"] = component
     if not attempts:
         return {**state, "decision": "run", "retries_left": MAX_RETRIES}
     if _passed(attempts[-1]):
@@ -62,8 +71,9 @@ def decide(root: Path, stage_id: str) -> dict:
     retries_used = len(round_) - 1
     if retries_used < MAX_RETRIES:
         return {**state, "decision": "retry", "retries_left": MAX_RETRIES - retries_used}
-    report = _dir(root, stage_id) / "escalation.md"
-    report.write_text(_report(stage_id, round_), encoding="utf-8")
+    report = _dir(root, stage_id, component) / "escalation.md"
+    title = f"{stage_id}, component {component}" if component else stage_id
+    report.write_text(_report(title, round_), encoding="utf-8")
     return {
         **state,
         "decision": "escalate",
@@ -83,9 +93,9 @@ def _round(attempts: list[list[dict]]) -> list[tuple[int, list[dict]]]:
     return numbered[last_pass:]
 
 
-def reset(root: Path, stage_id: str) -> None:
+def reset(root: Path, stage_id: str, component: str | None = None) -> None:
     """Start a new round, after the architect has fixed the work or given guidance."""
-    shutil.rmtree(_dir(root, stage_id), ignore_errors=True)
+    shutil.rmtree(_dir(root, stage_id, component), ignore_errors=True)
 
 
 def _report(stage_id: str, round_: list[tuple[int, list[dict]]]) -> str:
@@ -109,6 +119,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=["record", "decide", "reset"])
     parser.add_argument("--stage", required=True)
+    parser.add_argument("--component", help="at stages 5 and 6: the component the attempt is of")
     parser.add_argument("--root", type=Path, default=Path.cwd())
     args = parser.parse_args(argv)
     try:
@@ -118,10 +129,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.action == "record":
         doc = json.load(sys.stdin)
-        record_attempt(args.root, args.stage, doc.get("gates", doc))
+        record_attempt(args.root, args.stage, doc.get("gates", doc), args.component)
     elif args.action == "reset":
-        reset(args.root, args.stage)
-    print(json.dumps(decide(args.root, args.stage), indent=2))
+        reset(args.root, args.stage, args.component)
+    print(json.dumps(decide(args.root, args.stage, args.component), indent=2))
     return 0
 
 

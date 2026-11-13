@@ -6,11 +6,16 @@ with the reviewer agent's token in QF_HOST_TOKEN — never the author's session
 requests and, for every head the reviewer agent has not reviewed yet whose
 crossing sign waits for it (qf/merge: "the reviewer agent's approval"), starts
 a fresh reviewer session following agent/run_reviewer_agent.md: this product
-only, one session at a time, every head once. The session runs with the
-reviewer's tools only — reading, the host, its own tools and its review
-record's folder; no edit of the work, no commit, no push (--command replaces
-the agent command, {prompt} standing for the prompt; that agent's settings
-must then prevent any change). The session runs in a copy of the pull
+only, one session at a time, every head once. No LLM is the default: the
+command that starts each session is the person's choice, in
+~/.aspice_agent_secrets/.env — QF_COMMAND_TO_START_REVIEWER_SESSION,
+QF_COMMAND_TO_START_DESCRIBE_TESTS_SESSION,
+QF_COMMAND_TO_START_DESCRIBE_DESIGN_SESSION and
+QF_COMMAND_TO_START_EXPECT_CASES_SESSION, else
+QF_COMMAND_TO_START_REVIEW_SESSIONS, {prompt} standing for the prompt
+(tools/start_session_tool.py) — out of the author's reach, with the keys its
+LLMs read. The reviewer may read, use the host and write its record only; its
+command keeps it so, as its CLI allows. The session runs in a copy of the pull
 request's head of its own, a git worktree the watcher makes at
 .qf/reviews/<n>-<sha>/, never in the author's folder, where the author and the
 framework go on working. A reviewer never changes the work: whatever the
@@ -50,11 +55,11 @@ by the agent's usage limit is the exception: the watcher tries that head again
 every 10 minutes, one line each time, until the limit resets. Ctrl+C ends it
 with the day's summary, the heads still stopped listed again.
 
-    QF_HOST_TOKEN="$(cat ~/.aspice_agent_reviewer_bot_token/<owner>)" \\
+    QF_HOST_TOKEN="$(cat ~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>)" \\
         python .framework/tools/watch_reviews_tool.py --root .
 
 The token is given to the watcher alone, for its life: the terminal never
-holds it (PowerShell: QUICKSTART step 9).
+holds it, and neither does the .env (PowerShell: QUICKSTART step 9).
 """
 
 from __future__ import annotations
@@ -62,7 +67,6 @@ from __future__ import annotations
 import argparse
 import os
 import re
-import shlex
 import shutil
 import subprocess
 import sys
@@ -84,8 +88,14 @@ from tools.read_product_config_tool import (  # noqa: E402
     read_product_config,
 )
 from tools.render_page_tool import open_page  # noqa: E402
+from tools.start_session_tool import (  # noqa: E402
+    SessionError,
+    command_for,
+    person_env_file,
+    read_env,
+)
 
-__all__ = ["Stop", "Watcher", "banner", "claude_command", "due", "tools", "waits_for_person"]
+__all__ = ["Stop", "Watcher", "banner", "due", "waits_for_person"]
 
 WAITS_FOR_REVIEWER = "the reviewer agent's approval"
 WAITS_FOR_PERSON = ("a review by ", "a person's review")  # post_merge_status_tool's words
@@ -96,39 +106,11 @@ TIMEOUT = 20 * 60  # seconds one review session may take: a limit for a stuck on
 PROGRESS = 5 * 60  # seconds between the lines saying a review is still running
 LIMIT_RETRY = 10 * 60  # seconds between tries of a head stopped by the agent's usage limit
 LIMITED = re.compile(r"hit your (?:\w+ )?limit|usage limit", re.IGNORECASE)
-# The reviewer's tools: reading, the host, the framework's own commands, its
-# record's folder — never an edit of the work, a commit or a push.
-READ_ONLY = (
-    "Read",
-    "Grep",
-    "Glob",
-    "Edit(.qf/reviews/**)",  # Edit rules cover every file-writing tool
-    "Bash(git fetch:*)",
-    "Bash(git worktree:*)",
-    "Bash(git log:*)",
-    "Bash(git diff:*)",
-    "Bash(git show:*)",
-    "Bash(gh api:*)",
-    "Bash(gh pr view:*)",
-    "Bash(gh pr diff:*)",
-    "Bash(claude -p:*)",
-)
-FRAMEWORK_COMMANDS = (
-    "agent/read_config_tool.py",
-    "agent/load_skills_tool.py",
-    "tools/classify_pull_request_tool.py",
-    "tools/post_review_tool.py",
-)
-
-
-def tools(framework: str) -> tuple[str, ...]:
-    """The reviewer session's allowed tools, the framework at its path in the product."""
-    commands = [
-        f"Bash({python} {framework}/{tool}:*)"
-        for tool in FRAMEWORK_COMMANDS
-        for python in ("python", "python3")
-    ]
-    return (*READ_ONLY, *commands)
+DESCRIBERS = {  # what is described -> the session that describes it
+    "tests": "describe_tests",
+    "stories": "describe_design",
+    "expected": "expect_cases",
+}
 
 
 @dataclass(frozen=True)
@@ -265,28 +247,14 @@ def _describe_prompt(config: ProductConfig, files: list[str], what: str = "tests
     )
 
 
-def claude_command(framework: str):
-    """The default agent: Claude Code, unattended, with the reviewer's tools only."""
-
-    def command(prompt: str) -> list[str]:
-        return ["claude", "-p", prompt, "--allowedTools", ",".join(tools(framework))]
-
-    return command
-
-
-def claude_describe_command(prompt: str) -> list[str]:
-    """The describe session: Claude Code, reading only, in a folder of tests or
-    designs only."""
-    return ["claude", "-p", prompt, "--allowedTools", "Read"]
-
-
 @dataclass
 class Watcher:
     config: ProductConfig
     host: Host
     repo: str
     command: object = None  # prompt -> argv
-    describe: object = None  # prompt -> argv, for the describe sessions; None: none
+    describe: object = None  # prompt -> argv, or {kind: prompt -> argv}; None: none
+    settings: dict = field(default_factory=dict)  # the person's .env, for every session
     out: object = print
     colour: bool = False
     notify: object = None
@@ -376,7 +344,8 @@ class Watcher:
         self.say(f"#{number} head {head[:7]}: review started")
         log = LOGS / f"{number}-{head[:7]}.log"
         (self.config.root / LOGS).mkdir(parents=True, exist_ok=True)
-        env = {**os.environ, "GH_TOKEN": os.environ.get(HOST_TOKEN, "")}  # gh posts as reviewer
+        token = os.environ.get(HOST_TOKEN, "")
+        env = {**os.environ, **self.settings, "GH_TOKEN": token}  # gh posts as reviewer
         described, failed = self.describe_work(number, head)
         if failed is not None:
             self.stopped[(number, head)] = failed
@@ -416,8 +385,8 @@ class Watcher:
                 number,
                 head,
                 f"The reviewer's copy of the head changed during the review: {changed}. A "
-                "reviewer never changes the work, and the agent's settings must prevent it "
-                "(Claude Code: the watcher's allowed tools).",
+                "reviewer never changes the work, and the command that starts it must prevent "
+                "it (QF_COMMAND_TO_START_REVIEWER_SESSION, as its CLI allows).",
                 f"Verify your LLM settings; the copy is kept, to see the change, at "
                 f"{copy.relative_to(self.config.root).as_posix()}. Reviews are paused: type R "
                 "to resume.",
@@ -471,7 +440,8 @@ class Watcher:
         import shutil as _shutil
 
         tree = self.config.root / LOGS / f"{number}-head"
-        env = {k: v for k, v in os.environ.items() if k not in ("GH_TOKEN", HOST_TOKEN)}
+        env = {**os.environ, **self.settings}
+        env = {k: v for k, v in env.items() if k not in ("GH_TOKEN", HOST_TOKEN)}
         try:
             _shutil.rmtree(tree, ignore_errors=True)
             if not _unpack(self.config.root, number, head, tree):
@@ -540,8 +510,11 @@ class Watcher:
                     yaml.safe_dump(criteria, sort_keys=False, allow_unicode=True)
                 )
                 files = ["criteria.yaml", *files]
+            describe = self.describe
+            if isinstance(describe, dict):
+                describe = describe[DESCRIBERS[what]]
             output, timed_out = self._session(
-                self.describe(_describe_prompt(self.config, files, what)), alone, env, number, head
+                describe(_describe_prompt(self.config, files, what)), alone, env, number, head
             )
         finally:
             _shutil.rmtree(alone, ignore_errors=True)
@@ -898,7 +871,6 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--interval", type=int, default=60, help="seconds between looks")
-    parser.add_argument("--command", help="the agent command, {prompt} standing for the prompt")
     parser.add_argument("--once", action="store_true", help="look once, then stop")
     args = parser.parse_args(argv)
     if not os.environ.get(HOST_TOKEN):
@@ -916,20 +888,22 @@ def main(argv: list[str] | None = None) -> int:
     except (ConfigError, HostError) as err:
         print(err, file=sys.stderr)
         return 2
-    command = claude_command(config.framework_dir.resolve().as_posix())  # the copy has none
-    if args.command:
-        template = args.command
-
-        def command(prompt: str) -> list[str]:
-            return [part.replace("{prompt}", prompt) for part in shlex.split(template)]
-
+    settings = read_env(person_env_file())
+    try:
+        where = str(person_env_file())
+        command = command_for("reviewer", settings, where)
+        describe = {name: command_for(name, settings, where) for name in DESCRIBERS.values()}
+    except SessionError as err:
+        print(f"{err} (QUICKSTART step 8).", file=sys.stderr)
+        return 2
     colour = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
     watcher = Watcher(
         config,
         host,
         repo,
         command=command,
-        describe=command if args.command else claude_describe_command,
+        describe=describe,
+        settings=settings,
         out=print,
         colour=colour,
         notify=desktop_notification,
