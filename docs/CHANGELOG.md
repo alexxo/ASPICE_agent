@@ -35,6 +35,8 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-11-13
+
 Every independent session runs on the LLM the person names, and the tester never sees the code: the tester and the coder work in sessions of their own, one component at a time, the tester in a copy of the product without its code.
 
 ### Migration
