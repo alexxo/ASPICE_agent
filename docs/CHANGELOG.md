@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.9] - 2026-11-14
+
+The coder runs its tests: its prompt says which commands its session lets it run.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required — the coder's prompt comes with the pin |
+| Add `Bash(git log *)` to `QF_COMMAND_TO_START_CODER_SESSION` in the product's `.env`, after `Bash(git diff *)` (QUICKSTART step 8) | the person, on each machine | required with Claude Code; with another tool, allow `git log` as its flags say |
+
+### Fixed
+
+- **The coder's commands were refused without a word.** The coder's line allows a command by its start, one command at a time, and nothing told the coder: it ran pipes, `&&`, an interpreter's path, `git -C` and the reading tools the person's own instructions prescribe, and every one was refused — it wrote code it never ran, or stopped. The coder's prompt now says what passes: the plan's and the stack's commands as written, `git status`, `git diff` and `git log`, one command at a time, files read with the session's own file tools, and these rules before any other instruction about tools (`agent/write_unit_code_prompt.md`). The coder's line adds `git log` (QUICKSTART step 8); `tests/consistency/test_session_rights.py` keeps every git command of the prompt allowed. Appendix A.1 *The coder runs what its line allows*. Origin: FB-82 (wp_publisher).
+
 ## [5.0.8] - 2026-11-14
 
 Stage 5 can come back to built code: a reviewer's missing case and a change request's new names pass the test-first gate.
