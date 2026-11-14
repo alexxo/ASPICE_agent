@@ -35,6 +35,25 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.7] - 2026-11-14
+
+The stack's commands run in the product's own toolchain, and a retry hands the tester every open finding.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required where the machine's first Python lacks the product's stack, or a reviewer's finding is open over more than one round |
+| Set the product's toolchain up as its stack says (e.g. a Python 3.12 environment with `requirements.txt` installed) and add `QF_PATH_TO_PRODUCT_TOOLCHAIN=<its bin folder>` to the product's `.env` (QUICKSTART step 2) | the person, on each machine | required where the machine's first Python lacks the product's stack — otherwise every red run of stage 5 fails `RED_RUN_WITHOUT_RESULTS` |
+
+### Added
+
+- **`QF_PATH_TO_PRODUCT_TOOLCHAIN`, the product's toolchain on the person's machine.** The framework ran the stack's commands on the `PATH` it was given, where the first Python is the one with the framework's runtime, not the product's language version and libraries: a product's unit suite found no `python`, or no `pytest`, and no test commit passed the test-first gate. The folders named in the product's `.env` now go first on the `PATH` of the stack's checks and suites (`tools/run_stack_commands_tool.py`) and of the coder's session, never of the framework's tools; unset, as in CI, nothing changes. A red run without results now quotes the command's last output line. QUICKSTART step 2; Appendix A.13 *The product's toolchain is the product's*. Origin: FB-80 (wp_publisher).
+
+### Fixed
+
+- **A retry got half the open findings.** A reviewer could carry an open finding into a later round by reference (*listed there*), and the tester's retry gets the latest round's file alone. The reviewer now restates every open finding in full in each round (`plugins/sup/derive_review_plugin/SKILL.md`, `agent/run_reviewer_agent.md`). The tester's and the coder's retry rule no longer narrows the work to the findings: it still follows the component's detailed design as it stands, and also fixes what the findings name (`agent/write_unit_tests_prompt.md`, `agent/write_unit_code_prompt.md`, the launcher's retry sentence). Appendix A.1 *How a retry reaches the tester*. Origin: FB-79 (wp_publisher).
+
 ## [5.0.6] - 2026-11-14
 
 The reviewer's findings reach the tester and the coder on a retry.
