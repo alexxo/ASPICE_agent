@@ -35,6 +35,22 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.1] - 2026-11-14
+
+The command lines of the independent sessions give each session its rights and no more, and the upgrade to 5.x is a list of steps the product's agent can follow.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Follow "Upgrading an existing product" of `QUICKSTART.md`: the agent steps 1–4, the person steps 5–8 | the product, and the machine of the user who runs the watcher | required from 4.x; from 5.0.0, only the command lines below |
+| Replace each command line with the lines of QUICKSTART step 8, one per session, each fallback the read-only line | both `.env` files | required — a bare agent command gives a session the rights of the user's own settings |
+
+### Fixed
+
+- **Each session's command gives its rights, no more.** 5.0.0 dropped the reviewer's allowed tools with the Claude Code commands and named no replacement: a bare command left a session the rights of the user's own settings — a reviewer allowed everything, or a tester and a coder unable to write. QUICKSTART step 8 now has a table of each session's rights (read, write, run) and the Claude Code lines that give them, checked against Claude Code 2.1: refusing everything not listed, the tester kept in its copy, the reviewer writing only its record. Each fallback is the read-only line, so a missing line stops a session, never widens it. A consistency test keeps the lines readable by the launcher and the reviewer's line in step with its runbook's tools. Origin: internal.
+- **The upgrade, step by step.** "Upgrading an existing product" names who does what — the agent pins the framework and ignores `.env` through an issue and a pull request as every change, writes the command lines without a key and checks them without starting a session; the person adds keys, moves the token, writes `~/.aspice_agent_secrets/.env` with `chmod 600` and restarts the watcher, which then reviews the upgrade. Origin: internal.
+
 ## [5.0.0] - 2026-11-13
 
 Every independent session runs on the LLM the person names, and the tester never sees the code: the tester and the coder work in sessions of their own, one component at a time, the tester in a copy of the product without its code.

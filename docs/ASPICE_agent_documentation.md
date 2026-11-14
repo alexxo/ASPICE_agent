@@ -2067,6 +2067,17 @@ no LLM is the default.
    review independent of the work; a session's own command is for when a
    different model makes sense — a cheaper one to describe, another for the
    tester than for the coder.
+7. **Each command gives its session's rights, no more.** The folder decides
+   what a session sees; its command decides what it may do there. Clarify and
+   the three describe sessions read their folder and write nothing; the tester
+   reads and writes its copy only; the coder reads and writes the product and
+   runs the stack's commands; the reviewer reads its copy and the framework,
+   writes only its record under *.qf/reviews/* and runs git's reading
+   commands, the host's and the four framework tools of its runbook.
+   *QUICKSTART.md* step 8 gives these rights as Claude Code command lines and
+   as a table for any other command-line tool. Each side's fallback is the
+   read-only line, so a session whose line is missing stops for lack of
+   rights and is never given more.
 
 ### Keeping concerns separate
 
@@ -3409,7 +3420,7 @@ and a person approves the results and answers the questions of what is wanted
    **No LLM is the default** (*Independent sessions*): the watcher starts every session with
    the command the person names in *~/.aspice_agent_secrets/.env*, out of
    the author's reach. A reviewer never changes the work, and that command
-   keeps it read-only, as its command-line tool allows. The session runs in a copy of the
+   gives it the reviewer's rights only (*Independent sessions*, rule 7). The session runs in a copy of the
    head of its own, a git worktree the watcher makes under *.qf/reviews/*,
    never in the author's folder, where the author and the framework go on
    working. Whatever the agent, the watcher compares that copy's commit and

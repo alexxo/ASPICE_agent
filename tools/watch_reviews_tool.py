@@ -15,8 +15,8 @@ QF_COMMAND_TO_START_EXPECT_CASES_SESSION, else
 QF_COMMAND_TO_START_REVIEW_SESSIONS, {prompt} standing for the prompt
 (tools/start_session_tool.py) — out of the author's reach, with the keys its
 LLMs read. The reviewer may read, use the host and write its record only; its
-command keeps it so, as its CLI allows. The session runs in a copy of the pull
-request's head of its own, a git worktree the watcher makes at
+command gives it these rights, no more (QUICKSTART step 8). The session runs
+in a copy of the pull request's head of its own, a git worktree the watcher makes at
 .qf/reviews/<n>-<sha>/, never in the author's folder, where the author and the
 framework go on working. A reviewer never changes the work: whatever the
 agent, the watcher compares that copy's commit and changed files (.qf/ left
@@ -386,7 +386,7 @@ class Watcher:
                 head,
                 f"The reviewer's copy of the head changed during the review: {changed}. A "
                 "reviewer never changes the work, and the command that starts it must prevent "
-                "it (QF_COMMAND_TO_START_REVIEWER_SESSION, as its CLI allows).",
+                "it (QF_COMMAND_TO_START_REVIEWER_SESSION, with the rights of QUICKSTART step 8).",
                 f"Verify your LLM settings; the copy is kept, to see the change, at "
                 f"{copy.relative_to(self.config.root).as_posix()}. Reviews are paused: type R "
                 "to resume.",

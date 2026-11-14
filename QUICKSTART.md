@@ -336,29 +336,67 @@ side that does the work never configures the side that checks it:
 Each line names the command that starts a session: the agent's command line,
 with `{prompt}` where the prompt goes. No LLM is the default: each side's
 fallback is required, and a session may name its own LLM. The key of each LLM
-goes in the same file, under the name its command-line tool reads. The person
-writes both files with an editor, never the agent: the keys never land in the
-shell's history or the agent's session. For example:
+goes in the same file, under the name its command-line tool reads; a tool that
+is logged in needs no key. The agent may write the command lines of the
+product's `.env`; the keys, and the whole of `~/.aspice_agent_secrets/.env`,
+the person writes with an editor, never the agent: the keys never land in the
+shell's history or the agent's session, and the side that does the work never
+configures the side that checks it.
+
+**What each session may do.** The command must allow what the session needs
+and refuse the rest — whatever the LLM, its command line must give exactly
+these rights:
+
+```
+Session            Runs in                     May read              May write               May run
+Clarify            a folder of its files       that folder           nothing                 nothing
+Tester             a copy without the code     that copy             that copy               nothing
+Coder              the product                 the product           the product             the stack's commands, python
+Reviewer           a copy of the PR's head     that copy, the        .qf/reviews/ of that    git log/diff/show, gh api,
+                                               framework             copy                    gh pr view/diff, the four
+                                                                                             framework tools of its runbook
+Describe tests,    a folder of its files       that folder           nothing                 nothing
+ design, expect
+```
+
+**With Claude Code**, these lines give those rights (`--permission-mode
+dontAsk` refuses everything not listed, `--setting-sources user` keeps the
+product's own settings out). With Claude, each session needs its line; make
+each fallback the read-only line, so a forgotten line fails safe — the session
+stops, it is never given more:
 
 ```sh
 # <product>/.env
-QF_COMMAND_TO_START_AUTHOR_SESSIONS=claude -p {prompt}
-QF_COMMAND_TO_START_TESTER_SESSION=codex exec --model gpt-5 {prompt}
-OPENAI_API_KEY=<the key>
-#   optional: QF_COMMAND_TO_START_CLARIFY_SESSION, QF_COMMAND_TO_START_CODER_SESSION
+QF_COMMAND_TO_START_AUTHOR_SESSIONS=claude -p {prompt} --permission-mode dontAsk --setting-sources user
+QF_COMMAND_TO_START_TESTER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**)"
+QF_COMMAND_TO_START_CODER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**),Bash(python *),Bash(git status *),Bash(git diff *),Bash(<each command of the stack> *)"
 ```
 
 ```sh
 # ~/.aspice_agent_secrets/.env   (chmod 600)
-QF_COMMAND_TO_START_REVIEW_SESSIONS=gemini -p {prompt}
-GEMINI_API_KEY=<the key>
-#   optional: QF_COMMAND_TO_START_REVIEWER_SESSION,
-#   QF_COMMAND_TO_START_DESCRIBE_TESTS_SESSION,
-#   QF_COMMAND_TO_START_DESCRIBE_DESIGN_SESSION,
-#   QF_COMMAND_TO_START_EXPECT_CASES_SESSION
+QF_COMMAND_TO_START_REVIEW_SESSIONS=claude -p {prompt} --permission-mode dontAsk --setting-sources user
+QF_COMMAND_TO_START_REVIEWER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Read(//**/.framework/**),Edit(./.qf/reviews/**),Bash(git log *),Bash(git diff *),Bash(git show *),Bash(gh api *),Bash(gh pr view *),Bash(gh pr diff *),Bash(python */.framework/agent/read_config_tool.py *),Bash(python */.framework/agent/load_skills_tool.py *),Bash(python */.framework/tools/classify_pull_request_tool.py *),Bash(python */.framework/tools/post_review_tool.py *)"
 ```
 
-Each command-line tool has its own flags: check them in its documentation.
+Replace `<each command of the stack>` with the first word of every command the
+product's stack rows and verification plan declare (for example `pytest`,
+`ruff`), one `Bash(... *)` each. The read-only line serves clarify and the
+three describe sessions. The tester's `Edit(./**)` keeps it in its copy: it can
+neither read nor write the product.
+
+**With another LLM**, write one line per row of the table above, with the
+flags its command-line tool has for those rights (its documentation names
+them), and the key it reads, for example:
+
+```sh
+# <product>/.env
+QF_COMMAND_TO_START_TESTER_SESSION=<its command> <its flags for: write this folder only> {prompt}
+OPENAI_API_KEY=<the key>
+```
+
+Check every line before the first session: a session given fewer rights than
+its row stops with a refusal in its log (`.qf/sessions/<session>.log`, or the
+watcher's line); one given more is the risk the table prevents.
 Running the reviewer's side on a different LLM than the author's keeps the
 review more independent: one model tends to miss what the same model missed.
 
@@ -393,8 +431,8 @@ wishes. Tell the person how the work runs from now on:
   the author fixes them*, *waits for your review*, *ready to merge* — and
   warns when a head has no crossing sign after 10 minutes, since CI may not
   run. Its sessions start with the commands of `~/.aspice_agent_secrets/.env`
-  (step 8). A reviewer never changes the work: configure its command
-  read-only, as its command-line tool allows. Each review runs in a copy of
+  (step 8). A reviewer never changes the work: its command gives it the
+  rights of its row in step 8, no more. Each review runs in a copy of
   the pull request's head, so you
   and the developer go on working in the product folder. If that copy
   changes during a review anyway, the watcher shows **REVIEWER CHANGED THE
@@ -445,26 +483,74 @@ section *Starting a product*.
 ## Upgrading an existing product
 
 A product built with a framework before 5.0.0 keeps all its work: no gate and
-no record changes. Two things move — the independent sessions take their LLM
-from a `.env`, and the reviewer token joins the one folder of secrets.
+no record changes, at whatever stage it is. Two things move — the independent
+sessions take their LLM from a `.env`, and the reviewer token joins the one
+folder of secrets.
 
-In the product:
+The person can hand steps 1–4 to the agent in the product folder, with:
 
-1. Update the framework submodule to the new release and commit the pin.
-2. Write the product's `.env` with at least
-   `QF_COMMAND_TO_START_AUTHOR_SESSIONS` and that LLM's key (step 8).
-3. Add `.env` to the product's `.gitignore`.
+> Follow "Upgrading an existing product" of `.framework/QUICKSTART.md`, steps 1–4, to release `<tag>`.
 
-As the user who runs the watcher, on their machine:
+Steps 5–8 are the person's: they touch the secrets, which the agent never
+reads or writes.
 
-4. Move the token into the folder of secrets:
+**Before:** no session of the agent is running a stage, and the person stops
+the watcher (Ctrl+C in its terminal).
+
+**The agent, in the product folder:**
+
+1. Like every change, the upgrade reaches the main branch through a pull
+   request whose commits name its issue. Open the issue and the branch, from
+   an up-to-date main:
+
+   ```sh
+   gh issue create --title "Upgrade the framework to <tag>" --body "QUICKSTART: Upgrading an existing product."
+   git switch main && git pull
+   git switch -c chore/framework-<tag>
+   ```
+
+2. Pin the framework at the release, and ignore `.env` — on a line of its own
+   in `.gitignore`, if it is not there yet:
+
+   ```sh
+   git -C .framework fetch --tags
+   git -C .framework checkout <tag>
+   git add .framework .gitignore
+   git commit -m "chore: framework <tag>, .env ignored #<issue>"
+   git check-ignore .env   # prints .env
+   ```
+
+3. Write the product's `.env` with the command lines of step 8, "With Claude
+   Code" or "With another LLM" as the person says — no key. In the coder's
+   line, replace `<each command of the stack>` with the stack's commands (step
+   8). Never commit it. Check that every author session resolves to its
+   command, without starting one:
+
+   ```sh
+   python -c "import sys; sys.path.insert(0, '.framework'); from tools.start_session_tool import command_for, read_env; v = read_env('.env'); [print(s, command_for(s, v, '.env')('<prompt>')) for s in ('clarify', 'tester', 'coder')]"
+   ```
+
+   Each line shows the session's command; an error names the line missing.
+4. Push the branch and open its pull request (`gh pr create`). Tell the person
+   steps 5–8 — the watcher must run before the pull request can be reviewed —
+   and wait for its review. Then merge it as every pull request
+   (`run_aspice_agent.md`, "Every pull request").
+
+**The person, as the user who runs the watcher:**
+
+5. If the LLM of the product's `.env` needs a key, add it there with an
+   editor (step 8).
+6. Move the token into the folder of secrets:
 
    ```sh
    mkdir -p -m 700 ~/.aspice_agent_secrets
    mv ~/.aspice_agent_reviewer_bot_token ~/.aspice_agent_secrets/reviewer_bot_github_token
+   ls ~/.aspice_agent_secrets/reviewer_bot_github_token   # shows <owner>
    ```
 
-5. Write `~/.aspice_agent_secrets/.env` with at least
-   `QF_COMMAND_TO_START_REVIEW_SESSIONS` and that LLM's key (step 8).
-6. Stop the watcher (Ctrl+C) and start it again with the line of step 9: it
-   no longer takes `--command`.
+7. Write `~/.aspice_agent_secrets/.env` with an editor — the lines of step 8
+   and the key its LLM needs — then `chmod 600 ~/.aspice_agent_secrets/.env`.
+8. Start the watcher again with the line of step 9, in the product folder: it
+   no longer takes `--command`. If a line is missing it stops at once and
+   names it; otherwise it reviews the upgrade's pull request — the first
+   review on the new lines.
