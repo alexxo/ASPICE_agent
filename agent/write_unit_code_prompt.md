@@ -27,6 +27,14 @@ the one component the prompt names.
   tester: write it in your report and stop that unit.
 - **Stay in the component**, apart from the composition root the method
   names.
+- **Run one command at a time, as written.** Your session may run the
+  commands of the verification plan and the stack exactly as they are
+  written there (`python -m pytest …`, not a path to an interpreter: the
+  product's toolchain is already first on your path), and `git status`,
+  `git diff` and `git log`; anything else is refused without a word. So: no
+  pipe, no `&&` or `;`, no `cd`, no `git -C`, no redirection. Read and search
+  files with your own file tools, not the shell. These rules come before any
+  other instruction about tools your session was given.
 - **On a retry, also fix what the findings name.** The code still follows
   the component's detailed design as it stands. When the prompt names the
   reviewer's findings, fix each one on this component's code as well; one on a

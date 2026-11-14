@@ -55,3 +55,13 @@ def test_the_reviewer_may_run_every_gh_command_of_its_runbook(repo_root, tmp_pat
     assert commands
     refused = [c for c in commands if not any(c.startswith(s) for s in starts)]
     assert not refused, refused
+
+
+def test_the_coder_may_run_every_git_command_of_its_prompt(repo_root, tmp_path):
+    """FB-82: a command the prompt names but the line refuses is refused without a word."""
+    allowed = command_for("coder", _lines(repo_root, tmp_path), "QUICKSTART step 8")("p")[-1]
+    prompt = (repo_root / "agent/write_unit_code_prompt.md").read_text(encoding="utf-8")
+    commands = set(re.findall(r"`(git [a-z]+)`", prompt))
+    assert commands
+    refused = [c for c in sorted(commands) if f"Bash({c} *)" not in allowed]
+    assert not refused, refused

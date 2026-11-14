@@ -376,7 +376,8 @@ these rights:
 Session            Runs in                     May read              May write               May run
 Clarify            a folder of its files       that folder           nothing                 nothing
 Tester             a copy without the code     that copy             that copy               nothing
-Coder              the product                 the product           the product             the stack's commands, python
+Coder              the product                 the product           the product             the stack's commands, python,
+                                                                                             git status/diff/log
 Reviewer           a copy of the PR's head     that copy, the        .qf/reviews/ of that    git log/diff/show, gh api,
                                                framework             copy                    gh pr view/diff, the four
                                                                                              framework tools of its runbook
@@ -386,15 +387,18 @@ Describe tests,    a folder of its files       that folder           nothing    
 
 **With Claude Code**, these lines give those rights (`--permission-mode
 dontAsk` refuses everything not listed, `--setting-sources user` keeps the
-product's own settings out). With Claude, each session needs its line; make
-each fallback the read-only line, so a forgotten line fails safe — the session
-stops, it is never given more:
+product's own settings out). A line allows a command by how it starts, one
+command at a time: the coder's prompt tells it to run each command as the
+plan and the stack write it, without pipes or `&&`, and that its rules come
+before the person's own instructions about tools. With Claude, each session
+needs its line; make each fallback the read-only line, so a forgotten line
+fails safe — the session stops, it is never given more:
 
 ```sh
 # <product>/.env
 QF_COMMAND_TO_START_AUTHOR_SESSIONS=claude -p {prompt} --permission-mode dontAsk --setting-sources user
 QF_COMMAND_TO_START_TESTER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**)"
-QF_COMMAND_TO_START_CODER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**),Bash(python *),Bash(python3 *),Bash(git status *),Bash(git diff *),Bash(<each command of the stack> *)"
+QF_COMMAND_TO_START_CODER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**),Bash(python *),Bash(python3 *),Bash(git status *),Bash(git diff *),Bash(git log *),Bash(<each command of the stack> *)"
 ```
 
 ```sh

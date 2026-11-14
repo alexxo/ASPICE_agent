@@ -2079,7 +2079,7 @@ no LLM is the default.
    what a session sees; its command decides what it may do there. Clarify and
    the three describe sessions read their folder and write nothing; the tester
    reads and writes its copy only; the coder reads and writes the product and
-   runs the stack's commands; the reviewer reads its copy and the framework,
+   runs the stack's commands and git's reading commands; the reviewer reads its copy and the framework,
    writes only its record under *.qf/reviews/* and runs git's reading
    commands, the host's and the four framework tools of its runbook.
    *QUICKSTART.md* step 8 gives these rights as Claude Code command lines and
@@ -2088,7 +2088,12 @@ no LLM is the default.
    rights and is never given more. A runbook's commands are written as its
    line allows them: the reviewer's *gh* acts with the token the watcher
    gives the session as *GH_TOKEN*, with no variable in front, and the
-   reviewer checks that it acts as one of *review.agents*.
+   reviewer checks that it acts as one of *review.agents*. A line allows a
+   command by its start, one command at a time, and refuses the rest without
+   a word; so the coder's prompt tells it to run each command as the plan
+   and the stack write it — no pipe, no `&&`, no path to an interpreter, no
+   `git -C` — to read files with its own file tools, and that these rules
+   come before any other instruction about tools the session was given.
 
 ### Keeping concerns separate
 
@@ -4281,6 +4286,29 @@ label together.
   mistake repeated across rounds or components that no work product
   carries; a second product would reuse the pilot's lessons; or a
   component's records no longer fit a session whole.
+
+- **The coder runs what its line allows** (FB-82 of wp_publisher). The
+  coder's line allowed the stack's commands by their start, and nothing told
+  the coder so: it ran commands with pipes and `&&`, an interpreter's path,
+  `git -C`, and the reading tools the person's own instructions prescribe,
+  and every one was refused without a word. It wrote code it never ran, or
+  stopped.
+
+  | # | Scenario | O | S | D | Risk |
+  |---|---|---|---|---|---|
+  | P1 | The coder runs no test: its code reaches the gates unrun | 9 | 7 | 3 | 189 |
+  | P2 | The coder stops at its first refused command | 6 | 6 | 2 | 72 |
+  | P3 | A wider line lets the coder run what its role must not | 3 | 7 | 5 | 105 |
+
+  *Chosen:* the prompt says what passes — the plan's and the stack's
+  commands as written, *git status*, *git diff* and *git log*, one command
+  at a time, files read with the session's own file tools — and that these
+  rules come before any other instruction about tools (P1, P2); the line
+  adds *git log*; a consistency test keeps every git command of the prompt
+  allowed by the line. *Not taken:* allowing pipes, readers and shells on
+  the line — each one widens what the coder may run, per person (P3);
+  dropping the person's own settings from the session — their model and
+  environment settings live there too, and the prompt's precedence is enough.
 
 ### A.2 Diagram and requirements stages — stages 1 and 2
 
