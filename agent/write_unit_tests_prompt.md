@@ -39,9 +39,15 @@ the one component the prompt names.
   other file you write is refused and never reaches the product.
 - **Do not run the unit suite.** Without the code it cannot build here; the
   red run is made on the commit, in the product, by the stage's gates.
+- **On a retry, fix exactly what the findings name.** When the prompt names
+  the reviewer's findings, each one for this component is fixed: a missing
+  case gets its test, a weakened test its assertion back. A case you hold is
+  not a test gets none: give the reason in your report, for the reviewer to
+  read.
 - **Do not commit.** The orchestrator commits what comes back.
 
 ## Output
 
 A short report, in plain words: per unit the tests written and what each
-covers, the stubs written, and the assumptions you stated.
+covers, the stubs written, and the assumptions you stated; on a retry, per
+finding what was done, or the reason a case is not a test.

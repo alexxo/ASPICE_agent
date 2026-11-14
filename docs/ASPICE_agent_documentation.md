@@ -2053,7 +2053,10 @@ no LLM is the default.
    *code_dir* matching the stack's *code_files* and not the unit suite's
    *test_files*. The rule *the tester never reads the code* holds also when a
    changed requirement brings stage 5 back after the code exists. Its method
-   and rules travel into its copy; the framework does not.
+   and rules travel into its copy; the framework does not. On a retry the
+   reviewer's findings travel too: they sit under *.qf/reviews/*, which no
+   commit holds, so the launcher copies them into the tester's folder and
+   names them to the coder (*--findings*).
 4. **What comes back.** From the tester's copy only what the tester may write
    reaches the product: the verification plan, and in the component's folder
    test files and the stub of a unit that has no code yet; a stub for a unit
@@ -4214,6 +4217,26 @@ label together.
   different LLM per session when it makes sense); the commands on the
   watcher's command line (Alex: no key or setting typed into a command).
   → § 5 *Independent sessions*.
+- **How a retry reaches the tester** (FB-78 of wp_publisher). The reviewer's
+  findings on a component's tests sit under *.qf/reviews/*, ignored by git;
+  the tester's copy is the committed head, so they never reached it, and the
+  orchestrator may not write tests itself: the retry loop of stage 5 could
+  not close.
+
+  | # | Scenario | O | S | D | Risk |
+  |---|---|---|---|---|---|
+  | R1 | A finding on the tests never reaches the tester: the pull request never gets the reviewer's approval | 8 | 7 | 3 | 168 |
+  | R2 | A finding quotes code, and the tester reads it | 3 | 5 | 7 | 105 |
+  | R3 | The findings are committed to reach the copy: review records in the product's history | 4 | 3 | 3 | 36 |
+
+  *Chosen:* the launcher's *--findings*, the review's findings file as the
+  reviewer wrote it — copied into the tester's folder, named to the coder —
+  and a retry rule in both prompts: fix exactly what the findings name; a
+  case the tester holds is not a test gets its reason in the report (R1, R3).
+  R2 is accepted: a finding names a case or a file and line, and a finding on
+  the tests is about the tests. *Not taken:* the orchestrator retelling the
+  findings — it has read the code too, and it would choose what the tester
+  hears.
 
 ### A.2 Diagram and requirements stages — stages 1 and 2
 

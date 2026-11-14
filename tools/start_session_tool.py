@@ -31,10 +31,13 @@ what the tester may write comes back to the product: test files and the
 verification plan, and a stub for a unit that has no code yet, all in the
 component's folder; anything else is refused and listed. The coder works in
 the product itself: it must see the tests, and the gates stop it changing them.
+On a retry, --findings hands the session the reviewer's findings (a file under
+.qf/reviews/, which no commit holds): copied into the tester's folder, named
+to the coder (FB-78).
 
     python tools/start_session_tool.py --session clarify --task "Check these: …" [--root PRODUCT]
-    python tools/start_session_tool.py --session tester --component ID [--root PRODUCT]
-    python tools/start_session_tool.py --session coder --component ID [--root PRODUCT]
+    python tools/start_session_tool.py --session tester --component ID [--findings F] [--root P]
+    python tools/start_session_tool.py --session coder --component ID [--findings F] [--root P]
 
 Prints what happened as JSON: the session's output file, the files brought
 back, refused and skipped. Exit 0 done, 1 the session failed or wrote what its
@@ -101,6 +104,7 @@ PROMPTS = {
 STAGES = {"tester": "unit_tests", "coder": "unit_construction"}
 SECRETS = (HOST_TOKEN, "GH_TOKEN")  # never in a session the author's side starts
 LOGS = Path(".qf") / "sessions"
+FINDINGS = LOGS / "findings.md"  # in the tester's folder
 AGENT_DIR = Path(__file__).resolve().parents[1] / "agent"
 
 
@@ -300,6 +304,16 @@ def _run(argv: list[str], cwd: Path, env: dict[str, str]) -> tuple[str, int]:
     return done.stdout or "", done.returncode
 
 
+def _retry(findings: str | None) -> str:
+    """The prompt's sentence handing a retry the reviewer's findings."""
+    if not findings:
+        return ""
+    return (
+        f" This is a retry: read the reviewer's findings in {findings} and fix exactly what "
+        "they name for this component."
+    )
+
+
 def _unfenced(text: str) -> str:
     text = text.strip()
     if text.startswith("```"):
@@ -329,7 +343,9 @@ def clarify(config: ProductConfig, task: str, command, env) -> Result:
     return Result("clarify", output, code)
 
 
-def tester(config: ProductConfig, component: str, command, env) -> Result:
+def tester(
+    config: ProductConfig, component: str, command, env, findings: Path | None = None
+) -> Result:
     """The tester session, in a copy of the head without the code; only what
     the tester may write comes back."""
     stack = _stack(config)
@@ -343,11 +359,14 @@ def tester(config: ProductConfig, component: str, command, env) -> Result:
             (copy / LOGS / "rules").mkdir(parents=True, exist_ok=True)
             shutil.copyfile(rule, copy / LOGS / "rules" / name)
             shown.append((LOGS / "rules" / name).as_posix())
+        if findings:
+            shutil.copyfile(findings, copy / FINDINGS)
         before = _files(copy)
         prompt = (
             f"Write the unit tests of component {component}. This folder is a copy of the "
             "product without its code: read nothing outside it. Read these rules first, every "
-            f"one: {' '.join(shown)}.\n\n{_instructions(PROMPTS['tester'])}"
+            f"one: {' '.join(shown)}.{_retry(findings and FINDINGS.as_posix())}\n\n"
+            f"{_instructions(PROMPTS['tester'])}"
         )
         output, code = _run(command(prompt), copy, env)
         before = {k: v for k, v in before.items() if not k.startswith(LOGS.as_posix() + "/")}
@@ -362,21 +381,34 @@ def tester(config: ProductConfig, component: str, command, env) -> Result:
     return Result("tester", output, code, brought, refused, skipped)
 
 
-def coder(config: ProductConfig, component: str, command, env) -> Result:
+def coder(
+    config: ProductConfig, component: str, command, env, findings: Path | None = None
+) -> Result:
     """The coder session, in the product: it sees the tests, and the gates keep
     them as the tester wrote them."""
     rules = " ".join(p.as_posix() for p in _rules(config.root, STAGES["coder"]))
     prompt = (
         f"Write the code of component {component} until its unit tests pass. Read these rules "
-        f"first, every one: {rules}.\n\n{_instructions(PROMPTS['coder'])}"
+        f"first, every one: {rules}.{_retry(findings and config.relative(findings))}\n\n"
+        f"{_instructions(PROMPTS['coder'])}"
     )
     output, code = _run(command(prompt), config.root, env)
     return Result("coder", output, code)
 
 
-def start(root: Path, session: str, component: str | None = None, task: str = "") -> Result:
+def start(
+    root: Path,
+    session: str,
+    component: str | None = None,
+    task: str = "",
+    findings: Path | None = None,
+) -> Result:
     """Start one author-side session and keep its output under .qf/sessions/."""
     config = read_product_config(root)
+    if findings is not None:
+        findings = (config.root / findings).resolve()
+        if not findings.is_file():
+            raise SessionError(f"No findings file at {findings}.")
     values = read_env(config.root / AUTHOR_ENV)
     command = command_for(session, values, f"the product's {AUTHOR_ENV}")
     env = session_env(values)
@@ -385,9 +417,9 @@ def start(root: Path, session: str, component: str | None = None, task: str = ""
     elif not component:
         raise SessionError(f"The {session} session works on one component: name it (--component).")
     elif session == "tester":
-        result = tester(config, component, command, env)
+        result = tester(config, component, command, env, findings)
     else:
-        result = coder(config, component, command, env)
+        result = coder(config, component, command, env, findings)
     logs = config.root / LOGS
     logs.mkdir(parents=True, exist_ok=True)
     name = session if session == "clarify" else f"{session}-{component}"
@@ -402,10 +434,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--session", required=True, choices=["clarify", "tester", "coder"])
     parser.add_argument("--component", help="the component the tester or the coder works on")
     parser.add_argument("--task", default="", help="what the clarify session checks")
+    parser.add_argument(
+        "--findings", type=Path, help="on a retry: the reviewer's findings for the session"
+    )
     parser.add_argument("--root", type=Path, default=Path.cwd())
     args = parser.parse_args(argv)
     try:
-        result = start(args.root, args.session, args.component, args.task)
+        result = start(args.root, args.session, args.component, args.task, args.findings)
     except (SessionError, ConfigError) as err:
         print(str(err), file=sys.stderr)
         return 2

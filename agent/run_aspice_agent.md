@@ -162,7 +162,11 @@ with `--component <id>`). A file it lists under `refused` never reached the
 product: tell the person, and start the session again. At stage 6, once every
 component's tests are committed, the same for the coder (`--session coder`):
 it works in the product; commit its work, then run the gates. A test the
-coder reports wrong goes back to a new tester session. The command that
+coder reports wrong goes back to a new tester session. A reviewer's
+finding on a component's tests or code goes to a new session of the
+tester or the coder with the findings file of the review under
+*.qf/reviews/*: add `--findings <that file>`. The tester's copy holds no
+*.qf/*: never write the findings into the product to reach it. The command that
 starts a session is the product's, in its *.env*
 (`QF_COMMAND_TO_START_TESTER_SESSION`, `QF_COMMAND_TO_START_CODER_SESSION`,
 else `QF_COMMAND_TO_START_AUTHOR_SESSIONS`); when none is set the launcher

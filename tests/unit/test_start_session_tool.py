@@ -191,3 +191,41 @@ def test_without_a_command_nothing_starts(built, capsys):
     assert start_session_tool.main(args) == 2
     assert "QF_COMMAND_TO_START_AUTHOR_SESSIONS" in capsys.readouterr().err
     assert not (Path(built) / ".qf/sessions").exists()
+
+
+RETRY = """
+import pathlib, sys
+assert 'retry' in sys.argv[1] and '.qf/sessions/findings.md' in sys.argv[1]
+assert '20 expected cases have no test' in pathlib.Path('.qf/sessions/findings.md').read_text()
+print('tests written')
+"""
+
+
+def test_a_retry_hands_the_tester_the_reviewers_findings(built, tmp_path, monkeypatch, capsys):
+    """FB-78: the findings sit under .qf/reviews/, which the tester's copy of
+    the head never holds."""
+    _session(built, tmp_path, RETRY, monkeypatch)
+    (built / ".qf/reviews").mkdir(parents=True)
+    (built / ".qf/reviews/32-de9697f-findings.md").write_text("20 expected cases have no test\n")
+    args = ["--session", "tester", "--component", "auth-service", "--root", str(built)]
+    findings = ["--findings", ".qf/reviews/32-de9697f-findings.md"]
+    assert start_session_tool.main([*args, *findings]) == 0
+    assert json.loads(capsys.readouterr().out)["brought_back"] == []  # the findings stay out
+
+
+def test_a_retry_names_the_findings_to_the_coder(built, tmp_path, monkeypatch, capsys):
+    script = CODER + "assert 'retry' in prompt and '.qf/reviews/f.md' in prompt\n"
+    _session(built, tmp_path, script, monkeypatch)
+    env = (built / ".env").read_text().replace("{prompt}", "{prompt} " + str(built))
+    (built / ".env").write_text(env)
+    (built / ".qf/reviews").mkdir(parents=True)
+    (built / ".qf/reviews/f.md").write_text("finding\n")
+    args = ["--session", "coder", "--component", "web-app", "--findings", ".qf/reviews/f.md"]
+    assert start_session_tool.main([*args, "--root", str(built)]) == 0
+
+
+def test_a_findings_file_that_is_not_there_starts_nothing(built, tmp_path, monkeypatch, capsys):
+    _session(built, tmp_path, RETRY, monkeypatch)
+    args = ["--session", "tester", "--component", "auth-service", "--findings", "nowhere.md"]
+    assert start_session_tool.main([*args, "--root", str(built)]) == 2
+    assert "No findings file" in capsys.readouterr().err
