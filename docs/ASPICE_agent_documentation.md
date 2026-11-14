@@ -4253,6 +4253,34 @@ label together.
   the tests is about the tests. *Not taken:* the orchestrator retelling the
   findings — it has read the code too, and it would choose what the tester
   hears.
+- **No retrieval or memory beside the work products** (2026-11-14, Alex).
+  A retrieval over the decision records (embeddings, vector file, a
+  comparator) and an agent memory of the Engram or rsc-brain kind were
+  weighed for what a session must know. The purpose: the tester and the
+  coder of a component know the approved decisions that bind it, without
+  reading every record and without missing one.
+
+  | # | Scenario | O | S | D | Risk |
+  |---|---|---|---|---|---|
+  | K1 | A decision that binds the component is missing from the session's context | 4 | 8 | 5 | 160 |
+  | K4 | A superseded decision is used as if it still applied | 2 | 7 | 4 | 56 |
+  | K5 | The tester reads a decision that shows how the code is built | 3 | 5 | 6 | 90 |
+
+  No risk is high. A session already starts from what ASPICE asks to be
+  kept — requirements, architecture, detailed design, decision records,
+  problem records, reviews — each traced and checked by a gate: the work
+  products are the memory. A decision record names its requirements and
+  the architecture the requirements each component meets, an exact link a
+  similarity search could only approximate and could miss; the pilot's
+  records fit a session whole (7, about 6,000 tokens); a record says
+  *superseded* itself (K4); records hold design, not code (K5). *Not
+  taken:* retrieval by embeddings — a second index of the same records,
+  outside the gates; an agent memory server — knowledge written beside the
+  work products, unapproved (Engram) or approved outside the product's
+  repository (rsc-brain). *Reopened when:* the reviews show one kind of
+  mistake repeated across rounds or components that no work product
+  carries; a second product would reuse the pilot's lessons; or a
+  component's records no longer fit a session whole.
 
 ### A.2 Diagram and requirements stages — stages 1 and 2
 
