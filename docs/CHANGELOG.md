@@ -35,6 +35,22 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.8] - 2026-11-14
+
+Stage 5 can come back to built code: a reviewer's missing case and a change request's new names pass the test-first gate.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required where a change request or a reviewer's finding brings stage 5 back after the code exists |
+| Remove the kept red runs of test-only commits judged on an earlier version (`.qf/runs/commit-<sha>/`) and run the gates again | the product | required where such a run was kept with `RED_RUN_WITHOUT_RESULTS` for a file that could not be collected — a kept run is reused as it is |
+
+### Fixed
+
+- **A missing case of built behaviour could never pass the test-first gate.** Every new test had to fail on its test-only commit, but a test the reviewer asks for, of behaviour the code already has, passes there. A new test of a file whose units are all built — by a commit of code without tests, earlier in the pull request or before it — now may pass: it guards the code. A changed test of a built unit still fails, or it was loosened, and so does a new one in a commit that removes a test from its file (`gates/swe/verify_test_first_gate.py`). Appendix A.5 *Stage 5 on built code*; § 5 unit stages, rule 18. Origin: FB-81 (wp_publisher).
+- **A test file that could not be collected had no results.** A test importing a name the design adds to a built unit errors at collection, where pytest writes the module in the testcase's name and no classname; its error now belongs to that file and counts as red (`tools/read_test_results_tool.py`). § 5 unit stages, rule 15. Origin: FB-81 (wp_publisher).
+
 ## [5.0.7] - 2026-11-14
 
 The stack's commands run in the product's own toolchain, and a retry hands the tester every open finding.
