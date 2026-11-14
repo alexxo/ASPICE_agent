@@ -5,7 +5,7 @@ at .framework, checked out at a release tag. The person clones the framework at 
 release into the product folder and runs the setup from that clone, so the
 framework exists once (decisions 1 and 3 of starting a product):
 
-    git clone --branch v5.0.2 <framework repository> my-product/.framework
+    git clone --branch v5.0.3 <framework repository> my-product/.framework
     python my-product/.framework/tools/create_product_tool.py --root my-product \\
         --reviewer-agent LOGIN --person LOGIN --architect LOGIN --customer NAME \\
         --urgent-approver LOGIN --change-approver LOGIN \\
@@ -51,9 +51,8 @@ __all__ = ["COPIED", "PATHS", "SLOTS", "create_product", "product_config", "rele
 FRAMEWORK = Path(__file__).resolve().parent.parent
 FRAMEWORK_DIR = ".framework"
 CODEOWNERS = ".github/CODEOWNERS"
-IGNORED = (".qf/", ".agents/", ".claude/", ".archify/", ".env", ".venv/")  # .archify/: drafts;
-# .env: the commands that start the author's sessions and their LLMs' keys; .venv/: the
-# framework's runtime where the machine has no python with it (QUICKSTART step 2)
+IGNORED = (".qf/", ".agents/", ".claude/", ".archify/", ".env")  # .archify/: Archify's drafts;
+# .env: the commands that start the author's sessions and their LLMs' keys
 FEEDBACK = "FRAMEWORK_FEEDBACK.md"
 
 PATHS = {

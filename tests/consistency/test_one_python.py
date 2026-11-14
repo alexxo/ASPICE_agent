@@ -1,9 +1,9 @@
-"""Layer 2 — QUICKSTART names one Python, `python`, as every command calls it.
+"""Layer 2 — Python is whatever the machine has, `python` or `python3`.
 
-The agent's runbooks, the CI, the watcher and the sessions' command lines all
-call `python`; a guide that checks `python3` passes on a machine where every one
-of them fails (FB-75). `python3` stays only where it makes the environment that
-provides `python`, and where the agent looks for every Python on the machine.
+The framework's commands are written `python`; where the machine's name is
+`python3`, they run as `python3` (FB-75). The guide checks both names and asks
+for no new installation, the runbooks say so, and every session line that may
+run Python allows both names.
 """
 
 import re
@@ -12,15 +12,22 @@ import pytest
 
 pytestmark = pytest.mark.layer2
 
-ALLOWED = ("python3 -m venv", "which -a python python3", "offer `python3` only")
 
-
-def test_the_guide_calls_python_as_every_command_does(repo_root):
+def test_the_guide_takes_either_name_and_installs_nothing_new(repo_root):
     text = (repo_root / "QUICKSTART.md").read_text(encoding="utf-8")
-    found = [
-        f"QUICKSTART.md:{number}: {line.strip()}"
-        for number, line in enumerate(text.splitlines(), 1)
-        if re.search(r"\bpython3\b", line) and not any(a in line for a in ALLOWED)
-    ]
-    assert not found, "\n".join(found)
-    assert "`python --version`" in text and "`python -c 'import yaml, jsonschema'`" in text
+    step = text.split("### Step 2")[1].split("### Step 3")[0]
+    assert "`python --version`, else `python3 --version`" in step
+    assert "install nothing new" in step and "venv" not in text
+
+
+def test_the_runbooks_name_python3_where_python_is_missing(repo_root):
+    for runbook in ("agent/run_aspice_agent.md", "agent/run_reviewer_agent.md"):
+        text = " ".join((repo_root / runbook).read_text(encoding="utf-8").split())
+        assert "`python3` where `python` is missing" in text, runbook
+
+
+def test_every_session_line_allows_both_names(repo_root):
+    text = (repo_root / "QUICKSTART.md").read_text(encoding="utf-8")
+    for line in re.findall(r"^QF_COMMAND_TO_START_\S+=.*$", text, re.M):
+        plain = re.findall(r"Bash\(python ([^)]*)", line)
+        assert plain == re.findall(r"Bash\(python3 ([^)]*)", line), line

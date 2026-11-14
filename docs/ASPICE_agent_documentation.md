@@ -5415,15 +5415,14 @@ label together.
   running *git init* and *git submodule add* first — three more commands
   before the agent can lead; P3, a script fetched with *curl | sh* — no clone,
   and the person must trust a piped script.
-- **One name for Python** (FB-75 of wp_publisher). *Chosen:* `python`, as the
-  runbooks, the CI, the watcher and the sessions' command lines call it; the
-  guide checks `python` with the runtime, and where the machine offers only
-  `python3`, the person makes a virtual environment in the product, *.venv/*,
-  ignored by git, active in the terminals that start the agent and the
-  watcher, whose sessions inherit it. *Not taken:* `python3` everywhere — a
-  change in every runbook and command line, and Windows and the CI name it
-  `python`; both names in every allowed list — a session could still find a
-  `python3` without the runtime.
+- **Python is whatever the machine has** (FB-75 of wp_publisher, Alex). *Chosen:*
+  the commands are written `python` and run as `python3` where that is the
+  machine's name; the guide checks both names, the session lines allow both,
+  and nothing new is installed — where the first Python on the `PATH` lacks
+  the runtime and another has it, the person puts that one first on the
+  `PATH`. *Not taken:* a virtual environment in the product (v5.0.2) — it
+  installs the runtime again where a Python on the machine already has it;
+  `python3` everywhere — Windows and the CI name it `python`.
 
 ## Appendix B — Origin of the practices
 

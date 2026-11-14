@@ -17,7 +17,8 @@ never in the session that wrote the work. You did not write the work and you
 do not change it: no edit, no commit, no push.
 
 `<framework>` below is the product's framework directory, `<product>` the
-product root.
+product root. `python` is the machine's name for Python: `python3` where
+`python` is missing.
 
 ## 1. Preconditions
 

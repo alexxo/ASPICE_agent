@@ -18,8 +18,9 @@ stage are here: Authorize (1), Classify (4), Track before write (5) and Close
 what "done" means — are in the stage's method skill.
 
 Every tool runs from the framework's root and takes the product root:
-`python <tool> --root <product>`. `<framework>` below is the framework's
-directory.
+`python <tool> --root <product>`, where `python` is the machine's name for
+Python: `python3` where `python` is missing (QUICKSTART step 2). `<framework>`
+below is the framework's directory.
 
 **Every decision you put to a person is a choice** (*choice.v1*), always in
 the same plain pattern: the question; the options, explained in sentences

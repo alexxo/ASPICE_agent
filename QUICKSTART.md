@@ -64,25 +64,21 @@ Check, and report what is missing:
 | Needed | Check |
 |---|---|
 | git | `git --version` |
-| Python 3.10 or later, as `python` | `python --version` |
-| PyYAML and jsonschema, the framework's runtime | `python -c 'import yaml, jsonschema'` |
+| Python 3.10 or later, as `python` or `python3` | `python --version`, else `python3 --version` |
+| PyYAML and jsonschema, the framework's runtime | `<that name> -c 'import yaml, jsonschema'` |
 | Node 18 or later, for the diagram plugin Archify | `node --version` |
 
-Every command of the framework — this guide's, the agent's, the CI's, the
-watcher's and the sessions' — calls `python`, and the sessions inherit it from
-the terminal that starts the agent or the watcher. Where `python` is missing
-or lacks the runtime (macOS with Homebrew or the system Python, Debian and
-Ubuntu offer `python3` only), the person makes a virtual environment in the
-product folder after step 4, and activates it in every terminal that starts
-the agent or the watcher, before starting them:
-
-```sh
-python3 -m venv .venv
-. .venv/bin/activate          # Windows (PowerShell): .venv\Scripts\Activate.ps1
-python -m pip install -r .framework/requirements.txt
-```
-
-The setup ignores `.venv/` in git.
+**Python is whatever the machine has; install nothing new.** The framework's
+commands are written `python`; on a machine where the name is `python3`, every
+one of them — yours, the sessions', the watcher's — runs as `python3`. The name
+runs the first Python on the `PATH`, and only that one must have the runtime.
+If it lacks it while another Python on the machine has it (`which -a python
+python3`, each checked with the import above — a Mac may hold Apple's,
+Homebrew's and python.org's), the person puts that one's folder first on the
+`PATH` in their shell profile (e.g. `export PATH="/usr/local/bin:$PATH"` in
+`~/.zprofile`) and opens a new terminal. Only if no Python has it does the
+person install the runtime (step 4). The terminals that start the agent and the
+watcher pass that `PATH` to every session.
 
 ### Step 3 — People and accounts
 
@@ -258,8 +254,8 @@ With the person's approval, clone it into the product folder:
 git clone --branch v<latest> https://github.com/alexxo/ASPICE_agent.git .framework
 ```
 
-Then have the person make the environment of step 2 if `python` or the
-runtime is missing, and start you again in that terminal.
+Then, if step 2 found no Python with the runtime, have the person install it:
+`<python> -m pip install -r .framework/requirements.txt`, with the name of step 2.
 
 ### Step 5 — Run the setup
 
@@ -381,13 +377,13 @@ stops, it is never given more:
 # <product>/.env
 QF_COMMAND_TO_START_AUTHOR_SESSIONS=claude -p {prompt} --permission-mode dontAsk --setting-sources user
 QF_COMMAND_TO_START_TESTER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**)"
-QF_COMMAND_TO_START_CODER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**),Bash(python *),Bash(git status *),Bash(git diff *),Bash(<each command of the stack> *)"
+QF_COMMAND_TO_START_CODER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**),Bash(python *),Bash(python3 *),Bash(git status *),Bash(git diff *),Bash(<each command of the stack> *)"
 ```
 
 ```sh
 # ~/.aspice_agent_secrets/.env   (chmod 600)
 QF_COMMAND_TO_START_REVIEW_SESSIONS=claude -p {prompt} --permission-mode dontAsk --setting-sources user
-QF_COMMAND_TO_START_REVIEWER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Read(//**/.framework/**),Edit(./.qf/reviews/**),Bash(git log *),Bash(git diff *),Bash(git show *),Bash(gh api *),Bash(gh pr view *),Bash(gh pr diff *),Bash(python */.framework/agent/read_config_tool.py *),Bash(python */.framework/agent/load_skills_tool.py *),Bash(python */.framework/tools/classify_pull_request_tool.py *),Bash(python */.framework/tools/post_review_tool.py *)"
+QF_COMMAND_TO_START_REVIEWER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Read(//**/.framework/**),Edit(./.qf/reviews/**),Bash(git log *),Bash(git diff *),Bash(git show *),Bash(gh api *),Bash(gh pr view *),Bash(gh pr diff *),Bash(python */.framework/agent/read_config_tool.py *),Bash(python3 */.framework/agent/read_config_tool.py *),Bash(python */.framework/agent/load_skills_tool.py *),Bash(python3 */.framework/agent/load_skills_tool.py *),Bash(python */.framework/tools/classify_pull_request_tool.py *),Bash(python3 */.framework/tools/classify_pull_request_tool.py *),Bash(python */.framework/tools/post_review_tool.py *),Bash(python3 */.framework/tools/post_review_tool.py *)"
 ```
 
 Replace `<each command of the stack>` with the first word of every command the
@@ -427,7 +423,7 @@ wishes. Tell the person how the work runs from now on:
 - **reviewer-bot**: the reviewer agent posts its reviews from this account,
   in a session of its own, never the developer's. Once a working day, the
   developer starts the watcher in a second terminal in the product folder
-  (with the environment of step 2 active, if the machine needs one),
+  (with `python3` for `python` where that is the machine's name, step 2),
   giving the token to the watcher only, in one line — macOS (zsh or bash)
   and Linux:
   `QF_HOST_TOKEN="$(cat ~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>)" python .framework/tools/watch_reviews_tool.py --root .`
@@ -544,9 +540,10 @@ the watcher (Ctrl+C in its terminal).
    ```
 
    Each line shows the session's command; an error names the line missing.
-   If `python` is not found, or `yaml` cannot be imported, stop: the person
-   makes the environment of step 2 and starts you again in it — the coder's
-   and the reviewer's sessions need it too.
+   Where the machine's name is `python3`, run it as `python3`. If `yaml`
+   cannot be imported, stop: the first Python on the `PATH` lacks the runtime,
+   and the person fixes the `PATH` as step 2 says and starts you again — the
+   coder's and the reviewer's sessions need it too.
 4. Push the branch and open its pull request (`gh pr create`). Tell the person
    steps 5–8 — the watcher must run before the pull request can be reviewed —
    and wait for its review. Then merge it as every pull request
@@ -566,8 +563,8 @@ the watcher (Ctrl+C in its terminal).
 
 7. Write `~/.aspice_agent_secrets/.env` with an editor — the lines of step 8
    and the key its LLM needs — then `chmod 600 ~/.aspice_agent_secrets/.env`.
-8. Start the watcher again with the line of step 9, in the product folder,
-   with the environment of step 2 active if the machine needs one: it
+8. Start the watcher again with the line of step 9, in the product folder
+   (`python3` for `python` where that is the machine's name): it
    no longer takes `--command`. If a line is missing it stops at once and
    names it; otherwise it reviews the upgrade's pull request — the first
    review on the new lines.

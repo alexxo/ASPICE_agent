@@ -35,6 +35,22 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.3] - 2026-11-14
+
+Python is whatever the machine has, `python` or `python3`; nothing new is installed.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Replace the session lines with those of QUICKSTART step 8 (`python3` allowed beside `python`) | both `.env` files | required where the machine's name is `python3` |
+| Where the first Python on the `PATH` lacks PyYAML and jsonschema and another has them, put that one's folder first on the `PATH` in the shell profile of the user who runs the agent and the watcher | that user's shell profile | required on such a machine |
+| A `.venv/` made for 5.0.2 and its `.gitignore` line can go | the product | optional |
+
+### Changed
+
+- **Python is whatever the machine has.** 5.0.2 asked for `python` and, where only `python3` existed, a virtual environment in the product — a second installation of a runtime the machine may already hold. Now QUICKSTART step 2 checks `python`, else `python3`, with the runtime; where the first on the `PATH` lacks it and another Python has it, the person puts that one first on the `PATH`. The runbooks run `python3` where `python` is missing, the session lines allow both names, and the setup no longer ignores `.venv/`. Origin: FB-75 (wp_publisher).
+
 ## [5.0.2] - 2026-11-14
 
 QUICKSTART names one Python, `python`, as every command of the framework calls it.
