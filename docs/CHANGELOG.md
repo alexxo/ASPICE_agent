@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.2] - 2026-11-14
+
+QUICKSTART names one Python, `python`, as every command of the framework calls it.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Check `python -c 'import yaml, jsonschema'` in the terminals that start the agent and the watcher; where it fails, make the environment of QUICKSTART step 2 (`.venv/`) and activate it there | the product folder | required where `python` is missing or lacks the runtime |
+| Add `.venv/` | the product's `.gitignore` | required with the environment |
+
+### Fixed
+
+- **One name for Python.** QUICKSTART step 2 checked `python3`, while the runbooks, the CI, the watcher, the upgrade's check and the sessions' command lines call `python`: on a machine with `python3` only, step 2 passed and every one of them failed. Step 2 now checks `python` with the runtime and, where the machine offers only `python3`, makes a virtual environment in the product, active in the terminals that start the agent and the watcher, whose sessions inherit it; the setup ignores `.venv/`. A consistency test keeps the guide on one name. Origin: FB-75 (wp_publisher).
+
 ## [5.0.1] - 2026-11-14
 
 The command lines of the independent sessions give each session its rights and no more, and the upgrade to 5.x is a list of steps the product's agent can follow.

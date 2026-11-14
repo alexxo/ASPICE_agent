@@ -37,7 +37,7 @@ framework will be its git submodule at `<product>/.framework`.
 
 - **Never install, update or remove anything yourself**: no package, no
   plugin, no tool. Check whether it is already there first, for every Python on
-  the machine (`which -a python3`), not only the first on the `PATH`. If it is
+  the machine (`which -a python python3`), not only the first on the `PATH`. If it is
   missing, show the person the command and wait.
 - **Never change a global setting or the code host yourself**: no
   `git config --global`, no GitHub account, repository, collaborator or
@@ -64,13 +64,25 @@ Check, and report what is missing:
 | Needed | Check |
 |---|---|
 | git | `git --version` |
-| Python 3.10 or later | `python3 --version` |
-| PyYAML and jsonschema, the framework's runtime | `python3 -c 'import yaml, jsonschema'` |
+| Python 3.10 or later, as `python` | `python --version` |
+| PyYAML and jsonschema, the framework's runtime | `python -c 'import yaml, jsonschema'` |
 | Node 18 or later, for the diagram plugin Archify | `node --version` |
 
-For PyYAML and jsonschema, the person runs
-`python3 -m pip install -r .framework/requirements.txt` after step 4 (in a
-virtual environment if they prefer one).
+Every command of the framework — this guide's, the agent's, the CI's, the
+watcher's and the sessions' — calls `python`, and the sessions inherit it from
+the terminal that starts the agent or the watcher. Where `python` is missing
+or lacks the runtime (macOS with Homebrew or the system Python, Debian and
+Ubuntu offer `python3` only), the person makes a virtual environment in the
+product folder after step 4, and activates it in every terminal that starts
+the agent or the watcher, before starting them:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate          # Windows (PowerShell): .venv\Scripts\Activate.ps1
+python -m pip install -r .framework/requirements.txt
+```
+
+The setup ignores `.venv/` in git.
 
 ### Step 3 — People and accounts
 
@@ -246,8 +258,8 @@ With the person's approval, clone it into the product folder:
 git clone --branch v<latest> https://github.com/alexxo/ASPICE_agent.git .framework
 ```
 
-Then have the person install the framework's runtime if step 2 found it missing:
-`python3 -m pip install -r .framework/requirements.txt`.
+Then have the person make the environment of step 2 if `python` or the
+runtime is missing, and start you again in that terminal.
 
 ### Step 5 — Run the setup
 
@@ -304,7 +316,7 @@ Then check, yourself:
 
 ```sh
 node .agents/skills/archify/bin/archify.mjs doctor
-python3 .framework/agent/read_config_tool.py --root .
+python .framework/agent/read_config_tool.py --root .
 ```
 
 The second command must report no `PLUGIN_NOT_INSTALLED`. The framework also
@@ -414,7 +426,8 @@ wishes. Tell the person how the work runs from now on:
   `run_aspice_agent.md`.
 - **reviewer-bot**: the reviewer agent posts its reviews from this account,
   in a session of its own, never the developer's. Once a working day, the
-  developer starts the watcher in a second terminal in the product folder,
+  developer starts the watcher in a second terminal in the product folder
+  (with the environment of step 2 active, if the machine needs one),
   giving the token to the watcher only, in one line — macOS (zsh or bash)
   and Linux:
   `QF_HOST_TOKEN="$(cat ~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>)" python .framework/tools/watch_reviews_tool.py --root .`
@@ -531,6 +544,9 @@ the watcher (Ctrl+C in its terminal).
    ```
 
    Each line shows the session's command; an error names the line missing.
+   If `python` is not found, or `yaml` cannot be imported, stop: the person
+   makes the environment of step 2 and starts you again in it — the coder's
+   and the reviewer's sessions need it too.
 4. Push the branch and open its pull request (`gh pr create`). Tell the person
    steps 5–8 — the watcher must run before the pull request can be reviewed —
    and wait for its review. Then merge it as every pull request
@@ -550,7 +566,8 @@ the watcher (Ctrl+C in its terminal).
 
 7. Write `~/.aspice_agent_secrets/.env` with an editor — the lines of step 8
    and the key its LLM needs — then `chmod 600 ~/.aspice_agent_secrets/.env`.
-8. Start the watcher again with the line of step 9, in the product folder: it
+8. Start the watcher again with the line of step 9, in the product folder,
+   with the environment of step 2 active if the machine needs one: it
    no longer takes `--command`. If a line is missing it stops at once and
    names it; otherwise it reviews the upgrade's pull request — the first
    review on the new lines.
