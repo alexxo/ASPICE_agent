@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.6] - 2026-11-14
+
+The reviewer's findings reach the tester and the coder on a retry.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required where a reviewer's finding on a component's tests or code is open |
+
+### Fixed
+
+- **A retry hands the tester the reviewer's findings.** The findings sit under `.qf/reviews/`, which git ignores; the tester's session runs in a copy of the committed head, and its prompt never mentioned findings, so a finding on the tests reached no one who may write them and the pull request could never be approved. `tools/start_session_tool.py --findings <file>` copies the findings file into the tester's folder and names it to the coder; `agent/write_unit_tests_prompt.md` and `agent/write_unit_code_prompt.md` fix exactly what it names, the tester giving the reason for a case it holds is not a test; `agent/run_aspice_agent.md` starts the retry with it. Design document *Independent sessions*, rule 3; Appendix A.1 *How a retry reaches the tester*. Origin: FB-78 (wp_publisher).
+
 ## [5.0.5] - 2026-11-14
 
 The reviewer's runbook runs its token checks in the form its session line allows, so the reviewer agent reviews again.
