@@ -245,7 +245,7 @@ def latest_stage_done(config: ProductConfig, stage_id: str, number: int) -> dict
 
 def requirements_changed(config: ProductConfig, stage_id: str, number: int) -> list[str]:
     """The requirements added or changed since the stage's latest stage done record
-    — what a stage built from the requirements (stages 4 to 7) is not done for yet.
+    — what a stage built from the requirements (stages 3 to 7) is not done for yet.
     None changed when there is no record, or git cannot show its commit."""
     record = latest_stage_done(config, stage_id, number)
     if record is None:

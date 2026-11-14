@@ -5,9 +5,11 @@ implemented gates pass and, if it closes with a checkpoint, the latest decision
 there is an approval that still matches the files; a stage without a closing
 checkpoint is done only once its stage done record exists (stage_done.v1,
 written by record_stage_done_tool when its gates first pass); a stage built
-from the requirements (stages 4 to 7) is done only while no requirement was
+from the requirements (stages 3 to 7) is done only while no requirement was
 added or changed since its latest record — else it is the current stage again,
-still finished, so its work stays enforced. On branch checkpoint/<n>, the
+still finished, so its work stays enforced, except the findings that name a
+requirement added or changed since: they are the change's work to come,
+reported until the stage is recorded again (FB-76). On branch checkpoint/<n>, the
 stage closing checkpoint n is the current one again: the walk stops there, and
 its approval's own findings (APPROVAL_RULES) are only reported, since that pull
 request's merge is the approval the architect gives (FB-72). A stage whose
@@ -40,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from dataclasses import asdict
 from functools import partial
@@ -136,7 +139,8 @@ def _walk(config: ProductConfig, root: Path) -> dict:
                 return _approving(s, _flat(results), stop)
             if not passed(results):
                 finished = releasing or _approved_once(config, s) or _recorded(config, s)
-                return _failing(s, _flat(results), finished, stop, s.gates_after_checkpoint)
+                findings, ahead = _ahead(config, s, _flat(results), releasing)
+                return _failing(s, findings, finished, stop, s.gates_after_checkpoint, ahead)
         approved, why = True, ""
         if s.checkpoint and not s.checkpoint_on_host and checkpoint_due(config, s.approves):
             approval, why = current_approval(config, s.checkpoint, s.approves)
@@ -148,7 +152,9 @@ def _walk(config: ProductConfig, root: Path) -> dict:
         if s.gates_after_checkpoint:
             results = run_gates(root, s.gates_after_checkpoint)
             if not passed(results):
-                return _failing(s, _flat(results), releasing or _recorded(config, s), stop)
+                findings, ahead = _ahead(config, s, _flat(results), releasing)
+                finished = releasing or _recorded(config, s)
+                return _failing(s, findings, finished, stop, (), ahead)
         if not s.implemented:  # never done, whether or not its checkpoint is due
             return stop("not_implemented", "this stage is not built yet")
         if needs_record(s) and not _recorded(config, s):
@@ -203,15 +209,40 @@ def _stop(s, walked, ahead, done, status, reason, findings=(), reported=(), skip
     }
 
 
-def _failing(s: Stage, findings: list[dict], finished: bool, stop, skipped=()) -> dict:
-    """A stage's failing gates: enforced once it was finished, else reported."""
-    if finished:
+def _failing(s: Stage, findings: list[dict], finished: bool, stop, skipped=(), ahead=()) -> dict:
+    """A stage's failing gates: enforced once it was finished, else reported; the
+    findings of a changed requirement's work to come are reported either way."""
+    if finished and findings:
         reason = f"{len(findings)} finding(s) in a finished stage"
-        return stop("gates_failing", reason, findings, (), skipped)
+        return stop("gates_failing", reason, findings, list(ahead), skipped)
+    if finished:
+        reason = (
+            f"{len(ahead)} finding(s) reported: the work of requirements added or changed "
+            f"since stage {s.number} was done; bring the stage up to them, then record it as "
+            f"done: python agent/record_stage_done_tool.py --stage {s.id}"
+        )
+        return stop("in_progress", reason, (), list(ahead), skipped)
     seals = [f for f in findings if f["rule"] in PERSON_REVIEW]
-    rest = [f for f in findings if f["rule"] not in PERSON_REVIEW]
+    rest = [f for f in findings if f["rule"] not in PERSON_REVIEW] + list(ahead)
     reason = f"{len(rest)} finding(s) reported: the stage is in progress"
     return stop("in_progress", reason, seals, rest, skipped)
+
+
+def _ahead(
+    config: ProductConfig, s: Stage, findings: list[dict], releasing: bool
+) -> tuple[list[dict], list[dict]]:
+    """The findings split: those that stand, and those naming a requirement added or
+    changed since the stage built from the requirements was done — the change's work
+    to come, which no other pull request should wait for (FB-76). While a release is
+    proposed, every finding stands."""
+    if releasing or not s.built_from_requirements:
+        return findings, []
+    changed = requirements_changed(config, s.id, s.number)
+    if not changed:
+        return findings, []
+    named = re.compile(r"(?<![\w-])(?:" + "|".join(map(re.escape, changed)) + r")(?![\w-])")
+    ahead = [f for f in findings if named.search(f.get("message", ""))]
+    return [f for f in findings if f not in ahead], ahead
 
 
 def _approving(s: Stage, findings: list[dict], stop) -> dict:
@@ -231,6 +262,7 @@ def _approving(s: Stage, findings: list[dict], stop) -> dict:
 
 # What each stage built from the requirements brings up to a changed requirement.
 CATCH_UP = {
+    "architecture": "the architecture — a component meeting each",
     "detailed_design": "the detailed design — the person decides each choice a critical "
     "requirement depends on, the agent the others, each in a decision record",
     "unit_tests": "the unit tests, written first",

@@ -5,7 +5,7 @@ the commit the gates passed on. It is written only for the current stage, once
 its gates pass (and its checkpoint, if one sits in the middle, is approved);
 from then on the stage is finished and enforced (§ 5 What CI fails on): the first
 record says the stage was finished once. A stage built from the requirements
-(stages 4 to 7) is recorded again after requirements were added or changed
+(stages 3 to 7) is recorded again after requirements were added or changed
 since its latest record (FB-63); the new record names them. A changed
 requirement needs no decision record of its own: a record is written only for a
 real choice (FB-64), and the decision records gate checks who made it.

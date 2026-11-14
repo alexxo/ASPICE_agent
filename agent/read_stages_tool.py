@@ -42,7 +42,7 @@ class Stage:
     implemented: bool
     trigger: str
     checkpoint_on_host: bool = False  # seal 4: a person's review on the host, checked by a gate
-    # stages 4 to 7: done only while no requirement changed since their stage done record
+    # stages 3 to 7: done only while no requirement changed since their stage done record
     built_from_requirements: bool = False
 
     @property

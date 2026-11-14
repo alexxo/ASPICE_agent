@@ -24,10 +24,11 @@
 #                 it, and the stage waits for it while that gate's only finding is the
 #                 missing approval
 #   built_from_requirements
-#                 true: the stage builds from the requirements (stages 4 to 7); its
+#                 true: the stage builds from the requirements (stages 3 to 7); its
 #                 stage done record counts only while no requirement was added or
 #                 changed since the record's commit — a change request on a built
-#                 product sends the product back to it (FB-63)
+#                 product sends the product back to it (FB-63); its findings naming
+#                 such a requirement are reported until it is recorded again (FB-76)
 #   implemented   false: the agent stops here and says the stage is not built yet
 #   trigger       flow (walked in order) or event (problem and change requests): an event
 #                 stage's gates run once the flow is done, on every pull request
@@ -107,6 +108,7 @@ stages:
     planned_gates: []
     checkpoint: 3
     approves: stack
+    built_from_requirements: true
     implemented: true
     trigger: flow
 

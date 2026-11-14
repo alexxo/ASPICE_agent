@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.4] - 2026-11-14
+
+A change request's checkpoint 2 no longer turns the main branch red: the findings of its new requirements' work are reported until the stage that does that work is recorded again.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required where a change request's checkpoint 2 merged before its architecture — main turns green again |
+| After the change's architecture merges, record stage 3 again: `python .framework/agent/record_stage_done_tool.py --stage architecture --root .` (the resolver asks for it) | the product | required — until then the findings naming the changed requirements stay reported |
+
+### Fixed
+
+- **A change request's new requirements wait for their architecture, not every pull request.** The merge of a change request's `checkpoint/2` made its new requirements part of the finished architecture stage at once; `check_design_contract_gate` found them met by no component and failed every later pull request, a framework bump too, until the change's architecture merged. Now the architecture follows the requirements as stages 4 to 7 do (`built_from_requirements` in `agent/stages.yaml`), and in a stage following the requirements a finding that names a requirement added or changed since the stage's latest record is reported, not failing, until the stage is recorded again — which needs its gates to pass. Every other finding of the stage stays enforced, and every finding while a release is proposed. `agent/resolve_stage_tool.py`, design document § 5 *What CI fails on*, Appendix A.4 *A change request's new requirements before its architecture*. Origin: FB-76 (wp_publisher).
+
 ## [5.0.3] - 2026-11-14
 
 Python is whatever the machine has, `python` or `python3`; nothing new is installed.

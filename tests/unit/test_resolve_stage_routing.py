@@ -21,7 +21,7 @@ def world(monkeypatch):
     """Every gate passes, every checkpoint is approved and every stage recorded,
     until a test says otherwise."""
     state = SimpleNamespace(
-        failing={},  # gate → the rule IDs it reports
+        failing={},  # gate → the rule IDs it reports, or (rule, message) pairs
         unapproved=set(),  # checkpoints without a current approval
         approved_once=set(),  # of those, the ones approved before
         unrecorded=set(),  # stage ids without a stage done record
@@ -38,8 +38,10 @@ def world(monkeypatch):
                 "gate": g,
                 "result": "fail" if g in state.failing else "pass",
                 "findings": [
-                    {"rule": r, "file": ".", "line": None, "message": r}
-                    for r in state.failing.get(g, ())
+                    {"rule": r, "file": ".", "line": None, "message": m}
+                    for r, m in (
+                        f if isinstance(f, tuple) else (f, f) for f in state.failing.get(g, ())
+                    )
                 ],
             }
             for g in gates
@@ -211,3 +213,48 @@ def test_a_reopened_stage_stays_enforced(world, tmp_path):
 def test_a_stage_not_built_from_requirements_ignores_their_change(world, tmp_path):
     world.changed = {"quality_assurance": ["REQ-0146"]}
     assert _resolve(tmp_path)["status"] == "complete"
+
+
+UNMET = ("UNMET_REQUIREMENT", "REQ-0151 is met by no component of the architecture.")
+
+
+def test_a_change_request_past_checkpoint_2_leaves_main_green(world, tmp_path):
+    """FB-76: the requirements a change request added are the architecture's work to
+    come, reported; no other pull request waits for it."""
+    world.changed = {s: ["REQ-0151"] for s in FLOW[2:7]}
+    world.failing = {"check_design_contract_gate": [UNMET]}
+    state = _resolve(tmp_path)
+    assert (state["stage"], state["status"]) == ("architecture", "in_progress")
+    assert state["findings"] == [] and [f["rule"] for f in state["reported"]] == [UNMET[0]]
+    assert "record_stage_done_tool.py --stage architecture" in state["reason"]
+
+
+def test_beside_a_changed_requirement_broken_work_still_fails(world, tmp_path):
+    world.changed = {"architecture": ["REQ-0151"]}
+    world.failing = {
+        "check_design_contract_gate": [UNMET, ("UNMET_REQUIREMENT", "REQ-0015 is met by none.")]
+    }
+    state = _resolve(tmp_path)
+    assert (state["stage"], state["status"]) == ("architecture", "gates_failing")
+    assert [f["message"] for f in state["findings"]] == ["REQ-0015 is met by none."]
+    assert [f["message"] for f in state["reported"]] == [UNMET[1]]
+
+
+def test_a_requirement_only_prefixing_another_does_not_count(world, tmp_path):
+    world.changed = {"architecture": ["REQ-015"]}
+    world.failing = {"check_design_contract_gate": [("UNMET_REQUIREMENT", "REQ-0151 unmet.")]}
+    assert _resolve(tmp_path)["status"] == "gates_failing"
+
+
+def test_while_a_release_is_proposed_a_changed_requirement_fails_too(world, tmp_path):
+    world.changed = {"architecture": ["REQ-0151"]}
+    world.failing = {"check_design_contract_gate": [UNMET]}
+    world.releasing = True
+    assert _resolve(tmp_path)["status"] == "gates_failing"
+
+
+def test_once_the_architecture_caught_up_it_is_recorded_again(world, tmp_path):
+    world.changed = {"architecture": ["REQ-0151"]}
+    state = _resolve(tmp_path)
+    assert (state["stage"], state["status"]) == ("architecture", "in_progress")
+    assert "bring the architecture" in state["reason"]

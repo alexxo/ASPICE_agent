@@ -8,7 +8,7 @@ their error: the caller decides how to report them.
 A requirement is critical when its criticality is high or its kind is security:
 only a decision a critical requirement depends on is put to the person.
 changed_since names the requirements added or changed since a commit, read
-from git — what a stage done record of stages 4 to 7 was built against.
+from git — what a stage done record of stages 3 to 7 was built against.
 """
 
 from __future__ import annotations

@@ -1109,12 +1109,17 @@ and CI fails on three things:
    writes it, as it records an approval, when the stage's gates first pass.
    The resolver counts such a stage as done only with its record, so the
    record cannot be skipped. The first record says the stage was finished
-   once. A stage built from the requirements — stages 4 to 7 — is done only
+   once. A stage built from the requirements — stages 3 to 7 — is done only
    while no requirement was added or changed since its latest record: after a
    change request on a built product, it is the current stage again, its work
    still enforced, until it is brought up to the changed requirements and
-   recorded again, naming them. A changed requirement needs no decision
-   record of its own: a record is written only for a real choice.
+   recorded again, naming them. Until then, a finding that names one of those
+   requirements is the change's work to come, not broken work: it is reported,
+   so the merge of the change's checkpoint 2 leaves the main branch green and
+   no other pull request waits for the change; it is enforced again by the
+   stage's record, which needs its gates to pass, and while a release is
+   proposed. A changed requirement needs no decision record of its own: a
+   record is written only for a real choice.
 3. **A missing seal.** A pull request waiting for a person's approval
    — the results, a question of what is wanted, or a checkpoint's pull
    request waiting for the architect — fails, so it does not
@@ -2300,7 +2305,7 @@ and format).
 | *agent/run_gates_tool.py* | Runs the stage's gates and collects their findings, in the order asked for: the gates that run the product's commands one at a time first, the others in parallel |
 | *agent/count_retries_tool.py* | Counts attempts: 3 retries in a row, then the architect; a pass starts a new round |
 | *agent/record_checkpoint_tool.py* | Waits for the architect's decision at checkpoint 1, 2, 3 or 5 on the pull request from *checkpoint/&lt;n&gt;*, and merges its approved head with a merge commit once the crossing sign is ready — the record of the checkpoint; prints the reason of a request for changes; at checkpoint 5 opens the published GitHub Release |
-| *agent/record_stage_done_tool.py* | Writes the stage done record as *stage_done.v1*, for a stage without a closing checkpoint once its gates pass; for a stage built from the requirements (stages 4 to 7), again after requirements changed, naming them |
+| *agent/record_stage_done_tool.py* | Writes the stage done record as *stage_done.v1*, for a stage without a closing checkpoint once its gates pass; for a stage built from the requirements (stages 3 to 7), again after requirements changed, naming them |
 | *agent/render_diagram_review_tool.py* | Renders the diagrams' review page for checkpoint 1 from the committed files: each diagram's pictures with its rules and wish links, what changed since the previous approval marked; the diagram contract gate renders it again to compare, and record_checkpoint_tool merges no approval of a page the files no longer render |
 | *agent/render_decisions_tool.py* | Renders the decisions page from the decision records, in the one layout, nothing folded: waiting for the person, answered by them, decided by the agent (each with a *Change this* link), recorded with the architecture; prints the person's decision as the card and records their answer; the decision records gate renders it again to compare |
 | *agent/render_review_tool.py* | Renders the requirements' review page for checkpoint 2 from the committed files, what changed since the previous approval marked; the approval gate renders it again to compare, and record_checkpoint_tool merges no approval of a page the files no longer render |
@@ -4506,6 +4511,23 @@ label together.
   critical choice the person's); a requirement counted as served when the
   design names it since the record (FB-64's proposal: a second text search
   for one check, and an already-named requirement would never count).
+- **A change request's new requirements before its architecture** (2026-11-14,
+  FB-76). The merge of a change request's checkpoint 2 turned the main branch
+  red: its new requirements were met by no component of the finished
+  architecture, and every other pull request — a framework bump too — failed
+  until the change's architecture merged (S 8, O 7 — every change request
+  that adds a requirement, D 1 — the red shows at once: RPN 56; the cost is
+  every product blocked for the length of a change). *Chosen:* the architecture follows the
+  requirements as stages 4 to 7 do, and in a stage following the
+  requirements, a finding that names a requirement added or changed since
+  its latest record is reported until the stage is recorded again; every
+  other finding stays enforced, and every finding while a release is
+  proposed. *Not taken:* the whole reopened stage reported (FB-76's
+  proposal) — an unrelated break of its work would pass every pull request
+  until the record; *qf/merge* refusing checkpoint 2 while its merge would
+  leave main red (FB-76's alternative) — the architecture is derived from
+  the approved requirements only after that merge, so the change could never
+  proceed.
 - **Who decides a design choice** (2026-10-29, Alex, D1–D3 A). *Chosen:* the
   person only when a critical requirement depends on it — criticality high,
   or kind security, as checkpoint 2 approved — asked as the one card with a
