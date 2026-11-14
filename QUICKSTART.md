@@ -451,7 +451,7 @@ wishes. Tell the person how the work runs from now on:
   type `R` and Enter to review that head again. A review stopped by the
   agent's usage limit is tried again on its own every 10 minutes. Ctrl+C ends it with the day's
   summary. Without the watcher, the developer starts the reviewer by hand: a
-  second session with the token, asked to follow
+  second session with the token in `QF_HOST_TOKEN` and `GH_TOKEN`, asked to follow
   `.framework/agent/run_reviewer_agent.md` for that pull request.
 - **reviewer** is called only where they can judge: CI posts the review in
   plain words as a comment and mentions them, and the agent opens it on its

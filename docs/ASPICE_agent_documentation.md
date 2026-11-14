@@ -2082,7 +2082,10 @@ no LLM is the default.
    *QUICKSTART.md* step 8 gives these rights as Claude Code command lines and
    as a table for any other command-line tool. Each side's fallback is the
    read-only line, so a session whose line is missing stops for lack of
-   rights and is never given more.
+   rights and is never given more. A runbook's commands are written as its
+   line allows them: the reviewer's *gh* acts with the token the watcher
+   gives the session as *GH_TOKEN*, with no variable in front, and the
+   reviewer checks that it acts as one of *review.agents*.
 
 ### Keeping concerns separate
 
@@ -3434,7 +3437,8 @@ and a person approves the results and answers the questions of what is wanted
    settings, see the change in the copy, which is kept — and pauses every
    review until the person types *R*. After a review the session's records
    go to the product's *.qf/reviews/* and the copy is removed.
-   Without the watcher, the person starts the session by hand. The session is
+   Without the watcher, the person starts the session by hand, with the token
+   in *QF_HOST_TOKEN* and *GH_TOKEN* as the watcher gives it. The session is
    the only one that holds the
    reviewer agent's token, a token for the product's repository that can
    review and read CI (pull requests, contents, commit statuses, actions),
@@ -5199,6 +5203,21 @@ label together.
   question ends the session, shown as a banner, never a wait (W3; Alex: the
   reason shown very clearly). *Not taken:* D2 B, the agent prints the
   command to paste, one paste per push; D2 C, the review in CI (D46).
+- **How the reviewer's commands get its token** (FB-77 of wp_publisher).
+  The runbook prefixed every `gh` command with *GH_TOKEN=$QF_HOST_TOKEN*;
+  the reviewer's line allows *gh api* by its start, so the session refused
+  its own preconditions and no pull request was reviewed.
+
+  | # | Scenario | O | S | D | Risk |
+  |---|---|---|---|---|---|
+  | G1 | The runbook and the line disagree again: no review, nothing merges | 6 | 8 | 2 | 96 |
+  | G2 | A hand-started session reads with a developer's login | 3 | 6 | 4 | 72 |
+
+  *Chosen:* the commands drop the prefix — the watcher already gives the
+  session the token as *GH_TOKEN* — and the first check, *gh api user*,
+  stops unless *gh* acts as one of *review.agents* (G2); a test matches
+  every command of the runbook against the line (G1). *Not taken:* the line
+  allowing the prefixed form — a wider entry, its matching unverified.
 - **Where the reviewer agent's token lives** (2026-10-19, Alex, FB-34).
   The person types the token into every reviewer session; a *.env* in the
   product folder would sit in the author's working folder.

@@ -43,3 +43,15 @@ def test_the_reviewer_may_run_every_framework_tool_of_its_runbook(repo_root, tmp
     assert tools
     missing = [t for t in sorted(tools) if f"Bash(python */.framework/{t} *)" not in allowed]
     assert not missing, missing
+
+
+def test_the_reviewer_may_run_every_gh_command_of_its_runbook(repo_root, tmp_path):
+    """FB-77: a line allows a command by its start, so a variable in front of
+    `gh` was refused and no pull request was reviewed."""
+    allowed = command_for("reviewer", _lines(repo_root, tmp_path), "QUICKSTART step 8")("p")[-1]
+    starts = re.findall(r"Bash\((gh [^)*]*)\*\)", allowed)
+    runbook = (repo_root / "agent/run_reviewer_agent.md").read_text(encoding="utf-8")
+    commands = re.findall(r"`([^`]*\bgh [^`]*)`", runbook)
+    assert commands
+    refused = [c for c in commands if not any(c.startswith(s) for s in starts)]
+    assert not refused, refused

@@ -12,7 +12,7 @@ the watcher started you, nobody is there to answer: if you must stop or ask,
 never wait — end with one line starting `STOPPED:` saying why and one
 starting `DO:` saying what the person does; the watcher shows them as a
 banner. The session is the
-reviewer's alone: the reviewer agent's token is in `QF_HOST_TOKEN` here, and
+reviewer's alone: the reviewer agent's token is in `QF_HOST_TOKEN` and `GH_TOKEN` here, and
 never in the session that wrote the work. You did not write the work and you
 do not change it: no edit, no commit, no push.
 
@@ -22,17 +22,24 @@ product root. `python` is the machine's name for Python: `python3` where
 
 ## 1. Preconditions
 
-`QF_HOST_TOKEN` must be set to the reviewer agent's token. If it is not, stop
-and ask the person to load it into this session from the owner's file in
-their home folder — never a developer's token, and never read the file
-yourself:
-`export QF_HOST_TOKEN="$(cat ~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>)"`
-(PowerShell: `$env:QF_HOST_TOKEN = Get-Content "$HOME\.aspice_agent_secrets\reviewer_bot_github_token\<owner>"`),
-where `<owner>` is the owner of the product's repository. Without the file,
-send the person to the framework's `QUICKSTART.md` step 3, item 5.
+The session holds the reviewer agent's token twice: in `QF_HOST_TOKEN`, for
+the framework's tools, and in `GH_TOKEN`, so `gh` acts as the reviewer agent.
+The watcher gives it both. Run every `gh` command as written, with no
+variable in front: your command line allows exactly these forms (QUICKSTART
+step 8).
+
+Check that `gh` acts as the reviewer agent: `gh api user -q .login` prints
+one of `review.agents` in the product's `qf.yaml`. If it prints another
+account, or nothing, stop — never review with a developer's token, and never
+read the token's file yourself: the person starts this session with the
+reviewer agent's token in both variables, as the watcher does (QUICKSTART
+step 9), from the owner's file in their home folder
+(`~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>`, where
+`<owner>` is the owner of the product's repository). Without the file, send
+the person to the framework's `QUICKSTART.md` step 3, item 5.
 
 Check that the token reads the repository:
-`GH_TOKEN=$QF_HOST_TOKEN gh api repos/<owner>/<repo> -q .full_name` prints its
+`gh api repos/<owner>/<repo> -q .full_name` prints its
 name. A 404 means the token cannot see it: stop and send the person to the
 framework's `QUICKSTART.md` step 3, the reviewer-bot's access, token and, for an
 organization's repository, the owner's approval. `post_review_tool` reports
@@ -40,7 +47,7 @@ the same case as "The token cannot read <repo>", never as a missing pull
 request.
 
 Check that the token reads CI:
-`GH_TOKEN=$QF_HOST_TOKEN gh api repos/<owner>/<repo>/commits/<head>/status -q .state`
+`gh api repos/<owner>/<repo>/commits/<head>/status -q .state`
 prints a state. A 403 means it lacks *Commit statuses: read* or *Actions:
 read*, so you cannot wait for green: stop and send the person to the
 framework's `QUICKSTART.md` step 3, item 5.
