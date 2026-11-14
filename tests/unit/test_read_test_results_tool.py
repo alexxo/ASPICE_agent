@@ -72,5 +72,10 @@ def test_a_file_attribute_wins():
     assert map_to_file(result, FILES) == FILES[2]
 
 
+def test_a_file_that_could_not_be_collected_owns_its_error():
+    result = TestResult("", "src.auth_service.test_count_failures", None, "error")
+    assert map_to_file(result, FILES) == FILES[0]
+
+
 def test_a_result_matching_no_test_file_is_unmapped():
     assert map_to_file(_result("other.test_thing"), FILES) is None

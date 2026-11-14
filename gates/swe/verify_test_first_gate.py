@@ -19,10 +19,15 @@ among its lines; blank lines, comments and docstrings change nothing, and a
 test removed between two others changes neither (FB-52). Code changed before
 the first test (imports, fixtures, helpers) judges no test by itself, but one
 of the file's tests must fail on that commit. A test whose name is not found
-in its file is judged at the file's last test-only commit. Because the commits
-are found in the history, not at the head, the gate keeps holding — and keeps
-catching a test changed with code — at stage 6 and when the pull request
-re-runs every gate. Component and integration tests, under
+in its file is judged at the file's last test-only commit. A new test of a
+built unit may pass: when every unit its file names was built before the
+commit — by a commit of code without tests earlier in the pull request, or
+before it — the test guards behaviour the code already has, as a reviewer's
+missing case does. A changed test still fails, or it was loosened; so does a
+new one in a commit that removes a test from its file (FB-81). Because the
+commits are found in the history, not at the head, the gate keeps holding —
+and keeps catching a test changed with code — at stage 6 and when the pull
+request re-runs every gate. Component and integration tests, under
 paths.integration_tests_dir, have no stub and no red run: a commit that changes
 one only must not change code (decision 1 of the integration stage); so must
 software-level tests, under paths.software_tests_dir (decision 1 of the
@@ -102,7 +107,8 @@ def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
     tested_before = _units_tested_at(config.root, base_sha, kind) if base_sha else set()
     first_test: dict[str, int] = {}
     first_code: dict[str, int] = {}
-    test_commits: list[tuple[Commit, list[str]]] = []
+    built_at: dict[str, int] = {}  # a unit's first commit of code without tests
+    test_commits: list[tuple[Commit, list[str], set[str]]] = []
     for i, commit in enumerate(history):
         tests = [c for c in commit.changes if c.status in "AMR" and kind(c.path) == "test"]
         added = [c for c in commit.changes if c.status == "A" and kind(c.path) == "code"]
@@ -133,6 +139,9 @@ def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
             for unit in _units_in(config.root, commit.sha, c.path):
                 first_code.setdefault(unit, i)
         if not tests:
+            for c in [*added, *changed]:
+                for unit in _units_in(config.root, commit.sha, c.path):
+                    built_at.setdefault(unit, i)
             continue
         if changed:
             rule = (
@@ -151,7 +160,13 @@ def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
                 )
             )
         else:
-            test_commits.append((commit, [c.path for c in tests]))
+            paths = [c.path for c in tests]
+            built = set()
+            for path in paths:
+                named = _units_in(config.root, commit.sha, path)
+                if named and all(u in tested_before or built_at.get(u, i) < i for u in named):
+                    built.add(path)
+            test_commits.append((commit, paths, built))
     for unit, at in sorted(first_code.items()):
         if unit in tested_before or unit not in units:
             continue
@@ -174,7 +189,7 @@ def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
 
 def _judge_tests(config: ProductConfig, stack: dict, test_commits: list, kind) -> list[Finding]:
     touched: dict[str, list[Commit]] = {}
-    for commit, changed in test_commits:
+    for commit, changed, _ in test_commits:
         for path in changed:
             touched.setdefault(path, []).append(commit)
     runs: dict[str, tuple] = {}
@@ -205,10 +220,32 @@ def _judge_tests(config: ProductConfig, stack: dict, test_commits: list, kind) -
             if at is not None:  # None: older than the pull request, judged before
                 wanted.setdefault(at.sha, {}).setdefault(path, set()).add(name)
     findings = []
-    for commit, _ in test_commits:
+    for commit, _, built in test_commits:
         if commit.sha in wanted:
-            findings += _judge(commit, wanted[commit.sha], *red(commit), fixtures.get(commit.sha))
+            older = _older(config.root, commit, built)
+            findings += _judge(
+                commit, wanted[commit.sha], *red(commit), fixtures.get(commit.sha), older
+            )
     return findings
+
+
+def _older(root: Path, commit: Commit, built: set[str]):
+    """For a file of built units, the tests it already had before the commit; None for
+    any other file, whose tests must all fail, and for one the commit removes a test
+    from: a test renamed or replaced there is no new case."""
+
+    def older(path: str, names: set[str]) -> set[str] | None:
+        if path not in built:
+            return None
+        before = file_at(root, f"{commit.sha}^", path)
+        if before is None:
+            return set()
+        now = file_at(root, commit.sha, path) or ""
+        if _defined_tests(path, before) - _defined_tests(path, now):
+            return None
+        return set(_starts(path, before, names)[0])
+
+    return older
 
 
 def _base_name(result) -> str:
@@ -450,9 +487,13 @@ def _judge(
     run,
     test_files: list[str],
     fixtures: set[str] | None = None,
+    older=lambda path, names: None,
 ) -> list[Finding]:
     """The red run's findings for the tests the commit added or changed, by file; a file
-    whose code before its tests changed needs one of its tests to fail there."""
+    whose code before its tests changed needs one of its tests to fail there. A file
+    whose units are all built may pass with a new test: it guards what the code already
+    does, and the code before its tests may serve it; a test it had before the commit
+    still fails, or it was loosened."""
     try:
         results = read_results(run.result_paths) if run.results else None
     except ResultsError:
@@ -476,6 +517,7 @@ def _judge(
     findings = []
     for file in changed:
         mine = by_file.get(file, [])
+        had = older(file, {_base_name(r) for r in mine})
         if not mine:
             findings.append(
                 Finding(
@@ -489,7 +531,7 @@ def _judge(
         for result in mine:
             if only is not None and _base_name(result) not in only:
                 continue  # left as it was: judged at the commit that last changed it
-            if result.outcome == "passed":
+            if result.outcome == "passed" and (had is None or _base_name(result) in had):
                 findings.append(
                     Finding(
                         "TEST_NOT_FAILING",
@@ -500,7 +542,8 @@ def _judge(
                     )
                 )
         red = any(r.outcome in ("failed", "error") for r in mine)
-        if file in (fixtures or ()) and mine and not red:
+        new = had is not None and any(_base_name(r) not in had for r in mine)
+        if file in (fixtures or ()) and mine and not red and not new:
             findings.append(
                 Finding(
                     "TEST_NOT_FAILING",

@@ -196,23 +196,47 @@ def test_a_new_test_in_a_built_units_file_is_judged_alone(tmp_path):
     assert _rules(root) == []
 
 
-def test_a_new_test_passing_on_the_built_code_is_reported_alone(tmp_path):
+def test_a_new_test_passing_on_the_built_code_guards_it(tmp_path):
+    """FB-81: a reviewer's missing case of behaviour the code already has."""
     root = _red(tmp_path)
     write_all_code(root)
     commit_all(root, "feat: the units")
-    _add_test(root, "assert run(2) == 3")
-    commit_all(root, "test: a test that already passes")
+    path = root / unit_path("auth-service", "count-failures", test=True)
+    path.write_text(path.read_text().replace("import run\n", "import run\n\nTWO = 2\n"))
+    _add_test(root, "assert run(TWO) == 3")
+    commit_all(root, "test: a missing case of the built count-failures")
+    assert _rules(root) == []
+
+
+def test_a_new_test_passing_before_its_unit_is_built_is_reported(tmp_path):
+    root = _red(tmp_path)
+    _add_test(root, "assert run(2) == 0")  # the stub's default
+    commit_all(root, "test: a test that passes on the stub")
+    write_all_code(root)
+    commit_all(root, "feat: the units")
     findings = check(read_product_config(root))
     assert [f.rule for f in findings] == ["TEST_NOT_FAILING"]
     assert "test_more passes" in findings[0].message
+
+
+def test_a_test_file_that_cannot_be_collected_is_red(tmp_path):
+    """FB-81: a name the design adds to a built unit is not there yet."""
+    root = _red(tmp_path)
+    write_all_code(root)
+    commit_all(root, "feat: the units")
+    path = root / unit_path("auth-service", "count-failures", test=True)
+    path.write_text(path.read_text().replace("import run\n", "import LIMIT, run\n"))
+    _add_test(root, "assert run(LIMIT) == 6")
+    commit_all(root, "test: a name the change request adds")
+    assert _rules(root) == []
 
 
 def test_a_test_is_judged_at_its_own_commit_when_a_later_one_changes_the_file(tmp_path):
     root = _red(tmp_path)
     write_all_code(root)
     commit_all(root, "feat: the units")
-    _add_test(root, "assert run(2) == 3")  # passes: reported at this commit
-    commit_all(root, "test: a test that already passes")
+    write_unit_test(root, "auth-service", "count-failures", assertion="run(1) is not None")
+    commit_all(root, "test: loosen count-failures")  # passes: reported at this commit
     path = root / unit_path("auth-service", "count-failures", test=True)
     path.write_text(path.read_text() + "\n\ndef test_last():\n    assert run(3) == 0\n")
     commit_all(root, "test: one more, red")

@@ -4,8 +4,10 @@ Every suite writes its results as JUnit XML (decision 4). A testcase belongs to
 the test file its file attribute names; without one, its classname is read as a
 path — com.acme.auth_service.CountFailuresTest is …/com/acme/auth_service/
 CountFailuresTest.<ext> — dropping trailing parts until a test file matches, for
-a test class inside a module (decision 11). Maven Surefire and pytest (whose
-default xunit2 format writes only classname and name) need nothing more.
+a test class inside a module (decision 11). A testcase without a classname is
+a file that could not be collected — pytest names its module in name — and
+belongs to that file (FB-81). Maven Surefire and pytest (whose default xunit2
+format writes only classname and name) need nothing more.
 """
 
 from __future__ import annotations
@@ -91,7 +93,8 @@ def map_to_file(result: TestResult, test_files: list[str]) -> str | None:
         hits = [f for f in test_files if _matches(f, wanted)]
         if len(hits) == 1:
             return hits[0]
-    parts = [p for p in result.classname.split(".") if p]
+    # a collection error: no classname, the module in name (FB-81)
+    parts = [p for p in (result.classname or result.name).split(".") if p]
     for end in range(len(parts), 0, -1):
         wanted = "/".join(parts[:end])
         hits = [f for f in test_files if _matches(f, wanted)]

@@ -34,7 +34,9 @@ the one component the prompt names.
 - **There is no code here, on purpose.** A unit whose code exists in the
   product has no file in this copy: write its tests against the signature the
   detailed design gives (the unit's inputs and outputs), and write a stub only
-  for a unit that is new.
+  for a unit that is new. A new test of a built unit may pass on its commit,
+  and one using a name the design adds to a built unit errors there; both
+  are fine.
 - **Write only in the component's folder**, and the verification plan. Any
   other file you write is refused and never reaches the product.
 - **Do not run the unit suite.** Without the code it cannot build here; the
