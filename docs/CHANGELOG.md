@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.5] - 2026-11-14
+
+The reviewer's runbook runs its token checks in the form its session line allows, so the reviewer agent reviews again.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release, then type `R` and Enter in the watcher to review the stopped heads again | the product | required — on 5.0.0 to 5.0.4 with the step-8 reviewer line, no pull request gets the reviewer agent's approval |
+| Starting the reviewer by hand: give the session the reviewer agent's token in both `QF_HOST_TOKEN` and `GH_TOKEN`, as the watcher does | the person | required for a session started by hand |
+
+### Fixed
+
+- **The reviewer's session refused its own preconditions.** `agent/run_reviewer_agent.md` prefixed its `gh api` checks with `GH_TOKEN=$QF_HOST_TOKEN` and asked the session to test whether `QF_HOST_TOKEN` was set; the QUICKSTART step-8 line allows `gh api` by the start of the command, so every reviewer session stopped before reviewing. The watcher already gives the session the token as `GH_TOKEN`: the checks now run as plain `gh api …`, and the first, `gh api user -q .login`, stops unless `gh` acts as one of `review.agents`. A consistency test matches every `gh` command of the runbook against the step-8 line. Design document *Independent sessions*, rule 7; Appendix A.8 *How the reviewer's commands get its token*. Origin: FB-77 (wp_publisher).
+
 ## [5.0.4] - 2026-11-14
 
 A change request's checkpoint 2 no longer turns the main branch red: the findings of its new requirements' work are reported until the stage that does that work is recorded again.
