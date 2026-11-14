@@ -44,7 +44,6 @@ Stage 5 can come back to built code: a reviewer's missing case and a change requ
 | Edit | Where | Required |
 |---|---|---|
 | Move the framework pin to this release | the product | required where a change request or a reviewer's finding brings stage 5 back after the code exists |
-| Remove the kept red runs of test-only commits judged on an earlier version (`.qf/runs/commit-<sha>/`) and run the gates again | the product | required where such a run was kept with `RED_RUN_WITHOUT_RESULTS` for a file that could not be collected — a kept run is reused as it is |
 
 ### Fixed
 
