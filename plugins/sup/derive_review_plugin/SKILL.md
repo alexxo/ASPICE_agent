@@ -116,7 +116,9 @@ only the head it was given on.
 ## Changes
 
 A review is never edited: after a push, post a new review of the new head. A
-finding fixed since the last review is not repeated; one still open is.
+finding fixed since the last review is not repeated; one still open is, in
+full — never by pointing to an earlier review (*listed there*): the latest
+findings are the whole list a retry hands the tester and the coder.
 
 ## Done
 

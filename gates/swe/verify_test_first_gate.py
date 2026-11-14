@@ -458,13 +458,14 @@ def _judge(
     except ResultsError:
         results = None
     if results is None:
+        last = run.output.strip().splitlines()[-1:] or ["no output"]
         return [
             Finding(
                 "RED_RUN_WITHOUT_RESULTS",
                 next(iter(changed)),
                 None,
                 f"On commit {commit.short} the unit suite exited {run.exit_code} and wrote no "
-                "results — the tests and stubs must compile and run there.",
+                f"results ({last[0]}) — the tests and stubs must compile and run there.",
             )
         ]
     by_file: dict[str, list] = {}

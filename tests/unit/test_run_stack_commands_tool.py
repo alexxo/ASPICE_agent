@@ -143,3 +143,19 @@ def test_measurements_are_kept_with_the_run_and_stale_ones_go(tmp_path):
     assert [p.name for p in run.measurement_paths] == ["bench.json"]
     kept = run_command(config, "suites", "bench", entry)
     assert ".qf/runs/" in kept.measurements[0]
+
+
+def test_the_products_toolchain_goes_first_on_the_commands_path(tmp_path):
+    """FB-80: the product's toolchain is not the framework's Python; the folder the
+    product's .env names is first on the PATH of the commands, and only theirs."""
+    root = build_python_product(tmp_path / "p")
+    toolchain = root / "toolchain"
+    toolchain.mkdir()
+    (toolchain / "toolchain-probe").write_text("#!/bin/sh\necho from the toolchain\n")
+    (toolchain / "toolchain-probe").chmod(0o755)
+    entry = {"run": "toolchain-probe", "tool": "probe", "version": "1", "version_command": "echo 1"}
+    config = read_product_config(root)
+    assert run_command(config, "checks", "probe", entry, cache=False).exit_code == 127
+    (root / ".env").write_text("QF_PATH_TO_PRODUCT_TOOLCHAIN=toolchain\n")
+    run = run_command(config, "checks", "probe", entry, cache=False)
+    assert (run.exit_code, run.output) == (0, "from the toolchain")

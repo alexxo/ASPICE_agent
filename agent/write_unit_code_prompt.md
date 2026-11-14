@@ -27,8 +27,9 @@ the one component the prompt names.
   tester: write it in your report and stop that unit.
 - **Stay in the component**, apart from the composition root the method
   names.
-- **On a retry, fix exactly what the findings name.** When the prompt names
-  the reviewer's findings, fix each one on this component's code; one on a
+- **On a retry, also fix what the findings name.** The code still follows
+  the component's detailed design as it stands. When the prompt names the
+  reviewer's findings, fix each one on this component's code as well; one on a
   test is the tester's: name it in your report.
 - **Do not commit.** The orchestrator commits your work and runs the gates.
 

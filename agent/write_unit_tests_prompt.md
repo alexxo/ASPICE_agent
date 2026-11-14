@@ -39,8 +39,10 @@ the one component the prompt names.
   other file you write is refused and never reaches the product.
 - **Do not run the unit suite.** Without the code it cannot build here; the
   red run is made on the commit, in the product, by the stage's gates.
-- **On a retry, fix exactly what the findings name.** When the prompt names
-  the reviewer's findings, each one for this component is fixed: a missing
+- **On a retry, also fix what the findings name.** The tests still follow
+  the component's detailed design as it stands: a change the findings do not
+  name is tested too. When the prompt names the reviewer's findings, each one
+  for this component is fixed as well: a missing
   case gets its test, a weakened test its assertion back. A case you hold is
   not a test gets none: give the reason in your report, for the reviewer to
   read.

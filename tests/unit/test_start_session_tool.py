@@ -186,6 +186,17 @@ def test_the_coder_works_in_the_product(built, tmp_path, monkeypatch, capsys):
     assert "code written" in (built / ".qf/sessions/coder-web-app.log").read_text()
 
 
+def test_the_coder_runs_the_stack_in_the_products_toolchain(built, tmp_path, monkeypatch):
+    """FB-80: the coder runs the stack's checks and suites, so the toolchain the
+    product's .env names is first on its PATH."""
+    script = CODER + "import os\nassert os.environ['PATH'].split(os.pathsep)[0].endswith('tc')\n"
+    _session(built, tmp_path, script, monkeypatch)
+    env = (built / ".env").read_text().replace("{prompt}", "{prompt} " + str(built))
+    (built / ".env").write_text(env + "QF_PATH_TO_PRODUCT_TOOLCHAIN=tc\n")
+    args = ["--session", "coder", "--component", "web-app", "--root", str(built)]
+    assert start_session_tool.main(args) == 0
+
+
 def test_without_a_command_nothing_starts(built, capsys):
     args = ["--session", "tester", "--component", "auth-service", "--root", str(built)]
     assert start_session_tool.main(args) == 2

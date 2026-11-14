@@ -33,7 +33,9 @@ component's folder; anything else is refused and listed. The coder works in
 the product itself: it must see the tests, and the gates stop it changing them.
 On a retry, --findings hands the session the reviewer's findings (a file under
 .qf/reviews/, which no commit holds): copied into the tester's folder, named
-to the coder (FB-78).
+to the coder (FB-78). The coder runs the stack's checks and suites, so the
+product's toolchain (QF_PATH_TO_PRODUCT_TOOLCHAIN in its .env) is first on its
+PATH, as for every command the framework runs (FB-80).
 
     python tools/start_session_tool.py --session clarify --task "Check these: …" [--root PRODUCT]
     python tools/start_session_tool.py --session tester --component ID [--findings F] [--root P]
@@ -69,6 +71,7 @@ from tools.read_product_config_tool import (  # noqa: E402
     ProductConfig,
     read_product_config,
 )
+from tools.run_stack_commands_tool import toolchain_env  # noqa: E402
 
 __all__ = [
     "AUTHOR_ENV",
@@ -309,8 +312,9 @@ def _retry(findings: str | None) -> str:
     if not findings:
         return ""
     return (
-        f" This is a retry: read the reviewer's findings in {findings} and fix exactly what "
-        "they name for this component."
+        " This is a retry: the work still follows the component's detailed design as it "
+        f"stands; read the reviewer's findings in {findings} and also fix every one for this "
+        "component."
     )
 
 
@@ -392,7 +396,7 @@ def coder(
         f"first, every one: {rules}.{_retry(findings and config.relative(findings))}\n\n"
         f"{_instructions(PROMPTS['coder'])}"
     )
-    output, code = _run(command(prompt), config.root, env)
+    output, code = _run(command(prompt), config.root, toolchain_env(config.root, env))
     return Result("coder", output, code)
 
 

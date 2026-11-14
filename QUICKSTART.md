@@ -80,6 +80,23 @@ Homebrew's and python.org's), the person puts that one's folder first on the
 person install the runtime (step 4). The terminals that start the agent and the
 watcher pass that `PATH` to every session.
 
+**The product's toolchain is the product's.** The language version and the
+libraries of the product's stack (for example Python 3.12 with its
+`requirements.txt`) need not be the machine's Python: the person sets them up
+as the stack says, wherever they like (a virtual environment, uv, pyenv), and
+names the folder that holds them — e.g. that environment's `bin` — in the
+product's `.env`, written in step 8:
+
+```sh
+# <product>/.env
+QF_PATH_TO_PRODUCT_TOOLCHAIN=/Users/<you>/toolchains/<product>/bin
+```
+
+The framework puts that folder first on the `PATH` of the stack's checks and
+suites and of the coder's session, never of its own tools. Unset, the commands
+run on the `PATH` as it is; CI leaves it unset and sets the toolchain up in
+its own step.
+
 ### Step 3 — People and accounts
 
 Explain the roles. Ask the person which GitHub account plays each one, and

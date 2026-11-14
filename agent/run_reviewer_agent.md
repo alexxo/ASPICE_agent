@@ -130,7 +130,9 @@ Post with
 
 which writes the items in their fixed form and the record as a
 ` ```yaml review ` block, on the pull request's current head. An approval
-needs `--record`.
+needs `--record`. The findings file restates in full every finding still
+open, never by pointing to an earlier review: a retry hands the tester and
+the coder this file alone.
 
 ## 4. Report
 

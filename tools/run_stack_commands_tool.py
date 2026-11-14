@@ -17,6 +17,13 @@ the change (decision 30): its run_selected with {tests} filled in, or nothing
 when no test is traced; the run keeps its selection, so the gates judge
 completeness only for what it covered. The red run of an older commit runs in its own
 checkout and is kept under that commit's key: a commit never changes.
+
+The commands run in the product's toolchain, which is the product's, not the
+framework's: on the person's machine, QF_PATH_TO_PRODUCT_TOOLCHAIN in the
+product's .env (or the environment) names the folders that hold it — e.g. a
+Python 3.12 environment's bin folder with the product's requirements — and
+they go first on the PATH of the commands only. Unset, as in CI, the PATH is
+left as it is.
 """
 
 from __future__ import annotations
@@ -43,8 +50,11 @@ __all__ = [
     "plan_suites",
     "read_stack",
     "run_command",
+    "toolchain_env",
     "tree_key",
 ]
+
+TOOLCHAIN = "QF_PATH_TO_PRODUCT_TOOLCHAIN"
 
 RUNS_DIR = ".qf/runs"
 TIMEOUT = 900  # seconds per command
@@ -177,12 +187,28 @@ def tree_key(root: Path) -> str | None:
     return hashlib.sha256("\0".join([head, diff, status]).encode()).hexdigest()[:16]
 
 
-def _shell(command: str, cwd: Path) -> tuple[int, str]:
+def toolchain_env(root: Path, env: dict[str, str] | None = None) -> dict[str, str]:
+    """The commands' environment (default: this process's), with the product's
+    toolchain folders (QF_PATH_TO_PRODUCT_TOOLCHAIN, relative to the product) first
+    on the PATH."""
+    from tools.start_session_tool import AUTHOR_ENV, read_env
+
+    env = dict(os.environ if env is None else env)
+    folders = read_env(root / AUTHOR_ENV).get(TOOLCHAIN) or env.get(TOOLCHAIN)
+    if folders:
+        named = [p for p in folders.split(os.pathsep) if p]
+        paths = [str((root / Path(p).expanduser()).resolve()) for p in named]
+        env["PATH"] = os.pathsep.join([*paths, env.get("PATH", "")])
+    return env
+
+
+def _shell(command: str, cwd: Path, env: dict[str, str] | None = None) -> tuple[int, str]:
     try:
         run = subprocess.run(
             command,
             shell=True,
             cwd=cwd,
+            env=env,
             capture_output=True,
             text=True,
             timeout=TIMEOUT,
@@ -224,13 +250,14 @@ def run_command(
     written = ("results", "coverage", "measurements")
     for stale in [p for w in written for p in _matches(cwd, entry.get(w))]:
         stale.unlink(missing_ok=True)
-    version_exit, version_output = _shell(entry["version_command"], cwd)
+    env = toolchain_env(config.root)
+    version_exit, version_output = _shell(entry["version_command"], cwd, env)
     seconds = None
     if selection is not None and selection["full"] is None and not selection["tests"]:
         exit_code, output = 0, "No test is traced to the change."
     else:
         started = time.monotonic()
-        exit_code, output = _shell(_command(entry, selection), cwd)
+        exit_code, output = _shell(_command(entry, selection), cwd, env)
         seconds = round(time.monotonic() - started, 3)
     run = CommandRun(kind, name, exit_code, output, version_exit, version_output)
     run.selection = selection

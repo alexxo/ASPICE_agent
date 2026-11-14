@@ -4231,8 +4231,14 @@ label together.
 
   *Chosen:* the launcher's *--findings*, the review's findings file as the
   reviewer wrote it — copied into the tester's folder, named to the coder —
-  and a retry rule in both prompts: fix exactly what the findings name; a
-  case the tester holds is not a test gets its reason in the report (R1, R3).
+  and a retry rule in both prompts: the work still follows the component's
+  design as it stands, and also fixes what the findings name; a case the
+  tester holds is not a test gets its reason in the report (R1, R3). One
+  file is enough because the reviewer restates every open finding in full
+  in each round, never by pointing to an earlier review (FB-79 of
+  wp_publisher: a later round's *listed there* left the tester half the
+  list). *Not taken:* *--findings* taking every round's file — the
+  launcher would merge rounds the reviewer already merges.
   R2 is accepted: a finding names a case or a file and line, and a finding on
   the tests is about the tests. *Not taken:* the orchestrator retelling the
   findings — it has read the code too, and it would choose what the tester
@@ -5487,6 +5493,20 @@ label together.
   `PATH`. *Not taken:* a virtual environment in the product (v5.0.2) — it
   installs the runtime again where a Python on the machine already has it;
   `python3` everywhere — Windows and the CI name it `python`.
+- **The product's toolchain is the product's** (FB-80 of wp_publisher). The
+  machine's Python runs the framework; the product's commands need the
+  language version and libraries of its stack, which that Python need not
+  have, and no one Python on the `PATH` serves both without installing
+  something. *Chosen:* the person sets the product's toolchain up as its
+  stack says, wherever they like, and names its folders in the product's
+  *.env* (*QF_PATH_TO_PRODUCT_TOOLCHAIN*, one per machine, ignored by git);
+  the framework puts them first on the `PATH` of the stack's commands and of
+  the coder's session only, never of its own tools. Unset, as in CI, the
+  `PATH` is left as it is: CI's toolchain step sets it up. *Not taken:* the
+  stack's commands naming the toolchain's path (`.venv/bin/python`) — tied to
+  one folder layout, and wrong on Windows; the runner turning a command's
+  `python` into `python3` — the machine's Python still lacks the product's
+  libraries.
 
 ## Appendix B — Origin of the practices
 
