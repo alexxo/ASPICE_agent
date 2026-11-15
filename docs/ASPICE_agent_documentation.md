@@ -3197,8 +3197,11 @@ the product's own commands.
     earlier in the pull request, or before it — it guards behaviour the code
     already has, as a reviewer's missing case does, and the code before the
     file's tests may change for it. A changed test of a built unit still
-    fails, or it was loosened; so does a new one in a commit that removes a
-    test from its file, since a renamed or replaced test is no new case.
+    fails, or it was loosened, unless it keeps every check of its first
+    version, its literal values aside: a format fix the stack's check asks
+    for, a value the design renames or an added case cannot fail on built
+    code that is right. A new one in a commit that removes a test from its
+    file still fails, since a renamed or replaced test is no new case.
     Only those commits are checked out, each red run kept under its
     commit's SHA. A commit that mixes tests and code stays a finding until it
     is rewritten.
@@ -4869,6 +4872,23 @@ label together.
   stubs of the new names of a built unit — it would replace code it never
   sees; a pass accepted for every test — a loosened test would pass too.
   → § 5 unit stages, rules 15 and 18.
+- **A changed test of built code that cannot fail** (2026-11-15, FB-85). The
+  stack's format check on a test's signature, or a value the design renames
+  in a test that only passes it through, goes back to the tester (FB-83);
+  its change keeps the test as strong, the code is built and right, so the
+  test passes and stage 6 ended in an escalation every time (S 8, O 7, D 1 —
+  56, and it blocks the stage). Taken: a changed test of a built unit may
+  pass when it keeps every check of its first version — at the base, or at
+  its first commit in the pull request — its literal values aside: its
+  asserts and the calls it opens with *with*, compared on Python's syntax
+  tree. Risks kept: a check loosened by its value alone (*== 2* to *== 3*)
+  passes — S 6, O 2, D 4 (the reviewer reads the tests' diff) — 48; a test
+  of another language keeps the strict rule — S 5, O 2, D 2 — 20; a check
+  made stronger by its shape still has to fail — S 4, O 3, D 1 — 12, the
+  tester leaves it as it was. *Not taken:* judging a test at its first
+  commit only — a stage-5 test loosened after the code is built would pass;
+  a pass for a commit that answers a finding naming the test — the findings
+  are not in the history the gate reads.
 
 ### A.6 Integration verification stage — stage 7
 

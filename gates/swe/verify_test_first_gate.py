@@ -23,8 +23,12 @@ in its file is judged at the file's last test-only commit. A new test of a
 built unit may pass: when every unit its file names was built before the
 commit — by a commit of code without tests earlier in the pull request, or
 before it — the test guards behaviour the code already has, as a reviewer's
-missing case does. A changed test still fails, or it was loosened; so does a
-new one in a commit that removes a test from its file (FB-81). Because the
+missing case does. A changed test still fails, or it was loosened, unless it
+keeps every check of its first version — at the base, or at its first commit
+in the pull request — its literal values aside: a format fix, a renamed value
+or an added case cannot fail on built code that is right (FB-85; only a
+Python test's checks can be read). A new one in a commit that removes a test
+from its file still fails (FB-81). Because the
 commits are found in the history, not at the head, the gate keeps holding —
 and keeps catching a test changed with code — at stage 6 and when the pull
 request re-runs every gate. Component and integration tests, under
@@ -39,11 +43,13 @@ software verification stage).
 from __future__ import annotations
 
 import ast
+import copy
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
@@ -183,11 +189,13 @@ def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
     # A test is judged at the last test-only commit that changed it: a test fixed
     # on a retry replaces its earlier red run, a weakened one is judged as weakened,
     # and a test the commit left as it was is not judged there (FB-51).
-    findings += _judge_tests(config, stack, test_commits, kind)
+    findings += _judge_tests(config, stack, test_commits, kind, base_sha)
     return findings
 
 
-def _judge_tests(config: ProductConfig, stack: dict, test_commits: list, kind) -> list[Finding]:
+def _judge_tests(
+    config: ProductConfig, stack: dict, test_commits: list, kind, base_sha: str | None
+) -> list[Finding]:
     touched: dict[str, list[Commit]] = {}
     for commit, changed, _ in test_commits:
         for path in changed:
@@ -223,10 +231,65 @@ def _judge_tests(config: ProductConfig, stack: dict, test_commits: list, kind) -
     for commit, _, built in test_commits:
         if commit.sha in wanted:
             older = _older(config.root, commit, built)
+            kept = _kept(config.root, commit, base_sha, touched)
             findings += _judge(
-                commit, wanted[commit.sha], *red(commit), fixtures.get(commit.sha), older
+                commit, wanted[commit.sha], *red(commit), fixtures.get(commit.sha), older, kept
             )
     return findings
+
+
+def _kept(root: Path, commit: Commit, base_sha: str | None, touched: dict[str, list[Commit]]):
+    """Whether a test the commit changed keeps every check of its first version — at the
+    base, or at its first commit in the pull request — its literal values aside (FB-85):
+    a format fix, a renamed value or an added case keeps them; a dropped or changed check
+    does not. Only a Python file's checks can be read; any other's are never kept."""
+
+    def kept(path: str, name: str) -> bool:
+        now = _checks(path, file_at(root, commit.sha, path), name)
+        if now is None:
+            return False
+        sources = [base_sha] if base_sha else []
+        sources += [c.sha for c in touched.get(path, [])]
+        for rev in sources:
+            first = _checks(path, file_at(root, rev, path), name)
+            if first is not None:
+                return not first - now
+        return False
+
+    return kept
+
+
+class _Literal(ast.NodeTransformer):
+    def visit_Constant(self, node: ast.Constant) -> ast.Constant:
+        return ast.Constant(value=None)
+
+
+def _checks(path: str, text: str | None, name: str) -> Counter | None:
+    """A Python test's checks — its asserts and the calls it opens with `with` (such as
+    pytest.raises) — with every literal value blanked, or None when not found."""
+    if not path.endswith(".py") or text is None:
+        return None
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return None
+    test = next(
+        (
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and node.name == name
+        ),
+        None,
+    )
+    if test is None:
+        return None
+    found = []
+    for node in ast.walk(test):
+        if isinstance(node, ast.Assert):
+            found.append(node.test)
+        elif isinstance(node, ast.With | ast.AsyncWith):
+            found += [item.context_expr for item in node.items]
+    return Counter(ast.dump(_Literal().visit(copy.deepcopy(check))) for check in found)
 
 
 def _older(root: Path, commit: Commit, built: set[str]):
@@ -488,12 +551,14 @@ def _judge(
     test_files: list[str],
     fixtures: set[str] | None = None,
     older=lambda path, names: None,
+    kept=lambda path, name: False,
 ) -> list[Finding]:
     """The red run's findings for the tests the commit added or changed, by file; a file
     whose code before its tests changed needs one of its tests to fail there. A file
     whose units are all built may pass with a new test: it guards what the code already
     does, and the code before its tests may serve it; a test it had before the commit
-    still fails, or it was loosened."""
+    may pass when it kept every check of its first version, and otherwise still fails,
+    or it was loosened."""
     try:
         results = read_results(run.result_paths) if run.results else None
     except ResultsError:
@@ -531,7 +596,10 @@ def _judge(
         for result in mine:
             if only is not None and _base_name(result) not in only:
                 continue  # left as it was: judged at the commit that last changed it
-            if result.outcome == "passed" and (had is None or _base_name(result) in had):
+            name = _base_name(result)
+            if result.outcome != "passed" or (had is not None and name not in had):
+                continue
+            if had is None:
                 findings.append(
                     Finding(
                         "TEST_NOT_FAILING",
@@ -539,6 +607,17 @@ def _judge(
                         None,
                         f"{result.label} passes on commit {commit.short}, before its code "
                         "exists; a test that passes against a stub tests nothing.",
+                    )
+                )
+            elif not kept(file, name):
+                findings.append(
+                    Finding(
+                        "TEST_NOT_FAILING",
+                        file,
+                        None,
+                        f"{result.label} passes on commit {commit.short}, on built code, and "
+                        "dropped or changed a check of its first version; a changed test of "
+                        "a built unit keeps its checks (literal values aside), or fails.",
                     )
                 )
         red = any(r.outcome in ("failed", "error") for r in mine)

@@ -306,6 +306,35 @@ def test_a_test_renamed_later_still_bounds_its_neighbour_where_it_was_added(tmp_
     assert _rules(root) == []
 
 
+@pytest.mark.parametrize(
+    "changed",
+    [
+        "def test_more():\n    assert (\n        run(2) == 3\n    )",  # the stack's format fix
+        "def test_more():\n    assert run(2) == 3.0",  # a value renamed by the design
+        "def test_more():\n    assert run(2) == 3\n    assert run(5) == 6",  # a case added
+    ],
+)
+def test_a_changed_test_of_a_built_unit_that_keeps_its_checks_may_pass(tmp_path, changed):
+    """FB-85: the code is built and right, so the changed test cannot fail."""
+    root, path = _built(tmp_path)
+    path.write_text(path.read_text().replace("def test_more():\n    assert run(2) == 3", changed))
+    commit_all(root, "test: what the coder reported on count-failures")
+    assert _rules(root) == []
+
+
+def test_a_changed_test_of_a_built_unit_that_changes_a_check_is_reported(tmp_path):
+    root, path = _built(tmp_path)
+    path.write_text(path.read_text().replace("assert run(2) == 3", "assert run(2) > 0"))
+    commit_all(root, "test: loosen the second test")
+    path.write_text(
+        path.read_text().replace("assert run(2) > 0", "assert (\n        run(2) > 0\n    )")
+    )
+    commit_all(root, "test: format it")  # judged here, against its first version
+    findings = check(read_product_config(root))
+    assert [f.rule for f in findings] == ["TEST_NOT_FAILING"]
+    assert "dropped or changed a check" in findings[0].message
+
+
 def test_a_removed_test_judges_no_test(tmp_path):
     root, path = _built(tmp_path)
     first = "def test_count_failures():\n    assert run(1) == 2"
