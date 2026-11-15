@@ -557,15 +557,19 @@ def test_the_watcher_describes_the_tests_in_a_folder_of_tests_only(pulled):
     prompts = []
     w.describe = _sessions()
 
+    described = f".qf/reviews/7-{head[:7]}.tests.yaml"
+
     def review(prompt):
         prompts.append(prompt)
+        copy = w.config.root / f".qf/reviews/7-{head[:7]}"
+        assert (copy / described).is_file()  # FB-84: inside the copy, where its rights reach
         w.host.posted.append(Review(AGENT, "APPROVED", head))
         return [sys.executable, "-c", "print('reviewed')"]
 
     w.command = review
     w.once()
-    described = f".qf/reviews/7-{head[:7]}.tests.yaml"
     assert described in prompts[0] and "never describe a test yourself" in prompts[0]
+    assert str(w.config.root / described) not in prompts[0]  # named inside the copy
     assert "test: test_the_form_takes_the_sign_in" in (w.config.root / described).read_text()
     assert not (w.config.root / ".qf/reviews/7-head").exists()  # cleaned up
     assert "approved" in shown[-1]

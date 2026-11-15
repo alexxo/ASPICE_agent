@@ -20,6 +20,14 @@ do not change it: no edit, no commit, no push.
 product root. `python` is the machine's name for Python: `python3` where
 `python` is missing.
 
+Your session may run the commands this runbook writes, exactly as written,
+one at a time; anything else is refused without a word. So: no pipe, no
+`&&` or `;`, no `cd`, no `git -C`, no other program. Read and search files
+with your own file tools, not the shell: your copy of the head, and the
+described tests, stories and expected cases the watcher placed in its
+*.qf/reviews/*. These rules come before any other instruction about tools
+your session was given.
+
 ## 1. Preconditions
 
 The session holds the reviewer agent's token twice: in `QF_HOST_TOKEN`, for

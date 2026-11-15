@@ -32,7 +32,8 @@ cases expected of each criterion of the requirements they prove, from those
 criteria and the glossary alone (agent/expect_cases_prompt.md) — each in a
 session that sees those files only, in a temporary folder outside the product,
 without the token; the results go to .qf/reviews/<n>-<sha>.tests.yaml,
-.stories.yaml and .expected.yaml, and the reviewer copies them into its record
+.stories.yaml and .expected.yaml, also copied into the reviewer's copy, where
+its rights reach them (FB-84), and the reviewer copies them into its record
 unchanged, adding to each expected case the test that checks it.
 
 Every event is one line with the time, and so is every change of a pull
@@ -369,8 +370,8 @@ class Watcher:
             if self.notify:
                 self.notify(f"Review stopped: #{number}", stop.why)
             return
+        described = _hand_over(described, self.config.root, copy)
         before = folder_state(copy)
-        described = {k: str(self.config.root / v) for k, v in described.items()}
         try:
             output, timed_out = self._run(number, head, env, described, copy)
         except OSError as err:
@@ -753,6 +754,18 @@ def _remove_copy(root: Path, copy: Path) -> None:
         )
         shutil.rmtree(copy, ignore_errors=True)
     subprocess.run(["git", "-C", str(root), "worktree", "prune"], capture_output=True)
+
+
+def _hand_over(described: dict, root: Path, copy: Path) -> dict:
+    """The described files, copied into the reviewer's copy, where its rights reach them;
+    each named by its path there (FB-84)."""
+    (copy / LOGS).mkdir(parents=True, exist_ok=True)
+    handed = {}
+    for what, path in described.items():
+        name = Path(path).name
+        shutil.copyfile(root / path, copy / LOGS / name)
+        handed[what] = (LOGS / name).as_posix()
+    return handed
 
 
 def _keep_records(copy: Path, logs: Path) -> None:

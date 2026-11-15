@@ -2093,10 +2093,13 @@ no LLM is the default.
    gives the session as *GH_TOKEN*, with no variable in front, and the
    reviewer checks that it acts as one of *review.agents*. A line allows a
    command by its start, one command at a time, and refuses the rest without
-   a word; so the coder's prompt tells it to run each command as the plan
-   and the stack write it — no pipe, no `&&`, no path to an interpreter, no
-   `git -C` — to read files with its own file tools, and that these rules
-   come before any other instruction about tools the session was given.
+   a word; so the coder's prompt and the reviewer's runbook tell each session
+   to run every command as the plan, the stack or the runbook write it — no
+   pipe, no `&&`, no path to an interpreter, no `git -C` — to read files with
+   its own file tools, and that these rules come before any other instruction
+   about tools the session was given. What a session must read lies inside
+   its folder: the watcher copies the described tests, stories and expected
+   cases into the reviewer's copy (FB-84).
 
 ### Keeping concerns separate
 
@@ -5435,6 +5438,21 @@ label together.
   only by the person's review; ticks are read only at checkpoint 4, by that
   approval. *Not taken:* reading ticks on an issue — a tick edits someone
   else's comment, and the host does not plainly show who made the edit.
+
+- **The reviewer reads what the watcher hands it** (2026-11-15, FB-84 of
+  wp_publisher). The watcher wrote the described tests, stories and
+  expected cases to the product's *.qf/reviews/*, beside the reviewer's
+  copy, and the reviewer's line reads outside its copy only under
+  *.framework*: every review stopped before it began, so no pull request
+  could merge (S 9, O 9, D 2 — 162, high by its severity). *Chosen:* the
+  watcher copies the three files into the copy's *.qf/reviews/* and names
+  them there; the compare of the copy leaves *.qf/* out, and the record
+  goes back to the product as before. The reviewer's runbook says, as the
+  coder's prompt does, that it runs its commands as written, one at a time,
+  reads files with its own file tools, and that these rules come before any
+  other instruction about tools. *Not taken:* widening the reviewer's line
+  to the product's *.qf/reviews/* — a right per person, and the reviewer
+  would read every other review's files too.
 
 ### A.9 Configuration management stage — stage 10
 
