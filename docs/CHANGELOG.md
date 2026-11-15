@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.11] - 2026-11-15
+
+The reviewer reads the described tests, stories and expected cases: the watcher puts them inside its copy.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required — every review stops before it begins without it |
+| Restart the watcher from the new pin (Ctrl+C, then QUICKSTART step 9), and type R for a head stopped before | the person | required — the running watcher holds the old code |
+
+### Fixed
+
+- **Every review stopped before it began.** The watcher wrote the described tests, stories and expected cases to the product's `.qf/reviews/`, beside the reviewer's copy, and the reviewer's line reads outside its copy only under `.framework`. The watcher now copies the three files into the copy's `.qf/reviews/` and names them there (`tools/watch_reviews_tool.py`); no line changes. The reviewer's runbook says, as the coder's prompt does, that it runs its commands as written, one at a time — no pipe, `&&`, `cd`, `git -C` or other program — reads files with its own file tools, and that these rules come before any other instruction about tools (`agent/run_reviewer_agent.md`). Appendix A.8 *The reviewer reads what the watcher hands it*. Origin: FB-84 (wp_publisher).
+
 ## [5.0.10] - 2026-11-15
 
 A test the coder holds wrong, or a lint error in a test file, goes back to the tester.
