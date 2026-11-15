@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.12] - 2026-11-15
+
+A changed test of a built unit that keeps its checks may pass: a format fix, a renamed value or an added case no longer holds stage 6.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required — stage 6 on built code escalates without it |
+| Restart the watcher from the new pin (Ctrl+C, then QUICKSTART step 9) | the person | required — the running watcher holds the old code |
+
+### Fixed
+
+- **A changed test of built code could never pass the test-first gate.** A format fix the stack's check asks for, or a value the design renames in a test of a built unit, goes back to the tester; the changed test keeps every check, the code is built and right, so it passed on its test-only commit and the gate reported `TEST_NOT_FAILING` on every retry. A changed test of a built unit may now pass when it keeps every check of its first version — at the base, or at its first commit in the pull request — its literal values aside: its asserts and the calls it opens with `with`, compared on Python's syntax tree (`gates/swe/verify_test_first_gate.py`). A test that drops or changes a check still has to fail, and a test of another language keeps that rule. `enforce_test_first_skill` R4; § 5 unit stages, rule 18; Appendix A.5 *A changed test of built code that cannot fail*. Origin: FB-85 (wp_publisher).
+
 ## [5.0.11] - 2026-11-15
 
 The reviewer reads the described tests, stories and expected cases: the watcher puts them inside its copy.
