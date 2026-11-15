@@ -56,6 +56,13 @@ by the agent's usage limit is the exception: the watcher tries that head again
 every 10 minutes, one line each time, until the limit resets. Ctrl+C ends it
 with the day's summary, the heads still stopped listed again.
 
+When the framework it runs from moves to a newer version — the agent moved
+the pin — the watcher says so and starts again from it on its own, between
+two reviews, with the same command line and environment, so the token stays
+and no person is needed (FB-86); a stopped head is then reviewed again, as by
+R. Never to an older version (a branch pinned before), and never while paused:
+only the person releases that.
+
     QF_HOST_TOKEN="$(cat ~/.aspice_agent_secrets/reviewer_bot_github_token/<owner>)" \\
         python .framework/tools/watch_reviews_tool.py --root .
 
@@ -880,6 +887,25 @@ def _quoted(text: str) -> str:
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
+VERSION = re.compile(r'^version\s*=\s*"(\d+(?:\.\d+)*)"', re.M)
+FRAMEWORK = Path(__file__).resolve().parents[1]  # the framework this file lies in
+
+
+def framework_version(folder: Path = FRAMEWORK) -> tuple | None:
+    """The version of the framework the watcher's file lies in, as it is on disk now."""
+    try:
+        found = VERSION.search((folder / "pyproject.toml").read_text())
+    except OSError:
+        return None
+    return tuple(int(part) for part in found.group(1).split(".")) if found else None
+
+
+def restart() -> None:
+    """Run the watcher again in this process, from the framework now on disk: the same
+    command line and environment, so the token stays and no person is needed (FB-86)."""
+    os.execv(sys.executable, [sys.executable, *sys.argv])
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", type=Path, default=Path.cwd())
@@ -930,6 +956,7 @@ def main(argv: list[str] | None = None) -> int:
                 retry.set()
 
     threading.Thread(target=listen, daemon=True).start()
+    started = framework_version()
     try:
         while True:
             try:
@@ -939,6 +966,12 @@ def main(argv: list[str] | None = None) -> int:
                 watcher.once()
             except HostError as err:
                 watcher.say(f"GitHub could not be read: {err}")
+            now = framework_version()
+            if started and now and now > started and not watcher.paused:
+                watcher.say(f"The framework moved to {'.'.join(map(str, now))}: restarting from it")
+                print("\n" + watcher.summary(), flush=True)
+                restart()
+                return 0
             if args.once:
                 break
             time.sleep(args.interval)

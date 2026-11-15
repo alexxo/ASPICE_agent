@@ -3463,7 +3463,11 @@ and a person approves the results and answers the questions of what is wanted
    change it shows the banner *REVIEWER CHANGED THE WORK* — verify the LLM
    settings, see the change in the copy, which is kept — and pauses every
    review until the person types *R*. After a review the session's records
-   go to the product's *.qf/reviews/* and the copy is removed.
+   go to the product's *.qf/reviews/* and the copy is removed. When the
+   framework it runs from moves to a newer version — the agent moved the pin
+   — the watcher starts again from it on its own, between two reviews, with
+   the same command line and environment: the token stays, and no person is
+   needed for a bump. Never to an older version, and never while paused.
    Without the watcher, the person starts the session by hand, with the token
    in *QF_HOST_TOKEN* and *GH_TOKEN* as the watcher gives it. The session is
    the only one that holds the
@@ -5473,6 +5477,19 @@ label together.
   other instruction about tools. *Not taken:* widening the reviewer's line
   to the product's *.qf/reviews/* — a right per person, and the reviewer
   would read every other review's files too.
+- **The watcher follows a bump on its own** (2026-11-15, FB-86 of
+  wp_publisher). The watcher kept the code it started with, and only the
+  person, who holds the token, could start it again: every bump waited for
+  the person at the keyboard, and where the old code was the defect no
+  review ran at all (S 7, O 8, D 2 — 112). *Chosen:* after each look, when
+  the framework's version on disk is newer than the one it started with, the
+  watcher says so and runs itself again in the same process (*execv*) —
+  same command line, same environment, so the token stays; between two
+  reviews, never during one. Risks kept: a stopped head is reviewed again
+  without the person's R — S 3, O 4, D 1 — 12, the same review a restart by
+  hand gives. *Not taken:* following any move of the pin — a branch pinned
+  before would bring back an old defect; restarting while paused — only the
+  person releases a reviewer that changed the work.
 
 ### A.9 Configuration management stage — stage 10
 

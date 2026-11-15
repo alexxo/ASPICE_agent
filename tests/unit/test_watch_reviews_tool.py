@@ -661,3 +661,64 @@ def test_the_watcher_starts_as_quickstart_says(tmp_path, monkeypatch, capsys):
     (w,) = built
     assert w.out is print and callable(w.command) and all(map(callable, w.describe.values()))
     assert callable(w.notify) and isinstance(w.colour, bool)
+
+
+def _main_once(tmp_path, monkeypatch, versions, paused=False):
+    """main() with --once, the framework's version read as `versions` gives it."""
+    from product_builder import add_origin
+
+    from tools import watch_reviews_tool
+
+    root = build_product(tmp_path / "product")
+    add_origin(root)
+    monkeypatch.setenv("QF_HOST_TOKEN", "reviewer-token")
+    monkeypatch.setenv("QF_HOST_FILE", str(write_host(tmp_path / "host.json")))
+    home = tmp_path / "home"
+    (home / ".aspice_agent_secrets").mkdir(parents=True)
+    (home / ".aspice_agent_secrets/.env").write_text(
+        "QF_COMMAND_TO_START_REVIEW_SESSIONS=agent {prompt}\n"
+    )
+    monkeypatch.setenv("HOME", str(home))
+    read = iter(versions)
+    monkeypatch.setattr(watch_reviews_tool, "framework_version", lambda: next(read))
+    restarts = []
+    monkeypatch.setattr(watch_reviews_tool, "restart", lambda: restarts.append(1))
+    real = watch_reviews_tool.Watcher
+
+    def spy(*args, **kwargs):
+        w = real(*args, **kwargs)
+        w.paused = paused
+        return w
+
+    monkeypatch.setattr(watch_reviews_tool, "Watcher", spy)
+    assert watch_reviews_tool.main(["--root", str(root), "--once"]) == 0
+    return restarts
+
+
+def test_the_watcher_restarts_itself_when_the_framework_moves_to_a_newer_version(
+    tmp_path, monkeypatch, capsys
+):
+    """FB-86: a bump reaches the reviews without the person."""
+    assert _main_once(tmp_path, monkeypatch, [(5, 0, 12), (5, 0, 13)]) == [1]
+    assert "The framework moved to 5.0.13: restarting from it" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("versions", "paused"),
+    [
+        ([(5, 0, 12), (5, 0, 12)], False),  # nothing moved
+        ([(5, 0, 12), (5, 0, 11)], False),  # a branch pinned before: never back
+        ([(5, 0, 12), (5, 0, 13)], True),  # paused: only the person releases it
+    ],
+)
+def test_the_watcher_does_not_restart_otherwise(tmp_path, monkeypatch, versions, paused):
+    assert _main_once(tmp_path, monkeypatch, versions, paused) == []
+
+
+def test_the_framework_version_is_read_from_its_pyproject(tmp_path):
+    from tools.watch_reviews_tool import framework_version
+
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\nversion = "5.0.13"\n')
+    assert framework_version(tmp_path) == (5, 0, 13)
+    assert framework_version(tmp_path / "nowhere") is None
+    assert framework_version() is not None  # this framework's own
