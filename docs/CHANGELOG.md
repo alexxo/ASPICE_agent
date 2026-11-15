@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.10] - 2026-11-15
+
+A test the coder holds wrong, or a lint error in a test file, goes back to the tester.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required where the coder reports a test wrong or a gate names a test file at stage 6 |
+
+### Fixed
+
+- **A test the coder reported wrong had no way back to the tester.** `--findings` and the retry sentence spoke of the reviewer's findings alone, and the runbook gave no file for the coder's report or a gate's finding in a test file (e.g. a lint error on a line the tester wrote): stage 6 stopped, or went red until the reviewer repeated it. `--findings` now hands a retry any findings file no commit holds — the reviewer's under `.qf/reviews/`, the coder's report `.qf/sessions/coder-<component>.log`, or the gates' findings saved unchanged as the resolver printed them to `.qf/sessions/gate-findings-<component>.json` (`tools/start_session_tool.py`, `agent/run_aspice_agent.md` step 6). The tester's prompt says how each kind is fixed, and that a test it keeps gets its reason in the report; the orchestrator never fixes a test file itself (`agent/write_unit_tests_prompt.md`, `agent/write_unit_code_prompt.md`). Appendix A.1 *How a retry reaches the tester*. Origin: FB-83 (wp_publisher).
+
 ## [5.0.9] - 2026-11-14
 
 The coder runs its tests: its prompt says which commands its session lets it run.
