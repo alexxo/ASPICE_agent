@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.13] - 2026-11-15
+
+The watcher follows a framework bump on its own: no person restarts it after a later bump.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required |
+| Restart the watcher from the new pin (Ctrl+C, then QUICKSTART step 9) — the last time: from this release on it restarts itself | the person | required — the running watcher holds the old code, without the restart |
+
+### Fixed
+
+- **Every framework bump waited for the person at the keyboard.** The watcher kept the code it started with, and only the person, who holds the token, could start it again. After each look, when the framework's version on disk is newer than the one it started with, the watcher now says so and runs itself again in the same process, with the same command line and environment, so the token stays — between two reviews, never during one, never to an older version, never while paused (`tools/watch_reviews_tool.py`). § 5 stage 9, rule 1; Appendix A.8 *The watcher follows a bump on its own*. Origin: FB-86 (wp_publisher).
+
 ## [5.0.12] - 2026-11-15
 
 A changed test of a built unit that keeps its checks may pass: a format fix, a renamed value or an added case no longer holds stage 6.
