@@ -31,9 +31,11 @@ what the tester may write comes back to the product: test files and the
 verification plan, and a stub for a unit that has no code yet, all in the
 component's folder; anything else is refused and listed. The coder works in
 the product itself: it must see the tests, and the gates stop it changing them.
-On a retry, --findings hands the session the reviewer's findings (a file under
-.qf/reviews/, which no commit holds): copied into the tester's folder, named
-to the coder (FB-78). The coder runs the stack's checks and suites, so the
+On a retry, --findings hands the session a findings file no commit holds — the
+reviewer's under .qf/reviews/, the coder's report naming a test it holds
+wrong (.qf/sessions/coder-<component>.log), or the gates' findings in the
+component's test files as the resolver printed them: copied into the tester's
+folder, named to the coder (FB-78, FB-83). The coder runs the stack's checks and suites, so the
 product's toolchain (QF_PATH_TO_PRODUCT_TOOLCHAIN in its .env) is first on its
 PATH, as for every command the framework runs (FB-80).
 
@@ -308,13 +310,13 @@ def _run(argv: list[str], cwd: Path, env: dict[str, str]) -> tuple[str, int]:
 
 
 def _retry(findings: str | None) -> str:
-    """The prompt's sentence handing a retry the reviewer's findings."""
+    """The prompt's sentence handing a retry its findings, whoever wrote them."""
     if not findings:
         return ""
     return (
         " This is a retry: the work still follows the component's detailed design as it "
-        f"stands; read the reviewer's findings in {findings} and also fix every one for this "
-        "component."
+        f"stands; read the findings in {findings} — the reviewer's, the coder's or the gates' — "
+        "and also fix every one for this component."
     )
 
 
@@ -439,7 +441,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--component", help="the component the tester or the coder works on")
     parser.add_argument("--task", default="", help="what the clarify session checks")
     parser.add_argument(
-        "--findings", type=Path, help="on a retry: the reviewer's findings for the session"
+        "--findings",
+        type=Path,
+        help="on a retry: the findings for the session — the reviewer's, the coder's, the gates'",
     )
     parser.add_argument("--root", type=Path, default=Path.cwd())
     args = parser.parse_args(argv)

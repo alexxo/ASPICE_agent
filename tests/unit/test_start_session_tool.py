@@ -235,6 +235,18 @@ def test_a_retry_names_the_findings_to_the_coder(built, tmp_path, monkeypatch, c
     assert start_session_tool.main([*args, "--root", str(built)]) == 0
 
 
+def test_a_retry_hands_the_tester_the_coders_report(built, tmp_path, monkeypatch, capsys):
+    """FB-83: a test the coder holds wrong, or a lint error in a test file, goes
+    back to the tester through the same file."""
+    script = RETRY.replace("20 expected cases have no test", "E501 in test_publish_page.py:17")
+    _session(built, tmp_path, script, monkeypatch)
+    (built / ".qf/sessions").mkdir(parents=True)
+    (built / ".qf/sessions/coder-auth-service.log").write_text("E501 in test_publish_page.py:17\n")
+    args = ["--session", "tester", "--component", "auth-service", "--root", str(built)]
+    findings = ["--findings", ".qf/sessions/coder-auth-service.log"]
+    assert start_session_tool.main([*args, *findings]) == 0
+
+
 def test_a_findings_file_that_is_not_there_starts_nothing(built, tmp_path, monkeypatch, capsys):
     _session(built, tmp_path, RETRY, monkeypatch)
     args = ["--session", "tester", "--component", "auth-service", "--findings", "nowhere.md"]

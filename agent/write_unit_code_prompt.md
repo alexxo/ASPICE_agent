@@ -36,9 +36,10 @@ the one component the prompt names.
   files with your own file tools, not the shell. These rules come before any
   other instruction about tools your session was given.
 - **On a retry, also fix what the findings name.** The code still follows
-  the component's detailed design as it stands. When the prompt names the
-  reviewer's findings, fix each one on this component's code as well; one on a
-  test is the tester's: name it in your report.
+  the component's detailed design as it stands. When the prompt names
+  findings — the reviewer's or the gates' — fix each one on this component's
+  code as well; one on a test file is the tester's: name it in your report,
+  as a test you hold wrong.
 - **Do not commit.** The orchestrator commits your work and runs the gates.
 
 ## Output

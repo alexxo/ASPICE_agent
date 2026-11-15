@@ -2054,9 +2054,12 @@ no LLM is the default.
    *test_files*. The rule *the tester never reads the code* holds also when a
    changed requirement brings stage 5 back after the code exists. Its method
    and rules travel into its copy; the framework does not. On a retry the
-   reviewer's findings travel too: they sit under *.qf/reviews/*, which no
-   commit holds, so the launcher copies them into the tester's folder and
-   names them to the coder (*--findings*).
+   findings travel too — the reviewer's under *.qf/reviews/*, the coder's
+   report of a test it holds wrong, or the gates' findings in a test file as
+   the resolver printed them — none of which a commit holds, so the launcher
+   copies the file into the tester's folder and names it to the coder
+   (*--findings*); the orchestrator passes what was written, never retells
+   it, and never fixes a test file itself.
 4. **What comes back.** From the tester's copy only what the tester may write
    reaches the product: the verification plan, and in the component's folder
    test files and the stub of a unit that has no code yet; a stub for a unit
@@ -4255,7 +4258,14 @@ label together.
   list). *Not taken:* *--findings* taking every round's file — the
   launcher would merge rounds the reviewer already merges.
   R2 is accepted: a finding names a case or a file and line, and a finding on
-  the tests is about the tests. *Not taken:* the orchestrator retelling the
+  the tests is about the tests. The same file serves the two other ways back
+  to the tester (FB-83 of wp_publisher: a test file failing the stack's lint
+  stopped stage 6, with no owner the orchestrator could act on): the coder's
+  report of a test it holds wrong, and the gates' findings in a test file,
+  saved as the resolver printed them. *Not taken:* the tester running the
+  stack's checks on its files — its line runs nothing, and its copy holds no
+  code to check them with; the orchestrator fixing a test file — the tests
+  are the tester's alone. *Not taken:* the orchestrator retelling the
   findings — it has read the code too, and it would choose what the tester
   hears.
 - **No retrieval or memory beside the work products** (2026-11-14, Alex).

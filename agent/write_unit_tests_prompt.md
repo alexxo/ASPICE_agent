@@ -43,11 +43,14 @@ the one component the prompt names.
   red run is made on the commit, in the product, by the stage's gates.
 - **On a retry, also fix what the findings name.** The tests still follow
   the component's detailed design as it stands: a change the findings do not
-  name is tested too. When the prompt names the reviewer's findings, each one
-  for this component is fixed as well: a missing
-  case gets its test, a weakened test its assertion back. A case you hold is
-  not a test gets none: give the reason in your report, for the reviewer to
-  read.
+  name is tested too. When the prompt names findings — the reviewer's, the
+  coder's report of a test it holds wrong, or a gate's finding in a test
+  file such as a lint error — each one for this component is fixed as well:
+  a missing case gets its test, a weakened test its assertion back, a test
+  the coder holds wrong is checked against the design and fixed or kept, a
+  check's finding is fixed in the file it names. A case you hold is not a
+  test gets none, and a test you keep gets no change: give the reason in
+  your report, for the reviewer to read.
 - **Do not commit.** The orchestrator commits what comes back.
 
 ## Output
