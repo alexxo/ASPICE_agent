@@ -722,3 +722,75 @@ def test_the_framework_version_is_read_from_its_pyproject(tmp_path):
     assert framework_version(tmp_path) == (5, 0, 13)
     assert framework_version(tmp_path / "nowhere") is None
     assert framework_version() is not None  # this framework's own
+
+
+def test_a_describe_session_at_the_usage_limit_is_tried_again_on_its_own(pulled):
+    """FB-87: the describe sessions wait for the reset as the review does."""
+    w, shown, head = pulled
+    now = [0.0]
+    w.clock = lambda: now[0]
+    w.describe = _speaks("You've hit your session limit · resets 11:50am (Europe/Berlin)")
+    w.command = lambda prompt: pytest.fail("the review must not start")
+    w.once()
+    said = " ".join(line.strip("# ") for line in shown[-1].splitlines())
+    assert "usage limit was reached" in said and "tries this head again" in said
+    assert (7, head) in w.limited
+    w.describe = _sessions()
+
+    def review(prompt):
+        w.host.posted.append(Review(AGENT, "APPROVED", head))
+        return [sys.executable, "-c", "print('reviewed')"]
+
+    w.command = review
+    now[0] = 10 * 60
+    w.once()
+    assert "approved" in shown[-1] and w.stopped == {} and w.limited == {}
+
+
+def _reviewed_again(w, head):
+    """The same head reviewed once more, as after a fix that touches no test."""
+    w.done.clear()
+    w.host.posted.clear()
+
+    def review(prompt):
+        w.host.posted.append(Review(AGENT, "APPROVED", head))
+        return [sys.executable, "-c", "print('reviewed')"]
+
+    w.command = review
+    w.once()
+
+
+def test_a_test_file_described_before_is_not_described_again(pulled):
+    """FB-88: a round describes only the test files whose content changed."""
+    w, shown, head = pulled
+    w.describe = _sessions()
+    _reviewed_again(w, head)
+    expecter = _sessions()
+    w.describe = lambda prompt: (
+        pytest.fail("described again") if prompt.startswith("Describe the tests") else None
+    ) or expecter(prompt)
+    _reviewed_again(w, head)
+    described = (w.config.root / f".qf/reviews/7-{head[:7]}.tests.yaml").read_text()
+    assert "test: test_the_form_takes_the_sign_in" in described
+    assert "approved" in shown[-1]
+
+
+def test_a_design_told_before_is_not_told_again(redesigned):
+    w, shown, head = redesigned
+    w.describe = lambda prompt: [sys.executable, "-c", STORYTELLER]
+    _reviewed_again(w, head)
+    w.describe = lambda prompt: pytest.fail("told again")
+    _reviewed_again(w, head)
+    assert "gap: true" in (w.config.root / f".qf/reviews/7-{head[:7]}.stories.yaml").read_text()
+    assert "approved" in shown[-1]
+
+
+def test_a_description_is_kept_by_content_and_instructions(tmp_path):
+    from tools.watch_reviews_tool import _key
+
+    (tmp_path / "t.py").write_text("assert 1")
+    first = _key("rules", tmp_path, ["t.py"])
+    assert _key("rules", tmp_path, ["t.py"]) == first
+    assert _key("new rules", tmp_path, ["t.py"]) != first
+    (tmp_path / "t.py").write_text("assert 2")
+    assert _key("rules", tmp_path, ["t.py"]) != first

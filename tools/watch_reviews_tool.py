@@ -34,7 +34,10 @@ session that sees those files only, in a temporary folder outside the product,
 without the token; the results go to .qf/reviews/<n>-<sha>.tests.yaml,
 .stories.yaml and .expected.yaml, also copied into the reviewer's copy, where
 its rights reach them (FB-84), and the reviewer copies them into its record
-unchanged, adding to each expected case the test that checks it.
+unchanged, adding to each expected case the test that checks it. A test file,
+or a design, described before with the same content and the same instructions
+is not described again: its description is kept by its content in
+.qf/reviews/described/, so a round describes only what changed (FB-88).
 
 Every event is one line with the time, and so is every change of a pull
 request's state, naming who acts next: waits for CI, gates red (the author
@@ -51,8 +54,9 @@ do, and the session's log (.qf/reviews/<n>-<sha>.log), in red where the
 terminal shows colour (NO_COLOR switches it off), with a desktop notification
 where the system has one. The
 watcher goes on with the other pull requests; a stopped head is not retried on
-its own: type R and Enter to review the stopped heads again. A session stopped
-by the agent's usage limit is the exception: the watcher tries that head again
+its own: type R and Enter to review the stopped heads again. A session — the
+review's or a describe session — stopped by the agent's usage limit is the
+exception (FB-87): the watcher tries that head again
 every 10 minutes, one line each time, until the limit resets. Ctrl+C ends it
 with the day's summary, the heads still stopped listed again.
 
@@ -73,6 +77,7 @@ holds it, and neither does the .env (PowerShell: QUICKSTART step 9).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import re
 import shutil
@@ -109,6 +114,7 @@ WAITS_FOR_REVIEWER = "the reviewer agent's approval"
 WAITS_FOR_PERSON = ("a review by ", "a person's review")  # post_merge_status_tool's words
 NO_SIGN_AFTER = 10 * 60  # seconds a head may go without a crossing sign before a warning
 LOGS = Path(".qf/reviews")
+KEPT = LOGS / "described"  # each description by the content it describes (FB-88)
 WIDTH = 72
 TIMEOUT = 20 * 60  # seconds one review session may take: a limit for a stuck one
 PROGRESS = 5 * 60  # seconds between the lines saying a review is still running
@@ -356,10 +362,7 @@ class Watcher:
         env = {**os.environ, **self.settings, "GH_TOKEN": token}  # gh posts as reviewer
         described, failed = self.describe_work(number, head)
         if failed is not None:
-            self.stopped[(number, head)] = failed
-            self.out(banner(failed, self.colour))
-            if self.notify:
-                self.notify(f"Review stopped: #{number}", failed.why)
+            self._halt(failed)
             return
         copy = self.config.root / LOGS / f"{number}-{head[:7]}"
         if not (self.copy or _copy_head)(self.config.root, number, head, copy):
@@ -372,10 +375,7 @@ class Watcher:
                 "Enter to review this head again.",
                 log.as_posix(),
             )
-            self.stopped[(number, head)] = stop
-            self.out(banner(stop, self.colour))
-            if self.notify:
-                self.notify(f"Review stopped: #{number}", stop.why)
+            self._halt(stop)
             return
         described = _hand_over(described, self.config.root, copy)
         before = folder_state(copy)
@@ -401,10 +401,7 @@ class Watcher:
                 log.as_posix(),
                 "REVIEWER CHANGED THE WORK",
             )
-            self.stopped[(number, head)] = stop
-            self.out(banner(stop, self.colour))
-            if self.notify:
-                self.notify(f"Reviewer changed the work: #{number}", stop.why)
+            self._halt(stop)
             return
         pull = self.host.pull_request(self.repo, number)
         agents = set(self.config.review_agents)
@@ -416,22 +413,27 @@ class Watcher:
             self.stopped.pop((number, head), None)
             self.limited.pop((number, head), None)
             return
-        stop = _stop(number, head, output, timed_out, log.as_posix(), self.timeout)
-        again = stop.limit and (number, head) in self.limited
-        self.stopped[(number, head)] = stop
+        self._halt(_stop(number, head, output, timed_out, log.as_posix(), self.timeout))
+
+    def _halt(self, stop: Stop) -> None:
+        """A head that stopped: it waits for R, or, stopped by the usage limit, is
+        tried again on its own — one banner, then one line per try."""
+        key = (stop.number, stop.head)
+        again = stop.limit and key in self.limited
+        self.stopped[key] = stop
         if stop.limit:
-            self.limited[(number, head)] = self.clock()
+            self.limited[key] = self.clock()
         else:
-            self.limited.pop((number, head), None)
+            self.limited.pop(key, None)
         if again:
             self.say(
-                f"#{number} head {head[:7]}: usage limit still reached; "
+                f"#{stop.number} head {stop.head[:7]}: usage limit still reached; "
                 f"trying again in {LIMIT_RETRY // 60} min"
             )
             return
         self.out(banner(stop, self.colour))
         if self.notify:
-            self.notify(f"Review stopped: #{number}", stop.why)
+            self.notify(f"{stop.title.capitalize()}: #{stop.number}", stop.why)
 
     def describe_work(self, number: int, head: str) -> tuple[dict[str, str], Stop | None]:
         """The tests a person would review, described, the changed designs, told
@@ -500,7 +502,48 @@ class Watcher:
         self, number, head, env, tree, config, what, files, criteria=None
     ) -> tuple[str, Stop | None]:
         """One describe session in a folder of these files only — and, for the
-        expected cases, criteria.yaml; its checked result's file, or why it failed."""
+        expected cases, criteria.yaml; its checked result's file, or why it failed.
+        A test file or design described before, with the same content and
+        instructions, keeps its description and is not given to the session."""
+        import yaml
+
+        log = LOGS / f"{number}-{head[:7]}.{what}.log"
+        units, by = _units(what, files)
+        keys = {u: _key(_describe_prompt(self.config, [], what), tree, n) for u, n in units.items()}
+        kept_dir = self.config.root / KEPT
+        known = {
+            u: yaml.safe_load((kept_dir / f"{k}.yaml").read_text())
+            for u, k in keys.items()
+            if (kept_dir / f"{k}.yaml").is_file()
+        }
+        if units:
+            files = [f for u, names in units.items() if u not in known for f in names]
+        if files or criteria is not None:
+            entries, stop = self._session_of(number, head, env, tree, config, what, files, criteria)
+            if stop is not None:
+                return "", stop
+        else:
+            entries = []
+            (self.config.root / log).write_text(f"Described before: {', '.join(known)}\n")
+        if units:
+            kept_dir.mkdir(parents=True, exist_ok=True)
+            for u in units:
+                if u not in known:
+                    known[u] = [e for e in entries if e[by] == u]
+                    (kept_dir / f"{keys[u]}.yaml").write_text(
+                        yaml.safe_dump(known[u], sort_keys=False, allow_unicode=True)
+                    )
+            entries = [e for u in units for e in known[u]]
+        kept = LOGS / f"{number}-{head[:7]}.{what}.yaml"
+        (self.config.root / kept).write_text(
+            yaml.safe_dump(entries, sort_keys=False, allow_unicode=True)
+        )
+        return kept.as_posix(), None
+
+    def _session_of(
+        self, number, head, env, tree, config, what, files, criteria
+    ) -> tuple[list, Stop | None]:
+        """The describe session itself, its answer checked; or why it failed."""
         import shutil as _shutil
         import tempfile
 
@@ -533,24 +576,23 @@ class Watcher:
             entries, why = _stories(output, config, files)
         else:
             entries, why = _expected(output, criteria)
+        limited = next((line for line in output.splitlines() if LIMITED.search(line)), None)
+        if entries is None and limited and not timed_out:
+            return [], _limit_stop(number, head, limited.strip(), log.as_posix())
         if timed_out or entries is None:
             failed = {
                 "tests": "The tests could not be described: ",
                 "stories": "The designs could not be told as stories: ",
                 "expected": "The expected cases could not be listed: ",
             }[what]
-            return "", Stop(
+            return [], Stop(
                 number,
                 head,
                 failed + ("the session ran out of time." if timed_out else why),
                 "Read the log, then type R and Enter to review this head again.",
                 log.as_posix(),
             )
-        kept = LOGS / f"{number}-{head[:7]}.{what}.yaml"
-        (self.config.root / kept).write_text(
-            yaml.safe_dump(entries, sort_keys=False, allow_unicode=True)
-        )
-        return kept.as_posix(), None
+        return entries, None
 
     def _run(
         self,
@@ -839,15 +881,7 @@ def _stop(
     }
     limited = next((line for line in lines if LIMITED.search(line)), None)
     if limited:
-        return Stop(
-            number,
-            head,
-            f"The agent's usage limit was reached: {limited}",
-            f"Nothing: the watcher tries this head again every {LIMIT_RETRY // 60} minutes "
-            "until the limit resets; type R and Enter to try now.",
-            log,
-            limit=True,
-        )
+        return _limit_stop(number, head, limited, log)
     if any(code in output for code in ("HTTP 401", "Bad credentials")):
         return Stop(
             number,
@@ -859,6 +893,40 @@ def _stop(
     why = said.get("STOPPED") or (lines[-1] if lines else "The session ended without a word.")
     do = said.get("DO") or "Act on the reason, then type R and Enter to review this head again."
     return Stop(number, head, why, do, log)
+
+
+def _limit_stop(number: int, head: str, line: str, log: str) -> Stop:
+    """A session stopped by the agent's usage limit: the watcher tries again on its own."""
+    return Stop(
+        number,
+        head,
+        f"The agent's usage limit was reached: {line}",
+        f"Nothing: the watcher tries this head again every {LIMIT_RETRY // 60} minutes "
+        "until the limit resets; type R and Enter to try now.",
+        log,
+        limit=True,
+    )
+
+
+def _units(what: str, files: list[str]) -> tuple[dict[str, list[str]], str]:
+    """The files grouped as the entries name them — a test file, or a design's files —
+    and the entry's field that names one; the expected cases are never kept."""
+    if what == "tests":
+        return {f: [f] for f in files}, "file"
+    if what == "stories":
+        groups: dict[str, list[str]] = {}
+        for f in files:
+            groups.setdefault(Path(f).name.split(".")[0], []).append(f)
+        return groups, "design"
+    return {}, ""
+
+
+def _key(instructions: str, tree: Path, names: list[str]) -> str:
+    """A description's key: the instructions, and each file's path and content."""
+    digest = hashlib.sha256(instructions.encode())
+    for name in names:
+        digest.update(b"\0" + name.encode() + b"\0" + (tree / name).read_bytes())
+    return digest.hexdigest()
 
 
 def desktop_notification(title: str, text: str) -> None:

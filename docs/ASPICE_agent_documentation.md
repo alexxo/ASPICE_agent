@@ -3450,8 +3450,9 @@ and a person approves the results and answers the questions of what is wanted
    banner — *REVIEW STOPPED*, why, what to do, the log under *.qf/reviews/* —
    red where the terminal shows colour, with a desktop notification where the
    system has one; the head is reviewed again only when the person types *R*,
-   except after the agent's usage limit: the watcher then tries it again
-   every 10 minutes, one line each time, until the limit resets.
+   except after the agent's usage limit, in the review or in a describe
+   session: the watcher then tries it again every 10 minutes, one line each
+   time, until the limit resets.
    **No LLM is the default** (*Independent sessions*): the watcher starts every session with
    the command the person names in *~/.aspice_agent_secrets/.env*, out of
    the author's reach. A reviewer never changes the work, and that command
@@ -3711,7 +3712,11 @@ and a person approves the results and answers the questions of what is wanted
     temporary folders outside the product, each holding nothing but those
     files, copied from the head,
     without the reviewer's token, the instructions in the prompt, so no
-    session has a path to the requirements. The author agent opens the
+    session has a path to the requirements. A test file or a design
+    described before, with the same content and the same instructions, keeps
+    its description (*.qf/reviews/described/*, by its content): a round
+    describes only what changed, and an unchanged test reads the same in
+    every round. The author agent opens the
     comment on its computer (rule 13).
     *How the person answers.* One tick per question — the host saves each at
     once, on any device — then *Approve*, or *Request changes* with the
@@ -5490,6 +5495,28 @@ label together.
   hand gives. *Not taken:* following any move of the pin — a branch pinned
   before would bring back an old defect; restarting while paused — only the
   person releases a reviewer that changed the work.
+
+- **A usage limit in a describe session waits for the reset** (2026-11-16,
+  FB-87 of wp_publisher). The review session's usage limit was retried on
+  its own, a describe session's was a broken answer, and the review waited
+  for the person's R though nothing was wrong but the hour (S 5, O 7, D 2 —
+  70). *Chosen:* the same limit stop for every session, one place for every
+  stopped head. Risks kept: a broken answer that names a usage limit is
+  retried, not shown at once — S 2, O 1, D 2 — 4; the person can type R at
+  any time. *Not taken:* waiting for the reset time the answer names — its
+  words and time zone are the LLM's, not a contract.
+- **A description is kept by the content it describes** (2026-11-16,
+  FB-88 of wp_publisher). Every round described every test of the pull
+  request again — minutes and LLM usage per round for work already done,
+  bringing the usage limit closer, and an unchanged test worded anew (S 4,
+  O 9, D 3 — 108). *Chosen:* each test file's description, and each
+  design's stories, kept under *.qf/reviews/described/* by a key of the
+  instructions and of every file's path and content; a round describes only
+  the files with no kept description. Risks kept: a description wrong once
+  stays wrong while the file does not change — S 4, O 2, D 3 — 24, the
+  reviewer still reads the test itself; the person removes the kept file to
+  have it described again. *Not taken:* keeping the expected cases — they
+  depend on the criteria and the glossary, not on the pull request's files.
 
 ### A.9 Configuration management stage — stage 10
 
