@@ -510,6 +510,18 @@ wishes. Tell the person how the work runs from now on:
 The rules behind all of this are in `.framework/docs/ASPICE_agent_documentation.md`,
 section *Starting a product*.
 
+### Step 10 — Optional: cost monitoring
+
+Only if the person wants to see what the LLM sessions cost. Nothing else
+depends on it, and it can be added at any time.
+
+Tell the person: a local Grafana shows the cost of the sessions now and
+today, per tab and per model, from the numbers Claude Code sends. It is one
+container on their computer, and seven settings in the two `.env` files of
+step 8. The guide, for macOS, Linux and Windows, is
+[`.framework/monitoring/COST_MONITORING.md`](monitoring/COST_MONITORING.md).
+The person follows it; the `.env` lines are theirs to add, as in step 8.
+
 ## Upgrading an existing product
 
 A product built with a framework before 5.0.0 keeps all its work: no gate and

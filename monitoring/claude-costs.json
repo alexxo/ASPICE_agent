@@ -1,0 +1,563 @@
+{
+  "uid": "claude-costs",
+  "title": "Claude costs",
+  "tags": [
+    "claude",
+    "cost"
+  ],
+  "timezone": "browser",
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": {
+    "from": "now/d",
+    "to": "now"
+  },
+  "description": "What Claude Code spends now and today, per tab. Dollars are API list prices: on a subscription they compare, they are not billed.",
+  "templating": {
+    "list": [
+      {
+        "name": "qf_scope",
+        "label": "Scope",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(claude_code_cost_usage_USD_total, qf_scope)",
+          "refId": "qf_scope"
+        },
+        "definition": "label_values(claude_code_cost_usage_USD_total, qf_scope)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "sort": 1
+      },
+      {
+        "name": "qf_product",
+        "label": "Product",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(claude_code_cost_usage_USD_total, qf_product)",
+          "refId": "qf_product"
+        },
+        "definition": "label_values(claude_code_cost_usage_USD_total, qf_product)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "sort": 1
+      },
+      {
+        "name": "daily_limit",
+        "label": "Daily limit ($)",
+        "type": "textbox",
+        "query": "50",
+        "current": {
+          "text": "50",
+          "value": "50"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Now",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Spend rate, last 15 min ($/min)",
+      "description": "Dollars per minute over the last 15 minutes, every tab in the filter.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 15m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) * 0))) / 15",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Sessions spending now",
+      "description": "Sessions whose cost grew in the last 5 minutes.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(sum by (session_id) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[5m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 5m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[5m]) * 0))) > 0) or vector(0)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "By tab",
+      "description": "Each tab's cost in the last 15 minutes and in the time range.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 12,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (qf_scope, qf_product, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 15m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) * 0)))",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (qf_scope, qf_product, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0)))",
+          "legendFormat": "",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {},
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "qf_scope": 0,
+              "qf_product": 1,
+              "qf_session": 2,
+              "Value #A": 3,
+              "Value #B": 4
+            },
+            "renameByName": {
+              "qf_scope": "Scope",
+              "qf_product": "Product",
+              "qf_session": "Tab",
+              "Value #A": "Last 15 min",
+              "Value #B": "Today"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Today",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "row",
+      "title": "Today",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Cost today",
+      "description": "Every session in the filter, over the time range (today by default).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0)))",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Of the daily limit",
+      "description": "Cost today against the daily limit at the top. Orange from 80 %, red from 100 %. It only warns: nothing is stopped.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 7,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0))) / $daily_limit * 100",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 8,
+      "type": "bargauge",
+      "title": "Cost by model",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 12,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (model) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0)))",
+          "legendFormat": "{{model}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Cost per hour",
+      "description": "Each bar is the hour that ends at its time, stacked by tab.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 16,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (qf_scope, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1h]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 1h) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1h]) * 0)))",
+          "legendFormat": "{{qf_scope}} · {{qf_session}}",
+          "refId": "A",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "interval": "1h"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "bargauge",
+      "title": "Tokens today by type",
+      "description": "cacheRead is cheap context reuse; input and output cost most per token.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 12,
+        "w": 8,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (type) ((max_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0)))",
+          "legendFormat": "{{type}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    }
+  ]
+}
