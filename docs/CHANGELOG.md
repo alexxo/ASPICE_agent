@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.0.14] - 2026-11-16
+
+A usage limit in a describe session waits for the reset on its own, and a round describes only the tests and designs that changed.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required — the watcher restarts itself from the new pin (v5.0.13) |
+
+### Fixed
+
+- **A usage limit in a describe session stopped the review until the person typed R.** The review session's limit was already retried on its own; a describe session's was read as a broken answer. Every session's usage limit now gives the same stop: the watcher tries the head again every 10 minutes, one line each time, until the limit resets (`tools/watch_reviews_tool.py`). § 5 stage 9; Appendix A.8 *A usage limit in a describe session waits for the reset*. Origin: FB-87 (wp_publisher).
+- **Every review round described every test again.** A test file's description, and a design's stories, are now kept by the instructions and the files' content under `.qf/reviews/described/`; a round describes only the files with no kept description, so an unchanged test costs no session and reads the same in every round (`tools/watch_reviews_tool.py`). § 5 stage 9; Appendix A.8 *A description is kept by the content it describes*. Origin: FB-88 (wp_publisher).
+
 ## [5.0.13] - 2026-11-15
 
 The watcher follows a framework bump on its own: no person restarts it after a later bump.
