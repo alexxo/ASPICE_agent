@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.1.1] - 2026-11-17
+
+The cost dashboard shows each tab's cost today as bars.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | optional — only the dashboard changed; Grafana reads it from `.framework` |
+
+### Added
+
+- **Cost today by tab** in the dashboard *Claude costs*: one horizontal bar per tab. A tab has the same colour here and in *Cost per hour*, which now colours tabs by name. `COST_MONITORING.md` *What you get* lists it. Origin: internal (Alex).
+
 ## [5.1.0] - 2026-11-16
 
 Cost monitoring, an optional companion: a guide and a Grafana dashboard that show what a product's LLM sessions cost, now and today.
