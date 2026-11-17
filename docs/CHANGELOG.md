@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.1.2] - 2026-11-17
+
+A tab keeps the colour it had before in both tab charts of the cost dashboard.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | optional — only the dashboard changed; Grafana reads it from `.framework` |
+
+### Fixed
+
+- **Tab colours** in *Cost per hour* and *Cost today by tab*: 5.1.1 coloured tabs by name, which gave them new colours. Each tab now has a fixed colour in both charts, the one it had before (`framework · developer` green, `product · developer` yellow, `product · watcher` blue); another tab takes the next colour of Grafana's order. Origin: internal (Alex).
+
 ## [5.1.1] - 2026-11-17
 
 The cost dashboard shows each tab's cost today as bars.
