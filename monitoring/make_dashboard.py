@@ -60,6 +60,7 @@ def panel(pid, kind, title, place, targets, unit="currencyUSD", decimals=2, **ex
         "options": {},
     }
     color = extra.pop("color", None)
+    p["fieldConfig"]["overrides"] = extra.pop("overrides", [])
     custom = extra.pop("custom", None)
     thresholds = extra.pop("thresholds", None)
     if color:
@@ -122,7 +123,21 @@ LIMIT = {
 }
 TAB = "qf_scope, qf_product, qf_session"
 TAB_LEGEND = "{{qf_scope}} · {{qf_session}}"
-BY_NAME = {"mode": "palette-classic-by-name"}  # a tab keeps its colour in every chart
+# A tab keeps one colour in every chart: those it had before, in Grafana's own
+# order (green, yellow, blue); another tab takes the next colour of that order.
+TAB_COLOURS = {
+    "framework · developer": "green",
+    "product · developer": "yellow",
+    "product · watcher": "blue",
+}
+BY_TAB = {"mode": "palette-classic"}
+TAB_OVERRIDES = [
+    {
+        "matcher": {"id": "byName", "options": name},
+        "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": colour}}],
+    }
+    for name, colour in TAB_COLOURS.items()
+]
 
 
 def dashboard() -> dict:
@@ -233,7 +248,8 @@ def dashboard() -> dict:
                 )
             ],
             description="Each bar is the hour that ends at its time, stacked by tab.",
-            color=BY_NAME,
+            color=BY_TAB,
+            overrides=TAB_OVERRIDES,
             custom={
                 "drawStyle": "bars",
                 "fillOpacity": 80,
@@ -269,7 +285,8 @@ def dashboard() -> dict:
                 )
             ],
             description="Each tab's cost over the time range, coloured as in Cost per hour.",
-            color=BY_NAME,
+            color=BY_TAB,
+            overrides=TAB_OVERRIDES,
             options=BARS,
         ),
     ]
