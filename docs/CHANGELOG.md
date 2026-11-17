@@ -35,6 +35,27 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.2.0] - 2026-11-17
+
+A later review round reviews what changed since the last one, an approval holds while nothing it read changed, and the cost dashboard shows the plan's allowance in three sections.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required — the watcher restarts itself from the new pin (v5.0.13) |
+| To see the plan's allowance: add the status line of `.framework/monitoring/COST_MONITORING.md` *Your plan's allowance* to `~/.claude/settings.json` | the person | optional — only the dashboard's 5-hour window section needs it |
+
+### Changed
+
+- **A later round reviews from the last one** (`tools/watch_reviews_tool.py`, `agent/run_reviewer_agent.md`, `plugins/sup/derive_review_plugin/SKILL.md`). The watcher's prompt names the reviewer agent's last reviewed head and the files changed since (`git diff --name-only`); the reviewer reads those, what they touch and the fix of every open finding, the rest keeping its last judgement, and reviews the whole pull request again when the change is wide. The method asks for every finding in the round that finds it. Quality doc § 5 stage 9 rule 1; Appendix A.8 *A later round reviews what changed*. Origin: FB-90 (wp_publisher).
+- **An approval holds while nothing it read changed** (`tools/watch_reviews_tool.py`). The expected cases of a requirement are kept under `.qf/reviews/described/` by the instructions, its statement and criteria, and the glossary, as the descriptions are; a round lists only the requirements with none kept. When since the approved head only the framework pin or the feedback log changed, and the pull request changes neither, the watcher posts the approval again on the new head, as the reviewer agent, with one line naming what changed. `tools/post_review_tool.py` takes the API address from its caller. Quality doc § 5 stage 9 rules 1 and 14; Appendix A.8 *An approval holds while nothing it read changed*. Origin: FB-89 (wp_publisher).
+- **The cost dashboard in three sections** (`monitoring/`). *Now · last 15 min*, *5-hour window* and *Today*, each with Cost by tab, Cost by model and Tokens by type as horizontal bars from zero, every tab in one fixed colour; *5-hour window* adds 5-hour window used and Week used, with their reset times, and shows its costs as a share of the window; *Today* adds Cost over time by tab, one bar per hour standing on its start, so the hour running now has one. Each section keeps its own span, whatever the time picker says. Removed: the spend rate, sessions spending now, the cost and daily-limit stats, and the *Daily limit ($)* box. Origin: internal (Alex).
+
+### Added
+
+- **The plan's allowance** (`monitoring/plan_usage_statusline.py`). A Claude Code status line that shows how much of the 5-hour and the weekly allowance is used, e.g. `5h 42 % (21:10) · week 18 % (Sat 09:00)`, and sends both, with their reset times, to the monitoring stack as `qf_plan_used_percent` and `qf_plan_resets_at`. `COST_MONITORING.md` *Your plan's allowance*. Origin: internal (Alex).
+
 ## [5.1.2] - 2026-11-17
 
 A tab keeps the colour it had before in both tab charts of the cost dashboard.
