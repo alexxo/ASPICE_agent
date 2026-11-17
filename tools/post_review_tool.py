@@ -87,9 +87,12 @@ def checklist(body: str) -> dict[str, bool] | None:
     return items
 
 
-def _post(token: str, repo: str, number: int, head: str, event: str, body: str) -> None:
+def _post(
+    token: str, repo: str, number: int, head: str, event: str, body: str, api: str | None = None
+) -> None:
+    api = api or os.environ.get("GITHUB_API_URL", API)
     request = urllib.request.Request(
-        f"{os.environ.get('GITHUB_API_URL', API).rstrip('/')}/repos/{repo}/pulls/{number}/reviews",
+        f"{api.rstrip('/')}/repos/{repo}/pulls/{number}/reviews",
         data=json.dumps({"commit_id": head, "event": event, "body": body}).encode(),
         method="POST",
         headers={

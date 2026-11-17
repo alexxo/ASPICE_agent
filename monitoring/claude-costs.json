@@ -13,7 +13,7 @@
     "from": "now/d",
     "to": "now"
   },
-  "description": "What Claude Code spends now and today, per tab. Dollars are API list prices: on a subscription they compare, they are not billed.",
+  "description": "What Claude Code spends now, in the 5-hour window and today, per tab. Dollars are API list prices: on a subscription they compare, they are not billed.",
   "templating": {
     "list": [
       {
@@ -61,16 +61,6 @@
           "value": "$__all"
         },
         "sort": 1
-      },
-      {
-        "name": "daily_limit",
-        "label": "Daily limit ($)",
-        "type": "textbox",
-        "query": "50",
-        "current": {
-          "text": "50",
-          "value": "50"
-        }
       }
     ]
   },
@@ -78,7 +68,7 @@
     {
       "id": 1,
       "type": "row",
-      "title": "Now",
+      "title": "Now · last 15 min",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -90,9 +80,9 @@
     },
     {
       "id": 2,
-      "type": "stat",
-      "title": "Spend rate, last 15 min ($/min)",
-      "description": "Dollars per minute over the last 15 minutes, every tab in the filter.",
+      "type": "bargauge",
+      "title": "Cost by tab",
+      "description": "Each tab's list-price cost over the span; a tab has one colour in every chart.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -100,8 +90,8 @@
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 6,
-        "h": 5
+        "w": 8,
+        "h": 6
       },
       "targets": [
         {
@@ -109,8 +99,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 15m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) * 0))) / 15",
-          "legendFormat": "",
+          "expr": "sum by (qf_scope, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 15m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) * 0)))",
+          "legendFormat": "{{qf_scope}} · {{qf_session}}",
           "refId": "A",
           "instant": true,
           "range": false,
@@ -120,169 +110,181 @@
       "fieldConfig": {
         "defaults": {
           "unit": "currencyUSD",
-          "decimals": 2
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value"
-      }
-    },
-    {
-      "id": 3,
-      "type": "stat",
-      "title": "Sessions spending now",
-      "description": "Sessions whose cost grew in the last 5 minutes.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 6,
-        "y": 1,
-        "w": 6,
-        "h": 5
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "count(sum by (session_id) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[5m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 5m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[5m]) * 0))) > 0) or vector(0)",
-          "legendFormat": "",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "decimals": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value"
-      }
-    },
-    {
-      "id": 4,
-      "type": "table",
-      "title": "By tab",
-      "description": "Each tab's cost in the last 15 minutes and in the time range.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 1,
-        "w": 12,
-        "h": 5
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (qf_scope, qf_product, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 15m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) * 0)))",
-          "legendFormat": "",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "table"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (qf_scope, qf_product, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0)))",
-          "legendFormat": "",
-          "refId": "B",
-          "instant": true,
-          "range": false,
-          "format": "table"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "decimals": 2
-        },
-        "overrides": []
-      },
-      "options": {},
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true
-            },
-            "indexByName": {
-              "qf_scope": 0,
-              "qf_product": 1,
-              "qf_session": 2,
-              "Value #A": 3,
-              "Value #B": 4
-            },
-            "renameByName": {
-              "qf_scope": "Scope",
-              "qf_product": "Product",
-              "qf_session": "Tab",
-              "Value #A": "Last 15 min",
-              "Value #B": "Today"
-            }
+          "decimals": 2,
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
           }
         },
-        {
-          "id": "sortBy",
-          "options": {
-            "sort": [
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "framework · developer"
+            },
+            "properties": [
               {
-                "field": "Today",
-                "desc": true
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · developer"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · watcher"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
               }
             ]
           }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         }
-      ]
+      },
+      "timeFrom": "15m"
+    },
+    {
+      "id": 3,
+      "type": "bargauge",
+      "title": "Cost by model",
+      "description": "Each model's list-price cost over the span.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (model) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 15m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) * 0)))",
+          "legendFormat": "{{model}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "timeFrom": "15m"
+    },
+    {
+      "id": 4,
+      "type": "bargauge",
+      "title": "Tokens by type",
+      "description": "cacheRead is cheap context reuse; input and output cost most per token.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (type) ((max_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) - (last_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 15m) or max_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) * 0)))",
+          "legendFormat": "{{type}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "timeFrom": "15m"
     },
     {
       "id": 5,
       "type": "row",
-      "title": "Today",
+      "title": "5-hour window",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 6,
+        "y": 7,
         "w": 24,
         "h": 1
       },
@@ -291,17 +293,17 @@
     {
       "id": 6,
       "type": "stat",
-      "title": "Cost today",
-      "description": "Every session in the filter, over the time range (today by default).",
+      "title": "5-hour window used",
+      "description": "What Claude Code reports of your plan's allowance, sent by the status line (COST_MONITORING.md, Your plan's allowance). Orange from 80 %, red from 100 %.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
-        "y": 7,
+        "y": 8,
         "w": 6,
-        "h": 5
+        "h": 4
       },
       "targets": [
         {
@@ -309,58 +311,21 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0)))",
-          "legendFormat": "",
+          "expr": "((max(last_over_time(qf_plan_used_percent{window=\"five_hour\"}[7d])) and on() (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d])) > time())) or on() (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d])) <= time()) * 0)",
+          "legendFormat": "used",
           "refId": "A",
           "instant": true,
           "range": false,
           "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "decimals": 2
         },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value"
-      }
-    },
-    {
-      "id": 7,
-      "type": "stat",
-      "title": "Of the daily limit",
-      "description": "Cost today against the daily limit at the top. Orange from 80 %, red from 100 %. It only warns: nothing is stopped.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 6,
-        "y": 7,
-        "w": 6,
-        "h": 5
-      },
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0))) / $daily_limit * 100",
-          "legendFormat": "",
-          "refId": "A",
+          "expr": "max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d])) * 1000",
+          "legendFormat": "resets",
+          "refId": "B",
           "instant": true,
           "range": false,
           "format": "time_series"
@@ -388,7 +353,27 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeFromNow"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "reduceOptions": {
@@ -398,25 +383,436 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "background",
+        "colorMode": "value",
         "graphMode": "none",
-        "textMode": "value"
-      }
+        "textMode": "value_and_name"
+      },
+      "timeFrom": "5h"
     },
     {
-      "id": 8,
-      "type": "bargauge",
-      "title": "Cost by model",
-      "description": "",
+      "id": 7,
+      "type": "stat",
+      "title": "Week used",
+      "description": "What Claude Code reports of your plan's allowance, sent by the status line (COST_MONITORING.md, Your plan's allowance). Orange from 80 %, red from 100 %.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 12,
-        "y": 7,
-        "w": 12,
-        "h": 5
+        "x": 6,
+        "y": 8,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((max(last_over_time(qf_plan_used_percent{window=\"seven_day\"}[7d])) and on() (max(last_over_time(qf_plan_resets_at{window=\"seven_day\"}[7d])) > time())) or on() (max(last_over_time(qf_plan_resets_at{window=\"seven_day\"}[7d])) <= time()) * 0)",
+          "legendFormat": "used",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(last_over_time(qf_plan_resets_at{window=\"seven_day\"}[7d])) * 1000",
+          "legendFormat": "resets",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeFromNow"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "timeFrom": "5h"
+    },
+    {
+      "id": 8,
+      "type": "bargauge",
+      "title": "Cost by tab",
+      "description": "Each tab's share of the 5-hour window over the span; a tab has one colour in every chart.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum_over_time((sum by (qf_scope, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m] offset 1m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1m]) * 0))) and on() (time() >= (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d] @ end())) - 18000)))[5h:1m]) / on() group_left() (sum_over_time((sum((max_over_time(claude_code_cost_usage_USD_total[1m]) - (last_over_time(claude_code_cost_usage_USD_total[15m] offset 1m) or max_over_time(claude_code_cost_usage_USD_total[1m]) * 0))) and on() (time() >= (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d] @ end())) - 18000)))[5h:1m]) / (((max(last_over_time(qf_plan_used_percent{window=\"five_hour\"}[7d])) and on() (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d])) > time())) or on() (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d])) <= time()) * 0) > 0))",
+          "legendFormat": "{{qf_scope}} · {{qf_session}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "framework · developer"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · developer"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · watcher"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "timeFrom": "5h"
+    },
+    {
+      "id": 9,
+      "type": "bargauge",
+      "title": "Cost by model",
+      "description": "Each model's share of the 5-hour window over the span.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 12,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum_over_time((sum by (model) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m] offset 1m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1m]) * 0))) and on() (time() >= (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d] @ end())) - 18000)))[5h:1m]) / on() group_left() (sum_over_time((sum((max_over_time(claude_code_cost_usage_USD_total[1m]) - (last_over_time(claude_code_cost_usage_USD_total[15m] offset 1m) or max_over_time(claude_code_cost_usage_USD_total[1m]) * 0))) and on() (time() >= (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d] @ end())) - 18000)))[5h:1m]) / (((max(last_over_time(qf_plan_used_percent{window=\"five_hour\"}[7d])) and on() (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d])) > time())) or on() (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d])) <= time()) * 0) > 0))",
+          "legendFormat": "{{model}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "timeFrom": "5h"
+    },
+    {
+      "id": 10,
+      "type": "bargauge",
+      "title": "Tokens by type",
+      "description": "cacheRead is cheap context reuse; input and output cost most per token.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 12,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum_over_time((sum by (type) ((max_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1m]) - (last_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m] offset 1m) or max_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1m]) * 0))) and on() (time() >= (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d] @ end())) - 18000)))[5h:1m])",
+          "legendFormat": "{{type}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "timeFrom": "5h"
+    },
+    {
+      "id": 11,
+      "type": "row",
+      "title": "Today",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 12,
+      "type": "bargauge",
+      "title": "Cost by tab",
+      "description": "Each tab's list-price cost over the span; a tab has one colour in every chart.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (qf_scope, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0)))",
+          "legendFormat": "{{qf_scope}} · {{qf_session}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "framework · developer"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · developer"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · watcher"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "timeFrom": "now/d"
+    },
+    {
+      "id": 13,
+      "type": "bargauge",
+      "title": "Cost by model",
+      "description": "Each model's list-price cost over the span.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 19,
+        "w": 8,
+        "h": 6
       },
       "targets": [
         {
@@ -435,7 +831,8 @@
       "fieldConfig": {
         "defaults": {
           "unit": "currencyUSD",
-          "decimals": 2
+          "decimals": 2,
+          "min": 0
         },
         "overrides": []
       },
@@ -449,22 +846,23 @@
           "fields": "",
           "values": false
         }
-      }
+      },
+      "timeFrom": "now/d"
     },
     {
-      "id": 9,
-      "type": "timeseries",
-      "title": "Cost per hour",
-      "description": "Each bar is the hour that ends at its time, stacked by tab.",
+      "id": 14,
+      "type": "bargauge",
+      "title": "Tokens by type",
+      "description": "cacheRead is cheap context reuse; input and output cost most per token.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 0,
-        "y": 12,
-        "w": 16,
-        "h": 9
+        "x": 16,
+        "y": 19,
+        "w": 8,
+        "h": 6
       },
       "targets": [
         {
@@ -472,7 +870,57 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (qf_scope, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1h]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 1h) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1h]) * 0)))",
+          "expr": "sum by (type) ((max_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0)))",
+          "legendFormat": "{{type}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "timeFrom": "now/d"
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Cost over time by tab",
+      "description": "Each bar is the hour that starts at its time, stacked by tab; the bar of the hour running now grows as it is spent.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (qf_scope, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1h] offset -1h) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d]) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1h] offset -1h) * 0)))",
           "legendFormat": "{{qf_scope}} · {{qf_session}}",
           "refId": "A",
           "instant": false,
@@ -558,152 +1006,8 @@
           "mode": "multi",
           "sort": "desc"
         }
-      }
-    },
-    {
-      "id": 10,
-      "type": "bargauge",
-      "title": "Tokens today by type",
-      "description": "cacheRead is cheap context reuse; input and output cost most per token.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 16,
-        "y": 12,
-        "w": 8,
-        "h": 9
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (type) ((max_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_token_usage_tokens_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0)))",
-          "legendFormat": "{{type}}",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 1
-        },
-        "overrides": []
-      },
-      "options": {
-        "orientation": "horizontal",
-        "displayMode": "basic",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "id": 11,
-      "type": "bargauge",
-      "title": "Cost today by tab",
-      "description": "Each tab's cost over the time range, coloured as in Cost per hour.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 21,
-        "w": 24,
-        "h": 6
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (qf_scope, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0)))",
-          "legendFormat": "{{qf_scope}} · {{qf_session}}",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "decimals": 2,
-          "color": {
-            "mode": "palette-classic"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "framework · developer"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "green"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "product · developer"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "yellow"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "product · watcher"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "blue"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "orientation": "horizontal",
-        "displayMode": "basic",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
+      "timeFrom": "now/d"
     }
   ]
 }

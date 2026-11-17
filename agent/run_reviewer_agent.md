@@ -72,7 +72,9 @@ method) and each of the `framework_skills` (the rules).
 ## 3. Review
 
 Review the pull request's current head by the method, from waiting for green
-to posting. Read it as it is on the host, never the author's working folder:
+to posting. When the watcher's prompt names your earlier review and the files
+changed since, this is a later round: review it as the method's *Changes*
+says. Read it as it is on the host, never the author's working folder:
 work in a copy of the head of your own under `.qf/reviews/`, which git
 ignores. Started by the watcher, you are in that copy already: its prompt
 names it, so make none, and write your record under its `.qf/reviews/`.

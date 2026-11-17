@@ -25,23 +25,23 @@ LLM command lines report other numbers, or none: see *Limits*.
 
 ## What you get
 
-Dashboard **Claude costs**, today so far by default:
+Dashboard **Claude costs**, in three sections with the same bars, each over
+its own span, whatever the time picker says:
 
-| Area | Panel | Shows |
+| Section | Span | Also |
 |---|---|---|
-| Now | Spend rate, last 15 min | Dollars per minute over the last 15 minutes |
-| Now | Sessions spending now | Sessions whose cost grew in the last 5 minutes |
-| Now | By tab | Each tab's cost in the last 15 minutes and today |
-| Today | Cost today | Every session in the filter |
-| Today | Of the daily limit | Cost today against the daily limit: orange from 80 %, red from 100 % |
-| Today | Cost by model | Dollars per model |
-| Today | Cost per hour | One bar per hour, stacked by tab |
-| Today | Tokens today by type | input, output, cacheRead, cacheCreation |
-| Today | Cost today by tab | One bar per tab, each tab in its colour of *Cost per hour* |
+| Now · last 15 min | the last 15 minutes | |
+| 5-hour window | since your plan's current 5-hour window started | 5-hour window used · Week used, and when each resets (*Your plan's allowance*); costs in % of the window |
+| Today | since 00:00 | Cost over time by tab: stacked bars per hour |
 
-At the top: **Scope** and **Product** filter every panel; **Daily limit ($)**,
-50 by default, is a text box — type a new value for this view. The limit only
-colours the panel; nothing is stopped.
+| Bars | Shows |
+|---|---|
+| Cost by tab | Dollars of each tab |
+| Cost by model | Dollars of each model |
+| Tokens by type | input, output, cacheRead, cacheCreation |
+
+A tab has the same colour in every chart. At the top, **Scope** and
+**Product** filter every chart but the allowance, which is your account's.
 
 A **tab** is what one setting of `qf.session` labels: `developer` for your own
 tab and the sessions the framework starts for it (clarify, tester, coder),
@@ -197,6 +197,42 @@ A watcher reads its `.env` when it starts: restart it once after adding the
 lines. In Prometheus the labels' dots become underscores: `qf_scope`,
 `qf_product`, `qf_session`.
 
+## Your plan's allowance
+
+On a Pro, Max or Ultra plan the dollars are list prices, not what you pay:
+what limits you is the plan's allowance, a 5-hour window and a weekly one.
+Claude Code tells a status line how much of each is used; it does not send it
+with the numbers above. The status line `plan_usage_statusline.py` of this
+folder shows it in your terminal, e.g. `5h 42 % (21:10) · week 18 % (Sat 09:00)`,
+and sends it to the stack as `qf_plan_used_percent` and `qf_plan_resets_at`,
+for the *5-hour window* section.
+
+Add it to your own Claude Code settings, `~/.claude/settings.json`
+(`%USERPROFILE%\.claude\settings.json` on Windows):
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "python3 <product>/.framework/monitoring/plan_usage_statusline.py"
+  }
+}
+```
+
+(`python` where `python3` is missing.) A status line you already have is
+replaced: keep one of the two. The allowance is your account's, so one tab
+with this status line counts every session, the watcher's too. It is sent while
+a tab works, at most every 10 seconds; between two sends the panels keep the
+last value, and show 0 % once the window has reset.
+
+In the 5-hour window section, *Cost by tab* and *Cost by model* show each
+one's share of the window, not dollars: its list-price dollars since the window
+started, divided by what 1 % of the window costs (the dollars of every session
+since it started, divided by the % used). The bars of every tab add up to
+*5-hour window used*. It is an estimate, since the allowance is not set in
+dollars, and moves a lot while the window is nearly empty. Without the status
+line the section stays empty: it needs to know when the window started.
+
 ## Every day
 
 The container starts with the container runtime. On macOS with Colima, start
@@ -233,7 +269,8 @@ max_over_time(cost[W]) - (last_over_time(cost[2d] offset W) or max_over_time(cos
   sends OpenTelemetry numbers reaches the same stack under its own names and
   needs panels of its own; one that sends none is not counted.
 - **Dollars are API list prices.** On a subscription they compare tabs, days
-  and models; they are not what you are billed.
+  and models; they are not what you are billed. *Your plan's allowance* shows
+  what you are limited by.
 - **Per tab, not per pull request or stage.** The sessions the framework
   starts carry the label of the `.env` that starts them. Labels per pull
   request, stage and kind of session come with a later framework release.
@@ -269,6 +306,6 @@ bump needs nothing: the dashboard folder is mounted from `.framework`.
 | No dashboard *Claude costs* | `docker logs lgtm 2>&1 \| grep -i provisioning`; check the two `.framework/monitoring` lines of step 4 and step 3 |
 | Dashboard empty | A session sends numbers every 10 seconds while it works: send one prompt, wait 20 seconds. Still empty: that session started without the settings, or before the stack — start it again |
 | Collector receives, Prometheus stays empty | The settings miss `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative`: Prometheus refuses the default |
-| A tab missing from *By tab* | Its settings were not read: an `.env` line misspelt, or the watcher not restarted after adding them |
+| A tab missing from *Cost by tab* | Its settings were not read: an `.env` line misspelt, or the watcher not restarted after adding them |
 | `port is already allocated` in step 4 | Another program uses 3000, 4317 or 4318 (`lsof -i :3000`; Windows: `netstat -ano \| findstr :3000`) |
 | Numbers gone after an update | The data folder was not mounted, or (Colima) lies outside your home folder: step 6 |

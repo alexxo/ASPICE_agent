@@ -37,7 +37,16 @@ its rights reach them (FB-84), and the reviewer copies them into its record
 unchanged, adding to each expected case the test that checks it. A test file,
 or a design, described before with the same content and the same instructions
 is not described again: its description is kept by its content in
-.qf/reviews/described/, so a round describes only what changed (FB-88).
+.qf/reviews/described/, so a round describes only what changed (FB-88); so
+are the expected cases of a requirement, by its criteria and the glossary
+(FB-89).
+
+A head after one the reviewer agent reviewed is reviewed from that review:
+the prompt names that head and the files changed since, and the reviewer
+reads those, what they touch and the fixes of the open findings (FB-90). An
+approval carries over to the new head, posted by the watcher with one line
+saying so, when since the approved head only the framework pin or the
+feedback log changed and the pull request changes neither (FB-89).
 
 Every event is one line with the time, and so is every change of a pull
 request's state, naming who acts next: waits for CI, gates red (the author
@@ -119,6 +128,7 @@ WIDTH = 72
 TIMEOUT = 20 * 60  # seconds one review session may take: a limit for a stuck one
 PROGRESS = 5 * 60  # seconds between the lines saying a review is still running
 LIMIT_RETRY = 10 * 60  # seconds between tries of a head stopped by the agent's usage limit
+SHOWN = 40  # files changed since the last review named in the prompt; the rest counted
 LIMITED = re.compile(r"hit your (?:\w+ )?limit|usage limit", re.IGNORECASE)
 DESCRIBERS = {  # what is described -> the session that describes it
     "tests": "describe_tests",
@@ -204,6 +214,7 @@ def _prompt(
     number: int,
     described: dict[str, str] | None = None,
     copy: Path | None = None,
+    since: tuple[str, str, list[str]] | None = None,
 ) -> str:
     framework = config.framework_dir.resolve().as_posix()
     described = described or {}
@@ -236,9 +247,20 @@ def _prompt(
         if "expected" in described
         else ""
     )
+    later = ""
+    if since is not None:
+        reviewed, state, changed = since
+        shown = ", ".join(changed[:SHOWN]) + (
+            f" and {len(changed) - SHOWN} more" if len(changed) > SHOWN else ""
+        )
+        later = (
+            f" You reviewed this pull request before, at {reviewed} ({state.lower()}); since "
+            f"then {len(changed)} file(s) changed: {shown or 'none'}. This is a later round: "
+            "review it as the method's Changes says."
+        )
     return (
         f"Follow {framework}/agent/run_reviewer_agent.md for pull request #{number} of {repo}."
-        f"{here}{tests}{stories}{expected} You run unattended: if you must stop or ask, do "
+        f"{here}{tests}{stories}{expected}{later} You run unattended: if you must stop or ask, do "
         "not wait for an answer — end "
         "with one line starting 'STOPPED:' saying why, and one starting 'DO:' saying what the "
         "person does."
@@ -284,6 +306,7 @@ class Watcher:
     copy: object = None  # (root, number, head, folder) -> bool; None: a git worktree of the head
     limited: dict = field(default_factory=dict)  # (number, head) -> when the usage limit stopped it
     opener: object = open_page  # address -> the address, saying whether it opened
+    post: object = None  # (number, head, body) -> None, as the reviewer agent; None: the host
 
     def say(self, text: str) -> None:
         self.out(f"{datetime.now():%H:%M}  {text}")
@@ -355,6 +378,9 @@ class Watcher:
         return f"{page}#issuecomment-{notes[-1].id}" if notes else f"{page}/files"
 
     def review(self, number: int, head: str) -> None:
+        last = self._last_review(number, head)
+        if last is not None and self._carry_over(number, head, last):
+            return
         self.say(f"#{number} head {head[:7]}: review started")
         log = LOGS / f"{number}-{head[:7]}.log"
         (self.config.root / LOGS).mkdir(parents=True, exist_ok=True)
@@ -380,7 +406,8 @@ class Watcher:
         described = _hand_over(described, self.config.root, copy)
         before = folder_state(copy)
         try:
-            output, timed_out = self._run(number, head, env, described, copy)
+            since = (last[0].commit[:7], last[0].state, last[1]) if last else None
+            output, timed_out = self._run(number, head, env, described, copy, since)
         except OSError as err:
             output, timed_out = f"The agent could not be started: {err}", False
         (self.config.root / log).write_text(output)
@@ -414,6 +441,55 @@ class Watcher:
             self.limited.pop((number, head), None)
             return
         self._halt(_stop(number, head, output, timed_out, log.as_posix(), self.timeout))
+
+    def _last_review(self, number: int, head: str) -> tuple | None:
+        """The reviewer agent's latest decision on an earlier head of the pull
+        request, and the files changed since that head; None when there is none,
+        or the two heads cannot be compared."""
+        pull = self.host.pull_request(self.repo, number)
+        agents = set(self.config.review_agents)
+        earlier = [
+            r
+            for r in (pull.reviews if pull else ())
+            if r.author in agents and r.state in ("APPROVED", "CHANGES_REQUESTED")
+        ]
+        if not earlier or earlier[-1].commit == head:
+            return None
+        changed = _changed_since(self.config.root, number, earlier[-1].commit, head)
+        return None if changed is None else (earlier[-1], changed, pull)
+
+    def _carry_over(self, number: int, head: str, last: tuple) -> bool:
+        """The approval of the last head posted again on this one, when since then
+        only the framework pin or the feedback log changed and the pull request
+        changes neither: nothing the review reads changed (FB-89)."""
+        review, changed, pull = last
+        aside = {
+            self.config.relative(self.config.framework_dir).rstrip("/"),
+            self.config.relative(self.config.framework_feedback_file),
+        }
+        if review.state != "APPROVED" or set(changed) - aside or set(changed) & set(pull.files):
+            return False
+        note = (
+            f"Carried over from {review.commit[:7]}: since then only "
+            f"{', '.join(sorted(changed)) or 'nothing'} changed, which this pull request does "
+            "not change, so nothing this review read changed."
+        )
+        body = f"{note}\n\n{review.body}"
+        try:
+            (self.post or self._post_as_reviewer)(number, head, body)
+        except (HostError, OSError) as err:
+            self.say(f"#{number} head {head[:7]}: the approval could not be carried over ({err})")
+            return False
+        self.say(f"#{number} head {head[:7]}: approval of {review.commit[:7]} carried over")
+        return True
+
+    def _post_as_reviewer(self, number: int, head: str, body: str) -> None:
+        from tools.post_review_tool import _post
+        from tools.read_host_tool import API
+
+        token = os.environ.get(HOST_TOKEN, "")
+        api = os.environ.get("GITHUB_API_URL", API)
+        _post(token, self.repo, number, head, "APPROVE", body, api)
 
     def _halt(self, stop: Stop) -> None:
         """A head that stopped: it waits for R, or, stopped by the usage limit, is
@@ -508,8 +584,10 @@ class Watcher:
         import yaml
 
         log = LOGS / f"{number}-{head[:7]}.{what}.log"
-        units, by = _units(what, files)
-        keys = {u: _key(_describe_prompt(self.config, [], what), tree, n) for u, n in units.items()}
+        units, by = _units(what, files, criteria)
+        told = {r["requirement"]: r for r in criteria or ()}
+        rules = _describe_prompt(self.config, [], what)
+        keys = {u: _key(rules, tree, n, told.get(u)) for u, n in units.items()}
         kept_dir = self.config.root / KEPT
         known = {
             u: yaml.safe_load((kept_dir / f"{k}.yaml").read_text())
@@ -517,8 +595,12 @@ class Watcher:
             if (kept_dir / f"{k}.yaml").is_file()
         }
         if units:
-            files = [f for u, names in units.items() if u not in known for f in names]
-        if files or criteria is not None:
+            files = list(
+                dict.fromkeys(f for u, names in units.items() if u not in known for f in names)
+            )
+        if criteria is not None:
+            criteria = [r for r in criteria if r["requirement"] not in known]
+        if files or criteria:
             entries, stop = self._session_of(number, head, env, tree, config, what, files, criteria)
             if stop is not None:
                 return "", stop
@@ -601,10 +683,11 @@ class Watcher:
         env: dict,
         described: dict[str, str] | None = None,
         copy: Path | None = None,
+        since: tuple[str, str, list[str]] | None = None,
     ) -> tuple[str, bool]:
         """The review session's output, and whether it ran out of time; the session
         runs in the head's copy."""
-        argv = self.command(_prompt(self.config, self.repo, number, described, copy))
+        argv = self.command(_prompt(self.config, self.repo, number, described, copy, since))
         return self._session(argv, copy or self.config.root, env, number, head)
 
     def _session(self, argv, cwd: Path, env: dict, number: int, head: str) -> tuple[str, bool]:
@@ -908,9 +991,11 @@ def _limit_stop(number: int, head: str, line: str, log: str) -> Stop:
     )
 
 
-def _units(what: str, files: list[str]) -> tuple[dict[str, list[str]], str]:
-    """The files grouped as the entries name them — a test file, or a design's files —
-    and the entry's field that names one; the expected cases are never kept."""
+def _units(
+    what: str, files: list[str], criteria: list[dict] | None = None
+) -> tuple[dict[str, list[str]], str]:
+    """The files grouped as the entries name them — a test file, a design's files, or
+    a requirement with the glossary — and the entry's field that names one."""
     if what == "tests":
         return {f: [f] for f in files}, "file"
     if what == "stories":
@@ -918,15 +1003,35 @@ def _units(what: str, files: list[str]) -> tuple[dict[str, list[str]], str]:
         for f in files:
             groups.setdefault(Path(f).name.split(".")[0], []).append(f)
         return groups, "design"
-    return {}, ""
+    return {r["requirement"]: list(files) for r in criteria or ()}, "requirement"
 
 
-def _key(instructions: str, tree: Path, names: list[str]) -> str:
-    """A description's key: the instructions, and each file's path and content."""
+def _key(instructions: str, tree: Path, names: list[str], criteria: dict | None = None) -> str:
+    """A description's key: the instructions, each file's path and content, and for
+    the expected cases the requirement's statement and criteria."""
+    import json
+
     digest = hashlib.sha256(instructions.encode())
     for name in names:
         digest.update(b"\0" + name.encode() + b"\0" + (tree / name).read_bytes())
+    if criteria is not None:
+        digest.update(b"\0" + json.dumps(criteria, sort_keys=True).encode())
     return digest.hexdigest()
+
+
+def _changed_since(root: Path, number: int, before: str, head: str) -> list[str] | None:
+    """The files that differ between an earlier head and this one; None when the
+    two cannot be compared (an earlier head gone after a force push)."""
+    subprocess.run(
+        ["git", "-C", str(root), "fetch", "-q", "origin", f"pull/{number}/head"],
+        capture_output=True,
+    )
+    diff = subprocess.run(
+        ["git", "-C", str(root), "diff", "--name-only", before, head],
+        capture_output=True,
+        text=True,
+    )
+    return diff.stdout.split() if diff.returncode == 0 else None
 
 
 def desktop_notification(title: str, text: str) -> None:

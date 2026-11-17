@@ -1,0 +1,114 @@
+"""Status line that shows the subscription's usage and sends it to the stack.
+
+Claude Code runs a status line command with the session's data on stdin; on a
+Pro, Max or Ultra plan that data holds how much of the 5-hour and the weekly
+allowance is used, and when each resets (`rate_limits`). This prints them,
+e.g. `5h 42 % (21:10) · week 18 % (Mon 09:00)`, and sends them to the stack
+as two gauges, `qf_plan_used_percent` and `qf_plan_resets_at`, one series per
+window (COST_MONITORING.md, *Your plan's allowance*). The allowance is the
+account's, so one tab that runs this counts every session.
+
+Nothing here may slow or break the status line: a stack that is down, or
+data without `rate_limits`, only leaves the gauges unsent.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+import time
+import urllib.request
+from datetime import datetime
+from pathlib import Path
+
+ENDPOINT = os.environ.get("QF_PLAN_USAGE_ENDPOINT", "http://localhost:4318/v1/metrics")
+WINDOWS = {"five_hour": "5h", "seven_day": "week"}
+EVERY = 10  # seconds between two sends; the status line runs far more often
+SENT = Path(os.environ.get("TMPDIR", "/tmp")) / "qf_plan_usage_sent"
+
+
+def windows(data: dict) -> dict:
+    """{window: (used %, resets at)} for the windows Claude Code reports."""
+    limits = data.get("rate_limits") or {}
+    found = {}
+    for name in WINDOWS:
+        w = limits.get(name) or {}
+        if w.get("used_percentage") is not None and w.get("resets_at"):
+            found[name] = (float(w["used_percentage"]), int(w["resets_at"]))
+    return found
+
+
+def line(found: dict) -> str:
+    parts = []
+    for name, short in WINDOWS.items():
+        if name in found:
+            used, resets = found[name]
+            at = datetime.fromtimestamp(resets).strftime(
+                "%H:%M" if name == "five_hour" else "%a %H:%M"
+            )
+            parts.append(f"{short} {used:.0f} % ({at})")
+    return " · ".join(parts)
+
+
+def gauge(name: str, found: dict, index: int, now: str) -> dict:
+    points = [
+        {
+            "asDouble": values[index],
+            "timeUnixNano": now,
+            "attributes": [{"key": "window", "value": {"stringValue": window}}],
+        }
+        for window, values in found.items()
+    ]
+    return {"name": name, "gauge": {"dataPoints": points}}
+
+
+def send(found: dict) -> None:
+    try:
+        if time.time() - SENT.stat().st_mtime < EVERY:
+            return
+    except OSError:
+        pass
+    now = str(time.time_ns())
+    body = {
+        "resourceMetrics": [
+            {
+                "resource": {
+                    "attributes": [
+                        {"key": "service.name", "value": {"stringValue": "qf-plan-usage"}}
+                    ]
+                },
+                "scopeMetrics": [
+                    {
+                        "metrics": [
+                            gauge("qf_plan_used_percent", found, 0, now),
+                            gauge("qf_plan_resets_at", found, 1, now),
+                        ]
+                    }
+                ],
+            }
+        ]
+    }
+    request = urllib.request.Request(
+        ENDPOINT, json.dumps(body).encode(), {"Content-Type": "application/json"}
+    )
+    try:
+        urllib.request.urlopen(request, timeout=1).close()
+        SENT.touch()
+    except OSError:
+        pass  # the stack is down: the status line still shows
+
+
+def main() -> None:
+    try:
+        data = json.load(sys.stdin)
+    except ValueError:
+        return
+    found = windows(data)
+    if found:
+        send(found)
+        print(line(found))
+
+
+if __name__ == "__main__":
+    main()

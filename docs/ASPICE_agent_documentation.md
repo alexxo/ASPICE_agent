@@ -3453,7 +3453,15 @@ and a person approves the results and answers the questions of what is wanted
    when the watcher stops: for every head of the
    product's open pull requests whose crossing sign waits for the reviewer
    agent and that it has not reviewed, it starts one fresh session, one at a
-   time, each head once. The reviewer may read, use the host and the
+   time, each head once. A head after one the reviewer agent reviewed is a
+   later round: the prompt names that head and the files changed since, and
+   the reviewer reads those, what they touch and the fixes of the open
+   findings, the rest keeping its last judgement — the whole pull request
+   again only when the change is wide; the first round says every finding
+   at once. When since an approved head only the framework pin or the
+   feedback log changed, and the pull request changes neither, nothing the
+   review read changed: the watcher posts the approval again on the new
+   head, as the reviewer agent, with one line saying so. The reviewer may read, use the host and the
    framework's own commands, and write its record's folder; no edit of the
    work, no commit, no push. Every change of a pull request's state is one line naming
    who acts next — waits for CI, gates red (the author fixes them), waits for
@@ -3729,9 +3737,10 @@ and a person approves the results and answers the questions of what is wanted
     without the reviewer's token, the instructions in the prompt, so no
     session has a path to the requirements. A test file or a design
     described before, with the same content and the same instructions, keeps
-    its description (*.qf/reviews/described/*, by its content): a round
-    describes only what changed, and an unchanged test reads the same in
-    every round. The author agent opens the
+    its description (*.qf/reviews/described/*, by its content), and a
+    requirement keeps its expected cases while its statement, its criteria
+    and the glossary do not change: a round describes only what changed, and
+    an unchanged test or criterion reads the same in every round. The author agent opens the
     comment on its computer (rule 13).
     *How the person answers.* One tick per question — the host saves each at
     once, on any device — then *Approve*, or *Request changes* with the
@@ -5546,7 +5555,41 @@ label together.
   stays wrong while the file does not change — S 4, O 2, D 3 — 24, the
   reviewer still reads the test itself; the person removes the kept file to
   have it described again. *Not taken:* keeping the expected cases — they
-  depend on the criteria and the glossary, not on the pull request's files.
+  depend on the criteria and the glossary, not on the pull request's files
+  (kept since, by those: *An approval holds while nothing it read changed*).
+- **An approval holds while nothing it read changed** (2026-11-17, FB-89 of
+  wp_publisher). An approved head lost its approval after a merge of main
+  that moved only the framework pin and the feedback log: the expected
+  cases were listed anew, and an LLM lists differently each time, so a round
+  found new cases on unchanged files and the review had no end (S 6, O 8,
+  D 4 — 192, high). *Chosen:* the expected cases of a requirement are kept
+  by the instructions, its statement and criteria, and the glossary, as the
+  descriptions are; and when since the approved head only the framework pin
+  or the feedback log changed, and the pull request changes neither, the
+  watcher posts the approval again on the new head with one line naming
+  what changed. CI runs every gate on the new head first, as for any head.
+  Risks kept: an approval carried over a framework bump that changed the
+  review's rules — S 3, O 3, D 5 — 45; the next push is reviewed under the
+  new rules, and the gates of the new version run on the carried head.
+  *Not taken:* carrying an approval over a main merge that brings other
+  product files — they may change what the pull request's code calls; keying
+  stories without the instructions — a changed instruction would never
+  reach a kept story.
+- **A later round reviews what changed** (2026-11-17, FB-90 of
+  wp_publisher). Every round reviewed the whole pull request from nothing —
+  some 175k tokens per round on #32, 17 rounds, one to four findings each,
+  and the usage limit reached on two days, which stops every review (S 6,
+  O 9, D 3 — 162, high). *Chosen:* the watcher names in the prompt the
+  agent's last reviewed head and the files changed since; the reviewer reads
+  those, what they touch and the fixes of the open findings, the rest
+  keeping its last judgement, and reviews the whole again when the change is
+  wide; the method asks for every finding in the round that finds it. Risks
+  kept: a problem where an unchanged part meets a changed one is missed — S
+  6, O 2, D 4 — 48; what a changed file touches is read with it, CI runs
+  every gate on every head, and a missed problem found later is still a
+  finding. *Not taken:* a record that points to earlier records instead of
+  listing every finding — a record goes only with an approval, not every
+  round, and the person's checkpoint reads it whole.
 
 ### A.9 Configuration management stage — stage 10
 

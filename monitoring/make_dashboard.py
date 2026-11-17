@@ -15,20 +15,72 @@ from pathlib import Path
 
 COST = "claude_code_cost_usage_USD_total"
 TOKENS = "claude_code_token_usage_tokens_total"
-METRICS = (COST, TOKENS)  # every metric the dashboard reads
+METRICS = (COST, TOKENS)  # every metric of Claude Code the dashboard reads
+USED = "qf_plan_used_percent"  # sent by plan_usage_statusline.py
+RESETS = "qf_plan_resets_at"
+PLAN = (USED, RESETS)
 LABELS = ("qf_scope", "qf_product", "qf_session", "session_id", "model", "type")
 FILTER = '{qf_scope=~"$qf_scope", qf_product=~"$qf_product"}'
 SOURCE = {"type": "prometheus", "uid": "prometheus"}  # the stack's own data source
 OUT = Path(__file__).resolve().parent / "claude-costs.json"
 
 
-def spent(metric: str, window: str) -> str:
-    """What the sessions spent in the window."""
-    m = metric + FILTER
+def spent(metric: str, window: str, where: str = FILTER, before: str = "2d") -> str:
+    """What the sessions spent in the window.
+
+    `before` is how far back a session's value before the window is looked
+    for; a session sends every 10 seconds while it runs.
+    """
+    m = metric + where
     return (
         f"(max_over_time({m}[{window}]) - "
-        f"(last_over_time({m}[2d] offset {window}) or max_over_time({m}[{window}]) * 0))"
+        f"(last_over_time({m}[{before}] offset {window}) or max_over_time({m}[{window}]) * 0))"
     )
+
+
+def plan(metric: str, window: str) -> str:
+    """The last value the status line sent for the window of the plan."""
+    return f'max(last_over_time({metric}{{window="{window}"}}[7d]))'
+
+
+def used(window: str) -> str:
+    """How much of the window is used: 0 once it has reset, none if never sent."""
+    resets = plan(RESETS, window)
+    return f"(({plan(USED, window)} and on() ({resets} > time())) or on() ({resets} <= time()) * 0)"
+
+
+WINDOW_START = f'(max(last_over_time({RESETS}{{window="five_hour"}}[7d] @ end())) - 18000)'
+
+
+def in_window(metric: str = COST, where: str = "", by: str = "") -> str:
+    """What the sessions spent since the 5-hour window started.
+
+    Summed minute by minute from the window's start. Without `where`, every
+    session counts, not only those in the filter: the allowance is the account's.
+    """
+    minute = total(spent(metric, "1m", where, "15m"), by)
+    return f"sum_over_time(({minute} and on() (time() >= {WINDOW_START}))[5h:1m])"
+
+
+def total(expr: str, by: str = "") -> str:
+    return f"sum by ({by}) ({expr})" if by else f"sum({expr})"
+
+
+# What 1 % of the 5-hour window costs at list price: the dollars of every
+# session since it started, divided by the % of it used. An estimate, since the
+# allowance is not set in dollars; it moves a lot while the window is nearly empty.
+PER_PERCENT = f"({in_window()} / ({used('five_hour')} > 0))"
+
+
+def spent_from(metric: str, window: str) -> str:
+    """What the sessions spent in the window that starts at the point's time.
+
+    A bar then stands on its window's start, so the window still running has
+    one too, growing as it is spent.
+    """
+    m = metric + FILTER
+    ahead = f"max_over_time({m}[{window}] offset -{window})"
+    return f"({ahead} - (last_over_time({m}[2d]) or {ahead} * 0))"
 
 
 def target(expr, legend="", ref="A", instant=False, interval=None, table=False) -> dict:
@@ -63,6 +115,8 @@ def panel(pid, kind, title, place, targets, unit="currencyUSD", decimals=2, **ex
     p["fieldConfig"]["overrides"] = extra.pop("overrides", [])
     custom = extra.pop("custom", None)
     thresholds = extra.pop("thresholds", None)
+    if kind == "bargauge":  # bars from zero, not from the smallest value
+        p["fieldConfig"]["defaults"]["min"] = 0
     if color:
         p["fieldConfig"]["defaults"]["color"] = color
     if custom:
@@ -121,7 +175,6 @@ LIMIT = {
         {"color": "red", "value": 100},
     ],
 }
-TAB = "qf_scope, qf_product, qf_session"
 TAB_LEGEND = "{{qf_scope}} · {{qf_session}}"
 # A tab keeps one colour in every chart: those it had before, in Grafana's own
 # order (green, yellow, blue); another tab takes the next colour of that order.
@@ -140,156 +193,167 @@ TAB_OVERRIDES = [
 ]
 
 
-def dashboard() -> dict:
-    today = "$__range"
+class Span:
+    """One section: its time span, and what its charts sum over it."""
+
+    def __init__(self, title, since, cost, own=None, over_time=None, share=False):
+        self.title = title
+        self.since = since  # the panels' own time range, whatever the picker says
+        self.cost = cost  # (metric, by) -> what the sessions in the filter spent in the span
+        self.own = own  # (pid, y) -> the panels only this section has
+        self.over_time = over_time  # what each hourly bar of Cost over time by tab holds
+        self.share = share  # costs as % of the 5-hour window, not dollars
+
+
+def window_extras(pid: int, y: int) -> list:
+    return [
+        window_panel(pid, "5-hour window used", (0, y, 6, 4), "five_hour"),
+        window_panel(pid + 1, "Week used", (6, y, 6, 4), "seven_day"),
+    ]
+
+
+SPANS = (
+    Span("Now · last 15 min", "15m", lambda metric, by: total(spent(metric, "15m"), by)),
+    Span(
+        "5-hour window",
+        "5h",
+        lambda metric, by: in_window(metric, FILTER, by),
+        own=window_extras,
+        share=True,
+    ),
+    Span(
+        "Today",
+        "now/d",
+        lambda metric, by: total(spent(metric, "$__range"), by),
+        over_time=spent_from(COST, "1h"),
+    ),
+)
+
+
+def window_panel(pid: int, title: str, place: tuple, window: str) -> dict:
+    """How much of a window of the plan is used, and when it resets."""
+    return panel(
+        pid,
+        "stat",
+        title,
+        place,
+        [
+            target(used(window), "used", instant=True),
+            target(f"{plan(RESETS, window)} * 1000", "resets", ref="B", instant=True),
+        ],
+        unit="percent",
+        decimals=0,
+        thresholds=LIMIT,
+        description="What Claude Code reports of your plan's allowance, sent by the status "
+        "line (COST_MONITORING.md, Your plan's allowance). Orange from 80 %, red from 100 %.",
+        overrides=[
+            {
+                "matcher": {"id": "byFrameRefID", "options": "B"},
+                "properties": [
+                    {"id": "unit", "value": "dateTimeFromNow"},
+                    {"id": "color", "value": {"mode": "fixed", "fixedColor": "text"}},
+                ],
+            }
+        ],
+        options={**STAT, "textMode": "value_and_name"},
+    )
+
+
+def section(span: Span, pid: int, y: int) -> tuple[list, int]:
+    """The same bars over the span: the section's panels, and where the next starts.
+
+    The section's own panels, if any; then cost by tab, cost by model and
+    tokens by type; then, if the section has it, cost over time by tab.
+    """
+    first, top = pid, y
+    pid, y = pid + 1, y + 1
+    own = span.own(pid, y) if span.own else []
+    pid, y = pid + len(own), y + (4 if own else 0)
+    tabs = "qf_scope, qf_session"
+    cost = {"unit": "currencyUSD", "decimals": 2, "description": "list-price cost"}
+    if span.share:
+        cost = {"unit": "percent", "decimals": 0, "description": "share of the 5-hour window"}
+
+    def costs(by: str) -> str:
+        expr = span.cost(COST, by)
+        return f"{expr} / on() group_left() {PER_PERCENT}" if span.share else expr
+
     panels = [
-        row(1, "Now", 0),
+        *own,
         panel(
-            2,
-            "stat",
-            "Spend rate, last 15 min ($/min)",
-            (0, 1, 6, 5),
-            [target(f"sum({spent(COST, '15m')}) / 15", instant=True)],
-            description="Dollars per minute over the last 15 minutes, every tab in the filter.",
-            options=STAT,
-        ),
-        panel(
-            3,
-            "stat",
-            "Sessions spending now",
-            (6, 1, 6, 5),
-            [
-                target(
-                    f"count(sum by (session_id) ({spent(COST, '5m')}) > 0) or vector(0)",
-                    instant=True,
-                )
-            ],
-            unit="none",
-            decimals=0,
-            description="Sessions whose cost grew in the last 5 minutes.",
-            options=STAT,
-        ),
-        panel(
-            4,
-            "table",
-            "By tab",
-            (12, 1, 12, 5),
-            [
-                target(f"sum by ({TAB}) ({spent(COST, '15m')})", instant=True, table=True),
-                target(f"sum by ({TAB}) ({spent(COST, today)})", ref="B", instant=True, table=True),
-            ],
-            description="Each tab's cost in the last 15 minutes and in the time range.",
-            transformations=[
-                {"id": "merge", "options": {}},
-                {
-                    "id": "organize",
-                    "options": {
-                        "excludeByName": {"Time": True},
-                        "indexByName": {
-                            "qf_scope": 0,
-                            "qf_product": 1,
-                            "qf_session": 2,
-                            "Value #A": 3,
-                            "Value #B": 4,
-                        },
-                        "renameByName": {
-                            "qf_scope": "Scope",
-                            "qf_product": "Product",
-                            "qf_session": "Tab",
-                            "Value #A": "Last 15 min",
-                            "Value #B": "Today",
-                        },
-                    },
-                },
-                {"id": "sortBy", "options": {"sort": [{"field": "Today", "desc": True}]}},
-            ],
-        ),
-        row(5, "Today", 6),
-        panel(
-            6,
-            "stat",
-            "Cost today",
-            (0, 7, 6, 5),
-            [target(f"sum({spent(COST, today)})", instant=True)],
-            description="Every session in the filter, over the time range (today by default).",
-            options=STAT,
-        ),
-        panel(
-            7,
-            "stat",
-            "Of the daily limit",
-            (6, 7, 6, 5),
-            [target(f"sum({spent(COST, today)}) / $daily_limit * 100", instant=True)],
-            unit="percent",
-            decimals=0,
-            thresholds=LIMIT,
-            description="Cost today against the daily limit at the top. Orange from 80 %, "
-            "red from 100 %. It only warns: nothing is stopped.",
-            options={**STAT, "colorMode": "background"},
-        ),
-        panel(
-            8,
+            pid,
             "bargauge",
-            "Cost by model",
-            (12, 7, 12, 5),
-            [target(f"sum by (model) ({spent(COST, today)})", "{{model}}", instant=True)],
+            "Cost by tab",
+            (0, y, 8, 6),
+            [target(costs(tabs), TAB_LEGEND, instant=True)],
+            unit=cost["unit"],
+            decimals=cost["decimals"],
+            description=f"Each tab's {cost['description']} over the span; a tab has one colour "
+            "in every chart.",
+            color=BY_TAB,
+            overrides=TAB_OVERRIDES,
             options=BARS,
         ),
         panel(
-            9,
-            "timeseries",
-            "Cost per hour",
-            (0, 12, 16, 9),
-            [
-                target(
-                    f"sum by (qf_scope, qf_session) ({spent(COST, '1h')})",
-                    TAB_LEGEND,
-                    interval="1h",
-                )
-            ],
-            description="Each bar is the hour that ends at its time, stacked by tab.",
-            color=BY_TAB,
-            overrides=TAB_OVERRIDES,
-            custom={
-                "drawStyle": "bars",
-                "fillOpacity": 80,
-                "lineWidth": 1,
-                "stacking": {"mode": "normal", "group": "A"},
-            },
-            options={
-                "legend": {"displayMode": "table", "placement": "right", "calcs": ["sum"]},
-                "tooltip": {"mode": "multi", "sort": "desc"},
-            },
+            pid + 1,
+            "bargauge",
+            "Cost by model",
+            (8, y, 8, 6),
+            [target(costs("model"), "{{model}}", instant=True)],
+            unit=cost["unit"],
+            decimals=cost["decimals"],
+            description=f"Each model's {cost['description']} over the span.",
+            options=BARS,
         ),
         panel(
-            10,
+            pid + 2,
             "bargauge",
-            "Tokens today by type",
-            (16, 12, 8, 9),
-            [target(f"sum by (type) ({spent(TOKENS, today)})", "{{type}}", instant=True)],
+            "Tokens by type",
+            (16, y, 8, 6),
+            [target(span.cost(TOKENS, "type"), "{{type}}", instant=True)],
             unit="short",
             decimals=1,
             description="cacheRead is cheap context reuse; input and output cost most per token.",
             options=BARS,
         ),
-        panel(
-            11,
-            "bargauge",
-            "Cost today by tab",
-            (0, 21, 24, 6),
-            [
-                target(
-                    f"sum by (qf_scope, qf_session) ({spent(COST, today)})",
-                    TAB_LEGEND,
-                    instant=True,
-                )
-            ],
-            description="Each tab's cost over the time range, coloured as in Cost per hour.",
-            color=BY_TAB,
-            overrides=TAB_OVERRIDES,
-            options=BARS,
-        ),
     ]
+    y += 6
+    if span.over_time:
+        panels.append(
+            panel(
+                pid + 3,
+                "timeseries",
+                "Cost over time by tab",
+                (0, y, 24, 8),
+                [target(f"sum by ({tabs}) ({span.over_time})", TAB_LEGEND, interval="1h")],
+                description="Each bar is the hour that starts at its time, stacked by tab; "
+                "the bar of the hour running now grows as it is spent.",
+                color=BY_TAB,
+                overrides=TAB_OVERRIDES,
+                custom={
+                    "drawStyle": "bars",
+                    "fillOpacity": 80,
+                    "lineWidth": 1,
+                    "stacking": {"mode": "normal", "group": "A"},
+                },
+                options={
+                    "legend": {"displayMode": "table", "placement": "right", "calcs": ["sum"]},
+                    "tooltip": {"mode": "multi", "sort": "desc"},
+                },
+            )
+        )
+        y += 8
+    for p in panels:
+        p["timeFrom"] = span.since
+    return [row(first, span.title, top), *panels], y
+
+
+def dashboard() -> dict:
+    panels, pid, y = [], 1, 0
+    for span in SPANS:
+        made, y = section(span, pid, y)
+        panels += made
+        pid += len(made)
     return {
         "uid": "claude-costs",
         "title": "Claude costs",
@@ -298,20 +362,13 @@ def dashboard() -> dict:
         "refresh": "1m",
         "schemaVersion": 39,
         "editable": True,
-        "time": {"from": "now/d", "to": "now"},
-        "description": "What Claude Code spends now and today, per tab. Dollars are API list "
-        "prices: on a subscription they compare, they are not billed.",
+        "time": {"from": "now/d", "to": "now"},  # each section keeps its own span
+        "description": "What Claude Code spends now, in the 5-hour window and today, per tab. "
+        "Dollars are API list prices: on a subscription they compare, they are not billed.",
         "templating": {
             "list": [
                 variable("qf_scope", "Scope"),
                 variable("qf_product", "Product"),
-                {
-                    "name": "daily_limit",
-                    "label": "Daily limit ($)",
-                    "type": "textbox",
-                    "query": "50",
-                    "current": {"text": "50", "value": "50"},
-                },
             ]
         },
         "panels": panels,

@@ -47,7 +47,8 @@ def test_the_dashboard_reads_only_what_the_guide_names(repo_root, maker, guide):
     used = set(re.findall(r"\bclaude_code_\w+", queries))
     assert used == set(maker.METRICS)
     assert all(f"`{metric}`" in guide for metric in used)
-    labels = set(re.findall(r"\bqf_\w+", queries))
+    assert all(f"`{metric}`" in guide for metric in maker.PLAN)  # the status line's
+    labels = set(re.findall(r"\bqf_\w+", queries)) - set(maker.PLAN)
     assert labels <= set(maker.LABELS)
     assert all(f"`{label}`" in guide for label in labels)
 

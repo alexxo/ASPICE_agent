@@ -120,6 +120,18 @@ finding fixed since the last review is not repeated; one still open is, in
 full — never by pointing to an earlier review (*listed there*): the latest
 findings are the whole list a retry hands the tester and the coder.
 
+**A later round** reviews from your last review of the pull request — the
+watcher's prompt names its head and the files changed since. Read the files
+changed since, what they touch (what their markers name, the units and tests
+that call a changed unit, the requirements a changed test proves), and the
+fix of every finding still open; the rest keeps your last review's judgement.
+Review the whole pull request again when the change is wide — most of its
+files, or a change of design or architecture the rest builds on. A problem
+in a part unchanged since, which you missed before, is still a finding: say
+it was missed at the earlier head. That is why the first round reads
+everything and says every finding at once: a later round checks fixes, it
+does not find what the first left unsaid.
+
 ## Done
 
 *verify_delivery_reviewed_gate* finds your approval of the current head with the
@@ -129,7 +141,8 @@ or asks a question of what is wanted, it then waits for the person.
 
 Size budgets: at most 3 questions per round; one finding per problem.
 Completeness wins over a budget: never leave a changed file unread or a
-finding unsaid to stay within one.
+finding unsaid to stay within one — every finding in the round that finds it,
+never a few now and more in the next round.
 
 Report: the decision, the findings with file and line, the questions still
 open, and whether the pull request waits for a person (seal 4) and why.

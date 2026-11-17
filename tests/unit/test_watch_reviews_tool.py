@@ -794,3 +794,115 @@ def test_a_description_is_kept_by_content_and_instructions(tmp_path):
     assert _key("new rules", tmp_path, ["t.py"]) != first
     (tmp_path / "t.py").write_text("assert 2")
     assert _key("rules", tmp_path, ["t.py"]) != first
+    criterion = {"requirement": "REQ-0049", "criteria": [{"criterion": 1, "text": "a"}]}
+    kept = _key("rules", tmp_path, ["t.py"], criterion)
+    assert kept != _key("rules", tmp_path, ["t.py"])
+    changed = {**criterion, "criteria": [{"criterion": 1, "text": "b"}]}
+    assert _key("rules", tmp_path, ["t.py"], changed) != kept
+
+
+def test_expected_cases_told_before_are_not_told_again(pulled):
+    """FB-89: the same criteria and glossary give the same cases in every round."""
+    w, shown, head = pulled
+    w.describe = _sessions()
+    _reviewed_again(w, head)
+    listed = w.config.root / f".qf/reviews/7-{head[:7]}.expected.yaml"
+    before = listed.read_text()
+    w.describe = lambda prompt: pytest.fail(f"described again: {prompt[:40]}")
+    _reviewed_again(w, head)
+    assert listed.read_text() == before
+    assert "approved" in shown[-1]
+
+
+def _next_head(w, head, change, files):
+    """The author pushes a new head on top of `head`; the pull request changes `files`."""
+    import subprocess
+
+    from product_builder import commit_all, git_head
+
+    from tools.read_host_tool import PullRequest
+
+    root = w.config.root
+    subprocess.run(["git", "-C", str(root), "checkout", "-q", "--detach", head], check=True)
+    change(root)
+    commit_all(root, "the next head of pull request #7")
+    new = git_head(root)
+    push = ["git", "-C", str(root), "push", "-q", "-f", "origin", "HEAD:refs/pull/7/head"]
+    subprocess.run(push, check=True)
+    subprocess.run(["git", "-C", str(root), "checkout", "-q", "main"], check=True)
+    posted = w.host.posted
+    w.host.pull_request = lambda repo, number: PullRequest(
+        7, "dev-alice", new, tuple(files), tuple(posted)
+    )
+    return new
+
+
+def _feedback(root):
+    (root / "FRAMEWORK_FEEDBACK.md").write_text("FB-91 — a new entry\n")
+
+
+def test_a_later_round_is_told_what_changed_since_the_last_review(changed):
+    """FB-90: a round reviews from the last one, not the whole pull request again."""
+    w, shown, head = changed
+    w.host.posted.append(Review(AGENT, "CHANGES_REQUESTED", head))
+
+    def fix(root):
+        (root / "NOTES.md").write_text("a note, fixed")
+        (root / "OTHER.md").write_text("another note")
+
+    new = _next_head(w, head, fix, ["NOTES.md", "OTHER.md"])
+    prompts = []
+
+    def review(prompt):
+        prompts.append(prompt)
+        w.host.posted.append(Review(AGENT, "APPROVED", new))
+        return [sys.executable, "-c", "print('reviewed')"]
+
+    w.command = review
+    w.once()
+    assert (
+        f"You reviewed this pull request before, at {head[:7]} (changes_requested); since then "
+        "2 file(s) changed: NOTES.md, OTHER.md. This is a later round" in prompts[0]
+    )
+    assert "approved" in shown[-1]
+
+
+def test_an_approval_carries_over_when_nothing_the_review_read_changed(changed):
+    """FB-89: a merge of main that moves only the feedback log keeps the approval."""
+    w, shown, head = changed
+    w.host.posted.append(Review(AGENT, "APPROVED", head, body="- [x] correctness"))
+    new = _next_head(w, head, _feedback, ["NOTES.md"])
+    posted = []
+    w.post = lambda number, at, body: posted.append((number, at, body))
+    w.command = lambda prompt: pytest.fail("nothing the review read changed")
+    w.once()
+    ((number, at, body),) = posted
+    assert (number, at) == (7, new)
+    assert body.startswith(f"Carried over from {head[:7]}: since then only FRAMEWORK_FEEDBACK.md")
+    assert body.endswith("- [x] correctness")
+    assert shown[-1].endswith(f"approval of {head[:7]} carried over")
+
+
+@pytest.mark.parametrize(
+    ("change", "files", "decision"),
+    [
+        (lambda root: (root / "NOTES.md").write_text("changed"), ["NOTES.md"], "APPROVED"),
+        (_feedback, ["NOTES.md", "FRAMEWORK_FEEDBACK.md"], "APPROVED"),  # the pull request's own
+        (_feedback, ["NOTES.md"], "CHANGES_REQUESTED"),  # nothing approved to carry
+    ],
+)
+def test_an_approval_is_not_carried_over_otherwise(changed, change, files, decision):
+    w, shown, head = changed
+    w.host.posted.append(Review(AGENT, decision, head))
+    new = _next_head(w, head, change, files)
+    w.post = lambda *args: pytest.fail("carried over")
+    reviewed = []
+
+    def review(prompt):
+        reviewed.append(prompt)
+        w.host.posted.append(Review(AGENT, "APPROVED", new))
+        return [sys.executable, "-c", "print('reviewed')"]
+
+    w.command = review
+    w.once()
+    assert len(reviewed) == 1 and "This is a later round" in reviewed[0]
