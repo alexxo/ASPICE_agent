@@ -37,6 +37,7 @@ Dashboard **Claude costs**, today so far by default:
 | Today | Cost by model | Dollars per model |
 | Today | Cost per hour | One bar per hour, stacked by tab |
 | Today | Tokens today by type | input, output, cacheRead, cacheCreation |
+| Today | Cost today by tab | One bar per tab, each tab in its colour of *Cost per hour* |
 
 At the top: **Scope** and **Product** filter every panel; **Daily limit ($)**,
 50 by default, is a text box — type a new value for this view. The limit only

@@ -59,8 +59,11 @@ def panel(pid, kind, title, place, targets, unit="currencyUSD", decimals=2, **ex
         "fieldConfig": {"defaults": {"unit": unit, "decimals": decimals}, "overrides": []},
         "options": {},
     }
+    color = extra.pop("color", None)
     custom = extra.pop("custom", None)
     thresholds = extra.pop("thresholds", None)
+    if color:
+        p["fieldConfig"]["defaults"]["color"] = color
     if custom:
         p["fieldConfig"]["defaults"]["custom"] = custom
     if thresholds:
@@ -118,6 +121,8 @@ LIMIT = {
     ],
 }
 TAB = "qf_scope, qf_product, qf_session"
+TAB_LEGEND = "{{qf_scope}} · {{qf_session}}"
+BY_NAME = {"mode": "palette-classic-by-name"}  # a tab keeps its colour in every chart
 
 
 def dashboard() -> dict:
@@ -223,11 +228,12 @@ def dashboard() -> dict:
             [
                 target(
                     f"sum by (qf_scope, qf_session) ({spent(COST, '1h')})",
-                    "{{qf_scope}} · {{qf_session}}",
+                    TAB_LEGEND,
                     interval="1h",
                 )
             ],
             description="Each bar is the hour that ends at its time, stacked by tab.",
+            color=BY_NAME,
             custom={
                 "drawStyle": "bars",
                 "fillOpacity": 80,
@@ -248,6 +254,22 @@ def dashboard() -> dict:
             unit="short",
             decimals=1,
             description="cacheRead is cheap context reuse; input and output cost most per token.",
+            options=BARS,
+        ),
+        panel(
+            11,
+            "bargauge",
+            "Cost today by tab",
+            (0, 21, 24, 6),
+            [
+                target(
+                    f"sum by (qf_scope, qf_session) ({spent(COST, today)})",
+                    TAB_LEGEND,
+                    instant=True,
+                )
+            ],
+            description="Each tab's cost over the time range, coloured as in Cost per hour.",
+            color=BY_NAME,
             options=BARS,
         ),
     ]

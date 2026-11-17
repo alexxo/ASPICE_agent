@@ -485,6 +485,9 @@
         "defaults": {
           "unit": "currencyUSD",
           "decimals": 2,
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
           "custom": {
             "drawStyle": "bars",
             "fillOpacity": 80,
@@ -544,6 +547,57 @@
         "defaults": {
           "unit": "short",
           "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "bargauge",
+      "title": "Cost today by tab",
+      "description": "Each tab's cost over the time range, coloured as in Cost per hour.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (qf_scope, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0)))",
+          "legendFormat": "{{qf_scope}} · {{qf_session}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
         },
         "overrides": []
       },
