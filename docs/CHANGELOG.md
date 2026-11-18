@@ -35,6 +35,34 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.3.0] - 2026-11-18
+
+A framework feedback entry reaches the framework as an issue of its repository, a problem records the stage it got through, and anyone reports a problem with the product's problem form.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required — to file FB-91 below |
+| File every entry still *open* or *reported* in `FRAMEWORK_FEEDBACK.md`, FB-91 first: show it with `python .framework/tools/file_framework_feedback_tool.py --entry FB-<n> --show`, and once the person approved, run it without `--show` | the product's feedback log | required — `check_framework_feedback_gate` fails with UNFILED_FEEDBACK_ENTRY |
+| Sign `gh` in with the person's own login (`gh auth login`) or a classic token with `public_repo`: a fine-grained token cannot open an issue on another owner's repository | the person | required to file |
+| Copy `templates/github/problem_report.yml` | `.github/ISSUE_TEMPLATE/problem_report.yml` | optional — without it a reporter writes the problem block by hand |
+| Add `origin` and `escape` (`stage`, `why`) to every problem past *open* or named by a test | the product's problem issues | required — `check_problem_record_gate` fails with MISSING_ANALYSIS; wp_publisher has none |
+
+### Added
+
+- **Feedback filed as an issue** (`tools/file_framework_feedback_tool.py`). `--show` prints the repository (the framework's GitHub URL in `.gitmodules`), the title — the entry's, with the product's repository name — and the body, the full report; without it the tool opens the issue with the person's `gh` login and keeps in the log only Date, Framework version, Status (*reported*), Issue (its URL), Impact on this product and Workaround applied. The developer agent files only after the person approved the text and its publishing in the session; the framework answers in the issue and closes it with the fixing release. An entry is never filed twice. Quality doc § 5 stage 9 rule 9; Appendix A.8 *Feedback reaches the framework as an issue*. Origin: FB-91 (wp_publisher).
+- **The problem form** (`templates/github/problem_report.yml`, copied by `tools/create_product_tool.py`). What happens, where, how to make it happen, what was expected and what happened instead, labelled *problem*: a defect found in operation is reported without an agent. The developer agent writes the problem block from the answers when it analyses it; an open report named by no test passes until then. Quality doc § 5 stage 12 rule 13. Origin: FB-91 (wp_publisher).
+
+### Changed
+
+- **Unfiled feedback fails** (`check_framework_feedback_gate`). An entry *open* or *reported* without its Issue is UNFILED_FEEDBACK_ENTRY; a filed entry needs only the product's part, its Issue an issue URL of the framework's repository. Entries in the full form still pass. Origin: FB-91 (wp_publisher).
+- **Where a defect got through** (`problem.v1`, `check_problem_record_gate`). The analysis adds *origin*, the stage that brought the defect in, and *escape*, the *stage* that should have caught it and *why* it did not, both by their id in `agent/stages.yaml`. The release report counts the problems by the stage they got through. An escape that is the framework's weakness becomes a framework feedback entry naming the problem, checked by Review (`resolve_problems_skill` R11). Quality doc SUP.9 BP2, BP7; Appendix A.11 *Learning where a defect got through*. Origin: FB-91 (wp_publisher).
+
+### Removed
+
+- Three unit tests that ran the same lines as another and asserted the same outcome. Origin: internal (Alex).
+
 ## [5.2.0] - 2026-11-17
 
 A later review round reviews what changed since the last one, an approval holds while nothing it read changed, and the cost dashboard shows the plan's allowance in three sections.
