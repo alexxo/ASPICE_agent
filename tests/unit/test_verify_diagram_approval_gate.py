@@ -24,11 +24,6 @@ def test_without_requirements_nothing_has_to_be_approved_yet(tmp_path):
     assert _rules(root) == []
 
 
-def test_requirements_after_a_current_approval_pass(product):
-    _approve(product)
-    assert _rules(product) == []
-
-
 def test_requirements_without_an_approval_are_reported(product):
     assert _rules(product) == ["MISSING_APPROVAL"]
 

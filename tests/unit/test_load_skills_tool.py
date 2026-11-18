@@ -19,10 +19,7 @@ def test_requirements_stage_loads_plugin_and_framework_skills(tmp_path, repo_roo
         str(repo_root / "skills/swe/define_glossary_terms_skill/SKILL.md"),
         str(repo_root / "skills/swe/specify_nfr_measurement_skill/SKILL.md"),
     ]
-
-
-def test_requirements_stage_loads_no_second_plugin(tmp_path):
-    assert load_skills(build_installed_product(tmp_path), "requirements")["also_plugins"] == []
+    assert loaded["also_plugins"] == []
 
 
 def test_detailed_design_stage_also_loads_the_diagram_plugin(tmp_path, repo_root):

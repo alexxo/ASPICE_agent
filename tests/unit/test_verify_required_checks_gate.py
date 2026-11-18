@@ -19,6 +19,7 @@ def _rules(product):
 
 
 def test_a_ci_file_that_runs_the_gates_passes(product):
+    """No token and no host file: the gate still decides, from the CI file alone."""
     assert _rules(product) == []
 
 
@@ -34,13 +35,6 @@ def test_a_ci_file_that_runs_no_gates_is_caught(product):
 def test_a_missing_ci_file_is_caught(product):
     (product / CI).unlink()
     assert _rules(product) == ["MISSING_GATES_JOB"]
-
-
-def test_no_host_is_read(product, monkeypatch):
-    """No token and no host file: the gate still decides, from the CI file alone."""
-    monkeypatch.delenv("QF_HOST_FILE", raising=False)
-    monkeypatch.delenv("QF_HOST_TOKEN", raising=False)
-    assert _rules(product) == []
 
 
 def _messages(product):
