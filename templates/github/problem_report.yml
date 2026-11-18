@@ -1,0 +1,42 @@
+# A problem report (SUP.9 BP1), for anyone who finds a defect: in operation, in
+# support, in a test. Its answers are the start of the problem's record; the
+# developer agent writes them into the issue's ```yaml problem block when it
+# analyses the problem (resolve_problems_skill). Keep the labels: the gate tells
+# a report from a broken record by its first heading.
+name: Problem report
+description: Something the product does wrong.
+labels: [problem]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: In one line.
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where
+      description: The screen, interface or part of the product, as you see it.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to make it happen
+      description: The steps and the input.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+    validations:
+      required: true

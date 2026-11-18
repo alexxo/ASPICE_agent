@@ -1,5 +1,7 @@
 """gates/sup/check_problem_record_gate.py — every problem recorded, analysed, announced."""
 
+import json
+
 import pytest
 from product_builder import (
     build_releasable_product,
@@ -7,11 +9,13 @@ from product_builder import (
     git_head,
     issue,
     problem,
+    problem_report,
     propose_release,
     write_host,
     write_problem_test,
 )
 
+from agent.read_stages_tool import read_stages
 from gates.sup.check_problem_record_gate import GATE, check
 from tools.read_product_config_tool import read_product_config
 
@@ -74,7 +78,7 @@ def test_at_release_every_problem_is_checked(product, tmp_path, monkeypatch):
         tmp_path,
         monkeypatch,
         issue(12, "problem", None),
-        issue(13, "problem", problem(13, cause=None)),
+        issue(13, "problem", problem(13, cause=None, escape=None)),
         issue(14, "problem", problem(14, status="open", cause=None, impact=None, severity=None)),
         issue(15, "problem", problem(15, severity="critical")),
         issue(
@@ -88,3 +92,45 @@ def test_at_release_every_problem_is_checked(product, tmp_path, monkeypatch):
         ("MISSING_ALERT", "#15"),
         ("MISSING_ANALYSIS", "#13"),
     ]
+
+
+def test_the_analysis_names_where_the_defect_came_in_and_got_through(
+    product, tmp_path, monkeypatch
+):
+    write_problem_test(product, 12)
+    write_problem_test(product, 13)
+    commit_all(product, "test: reproduce #12 and #13")
+    issues(
+        product,
+        tmp_path,
+        monkeypatch,
+        issue(12, "problem", problem(12, origin=None)),
+        issue(13, "problem", problem(13, escape={"stage": "unit_testing", "why": "none"})),
+    )
+    found = {f.file: f for f in check(read_product_config(product))}
+    assert found["#12"].rule == "MISSING_ANALYSIS" and "origin" in found["#12"].message
+    assert found["#13"].rule == "INCOMPLETE_PROBLEM_RECORD"
+    assert "escape" in found["#13"].message
+
+
+def test_a_report_from_the_form_waits_for_its_analysis(product, tmp_path, monkeypatch):
+    propose_release(product)
+    write_problem_test(product, 13)
+    commit_all(product, "test: reproduce #13")
+    issues(
+        product,
+        tmp_path,
+        monkeypatch,
+        problem_report(12),
+        problem_report(13),  # a test names it: it is being fixed
+        problem_report(14, state="closed", closed="2099-01-02T09:00:00Z"),
+    )
+    assert rules(product) == [
+        ("INCOMPLETE_PROBLEM_RECORD", "#13"),
+        ("INCOMPLETE_PROBLEM_RECORD", "#14"),
+    ]
+
+
+def test_origin_and_escape_name_the_stages_of_the_manifest(repo_root):
+    schema = json.loads((repo_root / "contracts/problem_contract.v1.schema.json").read_text())
+    assert schema["$defs"]["stage"]["enum"] == [s.id for s in read_stages()]

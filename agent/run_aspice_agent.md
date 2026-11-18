@@ -292,8 +292,10 @@ back as a new or changed wish.
 **Stage 12, the repair book.** It runs when someone reports a defect, not in
 the flow; its gates run on every pull request once the flow is done. Record the
 crack as an issue labelled *problem*, its body one *problem* block
-(`resolve_problems_skill`), and analyse it before any fix: cause, impact,
-severity; a high or critical one names its affected parties and when they were
+(`resolve_problems_skill`) — for a report made with the product's problem form,
+write the block from its answers — and analyse it before any fix: cause,
+impact, severity, origin and escape; an escape that is the framework's weakness
+becomes a framework feedback entry that names the problem. A high or critical one names its affected parties and when they were
 told. A critical one waits for `/authorize-urgent-fix` from a person in
 `urgent_approvers` — ask with a choice commented on the issue (authorize:
 comment `/authorize-urgent-fix`; wait for the normal flow: comment why),

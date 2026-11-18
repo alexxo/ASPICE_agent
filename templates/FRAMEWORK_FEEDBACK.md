@@ -27,6 +27,20 @@ One `### FB-<n>` entry per finding, newest first under **Log**. Never edit a
 closed entry: add a follow-up and link it. Fill every field; write `n/a` rather
 than deleting one, so a missing answer stays visible.
 
+**File every entry as an issue of the framework's repository.** This file is
+the product's record; the issue is how the finding reaches the framework, from
+any machine, and where the framework answers it, closing the issue with the
+release that fixes it. Write the entry in full from the template below, show
+the person what will be published —
+`python .framework/tools/file_framework_feedback_tool.py --entry FB-<n> --show`
+prints the repository, title and body — and file it only once they approved the
+text and its publishing: the issue is public. Without `--show` the tool opens
+the issue with the person's GitHub login, then keeps here only the product's
+part of the entry: Date, Framework version, Status (*reported*), Issue (the
+issue's URL), Impact on this product and Workaround applied. An entry still
+*open* or *reported* without its Issue fails the gate. Set the Status yourself
+when the framework's answer comes.
+
 | Severity | Meaning |
 |---|---|
 | critical | A gate reports success without checking: a green build that means nothing. |

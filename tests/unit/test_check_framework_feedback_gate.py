@@ -3,7 +3,14 @@
 import subprocess
 
 import pytest
-from product_builder import add_framework, build_product, commit_all, git_head, make_framework
+from product_builder import (
+    FRAMEWORK_REPO,
+    add_framework,
+    build_product,
+    commit_all,
+    git_head,
+    make_framework,
+)
 
 from gates.sup.check_framework_feedback_gate import check
 from tools.read_product_config_tool import read_product_config
@@ -16,7 +23,7 @@ ENTRY = """\
 - **Framework version:** v6.0.0 @ 1a2b3c4
 - **Severity:** critical
 - **Class:** C1
-- **Status:** reported
+- **Status:** fixed upstream in v6.0.1
 
 **What the framework claims** — docs, § 4.1 SWE.1 BP1.
 
@@ -27,6 +34,20 @@ ENTRY = """\
 **Verification** — run.
 
 **Blast radius** — every product.
+
+**Impact on this product** — none; caught by the reviewer.
+
+**Workaround applied** — none.
+"""
+
+
+FILED = """\
+### FB-2 — the glossary gate passes an empty glossary
+
+- **Date:** 2026-11-18
+- **Framework version:** v6.0.0 @ 1a2b3c4
+- **Status:** reported
+- **Issue:** https://github.com/acme/quality-framework/issues/12
 
 **Impact on this product** — none; caught by the reviewer.
 
@@ -74,6 +95,43 @@ def test_an_incomplete_entry_is_caught(product, broken):
     _log(product, broken)
     (finding,) = check(read_product_config(product))
     assert (finding.rule, finding.line) == ("INCOMPLETE_FEEDBACK_ENTRY", 5)
+
+
+@pytest.mark.parametrize("status", ["open", "reported"])
+def test_an_entry_the_framework_has_not_received_is_unfiled(product, status):
+    """FB-91: a log the framework cannot read from another machine reaches it as an issue."""
+    _log(product, ENTRY.replace("fixed upstream in v6.0.1", status))
+    (finding,) = check(read_product_config(product))
+    assert (finding.rule, finding.line) == ("UNFILED_FEEDBACK_ENTRY", 5)
+    assert "file_framework_feedback_tool.py --entry FB-1" in finding.message
+
+
+def _on_github(root):
+    """.gitmodules records the framework at .framework, on GitHub."""
+    modules = ["git", "config", "-f", str(root / ".gitmodules")]
+    subprocess.run([*modules, "submodule.framework.path", ".framework"], check=True)
+    url = f"https://github.com/{FRAMEWORK_REPO}.git"
+    subprocess.run([*modules, "submodule.framework.url", url], check=True)
+
+
+def test_a_filed_entry_keeps_only_the_products_part(product):
+    _on_github(product)
+    _log(product, FILED)
+    assert _rules(product) == []
+
+
+@pytest.mark.parametrize(
+    "broken",
+    [
+        FILED.replace("**Workaround applied** — none.\n", ""),
+        FILED.replace("acme/quality-framework", "acme/login"),  # not the framework's
+        FILED.replace("/issues/12", "/pull/12"),
+    ],
+)
+def test_a_filed_entry_without_its_part_or_its_issue_is_incomplete(product, broken):
+    _on_github(product)
+    _log(product, broken)
+    assert _rules(product) == ["INCOMPLETE_FEEDBACK_ENTRY"]
 
 
 def test_the_template_above_the_log_is_not_an_entry(product):
@@ -124,7 +182,7 @@ def test_a_bump_named_in_the_log_is_accounted_for(bumped, line):
     "line",
     [
         "> **Framework response, 2026-10-23 — FB-1, resolved in v6.1.0 ({short}).**",
-        ENTRY.replace("- **Status:** reported", "- **Status:** fixed upstream in v6.1.0"),
+        ENTRY.replace("fixed upstream in v6.0.1", "fixed upstream in v6.1.0"),
         "- No findings for v6.1.0.1",
         "- No findings for x{short}",
     ],

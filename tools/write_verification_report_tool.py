@@ -11,8 +11,8 @@ is proposed, also per wish its scenarios and their results from the release's
 validation record, and the customer's decision (decision 12 of the validation
 stage) — the validation suite runs against the deployment, never here — and,
 read from the host's issues, the problems and the non-conformances opened,
-fixed or closed since the previous release (decision 10 of the problem
-resolution stage). The
+fixed or closed since the previous release, the problems also by the stage
+they got through (decision 10 of the problem resolution stage). The
 report records a digest of every suite run it was written from, so
 check_verification_report_gate can tell it is current.
 
@@ -261,7 +261,8 @@ def _after(stamp: str | None, since: datetime | None) -> bool:
 
 def _problems(issues: list[Issue], since: datetime | None) -> dict:
     """The problems opened, fixed and still open since the previous release, the
-    opened ones by severity and by component (SUP.9 BP7)."""
+    opened ones by severity, by component and by the stage they got through
+    (SUP.9 BP7)."""
     opened = [i for i in issues if _after(i.created, since)]
     records = {i.number: i.record("problem")[0] or {} for i in issues}
     fixed = [
@@ -280,6 +281,9 @@ def _problems(issues: list[Issue], since: datetime | None) -> dict:
         "open": sum(i.state == "open" for i in issues),
         "by_severity": dict(Counter(records[i.number].get("severity", "unknown") for i in opened)),
         "by_component": dict(by_component),
+        "by_escape": dict(
+            Counter((records[i.number].get("escape") or {}).get("stage", "unknown") for i in opened)
+        ),
     }
 
 
@@ -407,6 +411,10 @@ def render(report: dict) -> str:
             "| Component | Opened |",
             "|---|---|",
             *[f"| {c} | {n} |" for c, n in sorted(p["by_component"].items())],
+            "",
+            "| Got through | Opened |",
+            "|---|---|",
+            *[f"| {s} | {n} |" for s, n in sorted(p["by_escape"].items())],
             "",
             f"## Non-conformances since {since}",
             "",

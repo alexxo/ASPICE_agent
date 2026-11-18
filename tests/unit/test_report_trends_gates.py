@@ -25,7 +25,8 @@ def product(tmp_path, monkeypatch):
     root, _host = build_releasable_product(tmp_path)
     framework = git_head(root / ".framework")
     found = [
-        issue(12, "problem", problem(12, severity="high")),
+        issue(12, "problem", problem(12, severity="high",
+              escape={"stage": "software_verification", "why": "No test under load."})),
         issue(13, "problem", problem(13, status="closed"), state="closed",
               closed="2099-01-02T09:00:00Z"),
         issue(1, "non-conformance", {"found_in": 3}, labels=["escalated"]),
@@ -60,9 +61,11 @@ def test_a_release_report_counts_the_problems_and_the_faults(product):
         "open": 1,
         "by_severity": {"high": 1, "medium": 1},
         "by_component": {"auth-service": 2},
+        "by_escape": {"software_verification": 1, "unit_tests": 1},
     }
     assert report["quality"] == {"since": None, "opened": 1, "closed": 0, "escalated": 1}
-    assert "## Problems since the start" in written.with_name(PAGE).read_text()
+    page = written.with_name(PAGE).read_text()
+    assert "## Problems since the start" in page and "| unit_tests | 1 |" in page
     assert findings(product) == []
 
 

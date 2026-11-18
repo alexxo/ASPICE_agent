@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://quality-framework/contracts/problem_contract.v1.schema.json",
   "title": "problem.v1",
-  "description": "One problem (SUP.9 BP1, BP2, BP4, BP5): a fenced ```yaml problem block in the body of a host issue labelled problem; the issue's number is the problem's ID, named by its tests with @problem[<n>]. The template is required from the start; the analysis — cause, impact, severity — once the status is past open or a test names the problem, and the alert once the severity is high or critical: those are rules of check_problem_record_gate, not of this schema.",
+  "description": "One problem (SUP.9 BP1, BP2, BP4, BP5): a fenced ```yaml problem block in the body of a host issue labelled problem; the issue's number is the problem's ID, named by its tests with @problem[<n>]. The template is required from the start; the analysis — cause, impact, severity, origin, escape — once the status is past open or a test names the problem, and the alert once the severity is high or critical: those are rules of check_problem_record_gate, not of this schema.",
   "type": "object",
   "additionalProperties": false,
   "required": ["what", "where", "reproduce", "expected", "actual", "status"],
@@ -25,6 +25,17 @@
       }
     },
     "severity": { "enum": ["low", "medium", "high", "critical"] },
+    "origin": { "description": "The stage that brought the defect in, by its id in agent/stages.yaml (BP2).", "$ref": "#/$defs/stage" },
+    "escape": {
+      "description": "Where the defect got through (BP2): the stage that should have caught it, and why it did not.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "why"],
+      "properties": {
+        "stage": { "$ref": "#/$defs/stage" },
+        "why": { "$ref": "#/$defs/text" }
+      }
+    },
     "affected_parties": {
       "description": "Who else is affected (BP4), e.g. the customer, the teams using a component.",
       "type": "array",
@@ -36,6 +47,7 @@
   },
   "$defs": {
     "line": { "type": "string", "minLength": 1, "pattern": "^[^\\n]+$" },
-    "text": { "type": "string", "minLength": 1 }
+    "text": { "type": "string", "minLength": 1 },
+    "stage": { "enum": ["diagram", "requirements", "architecture", "detailed_design", "unit_tests", "unit_construction", "integration_verification", "software_verification", "quality_assurance", "configuration_management", "validation", "problem_resolution", "change_request"] }
   }
 }

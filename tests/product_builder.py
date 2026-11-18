@@ -1672,6 +1672,8 @@ PROBLEM = {
     "cause": "The failure counter counts each attempt twice.",
     "impact": {"requirements": ["REQ-0047"], "components": ["auth-service"]},
     "severity": "medium",
+    "origin": "unit_construction",
+    "escape": {"stage": "unit_tests", "why": "No test signs in three times in a row."},
 }
 
 
@@ -1720,6 +1722,34 @@ def problem(number: int, **changes) -> dict:
     """A problem issue; keyword arguments change its record (None removes a field)."""
     record = {**copy.deepcopy(PROBLEM), **changes}
     return {k: v for k, v in record.items() if v is not None}
+
+
+REPORT = """\
+### What happens
+
+The account locks after three failed sign-ins.
+
+### Where
+
+sign-in page
+
+### How to make it happen
+
+Sign in with a wrong password three times.
+
+### What you expected
+
+The fourth attempt is accepted.
+
+### What happened instead
+
+The account is locked.
+"""  # the body GitHub writes from templates/github/problem_report.yml
+
+
+def problem_report(number: int, **changes) -> dict:
+    """A problem issue opened with the product's problem form, its record not written yet."""
+    return {**issue(number, "problem", None, **changes), "body": REPORT}
 
 
 def write_problem_test(root: Path, number: int) -> str:

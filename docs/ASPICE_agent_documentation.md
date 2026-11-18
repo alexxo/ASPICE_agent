@@ -817,13 +817,13 @@ belongs to another process group and is referenced, not repeated.
 |  | BP6: Summarize and communicate the configuration status | The configuration status is communicated with every release:<br>• **What changed** — the release record lists the configuration items changed since the previous release.<br>• **What is pinned** — it states the framework version the release was built with. | **Statement:** Status in the release record<br>**Evidence:** The release record<br>**Gate:** verify_baseline_gate<br>**What it verifies:** The release record lists exactly the items changed since the previous release, and the pinned framework version |
 |  | BP7: Ensure completeness and consistency | Every baseline is complete and consistent:<br>• **Complete** — the release tag contains every declared configuration item (BP1).<br>• **Consistent** — the framework version is pinned in the tag (the framework commit), so the release can be rebuilt exactly. | **Statement:** The baseline is complete<br>**Evidence:** The release tag + the list of configuration items<br>**Gate:** verify_baseline_gate<br>**What it verifies:** Every declared item is present in the tag, and the framework commit is recorded |
 |  | BP8: Verify the availability of backup and recovery mechanisms | The configuration is backed up and recoverable:<br>• **The clones are the copy** — every developer keeps a full clone of the product with the framework submodule fetched, and the host stores repositories redundantly and restores a deleted one for 90 days; losing the repository or the framework repository is an accepted risk (Appendix A.9).<br>• **Released baselines stay put** — a release tag never moves, so a released state can always be fetched again. | **Statement:** Released baselines unchanged<br>**Evidence:** The release tags + the main branch's history<br>**Gate:** verify_baseline_gate<br>**What it verifies:** Every release tag points to the commit where its release record first appeared on the main branch<br>────────────────<br>**Not checkable:** that every developer keeps an up-to-date clone — left to the team |
-| SUP.9 | BP1: Identify and record the problems | Every problem in the product is recorded:<br>• **One issue per problem** — labelled *problem*, distinct from the *non-conformance* issues of SUP.1, which are about rules not followed.<br>• **Template** — the issue body holds one *problem* block (a fenced YAML block, *problem.v1*) stating what happens, where, and how to reproduce it (e.g. *steps, input, expected and actual result*).<br>• **Status** — every problem carries a status: open, under analysis, fixed or closed. | **Statement:** Problems recorded completely<br>**Evidence:** Issues labelled problem<br>**Gate:** check_problem_record_gate<br>**What it verifies:** At release, every problem — and on every pull request, every problem a test names — has its block, the template fields filled in and a status |
-|  | BP2: Determine the causes and the impacts of the problems | Every problem is analysed before it is fixed:<br>• **Cause** — why it happened (e.g. *a missing range check in the parser*).<br>• **Impact** — which requirements and components it affects, by their identifiers.<br>• **Severity** — low, medium, high or critical. | **Statement:** Problems analysed<br>**Evidence:** Issues labelled problem<br>**Gate:** check_problem_record_gate<br>**What it verifies:** Every problem past the open status, or named by a test (being fixed), states its cause, the requirements and components it affects, and a severity — on every pull request, so before the fix merges |
+| SUP.9 | BP1: Identify and record the problems | Every problem in the product is recorded:<br>• **One issue per problem** — labelled *problem*, distinct from the *non-conformance* issues of SUP.1, which are about rules not followed.<br>• **Template** — the issue body holds one *problem* block (a fenced YAML block, *problem.v1*) stating what happens, where, and how to reproduce it (e.g. *steps, input, expected and actual result*).<br>• **Status** — every problem carries a status: open, under analysis, fixed or closed.<br>• **Reported by anyone** — whoever finds a defect, in operation too, opens the issue with the product's problem form (*.github/ISSUE_TEMPLATE/problem_report.yml*); no agent runs. The developer agent writes the block from the form's answers when it analyses the problem. | **Statement:** Problems recorded completely<br>**Evidence:** Issues labelled problem<br>**Gate:** check_problem_record_gate<br>**What it verifies:** At release, every problem — and on every pull request, every problem a test names — has its block, the template fields filled in and a status; an open report from the form, named by no test, has it once analysed |
+|  | BP2: Determine the causes and the impacts of the problems | Every problem is analysed before it is fixed:<br>• **Cause** — why it happened (e.g. *a missing range check in the parser*).<br>• **Impact** — which requirements and components it affects, by their identifiers.<br>• **Severity** — low, medium, high or critical.<br>• **Origin** — the stage that brought the defect in (e.g. *unit_construction*).<br>• **Escape** — the stage that should have caught it, and why it did not (e.g. *unit_tests: the tests count one attempt, never three in a row*). An escape that is the framework's weakness — a gate that passed it, a rule its stage lacks — becomes a framework feedback entry that names the problem. | **Statement:** Problems analysed<br>**Evidence:** Issues labelled problem<br>**Gate:** check_problem_record_gate<br>**What it verifies:** Every problem past the open status, or named by a test (being fixed), states its cause, the requirements and components it affects, a severity, its origin and its escape — on every pull request, so before the fix merges<br>────────────────<br>**Not checkable:** that the origin and the escape are the real ones, and that a framework weakness has its feedback entry — Review |
 |  | BP3: Authorize urgent resolution actions | Urgent fixes are authorized:<br>• **When** — a problem of severity critical may be fixed outside the normal pace.<br>• **Authorization** — a person the product declares as authorized (*qf.yaml urgent_approvers*) comments */authorize-urgent-fix* on the problem issue before the fix is merged. | **Statement:** Urgent fixes authorized<br>**Evidence:** Critical problem issues + their fixing pull requests<br>**Gate:** check_urgent_fix_gate<br>**What it verifies:** Every fix of a critical problem — on its pull request, and after its merge — has the command from a declared authorized person, given before the fix reached the main branch |
 |  | BP4: Raise alert notifications | Problems that affect others are announced:<br>• **Affected parties** — a problem of severity high or critical names who else is affected (e.g. *the customer, the teams using this component*).<br>• **Notification** — the issue records that they were notified. | **Statement:** Affected parties notified<br>**Evidence:** Issues labelled problem with severity high or critical<br>**Gate:** check_problem_record_gate<br>**What it verifies:** At release, every such problem names its affected parties and records their notification<br>────────────────<br>**Not checkable:** that the notification reached the right people — left to the organisation |
 |  | BP5: Initiate problem resolution | Every problem is resolved for good:<br>• **Fix with proof** — the fixing pull request includes a test that reproduces the problem and now passes; the test names the problem with a marker (e.g. *@problem[123]*), so the same failure cannot come back unnoticed.<br>• **Or a change** — if fixing it needs a change of requirements or design, the problem links the change request that will carry it (SUP.10). | **Statement:** Fixed with a test, or handed to a change<br>**Evidence:** Problem issues + fixing pull requests + *@problem[...]* markers<br>**Gate:** verify_problem_closure_gate<br>**What it verifies:** Every fixed problem has a merged pull request with a test that names it, or a linked change request |
 |  | BP6: Track the problems to closure | Every problem is tracked to closure:<br>• **Closed with evidence** — a problem is closed only when its fix and its test are linked (BP5).<br>• **Confirmed** — the person who reported it (the issue's author) comments */confirm-fixed* on the issue after the fix reached the main branch.<br>• **Checked at release** — a release cannot go out with a problem closed without that evidence. | **Statement:** Closed with evidence and confirmation<br>**Evidence:** Closed problem issues<br>**Gate:** verify_problem_closure_gate<br>**What it verifies:** At release, every closed problem links its fix and test and has the reporter's confirmation |
-|  | BP7: Report the status of problem resolution activities | Problem resolution is reported with every release:<br>• **Status** — the release report lists the problems opened, fixed and still open since the previous release.<br>• **Trends** — counted by severity and by component (e.g. *3 problems in the parser, 2 of them high*), so a recurring weak spot becomes visible. | **Statement:** Trends in the release report<br>**Evidence:** Problem issues since the previous release<br>**Gate:** report_problem_trends_gate<br>**What it verifies:** The release report contains the problem section, generated from the tracker<br>────────────────<br>**Not checkable:** whether anyone acts on the trends — left to the organisation |
+|  | BP7: Report the status of problem resolution activities | Problem resolution is reported with every release:<br>• **Status** — the release report lists the problems opened, fixed and still open since the previous release.<br>• **Trends** — counted by severity, by component and by the stage they got through (e.g. *3 problems in the parser, 2 of them high, all 3 past unit_tests*), so a recurring weak spot — in the product or in a stage — becomes visible. | **Statement:** Trends in the release report<br>**Evidence:** Problem issues since the previous release<br>**Gate:** report_problem_trends_gate<br>**What it verifies:** The release report contains the problem section, generated from the tracker<br>────────────────<br>**Not checkable:** whether anyone acts on the trends — left to the organisation |
 | SUP.10 | BP1: Identify and record the change requests | Every change request is recorded:<br>• **Scope** — a change request asks for something different from what was agreed: a new or amended wish, diagram or requirement. A defect is not a change request; it is a problem (SUP.9).<br>• **One issue per change** — labelled *change-request*, its body one *change_request* block (*change_request.v1*) stating what is asked, who asks for it (the initiator) and why.<br>• **Status** — every change request carries a status: requested, analysed, approved, implemented or closed. | **Statement:** Change requests recorded completely<br>**Evidence:** Issues labelled change request<br>**Gate:** check_change_record_gate<br>**What it verifies:** At release every change request, and on every pull request every change request its commits name, has its block with what, initiator, reason and a status |
 |  | BP2: Analyze and assess the change requests | Every change request is analysed before it is approved:<br>• **Affected items** — the wishes, diagram elements and requirements it changes, by their identifiers.<br>• **Dependencies** — the other change requests it depends on, if any.<br>• **Size** — its relative size on the T-shirt scale S, M, L or XL, as for requirements (SWE.1 BP3). | **Statement:** Change requests analysed<br>**Evidence:** Issues labelled change request<br>**Gate:** check_change_record_gate<br>**What it verifies:** At release, every change request past the requested status lists its affected items and its size, and every dependency names an existing change request |
 |  | BP3: Approve the change requests before implementation | No change is built before it is approved:<br>• **Signed first** — a person the product declares as approving changes (*qf.yaml change_approvers*) comments */approve-change* on the change request before the first commit that names it.<br>• **Then the normal route** — the change enters as a new or amended wish and follows the same path as everything else: the amended diagram (checkpoint 1) and the derived requirements (checkpoint 2) are approved as usual.<br>• **Named by its commits** — every pull request that implements a change request names it (*#n*) in its commits, as every commit names its requirement or issue (SUP.8 BP4). | **Statement:** Approved before implementation<br>**Evidence:** Change requests + their comments + the commits that name them<br>**Gate:** verify_change_approval_gate<br>**What it verifies:** Every change request a commit names has */approve-change* from a declared approver, given before the first commit that names it |
@@ -848,7 +848,7 @@ group, and the stage table marks them *principle*.
 | #23 Environment and configuration | Testability · across environments and configurations | Every configuration value is declared and validated:<br>• **Declared** — every environment variable the code reads is declared, with a description, whether it is required, an example and its valid values, in the product's list of environment variables; and every declared variable is read somewhere. The stack declares how the code reads one (its read patterns).<br>• **Validated** — for every required variable, a unit test checks that the software stops at start-up when it is missing or invalid; the tester writes it first, like every unit test, and it names the variable (e.g. *@env[DATABASE_URL]*). | **Statement:** Variables declared both ways<br>**Evidence:** The code, read with the stack's read patterns + the list of environment variables<br>**Gate:** check_env_config_gate<br>**What it verifies:** Every variable the code reads is declared, and every declared variable is read<br>────────────────<br>**Statement:** Required variables validated<br>**Evidence:** The tests' environment markers + the unit suite's results<br>**Gate:** check_env_config_gate<br>**What it verifies:** Every required variable is named by at least one passing unit test<br>────────────────<br>**Not checkable:** a read whose variable name is computed at run time — left to the reviewer |
 | #37–#39 Alerts, dashboards, health checks | Observability | What the observability requirements specify is deployed with every release:<br>• **Definitions in the repository** — alerts, dashboards and health checks live as files, each naming the observability requirement it serves.<br>• **Deployed** — at release, they are deployed with the command the product declares. | **Statement:** Observability deployed<br>**Evidence:** The observability definition files + the deployment record of the release<br>**Gate:** check_observability_gate<br>**What it verifies:** Every observability requirement has at least one definition naming it, and the release deployed them successfully<br>────────────────<br>**Not checkable:** that the alerts fire correctly in production — left to the organisation |
 | #41 Retrospective action items | Feedback loop | Lessons learned are followed up:<br>• **Recorded** — after every release, retrospective action items are issues labelled *retro-action*, each with an owner and a due date.<br>• **Followed up** — at the next release, every overdue item is closed or rescheduled. | **Statement:** Retro actions followed up<br>**Evidence:** Issues labelled retro-action<br>**Gate:** check_retro_actions_gate<br>**What it verifies:** At release, no retro action is past its due date without being closed or rescheduled |
-| #47 Framework feedback | Framework improvement | Framework weaknesses are reported, never worked around:<br>• **Logged** — every weakness found in the framework is recorded in the product's framework feedback log.<br>• **Version bumps accounted for** — every update of the framework version records its findings, or states that there were none. | **Statement:** Feedback log complete<br>**Evidence:** The framework feedback log + the framework version history<br>**Gate:** check_framework_feedback_gate<br>**What it verifies:** Every entry is complete, and every framework version bump has its findings or a no-findings line |
+| #47 Framework feedback | Framework improvement | Framework weaknesses are reported, never worked around:<br>• **Logged** — every weakness found in the framework is recorded in the product's framework feedback log.<br>• **Filed** — every entry still open or reported is an issue of the framework's repository, filed by the developer agent once the person approved its text and its publishing; the issue holds the full report and the framework's answer, the entry the product's part and the issue's link.<br>• **Version bumps accounted for** — every update of the framework version records its findings, or states that there were none. | **Statement:** Feedback log complete<br>**Evidence:** The framework feedback log + the framework version history<br>**Gate:** check_framework_feedback_gate<br>**What it verifies:** Every entry is complete, every open or reported entry links its issue of the framework's repository, and every framework version bump has its findings or a no-findings line |
 
 ---
 
@@ -1647,7 +1647,7 @@ sequenceDiagram
   R->>AG: A defect is reported
   AG->>PRB: Load the problem rules
   AG->>TDD: Load the TDD rules
-  AG->>CI: Record and analyse the problem issue (cause, impact, severity)
+  AG->>CI: Record and analyse the problem issue (cause, impact, severity, origin, escape)
   opt critical
     R->>CI: /authorize-urgent-fix (a person in urgent_approvers)
   end
@@ -2418,9 +2418,9 @@ and format).
 | *gates/swe/check_verification_report_gate.py* | Software verification stage: the report exists for the current tree, written from its suite runs |
 | *tests/journey/test_swe6_software_verification.py* | Stage 8 on the Python product: tests, measurements, definitions and the report to stage 9 |
 | *skills/sup/review_code_skill* | Quality assurance stage: every delivery a pull request, a reviewer agent's approval of the head with the checklist, a person on the results (checkpoint 4) and on a question of what is wanted, faults left unfixed as non-conformance issues |
-| *skills/sup/report_framework_feedback_skill* | Quality assurance stage: every framework weakness a complete entry, every framework bump accounted for (principle #47) |
+| *skills/sup/report_framework_feedback_skill* | Quality assurance stage: every framework weakness a complete entry, filed as an issue of the framework's repository once the person approved it, every framework bump accounted for (principle #47) |
 | *plugins/sup/derive_review_plugin/SKILL.md* | Quality assurance stage: the reviewer agent's method — read, judge the checklist, post from its own account |
-| *templates/FRAMEWORK_FEEDBACK.md* | The framework feedback log a product copies: the entry template, severities and classes |
+| *templates/FRAMEWORK_FEEDBACK.md* | The framework feedback log a product copies: the entry template, severities and classes, and how an entry is filed |
 | *tools/read_host_tool.py* | The code host: pull requests and their reviews, the checks that passed on a commit, release tags; the delivery of the current branch; a recorded host for tests |
 | *tools/classify_pull_request_tool.py* | Whether a person reviews a pull request, why and on what: the results it brings (checkpoint 4), the questions of what is wanted — the stories' gaps the reviewer agent approved, the weakened tests, the disputes, the reviewer agent's request, the product's settings — and the architecture; the designs to tell and the tests to describe (§ 5 stage 9, rule 14) |
 | *tools/post_merge_status_tool.py* | The crossing sign: the commit status *qf/merge* on a pull request's head — wait, with what is missing, or ready to merge — posted by CI from the gates' result |
@@ -2432,7 +2432,8 @@ and format).
 | *gates/sup/verify_framework_integrity_gate.py* | Always-on, from the quality assurance stage: the framework a pinned submodule, unchanged, at a released commit |
 | *gates/sup/verify_required_checks_gate.py* | Always-on, from the quality assurance stage: the CI file runs the gates |
 | *gates/sup/scan_security_gate.py* | Quality assurance stage: both scanners ran, no critical or high finding (principle #29) |
-| *gates/sup/check_framework_feedback_gate.py* | Always-on, from the quality assurance stage: complete feedback entries, every framework bump named (principle #47) |
+| *gates/sup/check_framework_feedback_gate.py* | Always-on, from the quality assurance stage: complete feedback entries, every open one filed, every framework bump named (principle #47) |
+| *tools/file_framework_feedback_tool.py* | Files a feedback entry as an issue of the framework's repository with the person's GitHub login, after their approval of what *--show* prints, and keeps the product's part of the entry with the issue's link |
 | *gates/sup/verify_delivery_reviewed_gate.py* | Always-on, from the quality assurance stage: a pull request, the reviewer agent's approval of its head with the checklist and review record, a person's where the classification asks, the person's answers |
 | *tests/consistency/test_rulebook.py* | The rulebook is complete (SUP.1 BP2): every gate script belongs to a practice, every gate a practice names is built or planned |
 | *tests/journey/test_sup1_quality_assurance.py* | Stage 9 on the Python product with a recorded host: the reviewer agent's approval moves the product to the end of the flow |
@@ -2440,6 +2441,7 @@ and format).
 | *skills/sup/record_baseline_skill* | Configuration management stage: commit and branch conventions, the main branch's history kept, every configuration item under git, the two tracks apart, a release proposed as a pull request with a computed version, tagged |
 | *tools/write_release_tool.py* | The next release's record: the version computed from the commits since the last release tag, the configuration items changed, the pinned framework release; the records not yet tagged |
 | *templates/github/release.yml* | The product's release workflow: after the release pull request's merge, tag the merge commit and check the baseline |
+| *templates/github/problem_report.yml* | The product's problem form, copied to *.github/ISSUE_TEMPLATE/problem_report.yml*: what, where, how to reproduce, expected and actual, labelled *problem* — anyone who finds a defect reports it without an agent |
 | *gates/sup/check_commit_conventions_gate.py* | Always-on, from the configuration management stage: every commit a Conventional Commit naming a requirement or issue, the branch named by convention |
 | *gates/sup/verify_history_kept_gate.py* | Always-on, from the configuration management stage: every push to the main branch keeps its previous history |
 | *gates/sup/check_config_items_gate.py* | Configuration management stage: every configuration item exists and is tracked by git |
@@ -2454,7 +2456,7 @@ and format).
 | *gates/val/verify_acceptance_to_wishes_link_gate.py* | Validation stage: every wish a scenario, every marker a real wish; at release, every affected wish a scenario with a result |
 | *gates/val/verify_release_evidence_gate.py* | Validation stage: every release tag its validation record; the proposed release validated on exactly what is released, every automated scenario run, none failed, accepted by the customer |
 | *tests/journey/test_val1_validation.py* | Stage 11 on the Python product with a recorded host: a release validated on staging waiting for the customer with CI red, accepted and tagged with its record |
-| *contracts/problem_contract.v1.schema.json* | Problem resolution stage: one problem — the template, its analysis, its alert and its change request (SUP.9 BP1, BP2, BP4, BP5) |
+| *contracts/problem_contract.v1.schema.json* | Problem resolution stage: one problem — the template, its analysis with its origin and its escape, its alert and its change request (SUP.9 BP1, BP2, BP4, BP5) |
 | *contracts/nonconformance_contract.v1.schema.json* | Quality assurance at release: one fault left open — where it was found, what fixed it (SUP.1 BP6) |
 | *contracts/retro_action_contract.v1.schema.json* | Quality assurance at release: one retrospective action — owner and due date (principle #41) |
 | *skills/sup/resolve_problems_skill* | Problem resolution stage: a problem recorded, analysed before its fix, announced, authorized when critical, reproduced first, closed with its test and its reporter's word |
@@ -3582,7 +3584,17 @@ and a person approves the results and answers the questions of what is wanted
    secret has no score and always blocks.
 9. **Framework feedback.** *qf.v1 framework_feedback_file*.
    *check_framework_feedback_gate* requires every entry complete
-   (INCOMPLETE_FEEDBACK_ENTRY), and a submodule bump in the pull request
+   (INCOMPLETE_FEEDBACK_ENTRY): every field of the template, or once filed
+   the product's part — Date, Framework version, Status, Issue, Impact on
+   this product, Workaround applied — its Issue an issue of the framework's
+   repository (the GitHub URL *.gitmodules* records for *framework_dir*). An
+   entry still open or reported has its issue (UNFILED_FEEDBACK_ENTRY):
+   *tools/file_framework_feedback_tool.py* files it, titled with the
+   product's repository name, the full report its body, and shortens the
+   entry; the developer agent runs it only after the person approved in the
+   session what *--show* prints and its publishing, with the person's own
+   GitHub login. The framework answers in the issue and closes it with the
+   release that fixes it; the team sets the Status. And a submodule bump in the pull request
    accounted for in the team's own words: an entry whose *Framework version*
    names the new version, or a line *No findings for* it. The framework's
    answers quoted in the log, a version named in any other field or prose,
@@ -3956,7 +3968,7 @@ same issues at release belong to this round too.
    with a *nonconformance* and a *retro_action* block.
 2. **The fixing pull request is checked.** On every pull request, every
    problem a test names with *@problem[n]* exists, is analysed (cause, impact,
-   severity) and, if critical, authorized — so "analysed before it is fixed"
+   severity, origin, escape) and, if critical, authorized — so "analysed before it is fixed"
    (BP2) and "authorized before the merge" (BP3) hold before the merge. At
    release, every problem is checked for its record, its alert, its closure
    and its confirmation.
@@ -3987,7 +3999,8 @@ same issues at release belong to this round too.
    closure then needs no test.
 10. **The trends.** While a release is proposed, the verification report
     counts the problems opened, fixed and still open since the previous
-    release, by severity and by component, and the non-conformances opened,
+    release, by severity, by component and by the stage they got through, and
+    the non-conformances opened,
     closed and escalated since then. *report_problem_trends_gate* and
     *report_quality_trends_gate* require their section (MISSING_TREND_SECTION).
 11. **Escalation and rescheduling.** A non-conformance's age counts from its
@@ -3996,7 +4009,8 @@ same issues at release belong to this round too.
 12. **Names.** The labels *problem*, *non-conformance*, *escalated* and
     *retro-action*; *problem.v1* (*what*, *where*, *reproduce*, *expected*,
     *actual*, *status*, *cause*, *impact* with *requirements* and *components*,
-    *severity*, *affected_parties*, *notified*, *change_request*),
+    *severity*, *origin*, *escape* with *stage* and *why*, *affected_parties*,
+    *notified*, *change_request*); the form *problem_report.yml*;
     *nonconformance.v1* (*found_in*, *fixed_by*) and *retro_action.v1*
     (*owner*, *due*); the *qf.v1* fields *urgent_approvers* and
     *escalate_after_days*; the marker *@problem[n]*; the host reader's
@@ -4009,6 +4023,15 @@ same issues at release belong to this round too.
     MISSING_TREND_SECTION, NONCONFORMANCE_WITHOUT_FIX,
     UNESCALATED_NONCONFORMANCE and OVERDUE_RETRO_ACTION. Stage 12 has no crew
     of its own: the tester and the coder work in turn.
+13. **A defect found in operation.** No agent runs in operation. Whoever
+    finds the defect opens an issue with the product's problem form
+    (*.github/ISSUE_TEMPLATE/problem_report.yml*, labelled *problem*); it
+    passes the gates while it is open and no test names it. The next
+    developer session analyses it: writes the block from the form's answers,
+    with its *origin* and its *escape* — both stage ids of
+    *agent/stages.yaml*. An escape that is the framework's weakness becomes a
+    framework feedback entry that names the problem, filed as an issue of the
+    framework's repository once the person approved it (stage 9, rule 9).
 
 #### Change request stage — stage 13
 
@@ -5590,6 +5613,27 @@ label together.
   finding. *Not taken:* a record that points to earlier records instead of
   listing every finding — a record goes only with an approval, not every
   round, and the person's checkpoint reads it whole.
+- **Feedback reaches the framework as an issue** (2026-11-18, FB-91 of
+  wp_publisher, part 1; Alex D14 A, D15 B, D16 A, D17 A, D22 C). The log
+  was a file in the product's repository, read from the product's folder
+  on the framework's machine: a product built anywhere else had no way to
+  reach the framework, and nothing told it an entry was new (S 7, O 5,
+  D 9 — 315, high). *Chosen:* every entry still open or reported is an
+  issue of the framework's repository, the GitHub URL *.gitmodules* records
+  for the framework, filed by the developer agent with the person's own
+  login once the person approved in the session the repository, title and
+  body and their publishing — the issue is public; the issue holds the full
+  report and the framework's answer, closed with the fixing release; the
+  entry keeps the product's part and the issue's URL, the gate checking
+  both, as a distribution keeps a bug *forwarded* upstream. Risks kept: a
+  product's text published that should not be — S 6, O 2, D 3 — 36; the
+  person sees every word before it goes. *Not taken:* the agent filing on
+  its own (nobody would see what goes public); issues only, the file
+  deprecated (the gate would read another repository over the network on
+  every pull request, and the product would lose its own record); the full
+  entry kept in both places (two copies drift); an issue form (the entry
+  is the form); a tool that copies the answer back (the team sets its
+  Status); labels (a reporter who is no collaborator cannot set them).
 
 ### A.9 Configuration management stage — stage 10
 
@@ -5688,6 +5732,22 @@ label together.
 - **The SUP.1 release gates** (2026-10-12, D59 option A). *Chosen:* built with
   the problem gates. *Not taken:* B — a round of their own, building the
   issue reader twice.
+- **Learning where a defect got through** (2026-11-18, FB-91 of
+  wp_publisher, part 2; Alex D18 A, D19 A, D20 A, D21 A, D23 A). A defect
+  found late said nothing about the stage that let it through, so neither
+  the product nor the framework could close the hole; and someone in
+  operation could only report it by writing YAML. *Chosen:* the analysis
+  adds *origin* and *escape* (*stage*, *why*), checked with the rest of it;
+  the release report counts the problems by the stage they got through; an
+  escape that is the framework's weakness becomes a framework feedback
+  entry, checked by Review; a problem form any reporter fills in, its
+  answers turned into the block at analysis. *Not taken:* only the escape
+  (where it came in tells the weak stage too); a gate that reads problems
+  for the feedback log (whose weakness an escape is, is a judgement);
+  telemetry from the product in operation (outside the framework; a product
+  states observability as a requirement); the reporter writing the block
+  (YAML is a developer's language); free text the team rewrites later (the
+  form asks the five questions every record needs).
 
 ### A.12 Change request stage — stage 13
 

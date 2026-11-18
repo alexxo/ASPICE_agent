@@ -16,8 +16,8 @@ as the submodule at .framework with the clone's origin as its URL.
 
 Every value only a person knows is a required flag, never a placeholder: the
 agent asks the person and passes the answers (decision 2). The tool stages the
-submodule's pin and writes qf.yaml, the CI workflows copied from
-templates/github, the CODEOWNERS file, the framework feedback log and the
+submodule's pin and writes qf.yaml, the CI workflows and the problem
+report form copied from templates/github, the CODEOWNERS file, the framework feedback log and the
 agent's .gitignore lines — no work product and no empty folder (decision 4). It
 refuses to replace qf.yaml or overwrite any file, keeps a feedback log the
 product already has, and checks everything before it changes anything, git's
@@ -96,6 +96,7 @@ SLOTS = {
 COPIED = {
     "templates/github/quality_gates.yml": PATHS["ci_file"],
     "templates/github/release.yml": ".github/workflows/release.yml",
+    "templates/github/problem_report.yml": ".github/ISSUE_TEMPLATE/problem_report.yml",
     "templates/FRAMEWORK_FEEDBACK.md": PATHS["framework_feedback_file"],
 }
 

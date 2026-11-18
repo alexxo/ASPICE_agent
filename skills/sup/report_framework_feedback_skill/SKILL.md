@@ -1,6 +1,6 @@
 ---
 name: report_framework_feedback_skill
-description: "Rules for the framework feedback log (principle #47): every framework weakness found while building recorded as a complete entry, never worked around silently, and every framework version bump accounted for with findings or a no-findings line."
+description: "Rules for the framework feedback log (principle #47): every framework weakness found while building recorded as a complete entry and filed as an issue of the framework's repository once the person approved it, never worked around silently, and every framework version bump accounted for with findings or a no-findings line."
 ---
 
 # skill: report_framework_feedback_skill
@@ -18,12 +18,16 @@ copied from the framework's *templates/FRAMEWORK_FEEDBACK.md*. The framework's
 defects are invisible to the framework: a gate that passes without checking
 leaves no red build behind. The log makes such a finding survive the session
 that found it, so it is fixed upstream for every product, not patched around in
-one.
+one. The log is the product's record; an issue of the framework's repository
+is the channel that reaches the framework from any machine, and where the
+framework answers.
 
 Write an entry when a gate passes on input it did not read or fails on correct
 input, when a declared rule has no gate behind it, when a framework document
-says something untrue, when the product had to work around the framework, or
-when a framework version bump changed behaviour.
+says something untrue, when the product had to work around the framework, when
+a framework version bump changed behaviour, or when a problem's escape is the
+framework's weakness — then the entry names the problem (#&lt;n&gt;) in its
+*Impact on this product* (resolve_problems_skill).
 
 ## Inputs
 
@@ -31,6 +35,7 @@ when a framework version bump changed behaviour.
 - The framework version: the submodule commit at *paths.framework_dir* and its
   release tag.
 - The existing log, for the next *FB-&lt;n&gt;* and to avoid a duplicate.
+- The person, in the developer's session, to approve what is published.
 
 ## Contract
 
@@ -39,7 +44,10 @@ log's *## Log* heading, every *### FB-&lt;n&gt;* entry has the fields of the
 template: Date, Framework version, Severity (critical, high, medium, low),
 Class (C1–C6), Status, and the sections What the framework claims, What
 actually happens, Reproduction, Verification, Blast radius, Impact on this
-product and Workaround applied.
+product and Workaround applied. Once filed, the full report is the issue's body
+(titled *FB-&lt;n&gt; (&lt;product repository&gt;) — &lt;summary&gt;*) and
+the entry keeps only Date, Framework version, Status, **Issue** (the issue's
+URL), Impact on this product and Workaround applied.
 
 ## Rules
 
@@ -49,6 +57,8 @@ product and Workaround applied.
 | R2 | A pull request that moves the framework submodule names the new version in the log, in the team's own words: an entry's **Framework version** or a line starting *No findings for*; the framework's quoted answers and other prose do not count | check_framework_feedback_gate · UNACCOUNTED_FRAMEWORK_BUMP |
 | R3 | A framework weakness is recorded before the work moves on, and never fixed inside the framework's folder or worked around without an entry naming the files | Review |
 | R4 | A finding states whether it was run or only read | Review |
+| R5 | An entry still open or reported is filed as an issue of the framework's repository, its URL in **Issue**; a filed entry keeps the product's part, its Issue an issue of the framework's repository | check_framework_feedback_gate · UNFILED_FEEDBACK_ENTRY, INCOMPLETE_FEEDBACK_ENTRY |
+| R6 | The developer agent files an entry only after the person approved, in the session, what `file_framework_feedback_tool.py --show` prints — the repository, the title and the body — and its publishing: the issue is public. It files with the person's own GitHub login, never a reviewer's or a bot's token; a session without the person (the reviewer, tester or coder) never files | Review |
 
 ## Not checkable
 

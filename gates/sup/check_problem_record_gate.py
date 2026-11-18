@@ -3,12 +3,16 @@
 A problem is an issue labelled problem whose body holds one ```yaml problem
 block (problem.v1; decision 1 of the problem resolution stage). On every pull
 request, every problem a test names with @problem[<n>] — one being fixed — has
-its block (INCOMPLETE_PROBLEM_RECORD) and its analysis: cause, impact and
-severity (MISSING_ANALYSIS), so it is analysed before its fix merges (decision
-2). While a release is proposed, every problem is checked: its block, its
-analysis once past the open status, and for a high or critical one its affected
-parties and the date they were notified (MISSING_ALERT). That a test names a
-problem that exists is verify_problem_closure_gate's.
+its block (INCOMPLETE_PROBLEM_RECORD) and its analysis: cause, impact,
+severity, the stage that brought the defect in (origin) and the stage it got
+through (escape) (MISSING_ANALYSIS), so it is analysed before its fix merges
+(decision 2). While a release is proposed, every problem is checked: its block,
+its analysis once past the open status, and for a high or critical one its
+affected parties and the date they were notified (MISSING_ALERT). A report made
+with the product's problem form, .github/ISSUE_TEMPLATE/problem_report.yml, is a
+problem not analysed yet: it has no block until the developer agent writes one
+from its answers, and passes while it is open and no test names it (FB-91).
+That a test names a problem that exists is verify_problem_closure_gate's.
 
     python gates/sup/check_problem_record_gate.py [--root PRODUCT]
 """
@@ -30,7 +34,8 @@ from tools.run_stack_commands_tool import read_stack  # noqa: E402
 from tools.write_release_tool import pending  # noqa: E402
 
 GATE = "check_problem_record_gate"
-ANALYSIS = ("cause", "impact", "severity")
+ANALYSIS = ("cause", "impact", "severity", "origin", "escape")
+REPORT = "### What happens"  # the first heading of templates/github/problem_report.yml
 
 
 def check(config: ProductConfig) -> list[Finding]:
@@ -46,6 +51,9 @@ def check(config: ProductConfig) -> list[Finding]:
         record, why = problems[number].record("problem")
         where = f"#{number}"
         if record is None:
+            report = problems[number].body.lstrip().startswith(REPORT)
+            if report and problems[number].state == "open" and number not in named:
+                continue  # an open report from the form, still to be analysed
             findings.append(
                 Finding("INCOMPLETE_PROBLEM_RECORD", where, None, f"Problem {where}: {why}.")
             )

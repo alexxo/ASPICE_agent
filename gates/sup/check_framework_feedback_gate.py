@@ -3,7 +3,11 @@
 The framework feedback log, qf.yaml paths.framework_feedback_file, keeps main's
 two checks (decision 9 of the quality assurance stage). Every ### FB-<n> entry
 under its ## Log heading has every field of the template, a known severity and
-class, and no placeholder left (INCOMPLETE_FEEDBACK_ENTRY). A pull request that
+class, and no placeholder left (INCOMPLETE_FEEDBACK_ENTRY) — or, once filed as an
+issue of the framework's repository by tools/file_framework_feedback_tool.py,
+the product's part: Date, Framework version, Status, Issue (a URL of an issue of
+the framework's repository), Impact on this product and Workaround applied. An
+entry still open or reported has its issue (UNFILED_FEEDBACK_ENTRY). A pull request that
 moves the framework submodule (paths.framework_dir) between its base and HEAD
 names the new version — its short commit or a release tag on it, as a whole
 word — in the log, in the team's own words only: an entry's Framework version
@@ -28,6 +32,7 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
 
 from tools.check_approval_order_tool import in_git  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
+from tools.file_framework_feedback_tool import framework_repository  # noqa: E402
 from tools.read_commit_range_tool import resolve_base  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
 from tools.run_gate_command_tool import run_gate_command  # noqa: E402
@@ -47,6 +52,15 @@ FIELDS = (
     "**Impact on this product**",
     "**Workaround applied**",
 )
+FILED = (  # an entry filed as an issue keeps only the product's part
+    "- **Date:**",
+    "- **Framework version:**",
+    "- **Status:**",
+    "- **Issue:**",
+    "**Impact on this product**",
+    "**Workaround applied**",
+)
+UNFILED = ("open", "reported")  # statuses whose entry must have its issue
 SEVERITIES = ("critical", "high", "medium", "low")
 CLASSES = ("C1", "C2", "C3", "C4", "C5", "C6")
 PLACEHOLDERS = ("FB-<n>", "YYYY-MM-DD", "<one-line summary>", "<tag> @ <submodule SHA>")
@@ -60,8 +74,8 @@ def check(config: ProductConfig, base: str | None = None) -> list[Finding]:
     text = log.read_text(encoding="utf-8") if log.is_file() else ""
     start, body = _log_section(text)
     findings = [
-        Finding("INCOMPLETE_FEEDBACK_ENTRY", shown, line, f"{entry}: {problem}")
-        for entry, line, problem in _problems(body, start)
+        Finding(rule, shown, line, f"{entry}: {problem}")
+        for rule, entry, line, problem in _problems(body, start, framework_repository(config))
     ]
     if in_git(config.root):
         bump = _bump(config, base)
@@ -95,31 +109,60 @@ def _accounted(body: str, bump: set[str]) -> bool:
     return any(re.search(rf"(?<![\w.]){re.escape(name)}(?!\w|\.\w)", said) for name in bump)
 
 
-def _problems(body: str, start: int) -> list[tuple[str, int, str]]:
+def _problems(body: str, start: int, framework: str | None) -> list[tuple[str, str, int, str]]:
+    """(rule, entry, line, problem) for every entry; framework is the framework's
+    repository, owner/name, when .gitmodules names it on GitHub."""
+    incomplete = "INCOMPLETE_FEEDBACK_ENTRY"
     problems = []
     heads = list(_ENTRY.finditer(body))
     for i, head in enumerate(heads):
         entry = body[head.start() : heads[i + 1].start() if i + 1 < len(heads) else len(body)]
         line = start + body[: head.start()].count("\n") + 1
         name = head.group(1)
-        for field in FIELDS:
+        issue = _value(entry, "Issue")
+        for field in FILED if issue is not None else FIELDS:
             if field not in entry:
-                problems.append((name, line, f"missing '{field}' (write n/a, never omit it)"))
+                problems.append(
+                    (incomplete, name, line, f"missing '{field}' (write n/a, never omit it)")
+                )
         for placeholder in PLACEHOLDERS:
             if placeholder in entry:
-                problems.append((name, line, f"still has the template's '{placeholder}'"))
+                problems.append(
+                    (incomplete, name, line, f"still has the template's '{placeholder}'")
+                )
         for field, allowed in (("Severity", SEVERITIES), ("Class", CLASSES)):
-            value = re.search(rf"^- \*\*{field}:\*\*[ \t]*(.*)$", entry, re.M)
-            if value and value.group(1).strip() not in allowed:
+            value = _value(entry, field)
+            if value is not None and value not in allowed:
                 problems.append(
                     (
+                        incomplete,
                         name,
                         line,
-                        f"{field.lower()} '{value.group(1).strip()}' is not one of "
-                        f"{', '.join(allowed)}",
+                        f"{field.lower()} '{value}' is not one of {', '.join(allowed)}",
                     )
                 )
+        repo = re.escape(framework) if framework else r"[\w.-]+/[\w.-]+"
+        if issue is not None and not re.fullmatch(rf"https://github\.com/{repo}/issues/\d+", issue):
+            where = framework or "the framework's repository"
+            problems.append((incomplete, name, line, f"Issue '{issue}' is no issue of {where}"))
+        status = _value(entry, "Status") or ""
+        if issue is None and status.split(" ")[0] in UNFILED:
+            problems.append(
+                (
+                    "UNFILED_FEEDBACK_ENTRY",
+                    name,
+                    line,
+                    f"it is {status} but not filed as an issue of the framework's repository, so "
+                    f"the framework never sees it; once the person approved it, run "
+                    f"tools/file_framework_feedback_tool.py --entry {name}",
+                )
+            )
     return problems
+
+
+def _value(entry: str, field: str) -> str | None:
+    found = re.search(rf"^- \*\*{field}:\*\*[ \t]*(.*)$", entry, re.M)
+    return found.group(1).strip() if found else None
 
 
 def _git(root: Path, *args: str) -> str | None:
