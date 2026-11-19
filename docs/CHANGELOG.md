@@ -35,6 +35,36 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.4.0] - 2026-11-19
+
+The cost of a stage over the whole project: every session the framework starts, and your own, keeps what it cost in a ledger the dashboard reads, by stage, kind of session, LLM and pull request.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | optional — only the cost monitoring changed |
+| Add `--output-format json` to every Claude command line (`QF_COMMAND_TO_START_…`), as in QUICKSTART step 8 | the product's `.env` and `~/.aspice_agent_secrets/.env` | optional — without it a session's ledger row has no cost |
+| Add `QF_COSTS_DIR=<data folder>/costs` to both `.env` files, and `export QF_COSTS_DIR=<data folder>/costs` to your own tab's lines (`COST_MONITORING.md`, *The cost of a stage*); restart the watcher | the product's `.env`, `~/.aspice_agent_secrets/.env`, your tab | optional — without it no ledger is written |
+| Set `qf.product` in `OTEL_RESOURCE_ATTRIBUTES` to the product's repository name, e.g. `Team_repo_wp_publisher` | both `.env` files and your tab | optional — the Product filter then picks the same product in every section |
+| Create `<data folder>/costs`, then `docker rm -f lgtm` and step 4 of `COST_MONITORING.md` again: three new lines mount the ledger and its data source and install the SQLite plugin | the computer running the stack | optional — without it the section *Cost of a stage* stays empty |
+| Use the status line `plan_usage_statusline.py` (`COST_MONITORING.md`, *Your plan's allowance*) | `~/.claude/settings.json` | optional — without it your own session, the orchestrator, is not in the ledger |
+
+### Added
+
+- **The cost ledger** (`tools/write_cost_ledger_tool.py`). Every session the framework starts adds one row when it ends to `<QF_COSTS_DIR>/costs.sqlite`, one file per computer: its pull request (the reviewer's side) or branch (the author's), stage, kind, the program that ran it, how long, tokens and cost. The cost comes from Claude's result object (`--output-format json`); the framework reads only its answer, as if the command had printed text, so every reader of a session's output stays as it was, and another LLM's output is read as it is, its row without cost. The status line keeps your own session as the orchestrator's row, its cost the running total. Quality doc *Cost monitoring, an optional companion*; Appendix A.1 *The cost of a stage, from its first session to its last*. Origin: internal (Alex).
+- **Labels per session.** The sessions the framework starts add `qf.kind`, `qf.stage` and, on the watcher's side, `qf.pr` to the telemetry they send. Origin: internal (Alex).
+- **Cost of a stage** (`monitoring/`). A fourth dashboard section over the whole project, read from the ledger through Grafana's SQLite data source (`frser-sqlite-datasource` 4.0.6, `costs_datasource.yaml`): *Cost by stage* with the project's *Total*, *Effort by LLM* (sessions, hours, cost), *Cost by kind* and *Cost by pull request · split by stage*, and a *Pull request* filter. Origin: internal (Alex).
+
+### Changed
+
+- **Sessions by kind in the live sections.** *Cost by tab* is *Cost by session*, *Cost over time by tab* is *Cost over time by session*: each kind of session, your own as the orchestrator. Every name the dashboard colours — kind, stage, LLM, model family, token type — has its own colour in every chart. Origin: internal (Alex).
+- **The plan's window panels** fill their row, so *Tokens by type* no longer floats between two rows, and show their values only, sized by the panel. Origin: internal (Alex).
+
+### Fixed
+
+- **Telemetry is not optional** (Quality doc Appendix A.11): the FB-91 entry said a product may state observability as a requirement; every feature already has its observability requirement, events and watcher. Origin: found verifying FB-91.
+
 ## [5.3.0] - 2026-11-18
 
 A framework feedback entry reaches the framework as an issue of its repository, a problem records the stage it got through, and anyone reports a problem with the product's problem form.
