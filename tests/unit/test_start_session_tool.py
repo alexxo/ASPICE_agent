@@ -190,6 +190,7 @@ import pathlib, sys
 allowed = sys.argv[2:]
 files = sorted(p.as_posix() for p in pathlib.Path('.').rglob('*') if p.is_file())
 assert files and all(any(f.startswith(a) for a in allowed) for f in files), files
+assert all(f in sys.argv[1] for f in files), files  # FB-93: every file named, none guessed
 assert sys.argv[1].startswith('Check these: REQ-0047 criterion 1')
 print('```yaml')
 print('- question: What is a failed attempt?')
@@ -210,6 +211,17 @@ def test_clarify_sees_the_requirements_glossary_and_diagrams_only(
     report = json.loads(capsys.readouterr().out)
     questions = built / report["questions"]
     assert questions.read_text() == "- question: What is a failed attempt?\n"
+
+
+def test_a_clarify_answer_that_is_no_list_of_questions_fails(built, tmp_path, monkeypatch, capsys):
+    """FB-93: a session that found nothing answered in prose, and the run looked
+    done; an empty list, no question at all, is an answer."""
+    _session(built, tmp_path, "print('I could not list the folder.')\n", monkeypatch)
+    args = ["--session", "clarify", "--task", "Check these", "--root", str(built)]
+    assert start_session_tool.main(args) == 1
+    assert "no list of questions" in json.loads(capsys.readouterr().out)["problem"]
+    _session(built, tmp_path, "print('[]')\n", monkeypatch)
+    assert start_session_tool.main(args) == 0
 
 
 CODER = """

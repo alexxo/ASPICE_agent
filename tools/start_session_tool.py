@@ -23,9 +23,11 @@ reviewer agent's token is never in a .env and never reaches an author session.
 
 A session sees only what its role may read, by construction, not by
 instruction. Clarify runs in a temporary folder holding the requirements, the
-glossary and the diagrams. The tester runs in a temporary copy of the
-committed head without a single code file — only the tests, stubs it writes,
-the design, the plan and the rest — so it never sees the code, also when a
+glossary and the diagrams, every file named in its prompt (a session may read
+files but not list a folder); its answer must be a list of questions. The
+tester runs in a temporary copy of the committed head without a single code
+file — only the tests, stubs it writes, the design, the plan and the rest — so
+it never sees the code, also when a
 changed requirement brings stage 5 back after the code exists. Afterwards only
 what the tester may write comes back to the product: test files and the
 verification plan, and a stub for a unit that has no code yet, all in the
@@ -54,8 +56,9 @@ text; another command's output is read as it is, and its row has no cost.
     python tools/start_session_tool.py --session coder --component ID [--findings F] [--root P]
 
 Prints what happened as JSON: the session's output file, the files brought
-back, refused and skipped. Exit 0 done, 1 the session failed or wrote what its
-role may not, 2 it could not start.
+back, refused and skipped, and for clarify its questions file. Exit 0 done, 1
+the session failed, wrote what its role may not, or — clarify — answered with
+no list of questions (problem), 2 it could not start.
 """
 
 from __future__ import annotations
@@ -288,6 +291,7 @@ class Result:
     brought: list[str] = field(default_factory=list)
     refused: list[str] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
+    problem: str = ""  # why the session's answer cannot be used, though it ran
 
 
 def _stack(config: ProductConfig) -> dict:
@@ -437,6 +441,24 @@ def _unfenced(text: str) -> str:
     return text.strip() + "\n"
 
 
+def _no_questions(answer: str) -> str:
+    """Why the clarify session's answer is no list of questions; empty when it is
+    one (none at all included). FB-93: a session that found no file answered in
+    prose, and the run looked done."""
+    import yaml
+
+    try:
+        questions = yaml.safe_load(answer)
+    except yaml.YAMLError as err:
+        return f"the session's answer is no list of questions: it is not YAML ({err})"
+    if not isinstance(questions, list) or not all(isinstance(q, dict) for q in questions):
+        return (
+            "the session's answer is no list of questions; read it in "
+            f"{(LOGS / 'clarify.yaml').as_posix()} and start the session again"
+        )
+    return ""
+
+
 def clarify(config: ProductConfig, task: str, command, env) -> Result:
     """The clarify session, in a folder of the requirements, glossary and diagrams."""
     alone = Path(tempfile.mkdtemp(prefix="qf-clarify-"))
@@ -448,10 +470,11 @@ def clarify(config: ProductConfig, task: str, command, env) -> Result:
             elif source.is_file():
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(source, target)
-        prompt = (
-            f"{task}\n\nThis folder holds the requirements, the glossary and the approved "
-            f"diagrams, and nothing else: read nothing outside it.\n\n"
-            f"{_instructions(PROMPTS['clarify'])}"
+        files = sorted(p.relative_to(alone).as_posix() for p in alone.rglob("*") if p.is_file())
+        prompt = (  # every file named: a session may read files but not list a folder (FB-93)
+            f"{task}\n\nThe requirements, the glossary and the approved diagrams are these "
+            f"files, which are all this folder holds: {' '.join(files)}. Read nothing "
+            f"outside it.\n\n{_instructions(PROMPTS['clarify'])}"
         )
         output, code = _run(command(prompt), alone, env)
     finally:
@@ -548,6 +571,8 @@ def start(
     (logs / f"{name}.log").write_text(result.output, encoding="utf-8")
     if session == "clarify":
         (logs / "clarify.yaml").write_text(_unfenced(result.output), encoding="utf-8")
+        if result.returncode == 0:
+            result.problem = _no_questions(_unfenced(result.output))
     return result
 
 
@@ -579,8 +604,10 @@ def main(argv: list[str] | None = None) -> int:
     }
     if args.session == "clarify":
         report["questions"] = (LOGS / "clarify.yaml").as_posix()
+    if result.problem:
+        report["problem"] = result.problem
     print(json.dumps(report, indent=2))
-    return 0 if result.returncode == 0 and not result.refused else 1
+    return 0 if result.returncode == 0 and not result.refused and not result.problem else 1
 
 
 if __name__ == "__main__":

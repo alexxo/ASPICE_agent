@@ -2048,7 +2048,8 @@ no LLM is the default.
    framework tool (stage 9, rule 1).
 3. **Isolation by construction.** A session's folder holds only what its role
    may read: clarify and the three describe sessions run in temporary folders
-   of their files, the reviewer in its copy of the head, the tester in a copy
+   of their files, each file named in the prompt — a session may read files
+   but not list a folder — the reviewer in its copy of the head, the tester in a copy
    of the committed head with every code file removed — a file under
    *code_dir* matching the stack's *code_files* and not the unit suite's
    *test_files*. The rule *the tester never reads the code* holds also when a
@@ -2884,8 +2885,10 @@ requirements).
     one per participant.
 27. **Unclear criteria are settled before the build.** Once the other gates
     of stage 2 pass, a fresh session that sees only the requirements, the
-    glossary and the approved diagrams — a temporary folder of them, started
-    through *tools/start_session_tool.py* (*Independent sessions*) — flags each acceptance criterion or
+    glossary and the approved diagrams — a temporary folder of them, each
+    named in its prompt, started through *tools/start_session_tool.py*
+    (*Independent sessions*), its answer a list of questions or the launcher
+    fails — flags each acceptance criterion or
     glossary term whose readings would need different tests
     (*agent/clarify_criteria_prompt.md*): two or more readings, each with a
     short example, a reading that contradicts another requirement marked, a
@@ -4448,6 +4451,23 @@ label together.
   groupings by meaning (one colour, two things).
 
 ### A.2 Diagram and requirements stages — stages 1 and 2
+
+- **The clarify session is told its files** (2026-11-19, FB-93 of
+  wp_publisher; Alex D41 A, D42 A). The prompt named no file, the read-only
+  command line lets a session read files but not list a folder, and the
+  setup's own layout puts them under *docs/*: the session guessed names,
+  found none and answered in prose, and the launcher reported success — 1 of
+  1 runs in the pilot since the launcher, stage 2 stopped (S 8, O 9, D 3 —
+  216, high); a session that read nothing and answered no questions would
+  have marked every criterion checked unnoticed (S 8, O 3, D 9 — 216).
+  *Chosen:* the prompt names every file the folder holds, as the describe
+  sessions' do, for any LLM and any layout; the launcher fails when the
+  answer is no list of questions, naming the problem. Risk kept: a session
+  that names no question without reading — nothing proves it read; named
+  files remove the cause. *Not taken:* the files' text in the prompt (a
+  large prompt for many requirements); a listing right on the command line
+  (one LLM's flag, and the session still has to search); no check (the gate
+  red, the launcher saying it worked).
 
 - **Acceptance criteria state their case** (2026-10-05). *Chosen:* happy,
   edge, error, with the happy case always required and an edge or error case
