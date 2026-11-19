@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.4.1] - 2026-11-19
+
+A review on a pull request no longer runs the suites again on a head they already checked.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | optional |
+| Copy the two steps *Restore the runs kept for this commit* and *Keep the runs for this commit* from `templates/github/quality_gates.yml`, where the template has them | `.github/workflows/quality_gates.yml` | optional — without them every review runs the suites again |
+
+### Fixed
+
+- **A review reran the whole workflow** (`templates/github/quality_gates.yml`). Every review on a pull request — an approval, changes requested, a dismissal — ran every suite again on a head already checked: in wp_publisher 121 such runs in five weeks, 143 of its 423 CI minutes (34 %). The workflow now keeps the runs of `.qf/runs` for the commit (`actions/cache`, keyed by the commit alone) and restores them before the report: every gate still runs and decides, the suites do not run twice; a new commit, and the main branch's own merge commit, run everything afresh. Quality doc § 5 unit stages rule 13; Appendix A.8 *A review does not run the suites again*. Origin: FB-92 (wp_publisher).
+
 ## [5.4.0] - 2026-11-19
 
 The cost of a stage over the whole project: every session the framework starts, and your own, keeps what it cost in a ledger the dashboard reads, by stage, kind of session, LLM and pull request.
