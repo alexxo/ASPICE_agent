@@ -57,7 +57,8 @@
 # base branch: the job checks out the whole history, passes the base as QF_BASE,
 # and installs the product's toolchain before the gates run. The verification
 # report of the tree is written first — every suite runs once and the gates
-# reuse the runs — shown as the run's summary and kept as an artifact.
+# reuse the runs — shown as the run's summary and kept as an artifact. The runs
+# are kept for the commit too, so a review on an unchanged head reuses them.
 #
 # Every suite runs every test on every change (decision 32 of the unit stages),
 # within the time budget of its level (check_time_budget_gate). A run can be
@@ -116,6 +117,18 @@ jobs:
       - name: Install the product's toolchain
         run: echo "Install the tools the stack lists." >&2
 
+      # A review submitted on a head already checked runs the gates again on the
+      # same tree: the runs kept for this commit (.qf/runs, run_stack_commands_tool)
+      # are restored, so the suites and checks do not run twice, and every gate
+      # still decides. A new commit has no kept runs, and the main branch's run
+      # checks its own commit afresh (FB-92).
+      - name: Restore the runs kept for this commit
+        id: kept-runs
+        uses: actions/cache/restore@v4
+        with:
+          path: .qf/runs
+          key: qf-runs-${{ github.sha }}
+
       - name: "Crossing sign: wait, the gates are running"
         if: github.event.pull_request
         env:
@@ -138,6 +151,13 @@ jobs:
           set -o pipefail
           mkdir -p .qf
           python .framework/agent/resolve_stage_tool.py --root . --check | tee .qf/stage.json
+
+      - name: Keep the runs for this commit
+        if: always() && steps.kept-runs.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .qf/runs
+          key: qf-runs-${{ github.sha }}
 
       - name: "Crossing sign: wait, or ready to merge"
         if: always() && github.event.pull_request

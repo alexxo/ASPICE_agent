@@ -3188,7 +3188,10 @@ the product's own commands.
 13. **Each command runs once per tree.** A shared run tool runs each declared
     command once per tree and keeps its exit status, output, results and
     coverage under *.qf/runs/&lt;tree-hash&gt;/* (ignored by git); every gate reads
-    from it.
+    from it. In CI the product's workflow keeps that folder for the commit: a
+    review submitted on a head already checked runs every gate again on the
+    kept runs, not the suites; a new commit, and the main branch's own merge
+    commit, run everything afresh (FB-92).
 14. **Code files are named by the stack.** *stack.v2 code_files* (globs
     relative to *code_dir*); a file matching *code_files* and not the unit
     suite's *test_files* is code and needs a unit marker (MISSING_UNIT_MARKER),
@@ -5681,6 +5684,21 @@ label together.
   entry kept in both places (two copies drift); an issue form (the entry
   is the form); a tool that copies the answer back (the team sets its
   Status); labels (a reporter who is no collaborator cannot set them).
+- **A review does not run the suites again** (2026-11-19, FB-92 of
+  wp_publisher; Alex D40 A). Every review on a pull request — an approval,
+  changes requested, a dismissal — ran the whole workflow again on a head
+  already checked: in the pilot, 121 such runs in five weeks, 143 of its 423
+  CI minutes (34 %), the suites 68 of a run's 95 s, up to 55 minutes on one
+  pull request, each approval blocking the merge for about 1.5 minutes;
+  visible in every run, unnoticed for five weeks (S 6, O 9, D 6 — 324, high).
+  *Chosen:* the workflow keeps the runs of *.qf/runs* for the commit
+  (*actions/cache*, keyed by the commit alone) and restores them before the
+  report: every gate still runs and decides, on the runs already kept. Risk
+  kept: a test that passed by chance is not tried again on the same commit —
+  S 4, O 2, D 5 — 40; the main branch's merge commit runs it afresh. *Not
+  taken:* only the gates that read reviews, the rest from the last run's
+  status (a status that can be stale or set by hand would decide part of the
+  sign); no change (a third of CI time).
 
 ### A.9 Configuration management stage — stage 10
 

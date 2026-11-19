@@ -102,6 +102,31 @@ def test_a_pull_request_shows_the_crossing_sign(repo_root):
         assert "github.event.pull_request.head.sha" in sign["run"]
 
 
+def test_a_review_on_an_unchanged_head_reuses_its_commits_runs(repo_root):
+    """FB-92: the runs kept for the commit are restored before the report and
+    kept after the gates, whatever their result, under the commit alone: a new
+    commit, and the main branch's own merge commit, run everything again."""
+    steps = yaml.safe_load((repo_root / TEMPLATE).read_text())["jobs"]["gates"]["steps"]
+    names = [s.get("name") for s in steps]
+    restore = steps[names.index("Restore the runs kept for this commit")]
+    keep = steps[names.index("Keep the runs for this commit")]
+    report = names.index("Write the verification report")
+    gates = names.index("Quality gates")
+    assert names.index(restore["name"]) < report and names.index(keep["name"]) > gates
+    assert restore["uses"].startswith("actions/cache/restore@")
+    assert keep["uses"].startswith("actions/cache/save@")
+    assert (
+        restore["with"]
+        == keep["with"]
+        == {
+            "path": ".qf/runs",
+            "key": "qf-runs-${{ github.sha }}",
+        }
+    )
+    assert "restore-keys" not in restore["with"]  # never another commit's runs
+    assert keep["if"].startswith("always()")
+
+
 def test_runs_on_main_are_never_cancelled(repo_root):
     """A late run of a pull request must not overwrite a newer sign, but each push
     to main checks the commits it adds: those runs are never cancelled."""
