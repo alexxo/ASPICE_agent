@@ -39,6 +39,16 @@ folder, named to the coder (FB-78, FB-83). The coder runs the stack's checks and
 product's toolchain (QF_PATH_TO_PRODUCT_TOOLCHAIN in its .env) is first on its
 PATH, as for every command the framework runs (FB-80).
 
+Every session carries three labels for the cost dashboard, added to
+OTEL_RESOURCE_ATTRIBUTES: qf.kind (the session), qf.stage (the stage it works
+for) and, on the person's side, qf.pr (the pull request). Where the side's .env
+sets QF_COSTS_DIR, each session also adds its row to the ledger when it ends
+(tools/write_cost_ledger_tool.py): when, the pull request or branch, stage,
+kind, the program that ran it, how long, and the tokens and cost, which a
+command printing Claude's result object (its --output-format json) reports.
+The framework reads only that object's result, as if the command had printed
+text; another command's output is read as it is, and its row has no cost.
+
     python tools/start_session_tool.py --session clarify --task "Check these: …" [--root PRODUCT]
     python tools/start_session_tool.py --session tester --component ID [--findings F] [--root P]
     python tools/start_session_tool.py --session coder --component ID [--findings F] [--root P]
@@ -57,23 +67,28 @@ import json
 import os
 import shlex
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tarfile
 import tempfile
+import time
+import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tools.read_host_tool import HOST_TOKEN  # noqa: E402
+from tools.read_host_tool import HOST_TOKEN, HostError, repository  # noqa: E402
 from tools.read_product_config_tool import (  # noqa: E402
     ConfigError,
     ProductConfig,
     read_product_config,
 )
 from tools.run_stack_commands_tool import toolchain_env  # noqa: E402
+from tools.write_cost_ledger_tool import COSTS_DIR, write_row  # noqa: E402
 
 __all__ = [
     "AUTHOR_ENV",
@@ -82,8 +97,10 @@ __all__ = [
     "SessionError",
     "bring_back",
     "command_for",
+    "labelled",
     "person_env_file",
     "read_env",
+    "record_cost",
     "session_env",
     "tester_copy",
 ]
@@ -106,7 +123,15 @@ PROMPTS = {
     "tester": "write_unit_tests_prompt.md",
     "coder": "write_unit_code_prompt.md",
 }
-STAGES = {"tester": "unit_tests", "coder": "unit_construction"}
+STAGES = {  # the stage each session works for: its rules, its cost
+    "clarify": "requirements",
+    "tester": "unit_tests",
+    "coder": "unit_construction",
+    "reviewer": "quality_assurance",
+    "describe_tests": "quality_assurance",
+    "describe_design": "quality_assurance",
+    "expect_cases": "quality_assurance",
+}
 SECRETS = (HOST_TOKEN, "GH_TOKEN")  # never in a session the author's side starts
 LOGS = Path(".qf") / "sessions"
 FINDINGS = LOGS / "findings.md"  # in the tester's folder
@@ -168,6 +193,91 @@ def session_env(values: dict[str, str], drop: tuple[str, ...] = SECRETS) -> dict
     env = {k: v for k, v in os.environ.items() if k not in drop}
     env.update({k: v for k, v in values.items() if k not in drop})
     return env
+
+
+def labelled(env: dict[str, str], session: str, pr: int | None = None) -> dict[str, str]:
+    """The session's environment with its cost labels added to the telemetry's."""
+    labels = [f"qf.kind={session}", f"qf.stage={STAGES[session]}"]
+    labels += [f"qf.pr={pr}"] if pr is not None else []
+    found = env.get("OTEL_RESOURCE_ATTRIBUTES", "")
+    return {**env, "OTEL_RESOURCE_ATTRIBUTES": ",".join([found, *labels] if found else labels)}
+
+
+def unwrap(output: str) -> tuple[str, dict | None]:
+    """The session's answer, and Claude's result object when the command printed
+    one (--output-format json) as its last line; other output stays as it is."""
+    lines = output.strip().splitlines()
+    try:
+        found = json.loads(lines[-1]) if lines else None
+    except ValueError:
+        found = None
+    if not (isinstance(found, dict) and found.get("type") == "result"):
+        return output, None
+    before = "\n".join(lines[:-1])  # what the command printed besides, e.g. a warning
+    answer = str(found.get("result") or "")
+    return (f"{before}\n{answer}" if before else answer), found
+
+
+def record_cost(
+    values: dict[str, str],
+    root: Path,
+    session: str,
+    output: str,
+    *,
+    llm: str,
+    seconds: float,
+    pr: int | None = None,
+    timed_out: bool = False,
+) -> str:
+    """The session's answer; with QF_COSTS_DIR set, its row added to the ledger."""
+    answer, found = unwrap(output)
+    folder = values.get(COSTS_DIR) or os.environ.get(COSTS_DIR)
+    if not folder:
+        return answer
+    used = list(((found or {}).get("modelUsage") or {}).items())
+
+    def tokens(name: str) -> int | None:
+        return sum(u.get(name) or 0 for _, u in used) if used else None
+
+    row = {
+        "id": uuid.uuid4().hex,
+        "time": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "product": _product(root),
+        "pr": pr,
+        "branch": None if pr is not None else _branch(root),
+        "stage": STAGES[session],
+        "kind": session,
+        "llm": llm,
+        "model": max(used, key=lambda m: m[1].get("costUSD") or 0)[0] if used else None,
+        "input_tokens": tokens("inputTokens"),
+        "output_tokens": tokens("outputTokens"),
+        "cache_read_tokens": tokens("cacheReadInputTokens"),
+        "cache_creation_tokens": tokens("cacheCreationInputTokens"),
+        "seconds": round(seconds, 1),
+        "cost_usd": (found or {}).get("total_cost_usd"),
+        "timed_out": int(timed_out),
+    }
+    try:
+        write_row(Path(folder), row)
+    except (OSError, sqlite3.Error) as err:  # the cost is not worth a lost session
+        print(f"The session's cost was not recorded in {folder}: {err}", file=sys.stderr)
+    return answer
+
+
+def _branch(root: Path) -> str | None:
+    where = ["git", "-C", str(root), "rev-parse", "--abbrev-ref", "HEAD"]
+    done = subprocess.run(where, capture_output=True, text=True)
+    if done.returncode != 0:
+        return None
+    return done.stdout.strip() or None
+
+
+def _product(root: Path) -> str:
+    """The ledger's name: the product's repository name, else its folder's."""
+    try:
+        return repository(root).split("/")[-1]
+    except HostError:
+        return root.resolve().name
 
 
 @dataclass
@@ -417,7 +527,8 @@ def start(
             raise SessionError(f"No findings file at {findings}.")
     values = read_env(config.root / AUTHOR_ENV)
     command = command_for(session, values, f"the product's {AUTHOR_ENV}")
-    env = session_env(values)
+    env = labelled(session_env(values), session)
+    began = time.monotonic()
     if session == "clarify":
         result = clarify(config, task, command, env)
     elif not component:
@@ -426,6 +537,11 @@ def start(
         result = tester(config, component, command, env, findings)
     else:
         result = coder(config, component, command, env, findings)
+    llm = Path(command("")[0]).name
+    seconds = time.monotonic() - began
+    result.output = record_cost(
+        values, config.root, session, result.output, llm=llm, seconds=seconds
+    )
     logs = config.root / LOGS
     logs.mkdir(parents=True, exist_ok=True)
     name = session if session == "clarify" else f"{session}-{component}"

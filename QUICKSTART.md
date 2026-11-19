@@ -390,21 +390,23 @@ dontAsk` refuses everything not listed, `--setting-sources user` keeps the
 product's own settings out). A line allows a command by how it starts, one
 command at a time: the coder's prompt tells it to run each command as the
 plan and the stack write it, without pipes or `&&`, and that its rules come
-before the person's own instructions about tools. With Claude, each session
+before the person's own instructions about tools. `--output-format json`
+makes Claude report the session's cost with its answer; the framework reads
+the answer as text and keeps the cost (step 10). With Claude, each session
 needs its line; make each fallback the read-only line, so a forgotten line
 fails safe — the session stops, it is never given more:
 
 ```sh
 # <product>/.env
-QF_COMMAND_TO_START_AUTHOR_SESSIONS=claude -p {prompt} --permission-mode dontAsk --setting-sources user
-QF_COMMAND_TO_START_TESTER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**)"
-QF_COMMAND_TO_START_CODER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**),Bash(python *),Bash(python3 *),Bash(git status *),Bash(git diff *),Bash(git log *),Bash(<each command of the stack> *)"
+QF_COMMAND_TO_START_AUTHOR_SESSIONS=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user
+QF_COMMAND_TO_START_TESTER_SESSION=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**)"
+QF_COMMAND_TO_START_CODER_SESSION=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**),Bash(python *),Bash(python3 *),Bash(git status *),Bash(git diff *),Bash(git log *),Bash(<each command of the stack> *)"
 ```
 
 ```sh
 # ~/.aspice_agent_secrets/.env   (chmod 600)
-QF_COMMAND_TO_START_REVIEW_SESSIONS=claude -p {prompt} --permission-mode dontAsk --setting-sources user
-QF_COMMAND_TO_START_REVIEWER_SESSION=claude -p {prompt} --permission-mode dontAsk --setting-sources user --allowedTools "Read(//**/.framework/**),Edit(./.qf/reviews/**),Bash(git log *),Bash(git diff *),Bash(git show *),Bash(gh api *),Bash(gh pr view *),Bash(gh pr diff *),Bash(python */.framework/agent/read_config_tool.py *),Bash(python3 */.framework/agent/read_config_tool.py *),Bash(python */.framework/agent/load_skills_tool.py *),Bash(python3 */.framework/agent/load_skills_tool.py *),Bash(python */.framework/tools/classify_pull_request_tool.py *),Bash(python3 */.framework/tools/classify_pull_request_tool.py *),Bash(python */.framework/tools/post_review_tool.py *),Bash(python3 */.framework/tools/post_review_tool.py *)"
+QF_COMMAND_TO_START_REVIEW_SESSIONS=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user
+QF_COMMAND_TO_START_REVIEWER_SESSION=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user --allowedTools "Read(//**/.framework/**),Edit(./.qf/reviews/**),Bash(git log *),Bash(git diff *),Bash(git show *),Bash(gh api *),Bash(gh pr view *),Bash(gh pr diff *),Bash(python */.framework/agent/read_config_tool.py *),Bash(python3 */.framework/agent/read_config_tool.py *),Bash(python */.framework/agent/load_skills_tool.py *),Bash(python3 */.framework/agent/load_skills_tool.py *),Bash(python */.framework/tools/classify_pull_request_tool.py *),Bash(python3 */.framework/tools/classify_pull_request_tool.py *),Bash(python */.framework/tools/post_review_tool.py *),Bash(python3 */.framework/tools/post_review_tool.py *)"
 ```
 
 Replace `<each command of the stack>` with the first word of every command the
@@ -516,9 +518,11 @@ Only if the person wants to see what the LLM sessions cost. Nothing else
 depends on it, and it can be added at any time.
 
 Tell the person: a local Grafana shows the cost of the sessions now and
-today, per tab and per model, from the numbers Claude Code sends. It is one
-container on their computer, and seven settings in the two `.env` files of
-step 8. The guide, for macOS, Linux and Windows, is
+today, per tab and per model, from the numbers Claude Code sends; and a
+ledger keeps what each session the framework starts cost — its pull request,
+stage and kind — for the whole project. It is one container on their
+computer, seven settings in the two `.env` files of step 8, and
+`QF_COSTS_DIR` in both for the ledger. The guide, for macOS, Linux and Windows, is
 [`.framework/monitoring/COST_MONITORING.md`](monitoring/COST_MONITORING.md).
 The person follows it; the `.env` lines are theirs to add, as in step 8.
 

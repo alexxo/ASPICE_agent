@@ -1,9 +1,11 @@
 # Cost monitoring
 
 An optional companion of the framework. It sets up a local Grafana that shows
-what the LLM sessions of a product cost, now and today, per tab and per model.
-Nothing in the framework needs it: no gate, tool or rule reads it, and a
-product works the same without it.
+what the LLM sessions of a product cost, now and today, per kind of session and
+per model,
+and what each stage, kind of session, LLM and pull request cost over the
+whole project. Nothing in the framework needs it: no gate or rule reads it,
+and a product works the same without it.
 
 ```
 LLM sessions ──OpenTelemetry (OTLP :4317)──▶ container "lgtm" ──▶ Grafana :3000
@@ -25,27 +27,31 @@ LLM command lines report other numbers, or none: see *Limits*.
 
 ## What you get
 
-Dashboard **Claude costs**, in three sections with the same bars, each over
-its own span, whatever the time picker says:
+Dashboard **Claude costs**, in three live sections with the same bars, each
+over its own span, whatever the time picker says, and a fourth over the whole
+project, *Cost of a stage* (its own heading below):
 
 | Section | Span | Also |
 |---|---|---|
 | Now · last 15 min | the last 15 minutes | |
 | 5-hour window | since your plan's current 5-hour window started | 5-hour window used · Week used, and when each resets (*Your plan's allowance*); costs in % of the window |
-| Today | since 00:00 | Cost over time by tab: stacked bars per hour |
+| Today | since 00:00 | Cost over time by session: stacked bars per hour |
 
 | Bars | Shows |
 |---|---|
-| Cost by tab | Dollars of each tab |
+| Cost by session | Dollars of each kind of session: your own, the orchestrator, and each kind the framework starts |
 | Cost by model | Dollars of each model |
 | Tokens by type | input, output, cacheRead, cacheCreation |
 
-A tab has the same colour in every chart. At the top, **Scope** and
-**Product** filter every chart but the allowance, which is your account's.
-
-A **tab** is what one setting of `qf.session` labels: `developer` for your own
-tab and the sessions the framework starts for it (clarify, tester, coder),
-`watcher` for the reviewer and describe sessions of the watcher.
+A **session** is shown by its kind: the sessions the framework starts by
+theirs (`qf_kind`: clarify, tester, coder, reviewer, describe_tests,
+describe_design, expect_cases), and your own, which has none, as the
+**orchestrator** — *framework · orchestrator* in the framework's repository.
+Every name the dashboard colours has its own colour, the same in every chart
+that shows it: a kind of session in *Cost by session* and in *Cost by kind*,
+a stage, an LLM, a model family, a token type. At the top, **Scope** and
+**Product** filter every chart but the allowance, which is your account's;
+**Pull request** filters *Cost of a stage* only.
 
 ## One-time setup
 
@@ -56,8 +62,9 @@ placeholders:
   `~/qf-monitoring` (Windows: `C:\qf-monitoring`). Removing or updating the
   container keeps them.
 - `<product>`: the product's folder, which holds `.framework`.
-- `<product name>`: the product's name as the dashboard shows it, e.g.
-  `wp_publisher`.
+- `<product name>`: the product's repository name, e.g.
+  `Team_repo_wp_publisher`: the cost ledger names the product by it, so the
+  Product filter picks the same product in every section.
 
 On macOS with Colima, both folders must be inside your home folder: Colima
 shares only that one with containers. A folder elsewhere (e.g. `/tmp`) is
@@ -77,13 +84,13 @@ a version number.
 macOS and Linux:
 
 ```sh
-mkdir -p <data folder>/grafana <data folder>/prometheus
+mkdir -p <data folder>/grafana <data folder>/prometheus <data folder>/costs
 ```
 
 Windows (PowerShell):
 
 ```powershell
-New-Item -ItemType Directory -Force <data folder>\grafana, <data folder>\prometheus
+New-Item -ItemType Directory -Force <data folder>\grafana, <data folder>\prometheus, <data folder>\costs
 ```
 
 ### 3. Check the framework holds this folder
@@ -105,7 +112,10 @@ docker run -d --name lgtm --restart unless-stopped \
   -v "<data folder>/prometheus:/data/prometheus" \
   -v "<product>/.framework/monitoring:/otel-lgtm/claude-dashboards:ro" \
   -v "<product>/.framework/monitoring/provider.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/claude-costs.yaml:ro" \
+  -v "<data folder>/costs:/data/costs" \
+  -v "<product>/.framework/monitoring/costs_datasource.yaml:/otel-lgtm/grafana/conf/provisioning/datasources/costs.yaml:ro" \
   -e GF_PATHS_DATA=/data/grafana \
+  -e GF_PLUGINS_PREINSTALL=frser-sqlite-datasource@4.0.6 \
   grafana/otel-lgtm:0.41.0
 ```
 
@@ -118,7 +128,10 @@ docker run -d --name lgtm --restart unless-stopped `
   -v "<data folder>\prometheus:/data/prometheus" `
   -v "<product>\.framework\monitoring:/otel-lgtm/claude-dashboards:ro" `
   -v "<product>\.framework\monitoring\provider.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/claude-costs.yaml:ro" `
+  -v "<data folder>\costs:/data/costs" `
+  -v "<product>\.framework\monitoring\costs_datasource.yaml:/otel-lgtm/grafana/conf/provisioning/datasources/costs.yaml:ro" `
   -e GF_PATHS_DATA=/data/grafana `
+  -e GF_PLUGINS_PREINSTALL=frser-sqlite-datasource@4.0.6 `
   grafana/otel-lgtm:0.41.0
 ```
 
@@ -197,6 +210,54 @@ A watcher reads its `.env` when it starts: restart it once after adding the
 lines. In Prometheus the labels' dots become underscores: `qf_scope`,
 `qf_product`, `qf_session`.
 
+The sessions the framework starts add three labels of their own: `qf_kind`
+(clarify, tester, coder, reviewer, describe_tests, describe_design,
+expect_cases), `qf_stage` (the stage it works for, as in
+`agent/stages.yaml`) and, for the watcher's sessions, `qf_pr` (the pull
+request).
+
+## The cost of a stage
+
+Prometheus keeps 15 days; a stage can run longer. So every session the
+framework starts keeps what it cost in a ledger of its own, one row when it
+ends, kept for the whole project: `<data folder>/costs/costs.sqlite`, a SQLite
+file, one per computer for every product. Grafana reads it through the SQLite
+data source the container installs (`frser-sqlite-datasource`, step 4) and
+shows it in the section **Cost of a stage**, over the whole project:
+
+| Panel | Shows |
+|---|---|
+| Cost by stage · Total | What each stage's sessions cost, from the first to the last; the orchestrator beside the total |
+| Effort by LLM | Sessions, hours and cost per LLM: sessions and hours compare every LLM, cost only those that report it |
+| Cost by kind · split by LLM | clarify, tester, coder, reviewer, describe and expect sessions, and the orchestrator, each split by the LLM that ran it |
+| Cost by pull request · split by stage | Each pull request, or its branch before it existed, split by stage, the most expensive first |
+
+Switch it on with one line in both `.env` files, the folder mounted at
+`/data/costs`:
+
+```
+QF_COSTS_DIR=<data folder>/costs
+```
+
+and, for your own tab, the same as `export QF_COSTS_DIR=<data folder>/costs`
+(PowerShell: `$env:QF_COSTS_DIR = "<data folder>\costs"`). The user who runs
+the sessions must be able to write that folder.
+
+- **The sessions the framework starts** write their row when they end: its
+  pull request (the reviewer's side) or branch (the author's, before the pull
+  request exists), stage, kind, the program that ran it, how long, tokens and
+  cost. The cost comes from the session's own answer, so each Claude command
+  in the `.env` files needs `--output-format json` (QUICKSTART step 8); the
+  framework reads the answer as text and keeps the cost. Another LLM's
+  session, or one stopped at its time limit, still gets its row, without
+  cost.
+- **Your own session, the orchestrator,** has no stage: the status line
+  (*Your plan's allowance*) keeps one row per session in a product's folder,
+  its cost the running total. Without the status line, its cost is missing.
+
+Look at the file itself with `sqlite3 <data folder>/costs/costs.sqlite
+"SELECT kind, SUM(cost_usd) FROM sessions GROUP BY kind"`.
+
 ## Your plan's allowance
 
 On a Pro, Max or Ultra plan the dollars are list prices, not what you pay:
@@ -205,7 +266,9 @@ Claude Code tells a status line how much of each is used; it does not send it
 with the numbers above. The status line `plan_usage_statusline.py` of this
 folder shows it in your terminal, e.g. `5h 42 % (21:10) · week 18 % (Sat 09:00)`,
 and sends it to the stack as `qf_plan_used_percent` and `qf_plan_resets_at`,
-for the *5-hour window* section.
+for the *5-hour window* section. In a product's folder, with `QF_COSTS_DIR`
+set, it also keeps your session's cost in the ledger as the orchestrator's
+row (*The cost of a stage*).
 
 Add it to your own Claude Code settings, `~/.claude/settings.json`
 (`%USERPROFILE%\.claude\settings.json` on Windows):
@@ -225,10 +288,10 @@ with this status line counts every session, the watcher's too. It is sent while
 a tab works, at most every 10 seconds; between two sends the panels keep the
 last value, and show 0 % once the window has reset.
 
-In the 5-hour window section, *Cost by tab* and *Cost by model* show each
+In the 5-hour window section, *Cost by session* and *Cost by model* show each
 one's share of the window, not dollars: its list-price dollars since the window
 started, divided by what 1 % of the window costs (the dollars of every session
-since it started, divided by the % used). The bars of every tab add up to
+since it started, divided by the % used). The bars of every session add up to
 *5-hour window used*. It is an estimate, since the allowance is not set in
 dollars, and moves a lot while the window is nearly empty. Without the status
 line the section stays empty: it needs to know when the window started.
@@ -271,9 +334,11 @@ max_over_time(cost[W]) - (last_over_time(cost[2d] offset W) or max_over_time(cos
 - **Dollars are API list prices.** On a subscription they compare tabs, days
   and models; they are not what you are billed. *Your plan's allowance* shows
   what you are limited by.
-- **Per tab, not per pull request or stage.** The sessions the framework
-  starts carry the label of the `.env` that starts them. Labels per pull
-  request, stage and kind of session come with a later framework release.
+- **Your own session has no stage.** Its labels are set when it starts, so
+  it stays one tab, and the ledger keeps it as one orchestrator row; only the
+  sessions the framework starts carry their kind, stage and pull request.
+- **The ledger's cost needs the LLM to report it.** Claude does with
+  `--output-format json`; another LLM's rows count sessions and hours only.
 - **One computer.** Each computer sends to its own stack. One stack for a
   whole team needs port 4317 open to the network and Grafana with sign-in:
   not covered here.
@@ -286,7 +351,10 @@ docker rm -f lgtm
 ```
 
 Then step 4 again with the new tag. The data folder is untouched. A framework
-bump needs nothing: the dashboard folder is mounted from `.framework`.
+bump needs nothing, unless its changelog names a new line for step 4: the
+dashboard folder is mounted from `.framework`. A container created before
+framework 5.4.0 has no ledger: create the costs folder (step 2), then
+`docker rm -f lgtm` and step 4 again.
 
 ## Switching it off
 
@@ -306,6 +374,6 @@ bump needs nothing: the dashboard folder is mounted from `.framework`.
 | No dashboard *Claude costs* | `docker logs lgtm 2>&1 \| grep -i provisioning`; check the two `.framework/monitoring` lines of step 4 and step 3 |
 | Dashboard empty | A session sends numbers every 10 seconds while it works: send one prompt, wait 20 seconds. Still empty: that session started without the settings, or before the stack — start it again |
 | Collector receives, Prometheus stays empty | The settings miss `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative`: Prometheus refuses the default |
-| A tab missing from *Cost by tab* | Its settings were not read: an `.env` line misspelt, or the watcher not restarted after adding them |
+| A session missing from *Cost by session* | Its settings were not read: an `.env` line misspelt, or the watcher not restarted after adding them |
 | `port is already allocated` in step 4 | Another program uses 3000, 4317 or 4318 (`lsof -i :3000`; Windows: `netstat -ano \| findstr :3000`) |
 | Numbers gone after an update | The data folder was not mounted, or (Colima) lies outside your home folder: step 6 |

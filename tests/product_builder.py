@@ -1752,6 +1752,18 @@ def problem_report(number: int, **changes) -> dict:
     return {**issue(number, "problem", None, **changes), "body": REPORT}
 
 
+def ledger_rows(folder: Path) -> list[dict]:
+    """The rows of the cost ledger in folder (tools/write_cost_ledger_tool.py)."""
+    import sqlite3
+
+    db = sqlite3.connect(folder / "costs.sqlite")
+    db.row_factory = sqlite3.Row
+    try:
+        return [dict(r) for r in db.execute("SELECT * FROM sessions ORDER BY time")]
+    finally:
+        db.close()
+
+
 def write_problem_test(root: Path, number: int) -> str:
     """The crack bench: a test marked @problem[number], next to the unit it tests."""
     path = f"src/auth_service/test_problem_{number}.py"

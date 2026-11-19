@@ -8,8 +8,14 @@ as two gauges, `qf_plan_used_percent` and `qf_plan_resets_at`, one series per
 window (COST_MONITORING.md, *Your plan's allowance*). The allowance is the
 account's, so one tab that runs this counts every session.
 
-Nothing here may slow or break the status line: a stack that is down, or
-data without `rate_limits`, only leaves the gauges unsent.
+In a product's folder (one holding qf.yaml) with QF_COSTS_DIR set, it also
+keeps this session's cost in the cost ledger as the orchestrator's row: one
+row per session, its cost the running total, written when it changes
+(tools/write_cost_ledger_tool.py; COST_MONITORING.md, *The cost of a stage*).
+
+Nothing here may slow or break the status line: a stack that is down, a
+ledger that cannot be written, or data without `rate_limits`, only leaves
+the gauges or the row unwritten.
 """
 
 from __future__ import annotations
@@ -19,13 +25,14 @@ import os
 import sys
 import time
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 ENDPOINT = os.environ.get("QF_PLAN_USAGE_ENDPOINT", "http://localhost:4318/v1/metrics")
 WINDOWS = {"five_hour": "5h", "seven_day": "week"}
 EVERY = 10  # seconds between two sends; the status line runs far more often
 SENT = Path(os.environ.get("TMPDIR", "/tmp")) / "qf_plan_usage_sent"
+FRAMEWORK = Path(__file__).resolve().parents[1]
 
 
 def windows(data: dict) -> dict:
@@ -99,11 +106,57 @@ def send(found: dict) -> None:
         pass  # the stack is down: the status line still shows
 
 
+def product_of(data: dict) -> Path | None:
+    """The product the session works in: the folder holding qf.yaml, from its own up."""
+    here = Path((data.get("workspace") or {}).get("current_dir") or data.get("cwd") or ".")
+    return next((p for p in (here, *here.parents) if (p / "qf.yaml").is_file()), None)
+
+
+def record(data: dict) -> None:
+    """The orchestrator's row in the cost ledger, when its cost changed."""
+    folder = os.environ.get("QF_COSTS_DIR")
+    cost = data.get("cost") or {}
+    session = data.get("session_id")
+    if not folder or not session or cost.get("total_cost_usd") is None:
+        return
+    product = product_of(data)
+    if product is None:
+        return
+    seen = Path(os.environ.get("TMPDIR", "/tmp")) / f"qf_cost_{session}"
+    total = str(cost["total_cost_usd"])
+    try:
+        if seen.read_text() == total:
+            return
+    except OSError:
+        pass
+    sys.path.insert(0, str(FRAMEWORK))
+    from tools.write_cost_ledger_tool import write_row
+
+    repo = (data.get("workspace") or {}).get("repo") or {}
+    row = {
+        "id": session,
+        "time": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "product": repo.get("name") or product.name,
+        "kind": "orchestrator",
+        "llm": "claude",
+        "model": (data.get("model") or {}).get("id"),
+        "seconds": round((cost.get("total_duration_ms") or 0) / 1000, 1),
+        "cost_usd": cost["total_cost_usd"],
+        "timed_out": 0,
+    }
+    try:
+        write_row(Path(folder), row)
+        seen.write_text(total)
+    except Exception:  # the status line still shows
+        pass
+
+
 def main() -> None:
     try:
         data = json.load(sys.stdin)
     except ValueError:
         return
+    record(data)
     found = windows(data)
     if found:
         send(found)

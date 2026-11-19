@@ -113,8 +113,10 @@ from tools.render_page_tool import open_page  # noqa: E402
 from tools.start_session_tool import (  # noqa: E402
     SessionError,
     command_for,
+    labelled,
     person_env_file,
     read_env,
+    record_cost,
 )
 
 __all__ = ["Stop", "Watcher", "banner", "due", "waits_for_person"]
@@ -647,7 +649,12 @@ class Watcher:
             if isinstance(describe, dict):
                 describe = describe[DESCRIBERS[what]]
             output, timed_out = self._session(
-                describe(_describe_prompt(self.config, files, what)), alone, env, number, head
+                describe(_describe_prompt(self.config, files, what)),
+                alone,
+                env,
+                number,
+                head,
+                DESCRIBERS[what],
             )
         finally:
             _shutil.rmtree(alone, ignore_errors=True)
@@ -690,9 +697,26 @@ class Watcher:
         argv = self.command(_prompt(self.config, self.repo, number, described, copy, since))
         return self._session(argv, copy or self.config.root, env, number, head)
 
-    def _session(self, argv, cwd: Path, env: dict, number: int, head: str) -> tuple[str, bool]:
-        """A session's output, and whether it ran out of time; a line every few
-        minutes says it is still running."""
+    def _session(
+        self, argv, cwd: Path, env: dict, number: int, head: str, kind: str = "reviewer"
+    ) -> tuple[str, bool]:
+        """A session's answer, and whether it ran out of time; a line every few
+        minutes says it is still running. Its cost goes to the ledger."""
+        began = time.monotonic()
+        output, timed_out = self._wait(argv, cwd, labelled(env, kind, number), number, head)
+        answer = record_cost(
+            self.settings,
+            self.config.root,
+            kind,
+            output,
+            llm=Path(argv[0]).name,
+            seconds=time.monotonic() - began,
+            pr=number,
+            timed_out=timed_out,
+        )
+        return answer, timed_out
+
+    def _wait(self, argv, cwd: Path, env: dict, number: int, head: str) -> tuple[str, bool]:
         process = subprocess.Popen(
             argv,
             cwd=cwd,

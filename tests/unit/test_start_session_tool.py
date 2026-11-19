@@ -11,12 +11,20 @@ from product_builder import (
     build_python_product,
     commit_all,
     install_plugins,
+    ledger_rows,
     write_all_code,
     write_all_tests_and_stubs,
 )
 
 from tools import start_session_tool
-from tools.start_session_tool import SessionError, command_for, read_env, session_env
+from tools.start_session_tool import (
+    SessionError,
+    command_for,
+    labelled,
+    read_env,
+    session_env,
+    unwrap,
+)
 
 
 def test_a_env_file_is_read_as_names_and_values(tmp_path):
@@ -62,6 +70,42 @@ def test_the_keys_reach_the_session_and_the_tokens_never_do(monkeypatch):
     env = session_env({"OPENAI_API_KEY": "sk-test", "QF_HOST_TOKEN": "in-the-env-file"})
     assert env["OPENAI_API_KEY"] == "sk-test"
     assert "QF_HOST_TOKEN" not in env and "GH_TOKEN" not in env
+
+
+def test_a_session_carries_its_kind_stage_and_pull_request_for_the_cost_dashboard():
+    tab = {"OTEL_RESOURCE_ATTRIBUTES": "qf.scope=product,qf.session=watcher"}
+    assert labelled(tab, "reviewer", 41)["OTEL_RESOURCE_ATTRIBUTES"] == (
+        "qf.scope=product,qf.session=watcher,"
+        "qf.kind=reviewer,qf.stage=quality_assurance,qf.pr=41"
+    )
+    assert labelled({}, "coder")["OTEL_RESOURCE_ATTRIBUTES"] == (
+        "qf.kind=coder,qf.stage=unit_construction"
+    )
+
+
+RESULT = {
+    "type": "result",
+    "is_error": False,
+    "result": "```yaml\n- question: What is a failed attempt?\n```",
+    "total_cost_usd": 0.84,
+    "modelUsage": {
+        "claude-sonnet-5-5": {
+            "inputTokens": 3,
+            "outputTokens": 400,
+            "cacheReadInputTokens": 9000,
+            "cacheCreationInputTokens": 1200,
+            "costUSD": 0.84,
+        }
+    },
+}
+
+
+def test_claudes_result_object_is_read_as_its_answer_and_other_output_as_it_is():
+    assert unwrap(json.dumps(RESULT)) == (RESULT["result"], RESULT)
+    warned = "a warning\n" + json.dumps(RESULT) + "\n"
+    assert unwrap(warned)[0] == "a warning\n" + RESULT["result"]
+    assert unwrap("plain answer\n") == ("plain answer\n", None)
+    assert unwrap('{"type": "other"}') == ('{"type": "other"}', None)
 
 
 # ── the sessions, played by a script standing in for the LLM ────────────────
@@ -252,3 +296,44 @@ def test_a_findings_file_that_is_not_there_starts_nothing(built, tmp_path, monke
     args = ["--session", "tester", "--component", "auth-service", "--findings", "nowhere.md"]
     assert start_session_tool.main([*args, "--root", str(built)]) == 2
     assert "No findings file" in capsys.readouterr().err
+
+
+def test_each_session_adds_its_cost_to_the_ledger(built, tmp_path, monkeypatch, capsys):
+    """Claude's result object: the answer is read as text, the cost is kept."""
+    script = (
+        "import json, os\n"
+        "assert 'qf.kind=clarify,qf.stage=requirements' in os.environ['OTEL_RESOURCE_ATTRIBUTES']\n"
+        f"print(json.dumps({RESULT!r}))\n"
+    )
+    _session(built, tmp_path, script, monkeypatch)
+    costs = tmp_path / "costs"
+    (built / ".env").write_text((built / ".env").read_text() + f"QF_COSTS_DIR={costs}\n")
+    args = ["--session", "clarify", "--task", "Check these", "--root", str(built)]
+    assert start_session_tool.main(args) == 0
+    assert (built / ".qf/sessions/clarify.yaml").read_text() == (
+        "- question: What is a failed attempt?\n"
+    )
+    (row,) = ledger_rows(costs)
+    shown = ("product", "pr", "branch", "stage", "kind", "llm", "model", "cost_usd", "timed_out")
+    assert {k: row[k] for k in shown} == {
+        "product": "product",  # no origin: the folder's name
+        "pr": None,
+        "branch": "feature/REQ-0047-lockout",
+        "stage": "requirements",
+        "kind": "clarify",
+        "llm": Path(sys.executable).name,  # the command's first word
+        "model": "claude-sonnet-5-5",
+        "cost_usd": 0.84,
+        "timed_out": 0,
+    }
+    assert row["cache_read_tokens"] == 9000 and row["seconds"] >= 0
+
+
+def test_without_a_costs_folder_no_ledger_is_written(built, tmp_path, monkeypatch, capsys):
+    _session(built, tmp_path, CODER, monkeypatch)
+    env = (built / ".env").read_text().replace("{prompt}", "{prompt} " + str(built))
+    (built / ".env").write_text(env)
+    monkeypatch.delenv("QF_COSTS_DIR", raising=False)
+    args = ["--session", "coder", "--component", "web-app", "--root", str(built)]
+    assert start_session_tool.main(args) == 0
+    assert not list(tmp_path.rglob("costs.sqlite"))

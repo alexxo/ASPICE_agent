@@ -1,0 +1,10 @@
+# The cost ledger as a Grafana data source (COST_MONITORING.md, *The cost of a stage*):
+# the SQLite file the framework's sessions and the status line write, mounted at
+# /data/costs. Needs the plugin frser-sqlite-datasource (the guide's docker run).
+apiVersion: 1
+datasources:
+  - name: Cost ledger
+    uid: costs
+    type: frser-sqlite-datasource
+    jsonData:
+      path: /data/costs/costs.sqlite

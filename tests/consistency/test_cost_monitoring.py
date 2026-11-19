@@ -34,7 +34,7 @@ def guide(repo_root):
 
 def _queries(repo_root):
     board = json.loads((repo_root / FOLDER / "claude-costs.json").read_text(encoding="utf-8"))
-    return [t["expr"] for p in board["panels"] for t in p.get("targets", [])]
+    return [t["expr"] for p in board["panels"] for t in p.get("targets", []) if "expr" in t]
 
 
 def test_the_dashboard_is_the_generators_output(repo_root, maker):
@@ -81,3 +81,38 @@ def test_nothing_in_the_framework_needs_it(repo_root):
         and "monitoring/" in path.read_text(encoding="utf-8", errors="ignore")
     ]
     assert users == []
+
+
+def test_the_ledger_is_read_where_the_guide_mounts_it(repo_root, maker, guide):
+    """The cost of a stage: the SQLite data source the guide provisions, with
+    the plugin version it was tested with, reading the ledger's table."""
+    source = (repo_root / FOLDER / "costs_datasource.yaml").read_text(encoding="utf-8")
+    path = re.search(r"path: (\S+)", source).group(1)
+    assert path == "/data/costs/costs.sqlite"
+    for unix, windows in (
+        ("costs:/data/costs", "costs:/data/costs"),
+        (
+            "monitoring/costs_datasource.yaml:/otel-lgtm/",
+            "monitoring\\costs_datasource.yaml:/otel-lgtm/",
+        ),
+    ):
+        assert unix in guide and windows in guide, unix
+    assert len(set(re.findall(r"frser-sqlite-datasource@(\d+\.\d+\.\d+)", guide))) == 1
+    board = json.loads((repo_root / FOLDER / "claude-costs.json").read_text(encoding="utf-8"))
+    ledger = [t for p in board["panels"] for t in p.get("targets", []) if "rawQueryText" in t]
+    assert ledger and all("FROM sessions" in t["rawQueryText"] for t in ledger)
+
+
+def test_every_name_has_its_own_colour(maker):
+    """Every stage and kind of session the ledger can hold has a colour, and no
+    two names on the dashboard share one: a colour means one thing."""
+    from tools.start_session_tool import STAGES
+
+    assert set(maker.STAGE_COLOURS) == set(STAGES.values())
+    assert set(maker.KIND_COLOURS) == {*STAGES, "orchestrator"}
+    maps = ("MODEL", "TOKEN", "LLM", "KIND", "STAGE")
+    colours = [c.upper() for m in maps for c in getattr(maker, f"{m}_COLOURS").values()]
+    colours.append(maker.SESSION_COLOURS["framework · orchestrator"].upper())
+    assert len(colours) == len(set(colours))
+    for kind, colour in maker.KIND_COLOURS.items():  # a session keeps its kind's colour
+        assert maker.SESSION_COLOURS[f"product · {kind}"] == colour

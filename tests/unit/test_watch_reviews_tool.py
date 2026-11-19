@@ -4,7 +4,14 @@ import sys
 from dataclasses import replace
 
 import pytest
-from product_builder import AGENT, HOST_REPO, build_product, pull_request, write_host
+from product_builder import (
+    AGENT,
+    HOST_REPO,
+    build_product,
+    ledger_rows,
+    pull_request,
+    write_host,
+)
 
 from tools.read_host_tool import FileHost, Review
 from tools.read_product_config_tool import read_product_config
@@ -906,3 +913,25 @@ def test_an_approval_is_not_carried_over_otherwise(changed, change, files, decis
     w.command = review
     w.once()
     assert len(reviewed) == 1 and "This is a later round" in reviewed[0]
+
+
+def test_a_review_adds_its_cost_to_the_ledger_under_its_pull_request(watcher, tmp_path):
+    w, host, shown, _ = watcher
+    w.settings = {"QF_COSTS_DIR": str(tmp_path / "costs")}
+    result = {"type": "result", "result": "approved", "total_cost_usd": 1.1, "modelUsage": {}}
+
+    def review(prompt):
+        host.posted.append(Review(AGENT, "APPROVED", "7" * 40))
+        return [sys.executable, "-c", f"import json; print(json.dumps({result!r}))"]
+
+    w.command = review
+    w.once()
+    (row,) = ledger_rows(tmp_path / "costs")
+    assert (row["pr"], row["branch"], row["kind"], row["stage"], row["cost_usd"]) == (
+        7,
+        None,
+        "reviewer",
+        "quality_assurance",
+        1.1,
+    )
+    assert (w.config.root / ".qf/reviews/7-7777777.log").read_text() == "approved"

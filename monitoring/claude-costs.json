@@ -13,7 +13,7 @@
     "from": "now/d",
     "to": "now"
   },
-  "description": "What Claude Code spends now, in the 5-hour window and today, per tab. Dollars are API list prices: on a subscription they compare, they are not billed.",
+  "description": "What Claude Code spends now, in the 5-hour window and today, per kind of session; and what each stage, kind, LLM and pull request cost over the whole project. Dollars are API list prices: on a subscription they compare, they are not billed.",
   "templating": {
     "list": [
       {
@@ -61,6 +61,26 @@
           "value": "$__all"
         },
         "sort": 1
+      },
+      {
+        "name": "qf_pr",
+        "label": "Pull request",
+        "type": "query",
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "costs"
+        },
+        "query": "SELECT work FROM (SELECT COALESCE('#' || pr, branch) AS work, MAX(time) AS last FROM sessions WHERE stage IS NOT NULL GROUP BY work) WHERE work IS NOT NULL ORDER BY last DESC",
+        "definition": "SELECT work FROM (SELECT COALESCE('#' || pr, branch) AS work, MAX(time) AS last FROM sessions WHERE stage IS NOT NULL GROUP BY work) WHERE work IS NOT NULL ORDER BY last DESC",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": "__all",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "sort": 0
       }
     ]
   },
@@ -81,8 +101,8 @@
     {
       "id": 2,
       "type": "bargauge",
-      "title": "Cost by tab",
-      "description": "Each tab's list-price cost over the span; a tab has one colour in every chart.",
+      "title": "Cost by session",
+      "description": "Each kind of session's list-price cost over the span: your own, the orchestrator, and those the framework starts; each has its colour in every chart, Cost by kind's included.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -99,8 +119,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (qf_scope, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 15m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) * 0)))",
-          "legendFormat": "{{qf_scope}} · {{qf_session}}",
+          "expr": "label_replace(sum by (qf_scope, qf_kind) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset 15m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m]) * 0))), \"qf_kind\", \"orchestrator\", \"qf_kind\", \"\")",
+          "legendFormat": "{{qf_scope}} · {{qf_kind}}",
           "refId": "A",
           "instant": true,
           "range": false,
@@ -120,14 +140,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "framework · developer"
+              "options": "framework · orchestrator"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "green"
+                  "fixedColor": "#73BF69"
                 }
               }
             ]
@@ -135,14 +155,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "product · developer"
+              "options": "product · orchestrator"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "yellow"
+                  "fixedColor": "#008856"
                 }
               }
             ]
@@ -150,14 +170,104 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "product · watcher"
+              "options": "product · clarify"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "blue"
+                  "fixedColor": "#E68FAC"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · tester"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#0067A5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · coder"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F99379"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · reviewer"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#604E97"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · describe_tests"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F6A600"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · describe_design"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B3446C"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · expect_cases"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#DCD300"
                 }
               }
             ]
@@ -181,7 +291,7 @@
       "id": 3,
       "type": "bargauge",
       "title": "Cost by model",
-      "description": "Each model's list-price cost over the span.",
+      "description": "Each model's list-price cost over the span; a model family keeps its colour (opus, sonnet, haiku).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -212,7 +322,53 @@
           "decimals": 2,
           "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*opus.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#875692"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*sonnet.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F38400"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*haiku.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#A1CAF1"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "orientation": "horizontal",
@@ -262,7 +418,68 @@
           "decimals": 1,
           "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "input"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9FE2BF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "output"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF6F91"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cacheRead"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#C9D1D9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cacheCreation"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B5651D"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "orientation": "horizontal",
@@ -294,7 +511,7 @@
       "id": 6,
       "type": "stat",
       "title": "5-hour window used",
-      "description": "What Claude Code reports of your plan's allowance, sent by the status line (COST_MONITORING.md, Your plan's allowance). Orange from 80 %, red from 100 %.",
+      "description": "How much of the window is used, and when it resets: what Claude Code reports of your plan's allowance, sent by the status line (COST_MONITORING.md, Your plan's allowance). Orange from 80 %, red from 100 %.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -302,7 +519,7 @@
       "gridPos": {
         "x": 0,
         "y": 8,
-        "w": 6,
+        "w": 12,
         "h": 4
       },
       "targets": [
@@ -385,7 +602,7 @@
         },
         "colorMode": "value",
         "graphMode": "none",
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "timeFrom": "5h"
     },
@@ -393,15 +610,15 @@
       "id": 7,
       "type": "stat",
       "title": "Week used",
-      "description": "What Claude Code reports of your plan's allowance, sent by the status line (COST_MONITORING.md, Your plan's allowance). Orange from 80 %, red from 100 %.",
+      "description": "How much of the window is used, and when it resets: what Claude Code reports of your plan's allowance, sent by the status line (COST_MONITORING.md, Your plan's allowance). Orange from 80 %, red from 100 %.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 6,
+        "x": 12,
         "y": 8,
-        "w": 6,
+        "w": 12,
         "h": 4
       },
       "targets": [
@@ -484,15 +701,15 @@
         },
         "colorMode": "value",
         "graphMode": "none",
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "timeFrom": "5h"
     },
     {
       "id": 8,
       "type": "bargauge",
-      "title": "Cost by tab",
-      "description": "Each tab's share of the 5-hour window over the span; a tab has one colour in every chart.",
+      "title": "Cost by session",
+      "description": "Each kind of session's share of the 5-hour window over the span: your own, the orchestrator, and those the framework starts; each has its colour in every chart, Cost by kind's included.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -509,8 +726,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum_over_time((sum by (qf_scope, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m] offset 1m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1m]) * 0))) and on() (time() >= (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d] @ end())) - 18000)))[5h:1m]) / on() group_left() (sum_over_time((sum((max_over_time(claude_code_cost_usage_USD_total[1m]) - (last_over_time(claude_code_cost_usage_USD_total[15m] offset 1m) or max_over_time(claude_code_cost_usage_USD_total[1m]) * 0))) and on() (time() >= (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d] @ end())) - 18000)))[5h:1m]) / (((max(last_over_time(qf_plan_used_percent{window=\"five_hour\"}[7d])) and on() (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d])) > time())) or on() (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d])) <= time()) * 0) > 0))",
-          "legendFormat": "{{qf_scope}} · {{qf_session}}",
+          "expr": "label_replace(sum_over_time((sum by (qf_scope, qf_kind) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1m]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[15m] offset 1m) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1m]) * 0))) and on() (time() >= (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d] @ end())) - 18000)))[5h:1m]) / on() group_left() (sum_over_time((sum((max_over_time(claude_code_cost_usage_USD_total[1m]) - (last_over_time(claude_code_cost_usage_USD_total[15m] offset 1m) or max_over_time(claude_code_cost_usage_USD_total[1m]) * 0))) and on() (time() >= (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d] @ end())) - 18000)))[5h:1m]) / (((max(last_over_time(qf_plan_used_percent{window=\"five_hour\"}[7d])) and on() (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d])) > time())) or on() (max(last_over_time(qf_plan_resets_at{window=\"five_hour\"}[7d])) <= time()) * 0) > 0)), \"qf_kind\", \"orchestrator\", \"qf_kind\", \"\")",
+          "legendFormat": "{{qf_scope}} · {{qf_kind}}",
           "refId": "A",
           "instant": true,
           "range": false,
@@ -530,14 +747,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "framework · developer"
+              "options": "framework · orchestrator"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "green"
+                  "fixedColor": "#73BF69"
                 }
               }
             ]
@@ -545,14 +762,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "product · developer"
+              "options": "product · orchestrator"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "yellow"
+                  "fixedColor": "#008856"
                 }
               }
             ]
@@ -560,14 +777,104 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "product · watcher"
+              "options": "product · clarify"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "blue"
+                  "fixedColor": "#E68FAC"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · tester"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#0067A5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · coder"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F99379"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · reviewer"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#604E97"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · describe_tests"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F6A600"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · describe_design"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B3446C"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · expect_cases"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#DCD300"
                 }
               }
             ]
@@ -591,7 +898,7 @@
       "id": 9,
       "type": "bargauge",
       "title": "Cost by model",
-      "description": "Each model's share of the 5-hour window over the span.",
+      "description": "Each model's share of the 5-hour window over the span; a model family keeps its colour (opus, sonnet, haiku).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -622,7 +929,53 @@
           "decimals": 0,
           "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*opus.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#875692"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*sonnet.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F38400"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*haiku.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#A1CAF1"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "orientation": "horizontal",
@@ -672,7 +1025,68 @@
           "decimals": 1,
           "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "input"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9FE2BF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "output"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF6F91"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cacheRead"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#C9D1D9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cacheCreation"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B5651D"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "orientation": "horizontal",
@@ -703,8 +1117,8 @@
     {
       "id": 12,
       "type": "bargauge",
-      "title": "Cost by tab",
-      "description": "Each tab's list-price cost over the span; a tab has one colour in every chart.",
+      "title": "Cost by session",
+      "description": "Each kind of session's list-price cost over the span: your own, the orchestrator, and those the framework starts; each has its colour in every chart, Cost by kind's included.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -721,8 +1135,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (qf_scope, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0)))",
-          "legendFormat": "{{qf_scope}} · {{qf_session}}",
+          "expr": "label_replace(sum by (qf_scope, qf_kind) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d] offset $__range) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[$__range]) * 0))), \"qf_kind\", \"orchestrator\", \"qf_kind\", \"\")",
+          "legendFormat": "{{qf_scope}} · {{qf_kind}}",
           "refId": "A",
           "instant": true,
           "range": false,
@@ -742,14 +1156,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "framework · developer"
+              "options": "framework · orchestrator"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "green"
+                  "fixedColor": "#73BF69"
                 }
               }
             ]
@@ -757,14 +1171,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "product · developer"
+              "options": "product · orchestrator"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "yellow"
+                  "fixedColor": "#008856"
                 }
               }
             ]
@@ -772,14 +1186,104 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "product · watcher"
+              "options": "product · clarify"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "blue"
+                  "fixedColor": "#E68FAC"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · tester"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#0067A5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · coder"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F99379"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · reviewer"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#604E97"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · describe_tests"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F6A600"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · describe_design"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B3446C"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · expect_cases"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#DCD300"
                 }
               }
             ]
@@ -803,7 +1307,7 @@
       "id": 13,
       "type": "bargauge",
       "title": "Cost by model",
-      "description": "Each model's list-price cost over the span.",
+      "description": "Each model's list-price cost over the span; a model family keeps its colour (opus, sonnet, haiku).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -834,7 +1338,53 @@
           "decimals": 2,
           "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*opus.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#875692"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*sonnet.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F38400"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*haiku.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#A1CAF1"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "orientation": "horizontal",
@@ -884,7 +1434,68 @@
           "decimals": 1,
           "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "input"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9FE2BF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "output"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF6F91"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cacheRead"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#C9D1D9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cacheCreation"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B5651D"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "orientation": "horizontal",
@@ -902,8 +1513,8 @@
     {
       "id": 15,
       "type": "timeseries",
-      "title": "Cost over time by tab",
-      "description": "Each bar is the hour that starts at its time, stacked by tab; the bar of the hour running now grows as it is spent.",
+      "title": "Cost over time by session",
+      "description": "Each bar is the hour that starts at its time, stacked by kind of session; the bar of the hour running now grows as it is spent.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -920,8 +1531,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (qf_scope, qf_session) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1h] offset -1h) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d]) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1h] offset -1h) * 0)))",
-          "legendFormat": "{{qf_scope}} · {{qf_session}}",
+          "expr": "label_replace(sum by (qf_scope, qf_kind) ((max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1h] offset -1h) - (last_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[2d]) or max_over_time(claude_code_cost_usage_USD_total{qf_scope=~\"$qf_scope\", qf_product=~\"$qf_product\"}[1h] offset -1h) * 0))), \"qf_kind\", \"orchestrator\", \"qf_kind\", \"\")",
+          "legendFormat": "{{qf_scope}} · {{qf_kind}}",
           "refId": "A",
           "instant": false,
           "range": true,
@@ -950,14 +1561,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "framework · developer"
+              "options": "framework · orchestrator"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "green"
+                  "fixedColor": "#73BF69"
                 }
               }
             ]
@@ -965,14 +1576,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "product · developer"
+              "options": "product · orchestrator"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "yellow"
+                  "fixedColor": "#008856"
                 }
               }
             ]
@@ -980,14 +1591,104 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "product · watcher"
+              "options": "product · clarify"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "blue"
+                  "fixedColor": "#E68FAC"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · tester"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#0067A5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · coder"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F99379"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · reviewer"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#604E97"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · describe_tests"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F6A600"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · describe_design"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B3446C"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "product · expect_cases"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#DCD300"
                 }
               }
             ]
@@ -1008,6 +1709,533 @@
         }
       },
       "timeFrom": "now/d"
+    },
+    {
+      "id": 16,
+      "type": "row",
+      "title": "Cost of a stage · whole project",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 17,
+      "type": "barchart",
+      "title": "Cost by stage",
+      "description": "What each stage's sessions cost, from the first to the last; the orchestrator, your own session, has no stage (Total). Each stage has its colour.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "costs"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 9,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "costs"
+          },
+          "refId": "A",
+          "queryType": "table",
+          "rawQueryText": "SELECT stage, SUM(cost_usd) AS cost FROM sessions WHERE ('${qf_product:csv}' = '.*' OR ',' || '${qf_product:csv}' || ',' LIKE '%,' || product || ',%') AND ('${qf_pr}' = '__all' OR COALESCE('#' || pr, branch) = '${qf_pr}') AND kind != 'orchestrator' GROUP BY stage ORDER BY cost DESC",
+          "queryText": "SELECT stage, SUM(cost_usd) AS cost FROM sessions WHERE ('${qf_product:csv}' = '.*' OR ',' || '${qf_product:csv}' || ',' LIKE '%,' || product || ',%') AND ('${qf_pr}' = '__all' OR COALESCE('#' || pr, branch) = '${qf_pr}') AND kind != 'orchestrator' GROUP BY stage ORDER BY cost DESC",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stage"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "requirements": {
+                        "color": "#8DB600",
+                        "index": 0
+                      },
+                      "unit_tests": {
+                        "color": "#E25822",
+                        "index": 1
+                      },
+                      "unit_construction": {
+                        "color": "#00A6A6",
+                        "index": 2
+                      },
+                      "quality_assurance": {
+                        "color": "#D4A5FF",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "stage",
+        "colorByField": "stage",
+        "showValue": "always",
+        "groupWidth": 0.7,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "Total",
+      "description": "The stages' sessions, and the orchestrator beside them.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "costs"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 34,
+        "w": 3,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "costs"
+          },
+          "refId": "A",
+          "queryType": "table",
+          "rawQueryText": "SELECT SUM(CASE WHEN kind != 'orchestrator' THEN cost_usd END) AS stages, SUM(CASE WHEN kind = 'orchestrator' THEN cost_usd END) AS orchestrator FROM sessions WHERE ('${qf_product:csv}' = '.*' OR ',' || '${qf_product:csv}' || ',' LIKE '%,' || product || ',%') AND ('${qf_pr}' = '__all' OR COALESCE('#' || pr, branch) = '${qf_pr}')",
+          "queryText": "SELECT SUM(CASE WHEN kind != 'orchestrator' THEN cost_usd END) AS stages, SUM(CASE WHEN kind = 'orchestrator' THEN cost_usd END) AS orchestrator FROM sessions WHERE ('${qf_product:csv}' = '.*' OR ',' || '${qf_product:csv}' || ',' LIKE '%,' || product || ',%') AND ('${qf_pr}' = '__all' OR COALESCE('#' || pr, branch) = '${qf_pr}')",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "vertical"
+      }
+    },
+    {
+      "id": 19,
+      "type": "table",
+      "title": "Effort by LLM",
+      "description": "Sessions and hours compare every LLM; cost only those that report it (empty: it reports none).",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "costs"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 34,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "costs"
+          },
+          "refId": "A",
+          "queryType": "table",
+          "rawQueryText": "SELECT llm AS LLM, GROUP_CONCAT(DISTINCT kind) AS Kinds, COUNT(*) AS Sessions, SUM(seconds) / 3600.0 AS Hours, SUM(cost_usd) AS Cost FROM sessions WHERE ('${qf_product:csv}' = '.*' OR ',' || '${qf_product:csv}' || ',' LIKE '%,' || product || ',%') AND ('${qf_pr}' = '__all' OR COALESCE('#' || pr, branch) = '${qf_pr}') GROUP BY llm ORDER BY Hours DESC",
+          "queryText": "SELECT llm AS LLM, GROUP_CONCAT(DISTINCT kind) AS Kinds, COUNT(*) AS Sessions, SUM(seconds) / 3600.0 AS Hours, SUM(cost_usd) AS Cost FROM sessions WHERE ('${qf_product:csv}' = '.*' OR ',' || '${qf_product:csv}' || ',' LIKE '%,' || product || ',%') AND ('${qf_pr}' = '__all' OR COALESCE('#' || pr, branch) = '${qf_pr}') GROUP BY llm ORDER BY Hours DESC",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cost"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sessions"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "LLM"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "claude": {
+                        "color": "#BE0032",
+                        "index": 0
+                      },
+                      "codex": {
+                        "color": "#C2B280",
+                        "index": 1
+                      },
+                      "gemini": {
+                        "color": "#848482",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {}
+    },
+    {
+      "id": 20,
+      "type": "barchart",
+      "title": "Cost by kind",
+      "description": "Who spent it: each kind of session, and the orchestrator, your own session, each with its colour. A kind run by an LLM that reports no cost has no bar: see Effort by LLM.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "costs"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 42,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "costs"
+          },
+          "refId": "A",
+          "queryType": "table",
+          "rawQueryText": "SELECT kind, SUM(cost_usd) AS cost FROM sessions WHERE ('${qf_product:csv}' = '.*' OR ',' || '${qf_product:csv}' || ',' LIKE '%,' || product || ',%') AND ('${qf_pr}' = '__all' OR COALESCE('#' || pr, branch) = '${qf_pr}') GROUP BY kind ORDER BY cost DESC",
+          "queryText": "SELECT kind, SUM(cost_usd) AS cost FROM sessions WHERE ('${qf_product:csv}' = '.*' OR ',' || '${qf_product:csv}' || ',' LIKE '%,' || product || ',%') AND ('${qf_pr}' = '__all' OR COALESCE('#' || pr, branch) = '${qf_pr}') GROUP BY kind ORDER BY cost DESC",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kind"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "orchestrator": {
+                        "color": "#008856",
+                        "index": 0
+                      },
+                      "clarify": {
+                        "color": "#E68FAC",
+                        "index": 1
+                      },
+                      "tester": {
+                        "color": "#0067A5",
+                        "index": 2
+                      },
+                      "coder": {
+                        "color": "#F99379",
+                        "index": 3
+                      },
+                      "reviewer": {
+                        "color": "#604E97",
+                        "index": 4
+                      },
+                      "describe_tests": {
+                        "color": "#F6A600",
+                        "index": 5
+                      },
+                      "describe_design": {
+                        "color": "#B3446C",
+                        "index": 6
+                      },
+                      "expect_cases": {
+                        "color": "#DCD300",
+                        "index": 7
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "kind",
+        "colorByField": "kind",
+        "showValue": "always",
+        "groupWidth": 0.7,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 21,
+      "type": "barchart",
+      "title": "Cost by pull request · split by stage",
+      "description": "Each pull request, or its branch before it existed, split by the stage the money went to, the most expensive first.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "costs"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 50,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "costs"
+          },
+          "refId": "A",
+          "queryType": "table",
+          "rawQueryText": "SELECT COALESCE('#' || pr, branch) AS work, stage, SUM(cost_usd) AS cost FROM sessions WHERE ('${qf_product:csv}' = '.*' OR ',' || '${qf_product:csv}' || ',' LIKE '%,' || product || ',%') AND ('${qf_pr}' = '__all' OR COALESCE('#' || pr, branch) = '${qf_pr}') AND kind != 'orchestrator' GROUP BY work, stage",
+          "queryText": "SELECT COALESCE('#' || pr, branch) AS work, stage, SUM(cost_usd) AS cost FROM sessions WHERE ('${qf_product:csv}' = '.*' OR ',' || '${qf_product:csv}' || ',' LIKE '%,' || product || ',%') AND ('${qf_pr}' = '__all' OR COALESCE('#' || pr, branch) = '${qf_pr}') AND kind != 'orchestrator' GROUP BY work, stage",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "requirements"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8DB600"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "unit_tests"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#E25822"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "unit_construction"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#00A6A6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "quality_assurance"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#D4A5FF"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "stacking": "normal",
+        "showValue": "never",
+        "groupWidth": 0.7,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "rowField": "work",
+            "columnField": "stage",
+            "valueField": "cost",
+            "emptyValue": "null"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "reducer": "sum"
+            },
+            "alias": "total"
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "total",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "total": true
+            }
+          }
+        }
+      ]
     }
   ]
 }
