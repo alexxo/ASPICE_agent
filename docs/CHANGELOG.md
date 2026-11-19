@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.4.2] - 2026-11-19
+
+The clarify session is told which files it may read, and an answer that is no list of questions fails instead of passing as done.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release, then start the clarify session again | the product | required — a product whose requirements are under a folder (the setup's `docs/`) cannot end stage 2 without it |
+
+### Fixed
+
+- **The clarify session found no file** (`tools/start_session_tool.py`). Its prompt named none, a session started with the read-only command line can read files but not list a folder, and the setup puts them under `docs/`: the session guessed names, found nothing and answered in prose, and the launcher exited 0. The prompt now names every file the folder holds, as the describe sessions' prompts do, for any LLM and any layout; the launcher exits 1 when the answer is no list of questions (an empty list is one), naming the problem in its report. Quality doc § 3 *Independent sessions* rule 3, § 5 stages 1 and 2 rule 27; Appendix A.2 *The clarify session is told its files*. Origin: FB-93 (wp_publisher).
+
 ## [5.4.1] - 2026-11-19
 
 A review on a pull request no longer runs the suites again on a head they already checked.
