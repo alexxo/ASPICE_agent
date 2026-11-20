@@ -1,6 +1,8 @@
 """monitoring/plan_usage_statusline.py — the orchestrator's cost in the cost ledger."""
 
 import importlib.util
+import io
+import json
 from pathlib import Path
 
 import pytest
@@ -49,3 +51,33 @@ def test_the_orchestrator_keeps_one_row_its_cost_the_running_total(statusline, t
 def test_outside_a_product_nothing_is_recorded(statusline, tmp_path):
     statusline.record(_data(tmp_path))
     assert not (tmp_path / "costs").exists()
+
+
+def _product(tmp_path):
+    product = tmp_path / "product"
+    product.mkdir()
+    (product / "qf.yaml").write_text("contract: qf.v1\n")
+    return product
+
+
+def test_the_ledger_folder_is_read_from_the_products_env(statusline, tmp_path, monkeypatch):
+    monkeypatch.delenv("QF_COSTS_DIR")
+    product = _product(tmp_path)
+    (product / ".env").write_text(f"# the ledger\nQF_COSTS_DIR='{tmp_path / 'from-env'}'\n")
+    assert statusline.record(_data(product)) is None
+    assert [r["kind"] for r in ledger_rows(tmp_path / "from-env")] == ["orchestrator"]
+
+
+def test_without_a_ledger_folder_the_line_says_so(statusline, tmp_path, monkeypatch, capsys):
+    monkeypatch.delenv("QF_COSTS_DIR")
+    data = _data(_product(tmp_path))
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(data)))
+    statusline.main()
+    assert capsys.readouterr().out.strip() == "cost not recorded: QF_COSTS_DIR not set"
+
+
+def test_a_ledger_that_cannot_be_written_is_named(statusline, tmp_path, monkeypatch):
+    blocked = tmp_path / "a-file"
+    blocked.write_text("")
+    monkeypatch.setenv("QF_COSTS_DIR", str(blocked))
+    assert statusline.record(_data(_product(tmp_path))) == f"cannot write {blocked}"

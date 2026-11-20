@@ -4,7 +4,7 @@ The dashboard is generated, never edited in Grafana: change a panel here, then
 run `python make_dashboard.py` in this folder (`python3` where `python` is
 missing). Every cost is what a session spent in a window — its highest value
 in the window minus what it had before — because increase() drops a new
-session's first value (COST_MONITORING.md, *Why the numbers are exact*).
+session's first value (COST_MONITORING_COMMON_STACK.md, *Why the numbers are exact*).
 """
 
 from __future__ import annotations
@@ -345,8 +345,9 @@ def window_panel(pid: int, title: str, place: tuple, window: str) -> dict:
         decimals=0,
         thresholds=LIMIT,
         description="How much of the window is used, and when it resets: what Claude Code "
-        "reports of your plan's allowance, sent by the status line (COST_MONITORING.md, Your "
-        "plan's allowance). Orange from 80 %, red from 100 %.",
+        "reports of your plan's allowance, sent by the status line "
+        "(COST_MONITORING_COMMON_STACK.md, Your plan's allowance). Orange from 80 %, "
+        "red from 100 %.",
         overrides=[
             {
                 "matcher": {"id": "byFrameRefID", "options": "B"},

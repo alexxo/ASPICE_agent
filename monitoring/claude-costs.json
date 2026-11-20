@@ -511,7 +511,7 @@
       "id": 6,
       "type": "stat",
       "title": "5-hour window used",
-      "description": "How much of the window is used, and when it resets: what Claude Code reports of your plan's allowance, sent by the status line (COST_MONITORING.md, Your plan's allowance). Orange from 80 %, red from 100 %.",
+      "description": "How much of the window is used, and when it resets: what Claude Code reports of your plan's allowance, sent by the status line (COST_MONITORING_COMMON_STACK.md, Your plan's allowance). Orange from 80 %, red from 100 %.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -610,7 +610,7 @@
       "id": 7,
       "type": "stat",
       "title": "Week used",
-      "description": "How much of the window is used, and when it resets: what Claude Code reports of your plan's allowance, sent by the status line (COST_MONITORING.md, Your plan's allowance). Orange from 80 %, red from 100 %.",
+      "description": "How much of the window is used, and when it resets: what Claude Code reports of your plan's allowance, sent by the status line (COST_MONITORING_COMMON_STACK.md, Your plan's allowance). Orange from 80 %, red from 100 %.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"

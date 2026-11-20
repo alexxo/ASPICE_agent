@@ -3,6 +3,9 @@ tests/.venv/
 __pycache__/
 .pytest_cache/
 
+# A maintainer's own Claude settings (monitoring/COST_MONITORING_FOR_FRAMEWORK_MAINTAINERS.md).
+.claude/settings.local.json
+
 # OS / editor noise.
 .DS_Store
 .vscode/

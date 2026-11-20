@@ -25,6 +25,7 @@ from tools.start_session_tool import (
     session_env,
     unwrap,
 )
+from tools.write_cost_ledger_tool import costs_folder
 
 
 def test_a_env_file_is_read_as_names_and_values(tmp_path):
@@ -42,6 +43,17 @@ def test_a_env_file_is_read_as_names_and_values(tmp_path):
         "QUOTED": "a b",
     }
     assert read_env(tmp_path / "missing.env") == {}
+
+
+@pytest.mark.parametrize(
+    "line", ["QF_COSTS_DIR=/a b", "export QF_COSTS_DIR='/a b'", ' QF_COSTS_DIR = "/a b"']
+)
+def test_the_ledger_folder_is_read_as_the_sessions_read_it(tmp_path, monkeypatch, line):
+    """The status line cannot import this tool (the standard library only):
+    its own reading of QF_COSTS_DIR gives what read_env gives."""
+    monkeypatch.delenv("QF_COSTS_DIR", raising=False)
+    (tmp_path / ".env").write_text(f"# costs\n{line}\n")
+    assert costs_folder(tmp_path) == read_env(tmp_path / ".env")["QF_COSTS_DIR"] == "/a b"
 
 
 def test_a_session_takes_its_own_command_else_its_sides():

@@ -1,5 +1,5 @@
 # Grafana loads every dashboard file of /otel-lgtm/claude-dashboards — this
-# folder, mounted (COST_MONITORING.md, step 4) — at start and every 30 s.
+# folder, mounted (COST_MONITORING_COMMON_STACK.md, step 4) — at start and every 30 s.
 # Change a dashboard in make_dashboard.py: edits made in Grafana are not saved.
 apiVersion: 1
 providers:

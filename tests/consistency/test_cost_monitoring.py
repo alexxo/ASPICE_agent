@@ -15,6 +15,11 @@ import pytest
 pytestmark = pytest.mark.layer2
 
 FOLDER = "monitoring"
+COMMON = "COST_MONITORING_COMMON_STACK.md"
+ROLES = (
+    "COST_MONITORING_FOR_PRODUCT_DEVELOPERS.md",
+    "COST_MONITORING_FOR_FRAMEWORK_MAINTAINERS.md",
+)
 
 
 @pytest.fixture(scope="module")
@@ -29,7 +34,7 @@ def maker(repo_root):
 
 @pytest.fixture(scope="module")
 def guide(repo_root):
-    return (repo_root / FOLDER / "COST_MONITORING.md").read_text(encoding="utf-8")
+    return (repo_root / FOLDER / COMMON).read_text(encoding="utf-8")
 
 
 def _queries(repo_root):
@@ -116,3 +121,31 @@ def test_every_name_has_its_own_colour(maker):
     assert len(colours) == len(set(colours))
     for kind, colour in maker.KIND_COLOURS.items():  # a session keeps its kind's colour
         assert maker.SESSION_COLOURS[f"product · {kind}"] == colour
+
+
+def test_each_guide_names_its_readers_and_the_others(repo_root):
+    """The common stack sends each reader to their role's guide first; each
+    role's guide says whom it is for and whom not, and links the other two."""
+    common = (repo_root / FOLDER / COMMON).read_text(encoding="utf-8")
+    assert all(f"]({role})" in common for role in ROLES)
+    for role in ROLES:
+        text = (repo_root / FOLDER / role).read_text(encoding="utf-8")
+        assert "**For:**" in text and "**Not for:**" in text, role
+        others = [g for g in (COMMON, *ROLES) if g != role]
+        assert all(f"]({g})" in text for g in others), role
+
+
+def test_no_setting_lives_in_a_terminal(repo_root):
+    """Every setting sits in a file each session reads when it starts: no
+    guide tells the person to export one in a tab (D50, D55)."""
+    for name in (COMMON, *ROLES):
+        text = (repo_root / FOLDER / name).read_text(encoding="utf-8")
+        assert not re.search(r"export (QF_|OTEL_|CLAUDE_CODE_)", text), name
+        assert "$env:" not in text, name
+
+
+def test_the_maintainers_guide_names_no_one(repo_root):
+    """The repository is public: the maintainer's guide uses placeholders,
+    never a real user's home folder (D56 A)."""
+    text = (repo_root / FOLDER / ROLES[1]).read_text(encoding="utf-8")
+    assert not re.search(r"/Users/[a-z]", text)

@@ -5,13 +5,16 @@ Pro, Max or Ultra plan that data holds how much of the 5-hour and the weekly
 allowance is used, and when each resets (`rate_limits`). This prints them,
 e.g. `5h 42 % (21:10) · week 18 % (Mon 09:00)`, and sends them to the stack
 as two gauges, `qf_plan_used_percent` and `qf_plan_resets_at`, one series per
-window (COST_MONITORING.md, *Your plan's allowance*). The allowance is the
-account's, so one tab that runs this counts every session.
+window (COST_MONITORING_COMMON_STACK.md, *Your plan's allowance*). The
+allowance is the account's, so one tab that runs this counts every session.
 
-In a product's folder (one holding qf.yaml) with QF_COSTS_DIR set, it also
-keeps this session's cost in the cost ledger as the orchestrator's row: one
-row per session, its cost the running total, written when it changes
-(tools/write_cost_ledger_tool.py; COST_MONITORING.md, *The cost of a stage*).
+In a product's folder (one holding qf.yaml) it also keeps this session's cost
+in the cost ledger as the orchestrator's row: one row per session, its cost the
+running total, written when it changes, in the folder QF_COSTS_DIR names in the
+product's .env, ~/.aspice_agent_secrets/.env or the environment
+(tools/write_cost_ledger_tool.py; COST_MONITORING_COMMON_STACK.md, *The cost of
+a stage*). Where the row cannot be written, the line says so and why, e.g.
+`cost not recorded: QF_COSTS_DIR not set`.
 
 Nothing here may slow or break the status line: a stack that is down, a
 ledger that cannot be written, or data without `rate_limits`, only leaves
@@ -112,26 +115,29 @@ def product_of(data: dict) -> Path | None:
     return next((p for p in (here, *here.parents) if (p / "qf.yaml").is_file()), None)
 
 
-def record(data: dict) -> None:
-    """The orchestrator's row in the cost ledger, when its cost changed."""
-    folder = os.environ.get("QF_COSTS_DIR")
+def record(data: dict) -> str | None:
+    """The orchestrator's row in the cost ledger, when its cost changed; in a
+    product's folder, why it cannot be written."""
     cost = data.get("cost") or {}
     session = data.get("session_id")
-    if not folder or not session or cost.get("total_cost_usd") is None:
-        return
+    if not session or cost.get("total_cost_usd") is None:
+        return None
     product = product_of(data)
     if product is None:
-        return
+        return None
+    sys.path.insert(0, str(FRAMEWORK))
+    from tools.write_cost_ledger_tool import costs_folder, write_row
+
+    folder = costs_folder(product)
+    if not folder:
+        return "QF_COSTS_DIR not set"
     seen = Path(os.environ.get("TMPDIR", "/tmp")) / f"qf_cost_{session}"
     total = str(cost["total_cost_usd"])
     try:
         if seen.read_text() == total:
-            return
+            return None
     except OSError:
         pass
-    sys.path.insert(0, str(FRAMEWORK))
-    from tools.write_cost_ledger_tool import write_row
-
     repo = (data.get("workspace") or {}).get("repo") or {}
     row = {
         "id": session,
@@ -148,7 +154,8 @@ def record(data: dict) -> None:
         write_row(Path(folder), row)
         seen.write_text(total)
     except Exception:  # the status line still shows
-        pass
+        return f"cannot write {folder}"
+    return None
 
 
 def main() -> None:
@@ -156,11 +163,15 @@ def main() -> None:
         data = json.load(sys.stdin)
     except ValueError:
         return
-    record(data)
+    problem = record(data)
     found = windows(data)
     if found:
         send(found)
-        print(line(found))
+    shown = [line(found)] if found else []
+    if problem:
+        shown.append(f"cost not recorded: {problem}")
+    if shown:
+        print(" · ".join(shown))
 
 
 if __name__ == "__main__":

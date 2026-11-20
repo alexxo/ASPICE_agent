@@ -347,6 +347,16 @@ git clone --recurse-submodules <repository URL>
 git submodule update --init
 ```
 
+**Which user runs what.** Everything of one developer runs as one user of
+their computer: the clone, the agent, the watcher and the folder of secrets
+`~/.aspice_agent_secrets/`, which is that user's home. On a computer the
+reviewer shares, the developer has a user of their own and works signed in
+as it; a terminal opened with `su` or `ssh` as that user has its keychain
+locked, where Claude keeps its sign-in: unlock it there first (`security
+unlock-keychain ~/Library/Keychains/login.keychain-db` on macOS). A folder
+the sessions write outside the clone, such as the cost ledger's (step 10),
+must be writable by that user.
+
 Each developer installs Archify in their own clone (step 7), and chooses the
 LLMs of the independent sessions in two `.env` files — one per side, so the
 side that does the work never configures the side that checks it:
@@ -521,10 +531,20 @@ Tell the person: a local Grafana shows the cost of the sessions now and
 today, per tab and per model, from the numbers Claude Code sends; and a
 ledger keeps what each session the framework starts cost — its pull request,
 stage and kind — for the whole project. It is one container on their
-computer, seven settings in the two `.env` files of step 8, and
-`QF_COSTS_DIR` in both for the ledger. The guide, for macOS, Linux and Windows, is
-[`.framework/monitoring/COST_MONITORING.md`](monitoring/COST_MONITORING.md).
+computer, eight settings in the two `.env` files of step 8, and the same
+settings plus a status line for their own session. The guide, for macOS,
+Linux and Windows, is
+[`.framework/monitoring/COST_MONITORING_FOR_PRODUCT_DEVELOPERS.md`](monitoring/COST_MONITORING_FOR_PRODUCT_DEVELOPERS.md).
 The person follows it; the `.env` lines are theirs to add, as in step 8.
+
+Step 10 is done only once a row has arrived. When the person has followed the
+guide and started the agent again, the agent's own status line writes its
+session's row as soon as it answers: run the check of *The cost of a stage*
+in `.framework/monitoring/COST_MONITORING_COMMON_STACK.md`, in the product
+folder. The newest row is kind `orchestrator`, with the product's name: tell
+the person the setup works. No row: ask the person what the status line under
+the prompt shows; `cost not recorded: <reason>` names what to fix, and the
+guide's *When something goes wrong* says how. Check again after the fix.
 
 ## Upgrading an existing product
 

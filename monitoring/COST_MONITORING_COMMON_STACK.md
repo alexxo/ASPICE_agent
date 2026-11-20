@@ -1,6 +1,20 @@
-# Cost monitoring
+# Cost monitoring: the common stack
 
-An optional companion of the framework. It sets up a local Grafana that shows
+**Start with the guide for your role**, then come back here for the parts it
+names:
+
+- [`COST_MONITORING_FOR_PRODUCT_DEVELOPERS.md`](COST_MONITORING_FOR_PRODUCT_DEVELOPERS.md):
+  you build a product with the framework, as one user of your computer. This
+  is the usual case.
+- [`COST_MONITORING_FOR_FRAMEWORK_MAINTAINERS.md`](COST_MONITORING_FOR_FRAMEWORK_MAINTAINERS.md):
+  you develop the framework itself and run a product on the same computer,
+  as a second user.
+
+Your role's guide says who runs what and where each setting goes. This one
+holds what both share: what the stack is, how to build it, what it shows, and
+what to do when something goes wrong.
+
+Cost monitoring is an optional companion of the framework. It sets up a local Grafana that shows
 what the LLM sessions of a product cost, now and today, per kind of session and
 per model,
 and what each stage, kind of session, LLM and pull request cost over the
@@ -61,7 +75,9 @@ placeholders:
 - `<data folder>`: where the numbers are kept, outside the container, e.g.
   `~/qf-monitoring` (Windows: `C:\qf-monitoring`). Removing or updating the
   container keeps them.
-- `<product>`: the product's folder, which holds `.framework`.
+- `<product>`: the product's folder, which holds `.framework`. A framework
+  maintainer mounts the dashboard from the framework's repository instead:
+  their guide names the two lines that change.
 - `<product name>`: the product's repository name, e.g.
   `Team_repo_wp_publisher`: the cost ledger names the product by it, so the
   Product filter picks the same product in every section.
@@ -158,7 +174,7 @@ If they are empty, the container keeps its data elsewhere and loses it on an
 update: check the two `-v` lines of the data folder, and, with Colima, that
 the folder is inside your home folder.
 
-## Switching the numbers on
+## The numbers and their labels
 
 Seven settings make Claude Code send its numbers. `OTEL_RESOURCE_ATTRIBUTES`
 names who sends them: the three `qf.` labels the dashboard filters by.
@@ -170,45 +186,19 @@ OTEL_EXPORTER_OTLP_PROTOCOL=grpc
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 OTEL_METRIC_EXPORT_INTERVAL=10000
 OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative
-OTEL_RESOURCE_ATTRIBUTES=qf.scope=product,qf.product=<product name>,qf.session=<tab>
+OTEL_RESOURCE_ATTRIBUTES=qf.scope=product,qf.product=<product name>,qf.session=<side>
 ```
 
 Only numbers are sent: cost, tokens, model, and the session's id. No prompt,
 no answer, no file.
 
-Put them where each session reads its settings — the same `.env` files that
-name the commands of the independent sessions (QUICKSTART step 8):
-
-| Where | `<tab>` | Counts |
-|---|---|---|
-| The product's `.env` | `developer` | The sessions the framework starts for you: clarify, tester, coder |
-| `~/.aspice_agent_secrets/.env` | `watcher` | The reviewer and describe sessions the watcher starts |
-| Your own tab, before starting the agent | `developer` | Your own session, which no `.env` reaches |
-
-For your own tab, the same lines as `export` (macOS, Linux):
-
-```sh
-export CLAUDE_CODE_ENABLE_TELEMETRY=1 OTEL_METRICS_EXPORTER=otlp \
-  OTEL_EXPORTER_OTLP_PROTOCOL=grpc OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 \
-  OTEL_METRIC_EXPORT_INTERVAL=10000 OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative \
-  OTEL_RESOURCE_ATTRIBUTES=qf.scope=product,qf.product=<product name>,qf.session=developer
-```
-
-Windows (PowerShell), one line each:
-
-```powershell
-$env:CLAUDE_CODE_ENABLE_TELEMETRY = "1"
-$env:OTEL_METRICS_EXPORTER = "otlp"
-$env:OTEL_EXPORTER_OTLP_PROTOCOL = "grpc"
-$env:OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4317"
-$env:OTEL_METRIC_EXPORT_INTERVAL = "10000"
-$env:OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE = "cumulative"
-$env:OTEL_RESOURCE_ATTRIBUTES = "qf.scope=product,qf.product=<product name>,qf.session=developer"
-```
-
-A watcher reads its `.env` when it starts: restart it once after adding the
-lines. In Prometheus the labels' dots become underscores: `qf_scope`,
-`qf_product`, `qf_session`.
+`qf.scope` is `product` for a product's sessions and `framework` for the
+framework's own development; `qf.session` names the side: `developer` or
+`watcher`. Where each set of lines goes depends on your role: its guide says.
+Every place is a file, read by each session when it starts, never a
+terminal's own settings, so it does not matter which tab started it. In
+Prometheus the labels' dots become underscores: `qf_scope`, `qf_product`,
+`qf_session`.
 
 The sessions the framework starts add three labels of their own: `qf_kind`
 (clarify, tester, coder, reviewer, describe_tests, describe_design,
@@ -232,16 +222,14 @@ shows it in the section **Cost of a stage**, over the whole project:
 | Cost by kind · split by LLM | clarify, tester, coder, reviewer, describe and expect sessions, and the orchestrator, each split by the LLM that ran it |
 | Cost by pull request · split by stage | Each pull request, or its branch before it existed, split by stage, the most expensive first |
 
-Switch it on with one line in both `.env` files, the folder mounted at
-`/data/costs`:
+Switch it on with one line, the folder mounted at `/data/costs`:
 
 ```
 QF_COSTS_DIR=<data folder>/costs
 ```
 
-and, for your own tab, the same as `export QF_COSTS_DIR=<data folder>/costs`
-(PowerShell: `$env:QF_COSTS_DIR = "<data folder>\costs"`). The user who runs
-the sessions must be able to write that folder.
+in the two `.env` files: the product's, and `~/.aspice_agent_secrets/.env`.
+The user who runs the sessions must be able to write that folder.
 
 - **The sessions the framework starts** write their row when they end: its
   pull request (the reviewer's side) or branch (the author's, before the pull
@@ -253,10 +241,20 @@ the sessions must be able to write that folder.
   cost.
 - **Your own session, the orchestrator,** has no stage: the status line
   (*Your plan's allowance*) keeps one row per session in a product's folder,
-  its cost the running total. Without the status line, its cost is missing.
+  its cost the running total. It finds the folder in the same two `.env`
+  files. Without the status line, its cost is missing.
 
-Look at the file itself with `sqlite3 <data folder>/costs/costs.sqlite
-"SELECT kind, SUM(cost_usd) FROM sessions GROUP BY kind"`.
+**Check that rows arrive.** Give the agent one prompt in the product's folder,
+then, in that folder:
+
+```sh
+python3 -c "import sqlite3, sys; from pathlib import Path; sys.path.insert(0, '.framework'); from tools.write_cost_ledger_tool import LEDGER, costs_folder; f = costs_folder(Path('.')); print(sqlite3.connect(Path(f) / LEDGER).execute('SELECT time, product, kind, stage, cost_usd FROM sessions ORDER BY time DESC LIMIT 5').fetchall() if f else 'QF_COSTS_DIR not set')"
+```
+
+(`python` where `python3` is missing.) The newest row is your session's:
+kind `orchestrator`, your product's name. No row: the status line names why,
+`cost not recorded: <reason>` (*When something goes wrong*). The sessions the
+framework starts add theirs when they end.
 
 ## Your plan's allowance
 
@@ -266,25 +264,13 @@ Claude Code tells a status line how much of each is used; it does not send it
 with the numbers above. The status line `plan_usage_statusline.py` of this
 folder shows it in your terminal, e.g. `5h 42 % (21:10) · week 18 % (Sat 09:00)`,
 and sends it to the stack as `qf_plan_used_percent` and `qf_plan_resets_at`,
-for the *5-hour window* section. In a product's folder, with `QF_COSTS_DIR`
-set, it also keeps your session's cost in the ledger as the orchestrator's
-row (*The cost of a stage*).
-
-Add it to your own Claude Code settings, `~/.claude/settings.json`
-(`%USERPROFILE%\.claude\settings.json` on Windows):
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "python3 <product>/.framework/monitoring/plan_usage_statusline.py"
-  }
-}
-```
-
-(`python` where `python3` is missing.) A status line you already have is
-replaced: keep one of the two. The allowance is your account's, so one tab
-with this status line counts every session, the watcher's too. It is sent while
+for the *5-hour window* section. In a product's folder it also keeps your
+session's cost in the ledger as the orchestrator's row (*The cost of a stage*),
+and where it cannot, it says why: `cost not recorded: QF_COSTS_DIR not set`.
+Your role's guide says which settings file holds it. A status line you
+already have is replaced: keep one of the two. The allowance is your
+account's, so one tab with this status line counts every session, the
+watcher's too. It is sent while
 a tab works, at most every 10 seconds; between two sends the panels keep the
 last value, and show 0 % once the window has reset.
 
@@ -358,8 +344,8 @@ framework 5.4.0 has no ledger: create the costs folder (step 2), then
 
 ## Switching it off
 
-- **One session or tab:** remove the settings from its `.env`, or open the
-  tab without the `export` line.
+- **One side:** remove the settings from its `.env`, or from the settings
+  file of your own session (your role's guide).
 - **The stack, for now:** `docker stop lgtm` (macOS with Colima: `colima
   stop`). Sessions keep working; their numbers for that time are lost.
 - **For good:** `docker rm -f lgtm`. The numbers stay in `<data folder>` until
@@ -375,5 +361,9 @@ framework 5.4.0 has no ledger: create the costs folder (step 2), then
 | Dashboard empty | A session sends numbers every 10 seconds while it works: send one prompt, wait 20 seconds. Still empty: that session started without the settings, or before the stack — start it again |
 | Collector receives, Prometheus stays empty | The settings miss `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative`: Prometheus refuses the default |
 | A session missing from *Cost by session* | Its settings were not read: an `.env` line misspelt, or the watcher not restarted after adding them |
+| `cost not recorded: QF_COSTS_DIR not set` in the status line | Neither the product's `.env` nor `~/.aspice_agent_secrets/.env` has the line (*The cost of a stage*) |
+| `cost not recorded: cannot write <folder>` | The user running Claude cannot write that folder, or it is not a folder: check its rights as that user |
+| *Cost of a stage* empty, the status line shows no reason | No status line is set for the user running Claude (your role's guide), or no session has ended yet: run the check of *The cost of a stage* |
+| `Not logged in` after `su` or `ssh` as another user | Claude keeps its sign-in in that user's keychain, which such a login does not unlock: `security unlock-keychain ~/Library/Keychains/login.keychain-db` in that terminal (macOS), then start Claude again |
 | `port is already allocated` in step 4 | Another program uses 3000, 4317 or 4318 (`lsof -i :3000`; Windows: `netstat -ano \| findstr :3000`) |
 | Numbers gone after an update | The data folder was not mounted, or (Colima) lies outside your home folder: step 6 |

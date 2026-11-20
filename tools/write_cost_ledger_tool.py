@@ -5,8 +5,10 @@ session the framework starts (tools/start_session_tool.py, the watcher) and the
 person's own session, the orchestrator (the cost monitoring's status line),
 keep what they cost in a ledger of their own: one row per session in the table
 sessions, kept for the whole project, read by the dashboard's *Cost of a stage*
-section through Grafana's SQLite data source (COST_MONITORING.md). One file per
-machine holds every product, each row naming its own.
+section through Grafana's SQLite data source (COST_MONITORING_COMMON_STACK.md).
+One file per machine holds every product, each row naming its own. Its folder
+is QF_COSTS_DIR, set in the product's .env, in ~/.aspice_agent_secrets/.env or
+in the environment.
 
 The status line runs this with whatever Python the machine has, so it uses the
 standard library only.
@@ -14,10 +16,11 @@ standard library only.
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 
-__all__ = ["COLUMNS", "COSTS_DIR", "LEDGER", "write_row"]
+__all__ = ["COLUMNS", "COSTS_DIR", "LEDGER", "costs_folder", "write_row"]
 
 COSTS_DIR = "QF_COSTS_DIR"  # where the ledger is, from a .env or the environment
 LEDGER = "costs.sqlite"
@@ -39,6 +42,25 @@ COLUMNS = {
     "cost_usd": "REAL",  # list price, where the LLM reports it
     "timed_out": "INTEGER",  # 1: stopped at its time limit, its cost unknown
 }
+
+
+def costs_folder(product: Path) -> str | None:
+    """The ledger's folder for a session in the product: QF_COSTS_DIR of the
+    product's .env, else of ~/.aspice_agent_secrets/.env, else of the
+    environment. A .env is read as tools/start_session_tool.read_env reads it."""
+    for env in (Path(product) / ".env", Path.home() / ".aspice_agent_secrets" / ".env"):
+        try:
+            lines = env.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            name, _, value = line.strip().removeprefix("export ").partition("=")
+            value = value.strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+                value = value[1:-1]
+            if name.strip() == COSTS_DIR and value:
+                return value
+    return os.environ.get(COSTS_DIR) or None
 
 
 def write_row(folder: Path, row: dict) -> Path:
