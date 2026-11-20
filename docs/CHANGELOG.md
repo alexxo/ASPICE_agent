@@ -35,6 +35,27 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.4.3] - 2026-11-20
+
+A stage check runs a gate that several stages list once, not once per stage; cost monitoring is set up from one guide per role, every setting in a file, and says when the ledger gets no row.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | optional |
+| Move your own session's monitoring settings out of the terminal into `<product>/.claude/settings.local.json`: the seven `OTEL_…` lines under `env`, and the `statusLine` block, as in `COST_MONITORING_FOR_PRODUCT_DEVELOPERS.md` step 3; remove the `export` lines from your shell profile and the `statusLine` from `~/.claude/settings.json`; quit Claude and start it again | the developer's computer | optional — only with cost monitoring |
+| Make sure `QF_COSTS_DIR` is in the product's `.env` or `~/.aspice_agent_secrets/.env`: your own session's row now reads it there | the product's `.env` | optional — only with the cost ledger |
+
+### Changed
+
+- **A shared gate ran once per stage that lists it** (`agent/resolve_stage_tool.py`, `agent/run_gates_tool.py`). The walk checks every stage reached, and three gates are listed by several: `verify_test_first_gate` by 4, `check_verification_plan_gate` and `check_time_budget_gate` by 3; one check ran each again on the same tree. A gate is given only the product, so its result is the same in every stage: the walk now keeps each gate's result for the length of one check, and `run_gates` runs only the gates whose result it is not given. Measured on the framework's journey tests: 135 of 1634 gate runs fewer, 15 % of gate time. Nothing is kept after the check. Quality doc § 5 *What CI fails on*. Origin: internal.
+- **One cost monitoring guide per role** (`monitoring/`). `COST_MONITORING.md` became `COST_MONITORING_COMMON_STACK.md`, the stack every setup shares, beside `COST_MONITORING_FOR_PRODUCT_DEVELOPERS.md` (one user of the computer, numbered steps, the status line one of them) and `COST_MONITORING_FOR_FRAMEWORK_MAINTAINERS.md` (a product run as a second user on the framework's computer, with placeholders). Each says whom it is for and whom not. QUICKSTART step 8 says one user runs a developer's clone, agent, watcher and secrets, and how to sign in as it. Quality doc § 5 *Cost monitoring, an optional companion*; Appendix A.1 *Cost monitoring set up by role, every setting in a file*. Origin: found verifying the pilot's empty ledger.
+
+### Fixed
+
+- **The orchestrator's ledger row needed a setting only one terminal had** (`monitoring/plan_usage_statusline.py`, `tools/write_cost_ledger_tool.py`). The status line read `QF_COSTS_DIR` from its own environment only, which a terminal reads when it opens: set later, or in another tab, the row was never written, and nothing said so. It now reads the setting where the sessions read it, the product's `.env` and `~/.aspice_agent_secrets/.env`, then the environment; where the row cannot be written, the status line shows `cost not recorded: <reason>`. The guide ends with a check that a row arrived, and QUICKSTART step 10 closes only once the agent finds its own session's row. Origin: found verifying the pilot's empty ledger.
+
 ## [5.4.2] - 2026-11-19
 
 The clarify session is told which files it may read, and an answer that is no list of questions fails instead of passing as done.
