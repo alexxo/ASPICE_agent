@@ -397,7 +397,8 @@ Describe tests,    a folder of its files       that folder           nothing    
 
 **With Claude Code**, these lines give those rights (`--permission-mode
 dontAsk` refuses everything not listed, `--setting-sources user` keeps the
-product's own settings out). A line allows a command by how it starts, one
+product's own settings out, and `disableAllHooks` turns off the person's own
+hooks: a hook runs as a shell command, outside the listed rights). A line allows a command by how it starts, one
 command at a time: the coder's prompt tells it to run each command as the
 plan and the stack write it, without pipes or `&&`, and that its rules come
 before the person's own instructions about tools. `--output-format json`
@@ -408,15 +409,15 @@ fails safe — the session stops, it is never given more:
 
 ```sh
 # <product>/.env
-QF_COMMAND_TO_START_AUTHOR_SESSIONS=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user
-QF_COMMAND_TO_START_TESTER_SESSION=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**)"
-QF_COMMAND_TO_START_CODER_SESSION=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user --allowedTools "Edit(./**),Bash(python *),Bash(python3 *),Bash(git status *),Bash(git diff *),Bash(git log *),Bash(<each command of the stack> *)"
+QF_COMMAND_TO_START_AUTHOR_SESSIONS=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user --settings '{"disableAllHooks":true}'
+QF_COMMAND_TO_START_TESTER_SESSION=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user --settings '{"disableAllHooks":true}' --allowedTools "Edit(./**)"
+QF_COMMAND_TO_START_CODER_SESSION=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user --settings '{"disableAllHooks":true}' --allowedTools "Edit(./**),Bash(python *),Bash(python3 *),Bash(git status *),Bash(git diff *),Bash(git log *),Bash(<each command of the stack> *)"
 ```
 
 ```sh
 # ~/.aspice_agent_secrets/.env   (chmod 600)
-QF_COMMAND_TO_START_REVIEW_SESSIONS=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user
-QF_COMMAND_TO_START_REVIEWER_SESSION=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user --allowedTools "Read(//**/.framework/**),Edit(./.qf/reviews/**),Bash(git log *),Bash(git diff *),Bash(git show *),Bash(gh api *),Bash(gh pr view *),Bash(gh pr diff *),Bash(python */.framework/agent/read_config_tool.py *),Bash(python3 */.framework/agent/read_config_tool.py *),Bash(python */.framework/agent/load_skills_tool.py *),Bash(python3 */.framework/agent/load_skills_tool.py *),Bash(python */.framework/tools/classify_pull_request_tool.py *),Bash(python3 */.framework/tools/classify_pull_request_tool.py *),Bash(python */.framework/tools/post_review_tool.py *),Bash(python3 */.framework/tools/post_review_tool.py *)"
+QF_COMMAND_TO_START_REVIEW_SESSIONS=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user --settings '{"disableAllHooks":true}'
+QF_COMMAND_TO_START_REVIEWER_SESSION=claude -p {prompt} --output-format json --permission-mode dontAsk --setting-sources user --settings '{"disableAllHooks":true}' --allowedTools "Read(//**/.framework/**),Edit(./.qf/reviews/**),Bash(git log *),Bash(git diff *),Bash(git show *),Bash(gh api *),Bash(gh pr view *),Bash(gh pr diff *),Bash(python */.framework/agent/read_config_tool.py *),Bash(python3 */.framework/agent/read_config_tool.py *),Bash(python */.framework/agent/load_skills_tool.py *),Bash(python3 */.framework/agent/load_skills_tool.py *),Bash(python */.framework/tools/classify_pull_request_tool.py *),Bash(python3 */.framework/tools/classify_pull_request_tool.py *),Bash(python */.framework/tools/post_review_tool.py *),Bash(python3 */.framework/tools/post_review_tool.py *)"
 ```
 
 Replace `<each command of the stack>` with the first word of every command the

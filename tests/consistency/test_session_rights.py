@@ -36,6 +36,15 @@ def test_every_session_starts_from_the_lines_and_none_is_unrestricted(repo_root,
     assert all("--allowedTools" not in values[name] for name in fallbacks)  # read-only
 
 
+def test_no_session_runs_the_persons_own_hooks(repo_root, tmp_path):
+    """FB-8: --setting-sources user loads the person's hooks, which run as shell
+    commands outside the listed rights; every line turns them off."""
+    values = _lines(repo_root, tmp_path)
+    for session in SESSIONS:
+        argv = command_for(session, values, "QUICKSTART step 8")("<prompt>")
+        assert argv[argv.index("--settings") + 1] == '{"disableAllHooks":true}', session
+
+
 def test_the_reviewer_may_run_every_framework_tool_of_its_runbook(repo_root, tmp_path):
     allowed = command_for("reviewer", _lines(repo_root, tmp_path), "QUICKSTART step 8")("p")[-1]
     runbook = (repo_root / "agent/run_reviewer_agent.md").read_text(encoding="utf-8")

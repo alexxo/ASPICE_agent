@@ -308,7 +308,7 @@ class Watcher:
     copy: object = None  # (root, number, head, folder) -> bool; None: a git worktree of the head
     limited: dict = field(default_factory=dict)  # (number, head) -> when the usage limit stopped it
     opener: object = open_page  # address -> the address, saying whether it opened
-    post: object = None  # (number, head, body) -> None, as the reviewer agent; None: the host
+    post: object = None  # (number, head, body[, event]) -> None, as the reviewer; None: the host
 
     def say(self, text: str) -> None:
         self.out(f"{datetime.now():%H:%M}  {text}")
@@ -423,7 +423,8 @@ class Watcher:
                 head,
                 f"The reviewer's copy of the head changed during the review: {changed}. A "
                 "reviewer never changes the work, and the command that starts it must prevent "
-                "it (QF_COMMAND_TO_START_REVIEWER_SESSION, with the rights of QUICKSTART step 8).",
+                "it (QF_COMMAND_TO_START_REVIEWER_SESSION, with the rights of QUICKSTART step 8)."
+                f"{self._withdraw(number, head, changed)}",
                 f"Verify your LLM settings; the copy is kept, to see the change, at "
                 f"{copy.relative_to(self.config.root).as_posix()}. Reviews are paused: type R "
                 "to resume.",
@@ -485,13 +486,31 @@ class Watcher:
         self.say(f"#{number} head {head[:7]}: approval of {review.commit[:7]} carried over")
         return True
 
-    def _post_as_reviewer(self, number: int, head: str, body: str) -> None:
+    def _withdraw(self, number: int, head: str, changed: str) -> str:
+        """The approval the session posted on this head withdrawn, by a later review
+        that requests changes: a session that changed the work gave no review (FB-8).
+        What became of it, as a sentence for the banner; empty when it posted none."""
+        pull = self.host.pull_request(self.repo, number)
+        agents = set(self.config.review_agents)
+        if not any(r.author in agents for r in (pull.approvals() if pull else ())):
+            return ""
+        body = (
+            f"Withdrawn: this review's copy of the head changed while it ran ({changed}), "
+            "so its approval does not count. A new review follows once the person resumes."
+        )
+        try:
+            (self.post or self._post_as_reviewer)(number, head, body, "REQUEST_CHANGES")
+        except (HostError, OSError) as err:
+            return f" Its approval could NOT be withdrawn ({err}): do not merge on it."
+        return " Its approval is withdrawn: a review requesting changes now stands in its place."
+
+    def _post_as_reviewer(self, number: int, head: str, body: str, event: str = "APPROVE") -> None:
         from tools.post_review_tool import _post
         from tools.read_host_tool import API
 
         token = os.environ.get(HOST_TOKEN, "")
         api = os.environ.get("GITHUB_API_URL", API)
-        _post(token, self.repo, number, head, "APPROVE", body, api)
+        _post(token, self.repo, number, head, event, body, api)
 
     def _halt(self, stop: Stop) -> None:
         """A head that stopped: it waits for R, or, stopped by the usage limit, is

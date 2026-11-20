@@ -345,6 +345,26 @@ def test_a_reviewer_that_changes_the_work_pauses_every_review(changed):
     assert not copy.exists()  # removed after the review
 
 
+def test_the_approval_of_a_reviewer_that_changed_the_work_is_withdrawn(changed):
+    """FB-8: the session approved, then its copy was found changed; its approval
+    must not stay the one qf/merge counts."""
+    w, shown, head = changed
+    posted = []
+    w.post = lambda number, at, body, event: posted.append((number, at, event, body))
+    edit = "open('NOTES.md', 'w').write('changed by a hook')"
+
+    def review(prompt):
+        w.host.posted.append(Review(AGENT, "APPROVED", head))
+        return [sys.executable, "-c", edit]
+
+    w.command = review
+    w.once()
+    ((number, at, event, body),) = posted
+    assert (number, at, event) == (7, head, "REQUEST_CHANGES")
+    assert body.startswith("Withdrawn: this review's copy of the head changed")
+    assert "Its approval is withdrawn" in " ".join(shown[-1].split())
+
+
 def test_the_authors_work_during_a_review_is_not_the_reviewers(changed):
     """FB-46: the author and the framework go on working in the product folder."""
     w, shown, head = changed
