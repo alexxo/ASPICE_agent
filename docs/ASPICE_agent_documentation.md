@@ -844,7 +844,7 @@ group, and the stage table marks them *principle*.
 | #4 Architecture-only verification | Architecture governance | An architecture pull request runs only the gates that apply to architecture work (requirements, diagrams, architecture design):<br>• **Chosen by the branch** — the reduced set is selected by the architecture branch, never by the author.<br>• **No code** — an architecture pull request changes no implementation or test files.<br>• **Labelled** — the run's report states that it was an architecture-only run, so it is never read as a full verification. | **Statement:** Architecture runs are reduced and labelled<br>**Evidence:** The branch + the paths changed + the run report<br>**Gate:** verify_architecture_tests_gate<br>**What it verifies:** An architecture branch changes no implementation or test files, and its report is labelled architecture-only |
 | #15 Ports and composition root | Testability | Every component can be tested in isolation:<br>• **Ports** — components reach each other only through the interfaces declared in the architecture.<br>• **Composition root** — concrete implementations are chosen in one declared place per entry point.<br>• **Test doubles** — every interface has at least one real implementation and at least one test double (e.g. *a stub of the payment service*). | **Statement:** Testable design declared<br>**Evidence:** The architecture document<br>**Gate:** check_testability_gate<br>**What it verifies:** Every entry point declares one composition root, and every interface lists a real implementation and a test double<br>────────────────<br>**Not checkable:** that the code really respects the ports instead of importing concrete implementations — left to the reviewer |
 | #16 Security test templates | Security · reusable test templates | Security is tested with shared templates:<br>• **Templates** — the framework keeps a catalog of five security test templates — *authentication*, *authorization*, *input-validation*, *stored-data*, *outbound-calls* — each saying what its tests must show.<br>• **Named** — every external interface of the architecture names the templates its boundary needs (*security_templates*).<br>• **Applied** — the component at the product's end of such an interface has, for each, a unit test written first and passing, naming the template with a marker (e.g. *@security[input-validation]*). | **Statement:** Every external interface names its templates<br>**Evidence:** The architecture's interface blocks<br>**Gate:** check_design_contract_gate<br>**What it verifies:** An interface with *external: true* names at least one catalog template<br>────────────────<br>**Statement:** Trust-boundary components have security tests<br>**Evidence:** *security_templates* + *@security* and *@unit* markers in the tests + the unit suite's results<br>**Gate:** verify_security_tests_gate<br>**What it verifies:** Each such component has a passing test for each template named, and every marker names a catalog template |
-| #29 Security scanning | Security · automated scanning | Every pull request is scanned for security issues:<br>• **What** — a secret scanner and a dependency scanner, declared by the product with pinned versions.<br>• **Threshold** — no critical or high finding may be merged. | **Statement:** Scans pass<br>**Evidence:** The scanners' result files<br>**Gate:** scan_security_gate<br>**What it verifies:** Both scanners ran on the pull request, and their results contain no critical or high finding |
+| #29 Security scanning | Security · automated scanning | Every pull request is scanned for security issues:<br>• **What** — a secret scanner and a dependency scanner, declared by the product with pinned versions.<br>• **Threshold** — no critical or high finding may be merged. | **Statement:** Scans pass<br>**Evidence:** The scanners' result files<br>**Gate:** scan_security_gate<br>**What it verifies:** Both scanners finished on the pull request — an exit the product declares as a finished scan, and a SARIF log — and their results contain no critical or high finding |
 | #23 Environment and configuration | Testability · across environments and configurations | Every configuration value is declared and validated:<br>• **Declared** — every environment variable the code reads is declared, with a description, whether it is required, an example and its valid values, in the product's list of environment variables; and every declared variable is read somewhere. The stack declares how the code reads one (its read patterns).<br>• **Validated** — for every required variable, a unit test checks that the software stops at start-up when it is missing or invalid; the tester writes it first, like every unit test, and it names the variable (e.g. *@env[DATABASE_URL]*). | **Statement:** Variables declared both ways<br>**Evidence:** The code, read with the stack's read patterns + the list of environment variables<br>**Gate:** check_env_config_gate<br>**What it verifies:** Every variable the code reads is declared, and every declared variable is read<br>────────────────<br>**Statement:** Required variables validated<br>**Evidence:** The tests' environment markers + the unit suite's results<br>**Gate:** check_env_config_gate<br>**What it verifies:** Every required variable is named by at least one passing unit test<br>────────────────<br>**Not checkable:** a read whose variable name is computed at run time — left to the reviewer |
 | #37–#39 Alerts, dashboards, health checks | Observability | What the observability requirements specify is deployed with every release:<br>• **Definitions in the repository** — alerts, dashboards and health checks live as files, each naming the observability requirement it serves.<br>• **Deployed** — at release, they are deployed with the command the product declares. | **Statement:** Observability deployed<br>**Evidence:** The observability definition files + the deployment record of the release<br>**Gate:** check_observability_gate<br>**What it verifies:** Every observability requirement has at least one definition naming it, and the release deployed them successfully<br>────────────────<br>**Not checkable:** that the alerts fire correctly in production — left to the organisation |
 | #41 Retrospective action items | Feedback loop | Lessons learned are followed up:<br>• **Recorded** — after every release, retrospective action items are issues labelled *retro-action*, each with an owner and a due date.<br>• **Followed up** — at the next release, every overdue item is closed or rescheduled. | **Statement:** Retro actions followed up<br>**Evidence:** Issues labelled retro-action<br>**Gate:** check_retro_actions_gate<br>**What it verifies:** At release, no retro action is past its due date without being closed or rescheduled |
@@ -1205,8 +1205,8 @@ chosen or not needed — that *write_stack_table_tool* prints from it.
 | *lint* | The coding-rule check, with *run* and *version_command* | no | — |
 | *format* | The formatting check, with *run* and *version_command* | no | — |
 | *static_analysis* | Deeper code checks (types, bugs), with *run* and *version_command* | yes | — |
-| *secrets_scanner* | Finds leaked secrets on every pull request, with *run*, *version_command* and its SARIF *results* | no | — |
-| *dependencies_scanner* | Finds vulnerable dependencies on every pull request, with *run*, *version_command* and its SARIF *results* | no | — |
+| *secrets_scanner* | Finds leaked secrets on every pull request, with *run*, *version_command*, its SARIF *results* and its *completed_exit_codes* | no | — |
+| *dependencies_scanner* | Finds vulnerable dependencies on every pull request, with *run*, *version_command*, its SARIF *results* and its *completed_exit_codes* | no | — |
 | *build* | How the product is packaged | yes | — |
 | *deployment* | How the product is delivered | yes | — |
 | *version_control* | Where the code and its history live | yes | GitHub |
@@ -3514,8 +3514,9 @@ and a person approves the results and answers the questions of what is wanted
    working. Whatever the agent, the watcher compares that copy's commit and
    changed files (*.qf/* left out) before and after each session: on any
    change it shows the banner *REVIEWER CHANGED THE WORK* — verify the LLM
-   settings, see the change in the copy, which is kept — and pauses every
-   review until the person types *R*. After a review the session's records
+   settings, see the change in the copy, which is kept — withdraws an
+   approval that session posted, with a later review requesting changes on
+   that head, and pauses every review until the person types *R*. After a review the session's records
    go to the product's *.qf/reviews/* and the copy is removed. When the
    framework it runs from moves to a newer version — the agent moved the pin
    — the watcher starts again from it on its own, between two reviews, with
@@ -3605,7 +3606,10 @@ and a person approves the results and answers the questions of what is wanted
    write cannot prove a person approved.
 8. **Security scans every pull request.** The *stack.v2* rows of the areas
    *secrets_scanner* and *dependencies_scanner*, each with its command, a
-   pinned version and SARIF results. *scan_security_gate* requires both results (SCAN_NOT_RUN) and no
+   pinned version, SARIF results and the exit codes of a finished scan
+   (*completed_exit_codes*). *scan_security_gate* requires both scans
+   finished — an exit among those codes and a SARIF 2.1.0 log whose runs name
+   their tool — or the scan did not run (SCAN_NOT_RUN), and no
    critical or high finding (SECURITY_FINDING): a result whose rule's
    *security-severity* is 7.0 or more, or any result without one — a found
    secret has no score and always blocks.
@@ -5746,6 +5750,31 @@ label together.
   status (a status that can be stale or set by hand would decide part of the
   sign); no change (a third of CI time).
 
+- **A scan counts only when it finished** (2026-11-20, FB-7 of TBO-STUDIO;
+  Alex D57 A). A scanner exits non-zero both when it finds something and when
+  it fails, and the gate read any JSON object as the scan: a crashed scanner
+  that left a clean report, or wrote *{}*, passed as clean (S 9, O 4, D 9 —
+  324, critical). *Chosen:* each scanner row of the stack names its
+  *completed_exit_codes* — the exits of a finished scan, with or without
+  findings — and the report must be a SARIF 2.1.0 log whose runs name their
+  tool; anything else is a scan that did not run. Risk kept: a scanner that
+  uses one exit code for both findings and errors — the stack chooses a
+  tool option that separates them (gitleaks *--exit-code 3*). *Not taken:*
+  the report's shape only (a stale clean report still passes); validating
+  the full SARIF schema (heavy, and the exit is still unread).
+- **A session never runs the person's own hooks** (2026-11-20, FB-8 of
+  TBO-STUDIO; Alex D58 B). The step 8 lines load the person's user settings,
+  and their hooks run as shell commands outside the rights each line gives:
+  a reviewer's copy changed, the watcher saw it after the session had
+  approved, and the pull request merged on that approval (S 8, O 6, D 6 —
+  288, high); author sessions have no such check. *Chosen:* every Claude
+  line turns hooks off (*disableAllHooks*), and when a reviewer's copy
+  changed the watcher withdraws that session's approval with a later review
+  requesting changes on the head, so it no longer counts. *Not taken:* the
+  lines only (an approval from a session that changed the work would still
+  count, whatever the cause); the watcher only (author sessions stay
+  exposed).
+
 ### A.9 Configuration management stage — stage 10
 
 - **How a release is made** (2026-10-11, D50 option A). *Chosen:* a release
@@ -5928,6 +5957,19 @@ label together.
   one folder layout, and wrong on Windows; the runner turning a command's
   `python` into `python3` — the machine's Python still lacks the product's
   libraries.
+
+- **The first commit passes the gates of its pull request** (2026-11-20,
+  FB-1 and FB-2 of TBO-STUDIO; Alex D59 A, D60 A). The rulebook prescribed a
+  first commit that named no issue and left the release it pins unrecorded
+  in the feedback log: every new product's first pull request failed two
+  gates, and a pushed commit had to be rewritten (S 4, O 10, D 2 — 80).
+  *Chosen:* before that commit the agent adds the release to the log —
+  *No findings for <release> (<commit>)*, or the entry it recorded for a
+  weakness met on the way — and the message names the issue that starts the
+  product, which the person opens or lets the agent open. *Not taken:*
+  exempting the first commit in the commit gate, or a first pin in the
+  feedback gate (one special case each); the setup tool writing "No
+  findings" itself (false when the setup met a weakness).
 
 ## Appendix B — Origin of the practices
 

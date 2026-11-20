@@ -35,6 +35,26 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.4.4] - 2026-11-20
+
+A security scan counts only when the scanner finished; no session runs the person's own hooks, and an approval from a reviewer whose copy changed is withdrawn; a new product's first pull request passes its gates; a criterion settled through `also` is rechecked once.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required |
+| Add `completed_exit_codes` to both scanner rows of `docs/architecture/stack.yaml`: the exits of a finished scan, with or without findings — `[0, 1]` for osv-scanner; for gitleaks add `--exit-code 3` to its `run` and write `[0, 3]`, since it also exits 1 on an error | the product's stack | required — the stack is invalid without it |
+| Add `--settings '{"disableAllHooks":true}'` after `--setting-sources user` on every `QF_COMMAND_TO_START_*` line, as in QUICKSTART step 8 | the product's `.env` and `~/.aspice_agent_secrets/.env` | required with Claude Code |
+| Remove a local adapter that guards the scanners' exits, once the scans pass without it | the product | optional |
+
+### Fixed
+
+- **A failed scan passed as clean** (`gates/sup/scan_security_gate.py`, `contracts/stack_contract.v2.schema.json`). The gate read any JSON object as the scan's report and never its exit: a scanner that crashed and left a clean SARIF, or wrote `{}`, passed. Each scanner row now names its `completed_exit_codes`; any other exit, or a report that is no SARIF 2.1.0 log whose runs name their tool, is `SCAN_NOT_RUN`. Quality doc § 5 stage 9 rule 8; Appendix A.8 *A scan counts only when it finished*. Origin: FB-7 (TBO-STUDIO).
+- **Sessions ran the person's own hooks** (`QUICKSTART.md` step 8, `tools/watch_reviews_tool.py`). `--setting-sources user` loads the person's user settings, whose hooks run as shell commands outside the rights a line gives; a reviewer's copy changed after it approved, and the approval still counted. Every Claude line now turns hooks off, and when a reviewer's copy changed the watcher withdraws that session's approval with a later review requesting changes on the same head. Quality doc § 5 stage 9; Appendix A.8 *A session never runs the person's own hooks*. Origin: FB-8 (TBO-STUDIO).
+- **A new product's first pull request failed two gates** (`agent/start_product.md`). The prescribed first commit named no issue (`MISSING_REQUIREMENT_TOKEN`), and no step recorded the framework release it pins (`UNACCOUNTED_FRAMEWORK_BUMP`). Before that commit the agent now adds `No findings for <release> (<commit>)` to the feedback log, or the entry it recorded for a weakness met during the setup, and the message names the issue that starts the product. Appendix A.13 *The first commit passes the gates of its pull request*. Origin: FB-1, FB-2 (TBO-STUDIO).
+- **A criterion settled through `also` was asked about a third time** (`agent/record_answer_tool.py`). The one recheck after a rewrite was counted for a question's own criterion only, so the criteria under its `also` stayed unchecked after the recheck and `verify_requirements_approval_gate` reported `CRITERIA_NOT_CHECKED`. Every place a question settles now counts alike. Origin: FB-94 (wp_publisher).
+
 ## [5.4.3] - 2026-11-20
 
 A stage check runs a gate that several stages list once, not once per stage; cost monitoring is set up from one guide per role, every setting in a file, and says when the ledger gets no row.
