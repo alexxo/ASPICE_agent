@@ -15,7 +15,9 @@ its approval's own findings (APPROVAL_RULES) are only reported, since that pull
 request's merge is the approval the architect gives (FB-72). A stage whose
 checkpoint sits in the middle (stage 3: the stack is approved before components
 are designed) runs its gates_after_checkpoint only once that approval is current.
-The first stage that is not done is the current one. There is no state file: the
+The first stage that is not done is the current one. A gate several stages list
+runs once per walk: it is given only the product, so its result is the same in
+each. There is no state file: the
 agent can stop and resume at any time. Once every stage of the flow is done, the
 gates of every built event stage run too (decision 4 of the problem resolution
 stage), so their rules hold on every pull request.
@@ -103,9 +105,10 @@ def resolve_stage(root: Path) -> dict:
     reachable = host_configured()
     always = [g for g in always_gates() if reachable or g not in host_gates()]
     skipped = [{"gate": g, "reason": "no_host"} for g in always_gates() if g not in always]
-    state = _walk(config, root)
+    run = partial(run_gates, root, kept={})  # a gate several stages list runs once
+    state = _walk(config, root, run)
     state["not_run"] = skipped + state["not_run"]
-    findings = [f for r in run_gates(root, always) for f in r["findings"]]
+    findings = [f for r in run(always) for f in r["findings"]]
     if not findings:
         return state
     rules = {f["rule"] for f in findings}
@@ -126,7 +129,7 @@ def needs_record(s: Stage) -> bool:
     return s.checkpoint is None or s.checkpoint_on_host or bool(s.gates_after_checkpoint)
 
 
-def _walk(config: ProductConfig, root: Path) -> dict:
+def _walk(config: ProductConfig, root: Path, run) -> dict:
     done: list[str] = []
     flow = flow_stages()
     releasing = bool(pending(config))  # no release while any finding remains
@@ -134,7 +137,7 @@ def _walk(config: ProductConfig, root: Path) -> dict:
     for index, s in enumerate(flow):
         stop = partial(_stop, s, flow[: index + 1], [*flow[index + 1 :], *_events()], done)
         if s.gates:
-            results = run_gates(root, s.gates)
+            results = run(s.gates)
             if s.checkpoint and s.checkpoint == approving:
                 return _approving(s, _flat(results), stop)
             if not passed(results):
@@ -150,7 +153,7 @@ def _walk(config: ProductConfig, root: Path) -> dict:
             reason = f"checkpoint {s.checkpoint}: {why}"
             return stop(status, reason, skipped=s.gates_after_checkpoint)
         if s.gates_after_checkpoint:
-            results = run_gates(root, s.gates_after_checkpoint)
+            results = run(s.gates_after_checkpoint)
             if not passed(results):
                 findings, ahead = _ahead(config, s, _flat(results), releasing)
                 finished = releasing or _recorded(config, s)
@@ -169,7 +172,7 @@ def _walk(config: ProductConfig, root: Path) -> dict:
         done = [*done, s.id]
     planned = _not_run([*flow, *_events()], [], ())
     for s in _events():
-        results = run_gates(root, s.gates)
+        results = run(s.gates)
         if not passed(results):
             findings = _flat(results)
             return {

@@ -60,11 +60,14 @@ RUN_ALONE = frozenset(
 )
 
 
-def run_gates(root: Path, gates: Sequence[str]) -> list[dict]:
-    """One findings.v1 document per gate, in the given order."""
+def run_gates(root: Path, gates: Sequence[str], kept: dict | None = None) -> list[dict]:
+    """One findings.v1 document per gate, in the given order. A gate whose result
+    is in kept is not run again; the results of the others are added to it."""
     root = Path(root)
-    done = {g: _run(root, g) for g in gates if g in RUN_ALONE}
-    rest = list(dict.fromkeys(g for g in gates if g not in RUN_ALONE))
+    done = {} if kept is None else kept
+    new = list(dict.fromkeys(g for g in gates if g not in done))
+    done |= {g: _run(root, g) for g in new if g in RUN_ALONE}
+    rest = [g for g in new if g not in RUN_ALONE]
     with ThreadPoolExecutor(max_workers=os.cpu_count() or 1) as pool:
         done |= dict(zip(rest, pool.map(lambda g: _run(root, g), rest), strict=True))
     return [done[g] for g in gates]

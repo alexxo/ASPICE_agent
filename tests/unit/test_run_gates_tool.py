@@ -26,6 +26,19 @@ def test_the_results_keep_the_order_asked_for(product):
     assert [r["gate"] for r in run_gates(product, gates)] == list(gates)
 
 
+def test_a_kept_result_is_not_run_again(product, monkeypatch):
+    import agent.run_gates_tool as tool
+
+    ran, real = [], tool._run
+    monkeypatch.setattr(tool, "_run", lambda root, gate: ran.append(gate) or real(root, gate))
+    kept = {}
+    first = run_gates(product, GATES, kept)
+    again = run_gates(product, ("check_glossary_gate", "verify_test_first_gate"), kept)
+    assert sorted(ran) == sorted([*GATES, "verify_test_first_gate"])  # each once
+    assert again[0] is first[1]
+    assert set(kept) == {*GATES, "verify_test_first_gate"}
+
+
 def _called(tree) -> set[str]:
     return {
         c.func.id if isinstance(c.func, ast.Name) else c.func.attr

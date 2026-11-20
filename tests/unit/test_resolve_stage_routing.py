@@ -31,7 +31,7 @@ def world(monkeypatch):
         ran=[],
     )
 
-    def run_gates(root, gates):
+    def run_gates(root, gates, kept=None):
         state.ran += list(gates)
         return [
             {

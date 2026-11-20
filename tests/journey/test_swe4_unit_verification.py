@@ -26,6 +26,7 @@ from product_builder import (
     write_all_tests_and_stubs,
 )
 
+from agent import run_gates_tool
 from agent.count_retries_tool import decide, record_attempt
 from agent.load_skills_tool import load_skills
 from agent.read_stages_tool import stage
@@ -108,7 +109,7 @@ def test_the_tester_and_the_coder_are_loaded_with_their_rulebooks(product):
     ]
 
 
-def test_tests_first_then_the_units_move_the_product_to_stage_7(product):
+def test_tests_first_then_the_units_move_the_product_to_stage_7(product, monkeypatch):
     decision = _attempts(product, "unit_tests", [red_tests_and_stubs])
     assert decision["decision"] == "pass"
     record_stage_done(product, "unit_tests")
@@ -126,9 +127,13 @@ def test_tests_first_then_the_units_move_the_product_to_stage_7(product):
     decision = _attempts(product, "unit_construction", [the_units])
     assert decision["decision"] == "pass"
     record_stage_done(product, "unit_construction")
+    ran = []
+    real = run_gates_tool._run
+    monkeypatch.setattr(run_gates_tool, "_run", lambda root, g: ran.append(g) or real(root, g))
     state = resolve_stage(product)
     assert (state["stage"], state["status"]) == ("integration_verification", "in_progress")
     assert state["done"] == [*DESIGNED, "unit_tests", "unit_construction"]
+    assert ran.count("verify_test_first_gate") == 1  # listed by stages 5, 6 and 7: run once
 
 
 # ── the same, each role in a session of its own, on whatever LLM ────────────
