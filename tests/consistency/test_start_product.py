@@ -47,3 +47,19 @@ def test_the_person_keeps_the_decisions(repo_root):
     assert "never install, update or remove a plugin yourself" in text
     assert not re.search(r"engram|openspec|\.atl/|gentle-ai", text, re.IGNORECASE)
     assert not re.search(r"git (?:init|submodule)|npx |install_plugins", text)
+
+
+def test_the_first_commit_passes_the_gates_of_its_pull_request(repo_root):
+    """FB-1, FB-2 of TBO-STUDIO: the prescribed message named no issue, and no
+    step accounted for the release the first commit pins."""
+    from gates.sup.check_commit_conventions_gate import CONVENTIONAL, TOKEN
+    from gates.sup.check_framework_feedback_gate import _accounted
+
+    text = " ".join(_text(repo_root).split())
+    filled = {"<release>": "v5.4.4", "<commit>": "a1b2c3d", "<n>": "2"}
+    (message,) = re.findall(r"`(chore: start the product[^`]*)`", text)
+    (line,) = re.findall(r"\*(No findings for <release> \(<commit>\))\*", text)
+    for name, value in filled.items():
+        message, line = message.replace(name, value), line.replace(name, value)
+    assert CONVENTIONAL.match(message) and TOKEN.search(message), message
+    assert _accounted(f"\n{line}\n", {"v5.4.4", "a1b2c3d"}), line

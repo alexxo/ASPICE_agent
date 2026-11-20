@@ -88,9 +88,28 @@ Relay what the setup printed, and change none of it yourself:
   setup reports a missing plugin, such as Archify, tell the person which one and
   where it was looked for, and wait.
 
-Then show the person the files the setup wrote and staged
-(`git -C <product> status --short`). With the person's approval, commit them:
-`chore: start the product with the ASPICE framework <release>`.
+Before the first commit, two things the gates of its pull request check:
+
+- **The framework release is accounted for** — the first commit pins the
+  framework, and every move of the pin is recorded in the feedback log
+  (*check_framework_feedback_gate*). Under **Log** of
+  `<product>/FRAMEWORK_FEEDBACK.md`, add the line
+  *No findings for <release> (<commit>)* — the release and the first seven
+  characters of the framework's commit (`git -C <framework> rev-parse --short
+  HEAD`) — or, when the setup met a framework weakness, the entry you
+  recorded for it already names the release. Never write "No findings" when
+  you recorded one.
+- **The commit names its reason** — every commit names the issue or
+  requirement it serves (*check_commit_conventions_gate*), and the product
+  has no requirement yet. Ask the person for the number of the issue that
+  starts the product on the code host, or, with their approval, open it:
+  `gh issue create --title "Start the product with the ASPICE framework <release>" --body "Set up the framework."`.
+
+Then show the person the files the setup wrote and staged and the log line
+(`git -C <product> status --short`). With the person's approval, stage the
+log and commit them:
+`chore: start the product with the ASPICE framework <release> (#<n>)`, where
+`#<n>` is that issue.
 
 ## 5. Hand over
 
