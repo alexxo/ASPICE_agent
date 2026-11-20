@@ -409,7 +409,8 @@ def _rechecked(config: ProductConfig, data: dict, before: set[str]) -> set[str]:
         answer = q.get("answer")
         if q["id"] in before or not answer or answer["choice"] == neither(q):
             continue
-        texts.setdefault(place(q["about"]), set()).add(q["asked"])
+        for key in places(q):  # one rule, one question: `also` is settled alike (FB-94)
+            texts.setdefault(key, set()).add(q["asked"])
     now = items(config)
     return {now[k] for k, asked in texts.items() if len(asked) >= 2 and now.get(k) not in asked}
 

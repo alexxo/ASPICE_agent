@@ -306,6 +306,23 @@ def test_a_criterion_is_checked_again_once_after_its_rewrite(asked, capsys):
     assert [f.rule for f in question_findings(_config(asked))] == []
 
 
+def test_a_criterion_settled_through_also_is_rechecked_once_too(product, capsys):
+    """FB-94: the recheck counted only the question's own criterion, so the
+    criteria under `also` were asked about a third time."""
+    also = {"also": [{"requirement": "REQ-0011", "criterion": 2}]}
+    check_criteria(product, [{**LOCK, **also}])
+    record_answer(product, "Q1", 1)
+    _rewrite(product, "REQ-0012")
+    _rewrite(product, "REQ-0011")
+    check_criteria(product, [{**LOCK, **also, "question": "Is a refused sign-in a failure?"}])
+    record_answer(product, "Q2", 1)
+    path = _login(product)
+    path.write_text(path.read_text().replace("it reports the failure", "it reports the sign-in"))
+    assert main(["--unchecked", "--root", str(product)]) == 0
+    printed = capsys.readouterr().out
+    assert "REQ-0011 criterion 2" not in printed and "REQ-0012 criterion 2" not in printed
+
+
 def test_a_question_is_asked_as_a_choice(asked, capsys):
     """The checkpoint-2 question in the pattern of every decision (choice.v1)."""
     assert main(["--ask", "Q1", "--root", str(asked)]) == 0
