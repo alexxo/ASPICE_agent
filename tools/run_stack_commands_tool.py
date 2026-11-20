@@ -133,7 +133,10 @@ def read_stack(config: ProductConfig) -> dict | None:
     view = dict(stack)
     view["checks"] = {CHECKS[r["area"]]: _row_command(r) for r in chosen if r["area"] in CHECKS}
     view["security_scans"] = {
-        SCANS[r["area"]]: {**_row_command(r), "results": r["results"]}
+        SCANS[r["area"]]: {
+            **_row_command(r),
+            **{k: r[k] for k in ("results", "completed_exit_codes")},
+        }
         for r in chosen
         if r["area"] in SCANS
     }

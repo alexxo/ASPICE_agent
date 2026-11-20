@@ -85,7 +85,14 @@
           "type": "string",
           "minLength": 1
         },
-        "results": { "description": "Where the scanner writes its findings, as SARIF 2.1.0 JSON.", "$ref": "#/$defs/report" }
+        "results": { "description": "Where the scanner writes its findings, as SARIF 2.1.0 JSON.", "$ref": "#/$defs/report" },
+        "completed_exit_codes": {
+          "description": "The scanner's exit codes when it finished its scan, with or without findings (e.g. [0, 1] for osv-scanner); any other exit is a scan that did not run.",
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 1,
+          "uniqueItems": true
+        }
       },
       "allOf": [
         {
@@ -102,7 +109,7 @@
         },
         {
           "if": { "properties": { "area": { "enum": ["secrets_scanner", "dependencies_scanner"] } } },
-          "then": { "required": ["results"] }
+          "then": { "required": ["results", "completed_exit_codes"] }
         }
       ]
     }

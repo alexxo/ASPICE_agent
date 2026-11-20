@@ -16,11 +16,11 @@ areas:
      run: mvn -q spotless:check}
   - {area: static_analysis, not_needed: checkstyle covers the rules the team keeps}
   - {area: secrets_scanner, tool: gitleaks, version: 8.21.2, version_command: gitleaks version,
-     run: gitleaks detect --no-banner --report-format sarif --report-path build/secrets.sarif,
-     results: build/secrets.sarif}
+     run: gitleaks detect --no-banner --exit-code 3 --report-format sarif --report-path build/secrets.sarif,
+     results: build/secrets.sarif, completed_exit_codes: [0, 3]}
   - {area: dependencies_scanner, tool: osv-scanner, version: 1.9.1, version_command: osv-scanner --version,
      run: osv-scanner --format sarif --output build/dependencies.sarif -r .,
-     results: build/dependencies.sarif}
+     results: build/dependencies.sarif, completed_exit_codes: [0, 1]}
   - {area: build, tool: maven, version: "3.9.9", purpose: one jar per release}
   - {area: deployment, tool: docker, version: 27.3.1, purpose: one image per release}
   - {area: version_control, tool: GitHub}

@@ -93,3 +93,25 @@ def test_a_scanner_of_another_version_is_caught(tmp_path, stack):
     _row(other, "dependencies_scanner")["version"] = "2.0.0"
     product = build_python_product(tmp_path / "other", stack=other)
     assert _rules(product) == ["TOOL_VERSION_MISMATCH"]
+
+
+@pytest.mark.parametrize("code", [127, 128])
+def test_a_scanner_that_failed_did_not_run_whatever_it_left(tmp_path, stack, code):
+    """FB-7: an exit not among the row's completed_exit_codes is a failed scan,
+    even with a clean SARIF beside it."""
+    failed = json.loads(json.dumps(stack))
+    row = _row(failed, "dependencies_scanner")
+    row["run"] = f"{row['run']}; exit {code}"
+    product = build_python_product(tmp_path / "failed", stack=failed)
+    (finding,) = check(read_product_config(product))
+    assert finding.rule == "SCAN_NOT_RUN" and f"exited {code}" in finding.message
+
+
+@pytest.mark.parametrize("log", [{}, {"version": "2.1.0", "runs": [{"results": []}]}])
+def test_a_report_that_is_no_sarif_log_did_not_run(tmp_path, stack, log):
+    """FB-7: a JSON object without a version and runs naming their tool is no scan."""
+    empty = json.loads(json.dumps(stack))
+    row = _row(empty, "secrets_scanner")
+    row["run"] = f"mkdir -p build && echo '{json.dumps(log)}' > {row['results']}"
+    product = build_python_product(tmp_path / "empty", stack=empty)
+    assert _rules(product) == ["SCAN_NOT_RUN"]

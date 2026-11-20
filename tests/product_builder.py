@@ -181,9 +181,10 @@ STACK = {
             "tool": "gitleaks",
             "version": "8.21.2",
             "version_command": "gitleaks version",
-            "run": "gitleaks detect --no-banner --report-format sarif "
+            "run": "gitleaks detect --no-banner --exit-code 3 --report-format sarif "
             "--report-path build/secrets.sarif",
             "results": "build/secrets.sarif",
+            "completed_exit_codes": [0, 3],
         },
         dependencies_scanner={
             "tool": "osv-scanner",
@@ -191,6 +192,7 @@ STACK = {
             "version_command": "osv-scanner --version",
             "run": "osv-scanner --format sarif --output build/dependencies.sarif -r .",
             "results": "build/dependencies.sarif",
+            "completed_exit_codes": [0, 1],
         },
     ),
     "code_files": ["**/*.java"],
@@ -904,7 +906,7 @@ PY_GITIGNORE = ".qf/\n.agents/\n.claude/\nbuild/\n.coverage\n__pycache__/\n"
 SCANNER_PATH = "scanners/scan.py"
 SCANNER = """\
 # A stand-in scanner: writes as SARIF the results listed in
-# scanners/<kind>.findings.json, or none.
+# scanners/<kind>.findings.json, or none; exits 1 when it lists some.
 import json, pathlib, sys
 
 if sys.argv[1] == "--version":
@@ -917,6 +919,7 @@ out.parent.mkdir(parents=True, exist_ok=True)
 sarif = {"version": "2.1.0", "runs": [{"tool": {"driver": {"name": kind, "rules": []}},
                                         "results": results}]}
 out.write_text(json.dumps(sarif))
+sys.exit(1 if results else 0)
 """
 
 
@@ -946,6 +949,7 @@ def python_stack() -> dict:
                     **scanner,
                     "run": f"{py} {SCANNER_PATH} {kind} build/{kind}.sarif",
                     "results": f"build/{kind}.sarif",
+                    "completed_exit_codes": [0, 1],
                 }
                 for kind in ("secrets", "dependencies")
             },
