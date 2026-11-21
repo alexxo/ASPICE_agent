@@ -3202,7 +3202,9 @@ the product's own commands.
 13. **Each command runs once per tree.** A shared run tool runs each declared
     command once per tree and keeps its exit status, output, results and
     coverage under *.qf/runs/&lt;tree-hash&gt;/* (ignored by git); every gate reads
-    from it. In CI the product's workflow keeps that folder for the commit: a
+    from it. The tree is HEAD, the uncommitted changes and the files not yet
+    committed, with their contents, so an edit to a new file runs everything
+    again; ignored files stay out. In CI the product's workflow keeps that folder for the commit: a
     review submitted on a head already checked runs every gate again on the
     kept runs, not the suites; a new commit, and the main branch's own merge
     commit, run everything afresh (FB-92).

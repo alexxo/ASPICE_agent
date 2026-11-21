@@ -54,6 +54,21 @@ def test_any_edit_runs_it_again(tmp_path):
     assert (root / "runs.txt").read_text() == "xx"
 
 
+def test_an_edit_to_a_file_not_yet_committed_runs_it_again(tmp_path):
+    """D49: a new unit's file changes before its first commit."""
+    root = build_python_product(tmp_path)
+    (root / ".gitignore").write_text((root / ".gitignore").read_text() + "runs.txt\n")
+    config = read_product_config(root)
+    entry = _counting_entry(root)
+    (root / "new_unit.py").write_text("ANSWER = 1\n")
+    run_command(config, "suites", "unit", entry)
+    before = tree_key(root)
+    (root / "new_unit.py").write_text("ANSWER = 2\n")
+    assert tree_key(root) != before
+    run_command(config, "suites", "unit", entry)
+    assert (root / "runs.txt").read_text() == "xx"
+
+
 def test_without_the_cache_nothing_is_kept_and_stale_results_go(tmp_path):
     root = build_python_product(tmp_path)
     config = read_product_config(root)

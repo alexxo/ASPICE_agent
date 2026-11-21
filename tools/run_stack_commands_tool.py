@@ -175,19 +175,30 @@ def _row_command(row: dict) -> dict:
     return {key: row[key] for key in ("run", "tool", "version", "version_command")}
 
 
-def _git(root: Path, *args: str) -> str | None:
-    run = subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=False)
+def _git(root: Path, *args: str, stdin: str | None = None) -> str | None:
+    run = subprocess.run(
+        ["git", "-C", str(root), *args],
+        input=stdin.encode() if stdin is not None else None,
+        capture_output=True,
+        check=False,
+    )
     return run.stdout.decode("utf-8", "replace") if run.returncode == 0 else None
 
 
 def tree_key(root: Path) -> str | None:
-    """A hash of HEAD, the uncommitted changes and the untracked files' names."""
+    """A hash of HEAD, the uncommitted changes and the untracked files, names and
+    contents (D49): an edit to a file not yet committed is a new tree. Ignored
+    files stay out."""
     head = _git(root, "rev-parse", "HEAD")
     if head is None:
         return None
     diff = _git(root, "diff", "HEAD") or ""
     status = _git(root, "status", "--porcelain", "--untracked-files=all") or ""
-    return hashlib.sha256("\0".join([head, diff, status]).encode()).hexdigest()[:16]
+    untracked = (_git(root, "ls-files", "--others", "--exclude-standard", "-z") or "").split("\0")
+    files = [name for name in untracked if name and (root / name).is_file()]
+    hashes = _git(root, "hash-object", "--stdin-paths", stdin="\n".join(files)) if files else ""
+    parts = [head, diff, status, hashes or ""]
+    return hashlib.sha256("\0".join(parts).encode()).hexdigest()[:16]
 
 
 def toolchain_env(root: Path, env: dict[str, str] | None = None) -> dict[str, str]:
