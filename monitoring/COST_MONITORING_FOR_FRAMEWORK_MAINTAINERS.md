@@ -33,8 +33,8 @@ the group commands of your distribution.
 | What | User | Reads its settings from |
 |---|---|---|
 | The stack (Colima, the `lgtm` container) | `<maintainer>` | the `docker run` command of step 3 |
-| Your session on the framework | `<maintainer>` | `<framework repo>/.claude/settings.local.json` |
-| The product's agent, the orchestrator | `<developer user>` | `<product>/.claude/settings.local.json`, the product's `.env` |
+| Your session on the framework | `<maintainer>` | `<maintainer>`'s shell profile (its numbers), `<framework repo>/.claude/settings.local.json` (its status line) |
+| The product's agent, the orchestrator | `<developer user>` | `<developer user>`'s shell profile, `<product>/.claude/settings.local.json`, the product's `.env` |
 | The sessions the agent starts | `<developer user>` | the product's `.env` |
 | The watcher and its sessions | `<developer user>` | `~/.aspice_agent_secrets/.env` of `<developer user>` |
 
@@ -96,25 +96,33 @@ Skip its step 1: the stack is yours.
 
 ### 5. Your own session on the framework
 
-Write `<framework repo>/.claude/settings.local.json` (git ignores it):
+As `<maintainer>`, add the telemetry lines to your shell profile
+(`~/.zshrc`): Claude Code ignores them in a repository's `.claude/` files,
+as the product developers' step 3 says.
+
+```sh
+# ~/.zshrc — Claude Code telemetry for my own session (cost monitoring)
+export CLAUDE_CODE_ENABLE_TELEMETRY=1
+export OTEL_METRICS_EXPORTER=otlp
+export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+export OTEL_METRIC_EXPORT_INTERVAL=10000
+export OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative
+export OTEL_RESOURCE_ATTRIBUTES=qf.scope=framework,qf.session=developer
+```
+
+Then write `<framework repo>/.claude/settings.local.json` (git ignores it):
 
 ```json
 {
-  "env": {
-    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
-    "OTEL_METRICS_EXPORTER": "otlp",
-    "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
-    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
-    "OTEL_METRIC_EXPORT_INTERVAL": "10000",
-    "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "cumulative",
-    "OTEL_RESOURCE_ATTRIBUTES": "qf.scope=framework,qf.session=developer"
-  },
   "statusLine": {
     "type": "command",
     "command": "python3 <framework repo>/monitoring/plan_usage_statusline.py"
   }
 }
 ```
+
+Open a new terminal and start Claude in `<framework repo>`.
 
 `qf.scope=framework` keeps your costs apart: the dashboard shows them as
 *framework · orchestrator*, and the **Scope** filter picks either side. They

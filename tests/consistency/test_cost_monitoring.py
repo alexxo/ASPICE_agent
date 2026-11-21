@@ -135,13 +135,18 @@ def test_each_guide_names_its_readers_and_the_others(repo_root):
         assert all(f"]({g})" in text for g in others), role
 
 
-def test_no_setting_lives_in_a_terminal(repo_root):
-    """Every setting sits in a file each session reads when it starts: no
-    guide tells the person to export one in a tab (D50, D55)."""
+def test_every_setting_lives_in_a_file_that_is_read(repo_root):
+    """Every setting sits in a file read when a terminal or a session starts:
+    a block of export lines is a shell profile's, named on its first line
+    (D50, D61), and no guide puts the numbers' settings in a repository's
+    .claude/ files, where Claude Code ignores them (D61)."""
+    profile = re.compile(r"^# (~/\.zshrc|~/\.bashrc|\$PROFILE) ")
     for name in (COMMON, *ROLES):
         text = (repo_root / FOLDER / name).read_text(encoding="utf-8")
-        assert not re.search(r"export (QF_|OTEL_|CLAUDE_CODE_)", text), name
-        assert "$env:" not in text, name
+        for block in re.findall(r"```[a-z]*\n(.*?)```", text, re.S):
+            if re.search(r"^(export |\$env:)(QF_|OTEL_|CLAUDE_CODE_)", block, re.M):
+                assert profile.match(block), (name, block.splitlines()[0])
+            assert not re.search(r'"(OTEL_|CLAUDE_CODE_ENABLE_TELEMETRY)', block), name
 
 
 def test_the_maintainers_guide_names_no_one(repo_root):

@@ -532,8 +532,9 @@ Tell the person: a local Grafana shows the cost of the sessions now and
 today, per tab and per model, from the numbers Claude Code sends; and a
 ledger keeps what each session the framework starts cost — its pull request,
 stage and kind — for the whole project. It is one container on their
-computer, eight settings in the two `.env` files of step 8, and the same
-settings plus a status line for their own session. The guide, for macOS,
+computer, eight settings in the two `.env` files of step 8, the same
+settings in their shell profile for their own session — Claude Code ignores
+them in the product's `.claude/` files — and a status line there. The guide, for macOS,
 Linux and Windows, is
 [`.framework/monitoring/COST_MONITORING_FOR_PRODUCT_DEVELOPERS.md`](monitoring/COST_MONITORING_FOR_PRODUCT_DEVELOPERS.md).
 The person follows it; the `.env` lines are theirs to add, as in step 8.

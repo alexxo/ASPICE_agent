@@ -195,8 +195,11 @@ no answer, no file.
 `qf.scope` is `product` for a product's sessions and `framework` for the
 framework's own development; `qf.session` names the side: `developer` or
 `watcher`. Where each set of lines goes depends on your role: its guide says.
-Every place is a file, read by each session when it starts, never a
-terminal's own settings, so it does not matter which tab started it. In
+Every place is a file, read when a terminal or a session starts, never a
+line typed into a terminal, so it does not matter which tab started it.
+Claude Code ignores these settings in a repository's `.claude/settings.json`
+and `.claude/settings.local.json`: your own session takes them from your
+shell profile. In
 Prometheus the labels' dots become underscores: `qf_scope`, `qf_product`,
 `qf_session`.
 
@@ -361,6 +364,7 @@ framework 5.4.0 has no ledger: create the costs folder (step 2), then
 | Dashboard empty | A session sends numbers every 10 seconds while it works: send one prompt, wait 20 seconds. Still empty: that session started without the settings, or before the stack — start it again |
 | Collector receives, Prometheus stays empty | The settings miss `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative`: Prometheus refuses the default |
 | A session missing from *Cost by session* | Its settings were not read: an `.env` line misspelt, or the watcher not restarted after adding them |
+| Your own session missing, the framework's sessions there | Its settings are not in your shell profile, or Claude started before you added them: `env \| grep OTEL_` in that terminal must list them; open a new terminal and start Claude again. In a repository's `.claude/` files they do nothing |
 | `cost not recorded: QF_COSTS_DIR not set` in the status line | Neither the product's `.env` nor `~/.aspice_agent_secrets/.env` has the line (*The cost of a stage*) |
 | `cost not recorded: cannot write <folder>` | The user running Claude cannot write that folder, or it is not a folder: check its rights as that user |
 | *Cost of a stage* empty, the status line shows no reason | No status line is set for the user running Claude (your role's guide), or no session has ended yet: run the check of *The cost of a stage* |
