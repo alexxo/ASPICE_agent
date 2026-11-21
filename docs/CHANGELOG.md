@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.4.7] - 2026-11-21
+
+A changed test that keeps its checks may pass on built code, also when its commit removes another test from the file.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required |
+
+### Fixed
+
+- **A changed test that kept its checks was refused when its commit removed another test** (`gates/swe/verify_test_first_gate.py`). Once a commit removed a test from a file of built units, every passing test of that file was reported as passing "before its code exists", so the FB-85 rule never applied there and right code could never pass. Now only a new test in such a commit is refused, as `enforce_test_first_skill` R4 states, with its own message; a test the file already had is a changed test, and passes when it keeps every check of its first version. Origin: FB-95 (wp_publisher).
+
 ## [5.4.6] - 2026-11-21
 
 A component that runs where the product does not control it, like a frontend in the visitor's browser, makes its calls into the product a trust boundary with required security tests; an interface names security templates exactly when it crosses a trust boundary.
