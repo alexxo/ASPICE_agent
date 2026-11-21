@@ -60,8 +60,8 @@ as one.
 - **Lite** — one or two components inside one trust boundary: a short stack
   record, budgets for the components, interfaces without threat entries.
 - **Full** — anything crossing the system boundary, personal or financial data,
-  several teams, or criticality high: every external interface analysed for
-  threats, every budget traced to a non-functional threshold.
+  several teams, or criticality high: every interface crossing a trust boundary
+  analysed for threats, every budget traced to a non-functional threshold.
 
 When in doubt, full.
 
@@ -83,14 +83,17 @@ The stack comes first, and is approved before anything is designed on it:
    responsibility, its resource budget with value and unit, its size (S, M, L
    or XL), the software requirements it meets, its modes with their transitions
    and what it does in parallel — either may be *not_applicable* with the
-   reason; actors outside the product as external. Every participant of a
+   reason; actors outside the product as external, and a component running
+   where the product does not control it (the visitor's browser) as
+   *runs_in: untrusted*. Every participant of a
    sequence diagram must be one of these components. Each component names its
    composition root, the one place its concrete implementations are wired.
 5. **Interfaces** — one per edge, with protocol and data; external when one end
    is external. Each names the real implementation of its *to* end and a test
    double that replaces it — external ones too, where an isolated test cannot
    reach the real thing.
-6. **Threats** — for every external interface, a threat table in the
+6. **Threats** — for every interface crossing a trust boundary (one end
+   external, or one end running untrusted), a threat table in the
    architecture file: each threat (spoofing, tampering, disclosure, denial of
    service, elevation of privilege, …) marked *applicable* with its mitigation
    and the test that will prove it, or *N/A* with the reason. An applicable
@@ -123,5 +126,5 @@ words; at most 5 questions per round. Completeness wins over a budget: never
 leave out a component, an interface or a threat to stay within one.
 
 Report: the stack and its approval, the components and interfaces with their
-budgets, the threats per external interface with the tests they require, the
+budgets, the threats per trust boundary with the tests they require, the
 assumptions still open, and the next step — the detailed design.

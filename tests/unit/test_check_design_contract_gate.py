@@ -75,16 +75,52 @@ def test_an_interface_to_an_unknown_component_is_reported(tmp_path):
 
 
 def test_an_external_flag_that_contradicts_its_ends_is_reported(tmp_path):
-    def change(doc):
-        doc["interfaces"][0].update(external=True, security_templates=["authentication"])
-
-    assert _rules(_arch(tmp_path, change)) == ["EXTERNAL_MISMATCH"]
-
-
-def test_an_external_interface_names_its_security_templates(tmp_path):
-    """Decision 25: the schema requires them once external is true."""
     root = _arch(tmp_path, lambda d: d["interfaces"][0].update(external=True))
-    assert _rules(root) == ["EXTERNAL_MISMATCH", "SCHEMA_VIOLATION"]
+    assert _rules(root) == ["EXTERNAL_MISMATCH"]
+
+
+def test_an_interface_crossing_a_trust_boundary_names_its_security_templates(tmp_path):
+    """Decision 25 and FB-9: the web app runs in the browser, so its call is a boundary."""
+    root = _arch(tmp_path, lambda d: _component(d, "web-app").update(runs_in="untrusted"))
+    (finding,) = _findings(root)
+    assert finding.rule == "MISSING_SECURITY_TEMPLATES"
+    assert "signin-request" in finding.message and "auth-service" in finding.message
+
+
+def test_an_untrusted_component_with_its_templates_passes(tmp_path):
+    def change(doc):
+        _component(doc, "web-app").update(runs_in="untrusted")
+        doc["interfaces"][0].update(security_templates=["authentication"])
+
+    assert _rules(_arch(tmp_path, change)) == []
+
+
+def test_templates_on_an_interface_crossing_no_boundary_are_reported(tmp_path):
+    """FB-10: no gate could require them, so they are not written."""
+    root = _arch(
+        tmp_path, lambda d: d["interfaces"][0].update(security_templates=["authentication"])
+    )
+    (finding,) = _findings(root)
+    assert finding.rule == "TEMPLATES_WITHOUT_BOUNDARY"
+    assert finding.line is not None and "runs_in: untrusted" in finding.message
+
+
+def test_an_external_component_cannot_run_untrusted(tmp_path):
+    """runs_in describes the product's own code; an actor outside it is external already."""
+
+    def change(doc):
+        doc["components"].append(
+            {
+                "id": "user",
+                "derived_from": "auth-flow#user",
+                "role": "external",
+                "name": "User",
+                "responsibility": "Signs in.",
+                "runs_in": "untrusted",
+            }
+        )
+
+    assert "SCHEMA_VIOLATION" in _rules(_arch(tmp_path, change))
 
 
 def test_an_unmet_software_requirement_is_reported(tmp_path):

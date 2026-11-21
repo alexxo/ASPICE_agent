@@ -506,8 +506,10 @@ what it does in parallel (concurrency), and which requirement cards
 side and the mockup (test double) a unit test bench (unit test) can use instead
 (framework skill *ensure_testability_skill*), and every big piece names its
 assembly sheet (composition root), the one place where its real parts are
-fitted. Every joint to an outside party (external interface) also names the
-attacks the big piece behind it must resist, from the framework's catalog of
+fitted. Every joint to an outside party (external interface), and every joint
+from a big piece working where the product does not control it (*runs_in:
+untrusted*, like a frontend in the visitor's browser), also names the
+attacks the big piece of ours behind it must resist, from the framework's catalog of
 five (security templates, *create_security_tests_skill*). The inspectors (gates) check one big piece per pillar and one joint per
 line of the big plan, that every requirement card is fulfilled by some big
 piece [UNMET_REQUIREMENT], and that every big piece has its
@@ -843,7 +845,7 @@ group, and the stage table marks them *principle*.
 |---|---|---|---|
 | #4 Architecture-only verification | Architecture governance | An architecture pull request runs only the gates that apply to architecture work (requirements, diagrams, architecture design):<br>• **Chosen by the branch** — the reduced set is selected by the architecture branch, never by the author.<br>• **No code** — an architecture pull request changes no implementation or test files.<br>• **Labelled** — the run's report states that it was an architecture-only run, so it is never read as a full verification. | **Statement:** Architecture runs are reduced and labelled<br>**Evidence:** The branch + the paths changed + the run report<br>**Gate:** verify_architecture_tests_gate<br>**What it verifies:** An architecture branch changes no implementation or test files, and its report is labelled architecture-only |
 | #15 Ports and composition root | Testability | Every component can be tested in isolation:<br>• **Ports** — components reach each other only through the interfaces declared in the architecture.<br>• **Composition root** — concrete implementations are chosen in one declared place per entry point.<br>• **Test doubles** — every interface has at least one real implementation and at least one test double (e.g. *a stub of the payment service*). | **Statement:** Testable design declared<br>**Evidence:** The architecture document<br>**Gate:** check_testability_gate<br>**What it verifies:** Every entry point declares one composition root, and every interface lists a real implementation and a test double<br>────────────────<br>**Not checkable:** that the code really respects the ports instead of importing concrete implementations — left to the reviewer |
-| #16 Security test templates | Security · reusable test templates | Security is tested with shared templates:<br>• **Templates** — the framework keeps a catalog of five security test templates — *authentication*, *authorization*, *input-validation*, *stored-data*, *outbound-calls* — each saying what its tests must show.<br>• **Named** — every external interface of the architecture names the templates its boundary needs (*security_templates*).<br>• **Applied** — the component at the product's end of such an interface has, for each, a unit test written first and passing, naming the template with a marker (e.g. *@security[input-validation]*). | **Statement:** Every external interface names its templates<br>**Evidence:** The architecture's interface blocks<br>**Gate:** check_design_contract_gate<br>**What it verifies:** An interface with *external: true* names at least one catalog template<br>────────────────<br>**Statement:** Trust-boundary components have security tests<br>**Evidence:** *security_templates* + *@security* and *@unit* markers in the tests + the unit suite's results<br>**Gate:** verify_security_tests_gate<br>**What it verifies:** Each such component has a passing test for each template named, and every marker names a catalog template |
+| #16 Security test templates | Security · reusable test templates | Security is tested with shared templates:<br>• **Templates** — the framework keeps a catalog of five security test templates — *authentication*, *authorization*, *input-validation*, *stored-data*, *outbound-calls* — each saying what its tests must show.<br>• **Named** — every interface of the architecture crossing a trust boundary names the templates it needs (*security_templates*), and no other interface names any. It crosses one when an end of the product meets an external end, or a component that runs untrusted (*runs_in: untrusted*, e.g. a frontend in the visitor's browser).<br>• **Applied** — each component of the product crossing the boundary through such an interface has, for each, a unit test written first and passing, naming the template with a marker (e.g. *@security[input-validation]*). | **Statement:** Every trust boundary names its templates<br>**Evidence:** The architecture's component and interface blocks<br>**Gate:** check_design_contract_gate<br>**What it verifies:** An interface names at least one catalog template exactly when it crosses a trust boundary<br>────────────────<br>**Statement:** Trust-boundary components have security tests<br>**Evidence:** *security_templates* + *@security* and *@unit* markers in the tests + the unit suite's results<br>**Gate:** verify_security_tests_gate<br>**What it verifies:** Each such component has a passing test for each template named, and every marker names a catalog template |
 | #29 Security scanning | Security · automated scanning | Every pull request is scanned for security issues:<br>• **What** — a secret scanner and a dependency scanner, declared by the product with pinned versions.<br>• **Threshold** — no critical or high finding may be merged. | **Statement:** Scans pass<br>**Evidence:** The scanners' result files<br>**Gate:** scan_security_gate<br>**What it verifies:** Both scanners finished on the pull request — an exit the product declares as a finished scan, and a SARIF log — and their results contain no critical or high finding |
 | #23 Environment and configuration | Testability · across environments and configurations | Every configuration value is declared and validated:<br>• **Declared** — every environment variable the code reads is declared, with a description, whether it is required, an example and its valid values, in the product's list of environment variables; and every declared variable is read somewhere. The stack declares how the code reads one (its read patterns).<br>• **Validated** — for every required variable, a unit test checks that the software stops at start-up when it is missing or invalid; the tester writes it first, like every unit test, and it names the variable (e.g. *@env[DATABASE_URL]*). | **Statement:** Variables declared both ways<br>**Evidence:** The code, read with the stack's read patterns + the list of environment variables<br>**Gate:** check_env_config_gate<br>**What it verifies:** Every variable the code reads is declared, and every declared variable is read<br>────────────────<br>**Statement:** Required variables validated<br>**Evidence:** The tests' environment markers + the unit suite's results<br>**Gate:** check_env_config_gate<br>**What it verifies:** Every required variable is named by at least one passing unit test<br>────────────────<br>**Not checkable:** a read whose variable name is computed at run time — left to the reviewer |
 | #37–#39 Alerts, dashboards, health checks | Observability | What the observability requirements specify is deployed with every release:<br>• **Definitions in the repository** — alerts, dashboards and health checks live as files, each naming the observability requirement it serves.<br>• **Deployed** — at release, they are deployed with the command the product declares. | **Statement:** Observability deployed<br>**Evidence:** The observability definition files + the deployment record of the release<br>**Gate:** check_observability_gate<br>**What it verifies:** Every observability requirement has at least one definition naming it, and the release deployed them successfully<br>────────────────<br>**Not checkable:** that the alerts fire correctly in production — left to the organisation |
@@ -2420,8 +2422,8 @@ and format).
 | *contracts/env_variable_contract.v1.schema.json* | One environment variable the code reads: description, required, example, valid values (principle #23) |
 | *skills/swe/validate_env_config_skill* | Detailed design, unit tests and unit construction stages: variables declared with the design, read only as declared, each required one tested first |
 | *gates/swe/check_env_config_gate.py* | Unit construction stage: every variable read is declared and every declared one read, every required one named by a passing test |
-| *skills/swe/create_security_tests_skill* | Architecture, unit tests and unit construction stages: the catalog of five security test templates, named on external interfaces, tested first on the boundary component (principle #16) |
-| *gates/swe/verify_security_tests_gate.py* | Unit construction stage: every template an external interface names has a passing test of the component behind it; every marker names a catalog template |
+| *skills/swe/create_security_tests_skill* | Architecture, unit tests and unit construction stages: the catalog of five security test templates, named on the interfaces crossing a trust boundary, tested first on the boundary component (principle #16) |
+| *gates/swe/verify_security_tests_gate.py* | Unit construction stage: every template an interface crossing a trust boundary names has a passing test of the component of the product behind it; every marker names a catalog template |
 | *skills/swe/verify_integration_skill* | Integration verification stage: the plan's integration section, *@component* and *@flow* tests, interfaces crossed by tested flows, every step tested, tests never changed with code |
 | *skills/swe/emit_log_events_skill* | Unit construction and integration verification stages: the observability requirement's events emitted with event, requirement and correlation_id, and named by a passing integration test |
 | *plugins/swe/derive_integration_tests_plugin/SKILL.md* | Integration verification stage: the method — the plan's integration section, component tests, integration tests per flow, one test-only commit; the coder follows |
@@ -2948,7 +2950,8 @@ architecture diagram.
    paths.architecture_dir*: one ```yaml component block per component
    (*component.v1*: the node it comes from, role, responsibility, size,
    resource budget with value and unit, the requirements it meets, modes,
-   concurrency, composition root) and one ```yaml interface block per
+   concurrency, composition root, *runs_in: untrusted* when it runs where the
+   product does not control it) and one ```yaml interface block per
    interface (*interface.v1*: the edge it comes from, from and to, external or
    internal, protocol, data, implementations, security templates).
 2. **Decision records.** One Markdown file per decision in
@@ -2966,7 +2969,7 @@ architecture diagram.
    and runs at stage 10.
 5. **The method.** *derive_architecture_plugin*: the stack first, stopped for
    checkpoint 3, then components, interfaces and decisions. A threat table for
-   every external interface (each threat applicable with mitigation and test,
+   every interface crossing a trust boundary (each threat applicable with mitigation and test,
    or N/A with the reason); the product's existing patterns followed; a
    migration for every change.
 6. **A checkpoint inside the stage.** The stack is approved before any
@@ -3271,14 +3274,20 @@ the product's own commands.
     the records next to the units; its gate checks their form
     (UNREADABLE_BLOCK, SCHEMA_VIOLATION, DUPLICATE_VARIABLE). The tester tests
     what was designed; a variable the coder finds missing goes back to stage 4.
-24. **A trust boundary is where an external interface arrives.** A component
+24. **A trust boundary is where outside input can arrive.** A component
     crosses a trust boundary when it is the product's end of an interface
-    marked *external: true*. A boundary inside the product (e.g. between
-    tenants) is not found this way; the architect reviews it at checkpoint 1.
-25. **The external interface names its templates.** *interface.v1
-    security_templates*: one or more templates of the catalog, each once,
-    required when *external* is true. The architect picks them at stage 3 from
-    the interface's threats.
+    whose other end is external, or runs untrusted while it does not:
+    *component.v1 runs_in: untrusted* marks a component of the product running
+    where the product does not control it, like a frontend in the visitor's
+    browser, since anyone can call what it calls. Another boundary inside the
+    product (e.g. between tenants) is not found this way; the architect
+    reviews it at checkpoint 1.
+25. **The boundary's interface names its templates.** *interface.v1
+    security_templates*: one or more templates of the catalog, each once, on
+    an interface exactly when it crosses a trust boundary
+    (MISSING_SECURITY_TEMPLATES, TEMPLATES_WITHOUT_BOUNDARY): a template no
+    gate could require is never written. The architect picks them at stage 3
+    from the interface's threats.
 26. **A catalog of five templates.** *authentication*, *authorization*,
     *input-validation*, *stored-data* and *outbound-calls*;
     *create_security_tests_skill* says what the tests of each must show. A
@@ -3288,7 +3297,7 @@ the product's own commands.
     component's units, written by the tester at stage 5 in the same test-only
     commits, red on the stubs, and run in the unit suite.
 28. **Checked per component.** For each boundary component and each template
-    its external interfaces name, a test file with an *@unit* marker of one of
+    the interfaces crossing into it name, a test file with an *@unit* marker of one of
     its units names the template as *@security[&lt;template&gt;]* and passes
     (MISSING_SECURITY_TEST); every marker names a catalog template
     (UNKNOWN_TEMPLATE).
@@ -4916,10 +4925,24 @@ label together.
   the architecture stage, sealed at checkpoint 3.
 - **Trust boundaries** (2026-10-10, D23 option A). *Chosen:* the product's end
   of an external interface. *Not taken:* B — a *trust_boundary* flag on
-  components; C — both.
+  components; C — both. *Extended* (2026-11-21, D62 A): also the end that does
+  not run untrusted of an interface with one that does, below.
 - **Choosing security templates** (2026-10-10, D24 option A). *Chosen:* the
   external interface names them. *Not taken:* B — inferred from the direction
   (cannot tell stored data); C — all five on every boundary.
+- **Trust boundaries inside the product** (2026-11-21, FB-9 and FB-10 of
+  TBO-STUDIO; Alex D62 A, D63 A). A frontend in the visitor's browser is a
+  component of the product, so its calls to the backend are internal and no
+  gate required their security tests, though anyone can make them (S 8, O 7,
+  D 5 — 280, high); and an edge between two external actors had to name
+  templates no gate could require (S 3, O 4, D 2 — 24). *Chosen:* *runs_in:
+  untrusted* on the component; an interface crosses a trust boundary when an
+  end of the product meets an external end or one that runs untrusted, and
+  names templates exactly then, checked by check_design_contract_gate, since
+  the schema cannot see the ends' roles. *Not taken:* a mark on each
+  interface (set again for every new one, and silent on which end is tested);
+  the reviewer only (the risk stays); an empty template list (an external
+  interface with an end of ours could then name none).
 - **Where templates live** (2026-10-10, D25 option A). *Chosen:* a catalog of
   checklists in the framework. *Not taken:* B — template code kept by the
   product; C — code templates per language shipped by the framework.

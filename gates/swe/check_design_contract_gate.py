@@ -4,7 +4,9 @@ The ```yaml component and ```yaml interface blocks under paths.architecture_dir
 follow their contracts; every node of an architecture diagram is one component
 and every edge one interface (every participant of a sequence diagram is such a
 node: check_diagram_contract_gate, from stage 1); interfaces connect components
-that exist and are external exactly when one end is; every mode transition
+that exist, are external exactly when one end is, and name security templates
+exactly when they cross a trust boundary (verify_security_tests_gate's
+guarded_ends: an external end, or one that runs untrusted); every mode transition
 names a mode of its component; every software requirement is met by a
 component; and components name only requirements and decisions that exist.
 
@@ -21,6 +23,7 @@ if __package__ in (None, ""):  # run as a script: make the framework's packages 
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from adapters.read_archify_diagram_adapter import read_archify_diagrams  # noqa: E402
+from gates.swe.verify_security_tests_gate import guarded_ends  # noqa: E402
 from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_product_config_tool import ProductConfig  # noqa: E402
 from tools.read_requirements_tool import read_requirements  # noqa: E402
@@ -168,7 +171,8 @@ def _modes(records) -> list[Finding]:
 
 
 def _interfaces(records) -> list[Finding]:
-    roles = {b.data.get("id"): b.data.get("role") for _shown, b in records["component"]}
+    components = {b.data.get("id"): b.data for _shown, b in records["component"]}
+    roles = {cid: data.get("role") for cid, data in components.items()}
     findings = []
     for shown, block in records["interface"]:
         data = block.data
@@ -198,7 +202,36 @@ def _interfaces(records) -> list[Finding]:
                     f"but {ends} external.",
                 )
             )
+        findings += _templates(shown, block, guarded_ends(data, components))
     return findings
+
+
+def _templates(shown, block, guarded) -> list[Finding]:
+    """An interface names security templates exactly when it crosses a trust
+    boundary: a template no gate can require is never written (FB-10)."""
+    data = block.data
+    if guarded and not data.get("security_templates"):
+        return [
+            Finding(
+                "MISSING_SECURITY_TEMPLATES",
+                shown,
+                block.line,
+                f"Interface {data['id']} crosses a trust boundary into "
+                f"{', '.join(guarded)}, but names no security_templates.",
+            )
+        ]
+    if not guarded and data.get("security_templates"):
+        return [
+            Finding(
+                "TEMPLATES_WITHOUT_BOUNDARY",
+                shown,
+                block.key_lines.get("security_templates"),
+                f"Interface {data['id']} names security_templates, but crosses no trust "
+                "boundary: no end of the product meets an external end, or one that runs "
+                "untrusted. Remove them, or mark the untrusted end runs_in: untrusted.",
+            )
+        ]
+    return []
 
 
 def _requirements(config, records) -> list[Finding]:

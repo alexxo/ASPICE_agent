@@ -1,6 +1,6 @@
 ---
 name: create_security_tests_skill
-description: "Rules for security tests (principle #16): every external interface names the security test templates its boundary needs, from the framework's catalog of five; the component at the product's end has a unit test, written first, for each template, marked @security[<template>], and every such test passes."
+description: "Rules for security tests (principle #16): every interface crossing a trust boundary names the security test templates it needs, from the framework's catalog of five; the component at the product's end has a unit test, written first, for each template, marked @security[<template>], and every such test passes."
 ---
 
 # skill: create_security_tests_skill
@@ -13,10 +13,13 @@ description: "Rules for security tests (principle #16): every external interface
 ## What it governs
 
 The product's trust boundaries and their security tests. A component crosses a
-trust boundary when it is the product's end of an interface marked
-*external: true* — where input from outside arrives, or a call leaves. That
-interface names, in *security_templates*, the templates of the catalog the
-boundary needs (stage 3). The tester writes, for each one, unit tests of the
+trust boundary when it is the product's end of an interface whose other end is
+*external* — where input from outside arrives, or a call leaves — or *runs_in:
+untrusted* while it does not: a component of the product running where the
+product does not control it, like a frontend in the visitor's browser, so
+anyone can call what it calls. That interface names, in *security_templates*,
+the templates of the catalog the boundary needs (stage 3); an interface
+crossing no boundary names none, since no gate could require them. The tester writes, for each one, unit tests of the
 component showing it resists what the template describes, red on the stubs
 like every test (stage 5); the coder makes them pass and never edits them
 (stage 6).
@@ -32,8 +35,10 @@ like every test (stage 5); the coder makes them pass and never edits them
 
 ## Contract
 
-On every ```yaml interface block (*interface.v1*) with *external: true*, a
-*security_templates* list: at least one template of the catalog, each once.
+On every ```yaml interface block (*interface.v1*) crossing a trust boundary, a
+*security_templates* list: at least one template of the catalog, each once; on
+no other. A ```yaml component block (*component.v1*) of the product running
+where the product does not control it says *runs_in: untrusted*.
 A test applying a template names it as *@security[&lt;template&gt;]* next to the
 *@unit* marker of the unit it tests.
 
@@ -51,9 +56,9 @@ The catalog — what the tests of each template must show:
 
 | # | Rule | Checked by |
 |---|---|---|
-| R1 | Every external interface names at least one template, each from the catalog and once | check_design_contract_gate · SCHEMA_VIOLATION |
+| R1 | An interface names templates exactly when it crosses a trust boundary: at least one, each from the catalog and once | check_design_contract_gate · MISSING_SECURITY_TEMPLATES, TEMPLATES_WITHOUT_BOUNDARY, SCHEMA_VIOLATION |
 | R2 | Every @security marker names a template of the catalog | verify_security_tests_gate · UNKNOWN_TEMPLATE |
-| R3 | For every template an external interface names, the component at the product's end has a passing unit test marked with it | verify_security_tests_gate · MISSING_SECURITY_TEST |
+| R3 | For every template an interface names, each component crossing the boundary through it has a passing unit test marked with it | verify_security_tests_gate · MISSING_SECURITY_TEST |
 | R4 | The security tests are written first, by the tester, and fail on the stubs | verify_test_first_gate · TEST_NOT_FAILING |
 | R5 | The templates fit what crosses the interface, and the tests really show what the template asks | Review |
 
@@ -65,10 +70,12 @@ important or risky pull requests (checkpoint 4), confirm:
 
 - The templates named fit what crosses the interface — e.g. a form read from a
   browser needs *input-validation*.
+- Every component running where the product does not control it (a browser, a
+  mobile app, a customer's machine) says *runs_in: untrusted*.
 - A test marked *@security* really shows what its template asks, not merely
   that the unit runs.
-- No boundary inside the product (e.g. between tenants) is left untested; the
-  catalog covers the system boundary only.
+- No other boundary inside the product (e.g. between tenants) is left
+  untested; the gates cover the external and untrusted ends only.
 
 ## Example
 

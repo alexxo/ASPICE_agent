@@ -1,12 +1,14 @@
 """verify_security_tests_gate — principle #16: every trust boundary has its security tests.
 
 A component crosses a trust boundary when it is the product's end of an
-interface marked external: true (decision 24); that interface names the
-security test templates the boundary needs, from the framework's catalog
-(decisions 25 and 26). For each such component and template, at least one unit
-test of the component — a test file with an @unit marker of one of its units —
-names the template as @security[<template>] and has a passing result in the unit
-suite (decisions 27 and 28). Every @security marker names a catalog template.
+interface whose other end is external (decision 24), or runs untrusted — in a
+place the product does not control, like the visitor's browser — while it does
+not (FB-9); that interface names the security test templates the boundary
+needs, from the framework's catalog (decisions 25 and 26). For each such
+component and template, at least one unit test of the component — a test
+file with an @unit marker of one of its units — names the template as
+@security[<template>] and has a passing result in the unit suite (decisions 27
+and 28). Every @security marker names a catalog template.
 Whether the tests really show what the template asks is the reviewer's.
 On a selected run only the components it covers need their security tests
 (decision 32).
@@ -39,6 +41,24 @@ def catalog() -> list[str]:
     """The framework's security test templates, as interface.v1 lists them."""
     schema = json.loads(contract_path("interface").read_text(encoding="utf-8"))
     return schema["properties"]["security_templates"]["items"]["enum"]
+
+
+def guarded_ends(interface: dict, components: dict[str, dict]) -> list[str]:
+    """The ends of interface that cross a trust boundary through it: components
+    of the product whose other end is external, or runs untrusted while they do
+    not. components maps an ID to its block."""
+    ends = []
+    for end, other in (
+        (interface.get("from"), interface.get("to")),
+        (interface.get("to"), interface.get("from")),
+    ):
+        mine, theirs = components.get(end) or {}, components.get(other) or {}
+        if mine.get("role") != "component" or end in ends:
+            continue
+        untrusted = theirs.get("runs_in") == "untrusted" and mine.get("runs_in") != "untrusted"
+        if theirs.get("role") == "external" or untrusted:
+            ends.append(end)
+    return ends
 
 
 def check(config: ProductConfig) -> list[Finding]:
@@ -81,29 +101,25 @@ def check(config: ProductConfig) -> list[Finding]:
 
 
 def _boundaries(config: ProductConfig) -> dict[tuple[str, str], tuple[str, int | None, str]]:
-    """(component, template) → where the external interface asks for it. Only
-    valid blocks count; their form is check_design_contract_gate's to report."""
+    """(component, template) → where the interface crossing into it asks for it.
+    Only valid blocks count; their form is check_design_contract_gate's to report."""
     folder = config.architecture_dir
     files = sorted(folder.glob("*.md")) if folder.is_dir() else []
-    roles: dict[str, str] = {}
+    components: dict[str, dict] = {}
     interfaces = []
     for path in files:
         for block in read_yaml_blocks(path, "component"):
             if isinstance(block.data, dict) and not validate(block.data, "component"):
-                roles.setdefault(block.data["id"], block.data["role"])
+                components.setdefault(block.data["id"], block.data)
         for block in read_yaml_blocks(path, "interface"):
             if isinstance(block.data, dict) and not validate(block.data, "interface"):
                 interfaces.append((config.relative(path), block))
     required: dict[tuple[str, str], tuple[str, int | None, str]] = {}
     for shown, block in interfaces:
         data = block.data
-        if not data["external"]:
-            continue
         line = block.key_lines.get("security_templates", block.line)
-        for end in (data["from"], data["to"]):
-            if roles.get(end) != "component":
-                continue
-            for template in data["security_templates"]:
+        for end in guarded_ends(data, components):
+            for template in data.get("security_templates") or []:
                 required.setdefault((end, template), (shown, line, data["id"]))
     return required
 

@@ -7,7 +7,8 @@ id: web-app
 derived_from: auth-flow#web-app
 role: component
 name: Web app
-responsibility: Shows the sign-in form and sends the credentials to the auth service.
+runs_in: untrusted
+responsibility: Runs in the visitor's browser; shows the sign-in form and sends the credentials to the auth service.
 budget:
   - {resource: page load time, value: 1.5, unit: s}
 size: M

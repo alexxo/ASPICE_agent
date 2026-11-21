@@ -30,11 +30,14 @@ Markdown files whose fenced blocks are the contract:
 - one ```yaml component block per node (*component.v1*): the node it comes
   from, its responsibility, its resource budget with value and unit, its size
   (S, M, L or XL), the requirements it meets, its modes with their transitions
-  and its concurrency (each may be *not_applicable* with the reason) — or
-  *role: external* for an actor outside the product;
+  and its concurrency (each may be *not_applicable* with the reason), and
+  *runs_in: untrusted* when it runs where the product does not control it
+  (e.g. the visitor's browser) — or *role: external* for an actor outside the
+  product;
 - one ```yaml interface block per edge (*interface.v1*): the edge it comes from,
-  from and to, external or internal, protocol, data — and, when external, the
-  security test templates its boundary needs (*create_security_tests_skill*).
+  from and to, external or internal, protocol, data — and, when it crosses a
+  trust boundary, the security test templates it needs
+  (*create_security_tests_skill*).
 
 ## Rules
 

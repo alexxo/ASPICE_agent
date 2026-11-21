@@ -24,10 +24,16 @@
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*#[A-Za-z][A-Za-z0-9_-]*$"
     },
     "role": {
-      "description": "component: software the product builds. external: an actor or system outside it (a user, a third-party service) — no budget, no size, no modes, concurrency or composition root, meets no requirement.",
+      "description": "component: software the product builds. external: an actor or system outside it (a user, a third-party service) — no budget, no size, no modes, concurrency, composition root or runs_in, meets no requirement.",
       "enum": [
         "component",
         "external"
+      ]
+    },
+    "runs_in": {
+      "description": "Principle #16: untrusted when the component runs in a place the product does not control, e.g. the visitor's browser: anyone can call what it calls, so every interface between it and a component that does not run untrusted crosses a trust boundary (FB-9). Left out, the component runs where the product controls it.",
+      "enum": [
+        "untrusted"
       ]
     },
     "name": {
@@ -207,6 +213,11 @@
             {
               "required": [
                 "composition_root"
+              ]
+            },
+            {
+              "required": [
+                "runs_in"
               ]
             }
           ]
