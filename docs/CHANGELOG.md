@@ -35,6 +35,23 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.4.6] - 2026-11-21
+
+A component that runs where the product does not control it, like a frontend in the visitor's browser, makes its calls into the product a trust boundary with required security tests; an interface names security templates exactly when it crosses a trust boundary.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required |
+| Add `runs_in: untrusted` to every component block of a component that runs where the product does not control it (a browser frontend, a mobile app), and give each interface between it and a component that does not run untrusted the `security_templates` its threats need | the product's `docs/architecture/` | required where such a component exists — `MISSING_SECURITY_TEMPLATES` otherwise, once it is marked |
+| Remove `security_templates` from every interface crossing no trust boundary: between two external actors, or between two components that both run where the product controls them (or both untrusted) | the product's `docs/architecture/` | required — `TEMPLATES_WITHOUT_BOUNDARY` otherwise |
+
+### Fixed
+
+- **A browser frontend's calls to its backend needed no security tests** (`contracts/component_contract.v1.schema.json`, `gates/swe/verify_security_tests_gate.py`, `gates/swe/check_design_contract_gate.py`). The frontend is a component of the product, so its interfaces are internal, and only an external interface's templates were required — yet anyone can call what the browser calls. A component now says `runs_in: untrusted`; the product's end of an interface whose other end is external, or runs untrusted while it does not, crosses a trust boundary and needs a passing `@security` test per template. `create_security_tests_skill` R1, R3; `write_design_skill`; `derive_architecture_plugin` steps 4 and 6; Quality doc principle #16, § 5 stages 5 and 6 rules 24, 25 and 28; Appendix A.5 *Trust boundaries inside the product*. Origin: FB-9 (TBO-STUDIO).
+- **An edge between two external actors had to name templates no gate could require** (`contracts/interface_contract.v1.schema.json`, `gates/swe/check_design_contract_gate.py`). The schema required `security_templates` whenever `external` was true, though no end was the product's. The schema no longer requires them; `check_design_contract_gate`, which sees the ends, reports an interface crossing a trust boundary without templates (`MISSING_SECURITY_TEMPLATES`) and one naming templates across none (`TEMPLATES_WITHOUT_BOUNDARY`). Origin: FB-10 (TBO-STUDIO).
+
 ## [5.4.5] - 2026-11-21
 
 Your own session's cost monitoring settings go in your shell profile: Claude Code ignores them in a product's `.claude/` files, where 5.4.3 put them.
