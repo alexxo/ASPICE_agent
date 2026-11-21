@@ -2305,10 +2305,11 @@ guide for the stack every setup shares, one per role: a product developer,
 one user of their computer; a framework maintainer, who runs a product on the
 same computer as a second user — and the dashboard, a file Grafana reads from the
 product's *.framework*, so every release brings the dashboard that matches it.
-The settings that switch the numbers on sit in files each session reads when
-it starts, never in a terminal's own settings: the two *.env* files that name
-the sessions' commands, so every session the framework starts sends them, and
-the person's own session's local Claude settings in the product. Each session
+The settings that switch the numbers on sit in files read when a terminal
+or a session starts, never in lines typed into a terminal: the two *.env*
+files that name the sessions' commands, so every session the framework
+starts sends them, and the person's shell profile for their own session —
+Claude Code ignores these settings in a repository's own Claude settings. Each session
 the framework starts adds three labels of its own: its kind, the stage it works for and, on the
 reviewer's side, its pull request. Because the stack keeps 15 days and a stage
 can last longer, every such session also adds its row to a cost ledger when it
@@ -4479,6 +4480,22 @@ label together.
   the numbers (they would reach the sessions the framework starts, which read
   the user's settings, and could replace their labels); one guide for both roles
   (the maintainer's second user is no product team's case).
+  *Superseded in part* (2026-11-21, D61 A): D55 A placed the settings where
+  Claude Code ignores them, see the next entry.
+- **The own session's numbers from the shell profile** (2026-11-21, found
+  verifying the pilot's dashboard; Alex D61 A). The pilot's own session sent
+  nothing after 5.4.3: Claude Code ignores its telemetry settings in a
+  repository's *.claude/settings.json* and *.claude/settings.local.json*
+  (documented), and before, they had come only from lines typed into a tab,
+  lost at its restart (S 6, O 10, D 6 — 360). *Chosen:* the person's shell
+  profile, read by every new terminal, as a file; the status line stays in
+  the product's local Claude settings, where it is read. The sessions the
+  framework starts inherit the profile's values and take their own from
+  their *.env*. Risk kept: a Claude started before the profile was changed
+  sends nothing until it is started again — the guide's check shows it.
+  *Not taken:* the person's user settings (their *env* reaches the sessions
+  the framework starts after their *.env*, and would label each one as the
+  person's); managed settings (one per computer, an administrator's file).
 
 ### A.2 Diagram and requirements stages — stages 1 and 2
 

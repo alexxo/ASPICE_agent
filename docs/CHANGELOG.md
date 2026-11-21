@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.4.5] - 2026-11-21
+
+Your own session's cost monitoring settings go in your shell profile: Claude Code ignores them in a product's `.claude/` files, where 5.4.3 put them.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the seven telemetry lines (`CLAUDE_CODE_ENABLE_TELEMETRY`, `OTEL_…`) out of the `env` block of `<product>/.claude/settings.local.json` into your shell profile as `export` lines (`~/.zshrc`, `~/.bashrc`; Windows: `$PROFILE` with `$env:`), as in `COST_MONITORING_FOR_PRODUCT_DEVELOPERS.md` step 3; keep `statusLine` in `settings.local.json`; open a new terminal and start Claude again | the developer's computer | optional — only with cost monitoring, and needed there: without it your own session sends nothing |
+
+### Fixed
+
+- **Your own session sent no numbers** (`monitoring/COST_MONITORING_FOR_PRODUCT_DEVELOPERS.md` step 3, `COST_MONITORING_FOR_FRAMEWORK_MAINTAINERS.md` step 5). 5.4.3 put its telemetry settings in the repository's `.claude/settings.local.json`, and Claude Code ignores telemetry settings in a repository's `.claude/` files. Before, they came only from lines typed into a tab, lost when it was restarted. The guides now put them in the shell profile, read by every new terminal; the sessions the framework starts inherit them and take their own labels from their `.env`. The status line stays in `settings.local.json`. QUICKSTART step 10; Quality doc § 5 *Cost monitoring, an optional companion*; Appendix A.1 *The own session's numbers from the shell profile*. Origin: found verifying the pilot's dashboard.
+
 ## [5.4.4] - 2026-11-20
 
 A security scan counts only when the scanner finished; no session runs the person's own hooks, and an approval from a reviewer whose copy changed is withdrawn; a new product's first pull request passes its gates; a criterion settled through `also` is rechecked once.
