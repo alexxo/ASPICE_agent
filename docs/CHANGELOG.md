@@ -35,6 +35,20 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.4.8] - 2026-11-21
+
+An edit to a file not yet committed runs the checks and suites again, instead of reusing the run of its earlier contents.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required |
+
+### Fixed
+
+- **An edit to a new file reused the old run** (`tools/run_stack_commands_tool.py`). The key under which a check or suite run is kept (`.qf/runs/<tree>/`) hashed HEAD, the uncommitted changes and only the names of untracked files, so a new unit or test edited before its first commit got the earlier run back: a fail that stayed after the fix, or a pass that no longer held. The key now hashes their contents too; ignored files stay out. Quality doc § 5 stages 5 and 6 rule 13. Origin: internal (D49).
+
 ## [5.4.7] - 2026-11-21
 
 A changed test that keeps its checks may pass on built code, also when its commit removes another test from the file.
