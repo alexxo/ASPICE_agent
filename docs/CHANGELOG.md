@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.4.9] - 2026-11-21
+
+A check a retired behaviour made wrong can be dropped openly: the commit names the test and the reason, and a person reviews it; a test removed and added again with fewer checks is no longer a way around it.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required |
+| Re-commit a tester's fix that drops a check, with one `Drops-check: <test> — <reason>` line per test in its message, as `agent/run_aspice_agent.md` says | the product's branch, where a fix like this was refused | optional — only where such a fix is pending |
+
+### Fixed
+
+- **A test the coder reported wrong could not be fixed when the fix dropped a check** (`gates/swe/verify_test_first_gate.py`, `tools/read_commit_range_tool.py`, `tools/classify_pull_request_tool.py`). A changed test of a built unit had to keep every check of its first version, so a check a retired behaviour made wrong could never go, at every retry — while removing the test and adding it again under a new name passed. A commit's `Drops-check: <test> — <reason>` line now lets the named test lose checks, and every such line is a weakened test a person reviews; a new test keeping only a part of the checks of a test an earlier commit of the pull request removed is reported unless named. `enforce_test_first_skill` R4; `derive_unit_tests_plugin`; `review_code_skill`; `agent/run_aspice_agent.md`; Quality doc § 5 stages 5 and 6 rule 18; Appendix A.5 *A check dropped openly*. Origin: FB-96 (wp_publisher).
+
 ## [5.4.8] - 2026-11-21
 
 An edit to a file not yet committed runs the checks and suites again, instead of reusing the run of its earlier contents.
