@@ -293,20 +293,19 @@ def _checks(path: str, text: str | None, name: str) -> Counter | None:
 
 
 def _older(root: Path, commit: Commit, built: set[str]):
-    """For a file of built units, the tests it already had before the commit; None for
-    any other file, whose tests must all fail, and for one the commit removes a test
-    from: a test renamed or replaced there is no new case."""
+    """For a file of built units, the tests it already had before the commit, and
+    whether the commit removes one from it: a new test there may be one renamed or
+    replaced, no new case (FB-95). None for any other file, whose tests must all fail."""
 
-    def older(path: str, names: set[str]) -> set[str] | None:
+    def older(path: str, names: set[str]) -> tuple[set[str], bool] | None:
         if path not in built:
             return None
         before = file_at(root, f"{commit.sha}^", path)
         if before is None:
-            return set()
+            return set(), False
         now = file_at(root, commit.sha, path) or ""
-        if _defined_tests(path, before) - _defined_tests(path, now):
-            return None
-        return set(_starts(path, before, names)[0])
+        removes = bool(_defined_tests(path, before) - _defined_tests(path, now))
+        return set(_starts(path, before, names)[0]), removes
 
     return older
 
@@ -582,7 +581,7 @@ def _judge(
     findings = []
     for file in changed:
         mine = by_file.get(file, [])
-        had = older(file, {_base_name(r) for r in mine})
+        had, removes = older(file, {_base_name(r) for r in mine}) or (None, False)
         if not mine:
             findings.append(
                 Finding(
@@ -597,7 +596,7 @@ def _judge(
             if only is not None and _base_name(result) not in only:
                 continue  # left as it was: judged at the commit that last changed it
             name = _base_name(result)
-            if result.outcome != "passed" or (had is not None and name not in had):
+            if result.outcome != "passed" or (had is not None and name not in had and not removes):
                 continue
             if had is None:
                 findings.append(
@@ -607,6 +606,17 @@ def _judge(
                         None,
                         f"{result.label} passes on commit {commit.short}, before its code "
                         "exists; a test that passes against a stub tests nothing.",
+                    )
+                )
+            elif name not in had:
+                findings.append(
+                    Finding(
+                        "TEST_NOT_FAILING",
+                        file,
+                        None,
+                        f"{result.label} is new and passes on commit {commit.short}, which "
+                        "removes a test from its file; a renamed or replaced test is no new "
+                        "case, so it fails first.",
                     )
                 )
             elif not kept(file, name):

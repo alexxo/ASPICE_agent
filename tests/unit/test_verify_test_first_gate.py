@@ -293,7 +293,7 @@ def test_a_renamed_test_does_not_mark_its_neighbour(tmp_path):
     commit_all(root, "test: only a name changed")
     findings = check(read_product_config(root))
     assert [f.rule for f in findings] == ["TEST_NOT_FAILING"]
-    assert "test_more_renamed passes" in findings[0].message
+    assert "test_more_renamed is new" in findings[0].message
 
 
 def test_a_test_renamed_later_still_bounds_its_neighbour_where_it_was_added(tmp_path):
@@ -341,6 +341,27 @@ def test_a_removed_test_judges_no_test(tmp_path):
     path.write_text(path.read_text().replace(first, ""))
     commit_all(root, "test: a criterion withdrawn")
     assert _rules(root) == []
+
+
+def test_a_changed_test_that_keeps_its_checks_may_pass_where_a_test_is_removed(tmp_path):
+    """FB-95: a retired criterion's test goes, and a double shared with the rest changes it."""
+    root, path = _built(tmp_path)
+    first = "def test_count_failures():\n    assert run(1) == 2"
+    text = path.read_text().replace(first, "")
+    path.write_text(text.replace("assert run(2) == 3", "assert (\n        run(2) == 3\n    )"))
+    commit_all(root, "test: a criterion withdrawn, the rest follows")
+    assert _rules(root) == []
+
+
+def test_a_new_test_passing_where_a_test_is_removed_is_reported(tmp_path):
+    """FB-81: it may be the removed one renamed or replaced, no new case."""
+    root, path = _built(tmp_path)
+    first = "def test_count_failures():\n    assert run(1) == 2"
+    path.write_text(path.read_text().replace(first, "def test_replaced():\n    assert run(1) > 0"))
+    commit_all(root, "test: a criterion replaced")
+    findings = check(read_product_config(root))
+    assert [f.rule for f in findings] == ["TEST_NOT_FAILING"]
+    assert "test_replaced is new" in findings[0].message
 
 
 def test_an_integration_test_changed_with_code_is_reported(tmp_path):
