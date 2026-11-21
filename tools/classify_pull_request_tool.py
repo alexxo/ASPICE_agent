@@ -47,7 +47,13 @@ from pathlib import Path, PurePosixPath
 if __package__ in (None, ""):  # run as a script: make the framework's packages importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tools.read_commit_range_tool import file_at, resolve_base  # noqa: E402
+from tools.read_commit_range_tool import (  # noqa: E402
+    commits,
+    drops,
+    file_at,
+    message,
+    resolve_base,
+)
 from tools.read_product_config_tool import (  # noqa: E402
     ConfigError,
     ProductConfig,
@@ -347,6 +353,9 @@ def _weakenings(
         if off:
             found.append(Weakening(path, "every test ran", f"switched off: {off}"))
     found += _plan_loosened(config, base)
+    for commit in commits(root, base):  # a check dropped openly is a weakened test (FB-96)
+        for test, reason in drops(message(root, commit.sha)).items():
+            found.append(Weakening(f"{test} ({commit.short})", "every check kept", reason))
     return found
 
 

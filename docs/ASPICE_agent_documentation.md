@@ -3251,8 +3251,13 @@ the product's own commands.
     version, its literal values aside: a format fix the stack's check asks
     for, a value the design renames or an added case cannot fail on built
     code that is right. A new one in a commit that removes a test from its
-    file still fails, since a renamed or replaced test is no new case.
-    Only those commits are checked out, each red run kept under its
+    file still fails, since a renamed or replaced test is no new case. A
+    check a retired behaviour made wrong goes only openly: the commit's
+    message names the test and the reason in a *Drops-check: &lt;test&gt; —
+    &lt;reason&gt;* line, and each such line is a weakened test a person
+    reviews; without it, a new test keeping only a part of the checks of a
+    test an earlier commit of the pull request removed is that test loosened
+    (FB-96). Only those commits are checked out, each red run kept under its
     commit's SHA. A commit that mixes tests and code stays a finding until it
     is rewritten.
 19. **The environment read patterns belong to the stack.** *stack.v2
@@ -4945,6 +4950,18 @@ label together.
   interface (set again for every new one, and silent on which end is tested);
   the reviewer only (the risk stays); an empty template list (an external
   interface with an end of ours could then name none).
+- **A check dropped openly** (2026-11-21, FB-96 of wp_publisher; Alex D66
+  A). A change request retired a value a test still asserted on; the
+  tester's fix dropped that one assert, and the gate refused it at every
+  retry, since a changed test of a built unit keeps its checks — while
+  removing the test and adding it again under a new name passed (S 8, O 6,
+  D 2 — 96). *Chosen:* a *Drops-check: &lt;test&gt; — &lt;reason&gt;* line in
+  the commit's message lets the named test lose checks, and makes it a
+  weakened test a person reviews; a new test keeping only a part of the
+  checks of one an earlier commit of the pull request removed is that test
+  loosened unless named. *Not taken:* the coder's report as the proof (in
+  *.qf/sessions*, ignored and absent in CI); refusing at stage 5 an assert on
+  a value the commit removes from the fixtures (guesswork, one language).
 - **Where templates live** (2026-10-10, D25 option A). *Chosen:* a catalog of
   checklists in the framework. *Not taken:* B — template code kept by the
   product; C — code templates per language shipped by the framework.

@@ -200,6 +200,21 @@ def _changes(root: Path, sha: str) -> tuple[Change, ...]:
     return tuple(changes)
 
 
+def message(root: Path, sha: str) -> str:
+    """The full message of a commit; empty when git cannot read it."""
+    run = _git(root, "log", "-1", "--format=%B", sha)
+    return run.stdout if run.returncode == 0 else ""
+
+
+DROPS = re.compile(r"^Drops-check:[ \t]*(\S+)[ \t]+[—–-]+[ \t]*(\S.*)$", re.M)
+
+
+def drops(text: str) -> dict[str, str]:
+    """test → reason, for each `Drops-check: <test> — <reason>` line of a commit
+    message: a test that loses a check a retired behaviour made wrong (FB-96)."""
+    return {test: reason.strip() for test, reason in DROPS.findall(text)}
+
+
 def file_at(root: Path, rev: str, path: str) -> str | None:
     """The text of a file at a revision, or None when it does not exist there."""
     run = _git(root, "show", f"{rev}:{path}")

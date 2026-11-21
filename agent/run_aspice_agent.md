@@ -163,7 +163,9 @@ product: tell the person, and start the session again. At stage 6, once every
 component's tests are committed, the same for the coder (`--session coder`):
 it works in the product; commit its work, then run the gates. A test the
 coder reports wrong goes back to a new tester session with the coder's
-report: `--findings .qf/sessions/coder-<id>.log`. A gate's finding in a
+report: `--findings .qf/sessions/coder-<id>.log`. When the tester's report
+names a test that loses a check, with the reason, its commit message carries
+one `Drops-check: <test> — <reason>` line per test. A gate's finding in a
 component's test file — a stack check such as lint on a line the tester
 wrote — goes the same way: save the findings as the resolver printed them,
 unchanged, to `.qf/sessions/gate-findings-<id>.json` and add `--findings`

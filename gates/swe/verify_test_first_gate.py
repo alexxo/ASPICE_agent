@@ -28,7 +28,11 @@ keeps every check of its first version — at the base, or at its first commit
 in the pull request — its literal values aside: a format fix, a renamed value
 or an added case cannot fail on built code that is right (FB-85; only a
 Python test's checks can be read). A new one in a commit that removes a test
-from its file still fails (FB-81). Because the
+from its file still fails (FB-81). A check may go only openly: the commit's
+message names the test and the reason, `Drops-check: <test> — <reason>`, for
+the reviewer to see (FB-96); without it, a new test keeping only a part of the
+checks of one an earlier commit of the pull request removed is that test
+loosened. Because the
 commits are found in the history, not at the head, the gate keeps holding —
 and keeps catching a test changed with code — at stage 6 and when the pull
 request re-runs every gate. Component and integration tests, under
@@ -60,8 +64,10 @@ from tools.emit_findings_tool import Finding  # noqa: E402
 from tools.read_commit_range_tool import (  # noqa: E402
     Commit,
     commits,
+    drops,
     file_at,
     files_at,
+    message,
     resolve_base,
     uncommitted,
 )
@@ -232,8 +238,16 @@ def _judge_tests(
         if commit.sha in wanted:
             older = _older(config.root, commit, built)
             kept = _kept(config.root, commit, base_sha, touched)
+            replaced = _replaced(config.root, commit, touched)
             findings += _judge(
-                commit, wanted[commit.sha], *red(commit), fixtures.get(commit.sha), older, kept
+                commit,
+                wanted[commit.sha],
+                *red(commit),
+                fixtures.get(commit.sha),
+                older,
+                kept,
+                replaced,
+                set(drops(message(config.root, commit.sha))),
             )
     return findings
 
@@ -257,6 +271,31 @@ def _kept(root: Path, commit: Commit, base_sha: str | None, touched: dict[str, l
         return False
 
     return kept
+
+
+def _replaced(root: Path, commit: Commit, touched: dict[str, list[Commit]]):
+    """For a new test, the test an earlier commit of the pull request removed from its
+    file whose checks it keeps only a part of (FB-96): removed, then added again under
+    a new name with fewer checks, it is that test loosened. None for any other."""
+
+    def replaced(path: str, name: str) -> str | None:
+        now = _checks(path, file_at(root, commit.sha, path), name)
+        if not now:
+            return None
+        for earlier in touched.get(path, []):
+            if earlier.sha == commit.sha:
+                break
+            before = file_at(root, f"{earlier.sha}^", path)
+            if before is None:
+                continue
+            after = file_at(root, earlier.sha, path) or ""
+            for gone in sorted(_defined_tests(path, before) - _defined_tests(path, after)):
+                first = _checks(path, before, gone) or Counter()
+                if now != first and all(first[c] >= n for c, n in now.items()):
+                    return gone
+        return None
+
+    return replaced
 
 
 class _Literal(ast.NodeTransformer):
@@ -551,13 +590,16 @@ def _judge(
     fixtures: set[str] | None = None,
     older=lambda path, names: None,
     kept=lambda path, name: False,
+    replaced=lambda path, name: None,
+    drops: set[str] = frozenset(),
 ) -> list[Finding]:
     """The red run's findings for the tests the commit added or changed, by file; a file
     whose code before its tests changed needs one of its tests to fail there. A file
     whose units are all built may pass with a new test: it guards what the code already
     does, and the code before its tests may serve it; a test it had before the commit
     may pass when it kept every check of its first version, and otherwise still fails,
-    or it was loosened."""
+    or it was loosened — unless the commit's message names the drop (FB-96), which
+    also covers a test removed earlier and added again under a new name."""
     try:
         results = read_results(run.result_paths) if run.results else None
     except ResultsError:
@@ -596,7 +638,7 @@ def _judge(
             if only is not None and _base_name(result) not in only:
                 continue  # left as it was: judged at the commit that last changed it
             name = _base_name(result)
-            if result.outcome != "passed" or (had is not None and name not in had and not removes):
+            if result.outcome != "passed":
                 continue
             if had is None:
                 findings.append(
@@ -608,6 +650,20 @@ def _judge(
                         "exists; a test that passes against a stub tests nothing.",
                     )
                 )
+            elif name not in had and not removes:
+                gone = replaced(file, name)
+                if gone and name not in drops:
+                    findings.append(
+                        Finding(
+                            "TEST_NOT_FAILING",
+                            file,
+                            None,
+                            f"{result.label} is new and passes on commit {commit.short}, "
+                            f"with only a part of the checks of {gone}, removed earlier in the "
+                            "pull request: it is that test loosened. Name the drop in a "
+                            f"'Drops-check: {name} — <reason>' line of the commit message.",
+                        )
+                    )
             elif name not in had:
                 findings.append(
                     Finding(
@@ -619,7 +675,7 @@ def _judge(
                         "case, so it fails first.",
                     )
                 )
-            elif not kept(file, name):
+            elif name not in drops and not kept(file, name):
                 findings.append(
                     Finding(
                         "TEST_NOT_FAILING",
@@ -627,7 +683,8 @@ def _judge(
                         None,
                         f"{result.label} passes on commit {commit.short}, on built code, and "
                         "dropped or changed a check of its first version; a changed test of "
-                        "a built unit keeps its checks (literal values aside), or fails.",
+                        "a built unit keeps its checks (literal values aside), or fails, or "
+                        f"the commit message names the drop: 'Drops-check: {name} — <reason>'.",
                     )
                 )
         red = any(r.outcome in ("failed", "error") for r in mine)

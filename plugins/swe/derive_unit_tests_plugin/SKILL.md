@@ -120,7 +120,12 @@ When tests already exist, grow them; never rewrite them:
 - a new unit gets its stub and tests in a new test-only commit;
 - a changed acceptance criterion or range changes its test in a test-only
   commit, before the code that follows it;
-- a retired unit's tests and stub are removed with the unit.
+- a retired unit's tests and stub are removed with the unit;
+- a check a retired behaviour made wrong goes openly: your report names each
+  test that loses a check and why, and the commit says so in a
+  `Drops-check: <test> — <reason>` line, for the reviewer and a person to
+  see. Never drop a check without it, and never remove a test to add it again
+  under a new name.
 
 ## Done
 

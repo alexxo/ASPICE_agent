@@ -29,7 +29,8 @@ right requirement and observable. Two reviewers, in this order:
   software verification, stage 8 (checkpoint 4: each high-criticality and
   security requirement it proves, and every one that did not pass, achieved
   or not); a question of what is wanted on any pull request — a gap of a
-  design's story that no requirement answers, a weakened test, a finding
+  design's story that no requirement answers, a weakened test (every
+  `Drops-check` line of its commits among them), a finding
   closed without a change, the reviewer agent's request; a change of the
   product's settings (*qf.yaml*, *.gitmodules*); and every architecture pull
   request. Never by number. CI posts the review in plain words as a comment

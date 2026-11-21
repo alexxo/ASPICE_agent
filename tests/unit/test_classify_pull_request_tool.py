@@ -171,6 +171,17 @@ def test_fewer_tests_in_a_file_is_a_weakening(product):
     assert weakening.now == "1 test(s) fewer"
 
 
+def test_a_check_dropped_openly_is_a_weakening(product):
+    """FB-96: the drop a commit names is a question for a person."""
+    path = _committed_test(product)
+    (product / path).write_text((product / path).read_text() + "\n")
+    commit_all(product, "test: a retired case\n\nDrops-check: test_count_failures — D16")
+    result = _classify(product, [path])
+    (weakening,) = result.weakenings
+    assert weakening.file.startswith("test_count_failures (") and weakening.now == "D16"
+    assert any("weakens a test" in reason for reason in result.reasons)
+
+
 def test_a_lowered_coverage_minimum_is_a_weakening(product):
     edit_plan(product, lambda plan: plan["unit"]["coverage"].update(minimum=10))
     review = _classify(product, ["docs/verification-plan.md"])

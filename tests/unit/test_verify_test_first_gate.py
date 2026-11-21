@@ -364,6 +364,53 @@ def test_a_new_test_passing_where_a_test_is_removed_is_reported(tmp_path):
     assert "test_replaced is new" in findings[0].message
 
 
+def test_a_check_dropped_openly_may_pass(tmp_path):
+    """FB-96: a retired behaviour made the check wrong; the commit says so."""
+    root, path = _built(tmp_path)
+    path.write_text(path.read_text().replace("    assert run(2) == 3\n", "    assert run(2)\n"))
+    commit_all(root, "test: the retired case goes\n\nDrops-check: test_more — D16 retired it")
+    assert _rules(root) == []
+
+
+def test_a_check_dropped_without_saying_so_is_reported(tmp_path):
+    root, path = _built(tmp_path)
+    path.write_text(path.read_text().replace("    assert run(2) == 3\n", "    assert run(2)\n"))
+    commit_all(root, "test: the retired case goes")
+    findings = check(read_product_config(root))
+    assert [f.rule for f in findings] == ["TEST_NOT_FAILING"]
+    assert "Drops-check: test_more" in findings[0].message
+
+
+TWO_CHECKS = "def test_more():\n    assert run(2) == 3\n    assert run(4) == 5"
+
+
+def _removed_then_added_again(tmp_path, message):
+    """test_more gets a second check, goes, and comes back as test_back with the first."""
+    root, path = _built(tmp_path)
+    path.write_text(
+        path.read_text().replace("def test_more():\n    assert run(2) == 3", TWO_CHECKS)
+    )
+    commit_all(root, "test: two checks")
+    path.write_text(path.read_text().replace(TWO_CHECKS, ""))
+    commit_all(root, "test: a criterion withdrawn")
+    path.write_text(path.read_text() + "\n\ndef test_back():\n    assert run(2) == 3\n")
+    commit_all(root, message)
+    return root
+
+
+def test_a_test_removed_then_added_again_with_fewer_checks_is_reported(tmp_path):
+    """FB-96: two commits loosen a test as one would."""
+    root = _removed_then_added_again(tmp_path, "test: a missing case")
+    findings = check(read_product_config(root))
+    assert [f.rule for f in findings] == ["TEST_NOT_FAILING"]
+    assert "test_back is new" in findings[0].message and "test_more" in findings[0].message
+
+
+def test_a_test_added_again_with_its_drop_named_may_pass(tmp_path):
+    message = "test: the first case back\n\nDrops-check: test_back — the second is retired"
+    assert _rules(_removed_then_added_again(tmp_path, message)) == []
+
+
 def test_an_integration_test_changed_with_code_is_reported(tmp_path):
     from product_builder import (
         write_all_integration_tests,
