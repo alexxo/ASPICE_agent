@@ -35,6 +35,22 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.4.11] - 2026-11-24
+
+A security scan whose report proves nothing no longer passes as clean: a log with no run, a run without a list of results, and a "found something" exit with no result are scans that did not run.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required |
+| Check each scanner row's `completed_exit_codes`: 0 means nothing found, every other code only "found something" (e.g. gitleaks `--exit-code 3`: `[0, 3]`; osv-scanner `[0, 1]`); remove a code the scanner also gives when it found nothing | the product's `docs/architecture/stack.yaml` | required where a row lists such a code |
+| Retire a local fail-closed adapter written for FB-7/FB-11 once the native gate passes its cases | the product | optional |
+
+### Fixed
+
+- **A scan report that proved nothing passed as a clean scan** (`gates/sup/scan_security_gate.py`). A SARIF log with an empty `runs` list, and a run that names its tool but lists no result after an exit that means "found something" (gitleaks exit 3), were read as clean; `results` given as an object, or a result as a string, crashed the gate (GATE_CRASHED) instead of reporting the scan. Now a log needs at least one run, each naming its tool and listing its results as objects, and a finished exit other than 0 needs at least one result — otherwise SCAN_NOT_RUN. `contracts/stack_contract.v2.schema.json` (*completed_exit_codes*); `choose_stack_skill`; Quality doc § 5 quality assurance rule 8, Appendix A *A scan counts only when it finished* (extended). Origin: FB-11 (TBO-STUDIO).
+
 ## [5.4.10] - 2026-11-24
 
 A release pull request can reach *Ready to merge* and be tagged: every framework step of the CI templates reads the code host with the run's token.
