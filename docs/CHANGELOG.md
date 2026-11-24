@@ -35,6 +35,21 @@ checking whether it is still current.
 
 ## [Unreleased]
 
+## [5.4.10] - 2026-11-24
+
+A release pull request can reach *Ready to merge* and be tagged: every framework step of the CI templates reads the code host with the run's token.
+
+### Migration
+
+| Edit | Where | Required |
+|---|---|---|
+| Move the framework pin to this release | the product | required |
+| Copy the `env: QF_HOST_TOKEN: ${{ github.token }}` lines of `templates/github/quality_gates.yml` (step *Write the verification report*) and `templates/github/release.yml` (every step that runs a framework command) into the product's workflows; `verify_required_checks_gate` reports `CI_FILE_NOT_TEMPLATE` until `quality_gates.yml` matches | the product's `.github/workflows/` | required |
+
+### Fixed
+
+- **A proposed release stopped CI before the quality gates** (`templates/github/quality_gates.yml`, `templates/github/release.yml`). The step *Write the verification report* had no `QF_HOST_TOKEN`, so while a release is proposed — the report then reads the problems, non-conformances and change requests from the host — it failed with `No QF_HOST_TOKEN`: the crossing sign said the gates did not finish, the reviewer agent never started and checkpoint 5 could not be recorded. The release workflow had the same gap after the merge: `verify_baseline_gate` and the record read the framework release from the host, so the tag would not have been made. Every step that runs a framework command now gets the run's token, and a consistency test keeps it so. Origin: FB-97 (wp_publisher).
+
 ## [5.4.9] - 2026-11-21
 
 A check a retired behaviour made wrong can be dropped openly: the commit names the test and the reason, and a person reviews it; a test removed and added again with fewer checks is no longer a way around it.
