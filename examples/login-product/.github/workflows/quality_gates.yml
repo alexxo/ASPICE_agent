@@ -123,6 +123,8 @@ jobs:
         run: python .framework/tools/post_merge_status_tool.py --sha "${{ github.event.pull_request.head.sha }}" --running
 
       - name: Write the verification report
+        env:
+          QF_HOST_TOKEN: ${{ github.token }}
         run: python .framework/tools/write_verification_report_tool.py --root .
 
       - name: "Checkpoint-4 review: post it when a person must review"
