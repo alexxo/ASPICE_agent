@@ -11,6 +11,10 @@
 # baseline: it tags the merge commit v<version> with an annotated tag, checks
 # the tag, and publishes the GitHub Release, which says who accepted it on whose
 # behalf. A merge with no new release record does nothing.
+#
+# Every step that runs a framework command reads the code host with the token
+# every run has (QF_HOST_TOKEN is github.token): the record names the framework
+# release its submodule is pinned at, a tag of the framework's repository.
 name: release
 
 on:
@@ -45,10 +49,14 @@ jobs:
         run: pip install -r .framework/requirements.txt
 
       - name: Check the release before stamping it
+        env:
+          QF_HOST_TOKEN: ${{ github.token }}
         run: python .framework/gates/sup/verify_baseline_gate.py --root .
 
       - name: Tag the accepted release
         id: tag
+        env:
+          QF_HOST_TOKEN: ${{ github.token }}
         run: |
           versions=$(python .framework/tools/write_release_tool.py --root . --pending)
           if [ -z "$versions" ]; then
@@ -66,12 +74,15 @@ jobs:
           echo "version=$versions" >> "$GITHUB_OUTPUT"
 
       - name: Check the official baseline
+        env:
+          QF_HOST_TOKEN: ${{ github.token }}
         run: python .framework/gates/sup/verify_baseline_gate.py --root .
 
       - name: Publish the GitHub Release
         if: steps.tag.outputs.version != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          QF_HOST_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
           gh release create "v$VERSION" --verify-tag --title "Release $VERSION" \

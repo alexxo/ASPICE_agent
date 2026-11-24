@@ -16,7 +16,8 @@
 #
 # From the quality assurance stage on, the gates read the code host — pull
 # requests, their reviews and checks, issues — with the token every run has
-# (QF_HOST_TOKEN is github.token, with the read permissions below); no secret
+# (QF_HOST_TOKEN is github.token, with the read permissions below, given to
+# every step that runs a framework command); no secret
 # and no host setting is needed. A submitted or dismissed review runs the gates
 # again, so a pull request a person must review turns green once they approve
 # it (seal 4). release.yml tags an accepted release after its merge.
@@ -136,6 +137,8 @@ jobs:
         run: python .framework/tools/post_merge_status_tool.py --sha "${{ github.event.pull_request.head.sha }}" --running
 
       - name: Write the verification report
+        env:
+          QF_HOST_TOKEN: ${{ github.token }}
         run: python .framework/tools/write_verification_report_tool.py --root .
 
       - name: "Checkpoint-4 review: post it when a person must review"

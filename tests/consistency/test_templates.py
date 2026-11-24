@@ -32,6 +32,19 @@ def test_every_framework_path_exists(repo_root, template):
         ).is_file(), f"{template} runs .framework/{path}, which does not exist"
 
 
+@pytest.mark.parametrize("template", [TEMPLATE, RELEASE])
+def test_every_framework_command_gets_the_runs_token(repo_root, template):
+    """A framework command may read the host — the verification report of a
+    proposed release, the framework release a record names — so no step runs one
+    without the run's token (FB-97)."""
+    workflow = yaml.safe_load((repo_root / template).read_text())
+    (job,) = workflow["jobs"].values()
+    for step in job["steps"]:
+        if "python .framework/" in step.get("run", ""):
+            env = step.get("env") or {}
+            assert env.get("QF_HOST_TOKEN") == "${{ github.token }}", step["name"]
+
+
 def test_the_framework_is_the_products_pinned_submodule(repo_root):
     """No repository variable can change the rulebook: the framework comes with
     the product's checkout, at the commit its submodule pins (SUP.1 BP1)."""
