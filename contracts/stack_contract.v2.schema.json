@@ -87,7 +87,7 @@
         },
         "results": { "description": "Where the scanner writes its findings, as SARIF 2.1.0 JSON.", "$ref": "#/$defs/report" },
         "completed_exit_codes": {
-          "description": "The scanner's exit codes when it finished its scan, with or without findings (e.g. [0, 1] for osv-scanner); any other exit is a scan that did not run.",
+          "description": "The scanner's exit codes when it finished its scan: 0 when it found nothing, the others when it found something (e.g. [0, 1] for osv-scanner); any other exit is a scan that did not run, and so is a finished exit other than 0 with no result.",
           "type": "array",
           "items": { "type": "integer" },
           "minItems": 1,

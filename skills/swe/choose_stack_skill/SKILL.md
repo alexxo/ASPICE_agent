@@ -49,8 +49,8 @@ areas, and may add its own:
 | *lint* | The coding-rule check, with *run* and *version_command* | no | — |
 | *format* | The formatting check, with *run* and *version_command* | no | — |
 | *static_analysis* | Deeper code checks (types, bugs), with *run* and *version_command* | yes | — |
-| *secrets_scanner* | Finds leaked secrets on every pull request, with *run*, *version_command*, its SARIF *results* and its *completed_exit_codes* (the exits of a finished scan, with or without findings; never one it also uses for an error) | no | — |
-| *dependencies_scanner* | Finds vulnerable dependencies on every pull request, with *run*, *version_command*, its SARIF *results* and its *completed_exit_codes* (the exits of a finished scan, with or without findings; never one it also uses for an error) | no | — |
+| *secrets_scanner* | Finds leaked secrets on every pull request, with *run*, *version_command*, its SARIF *results* and its *completed_exit_codes* (the exits of a finished scan: 0 when it found nothing, the others only when it found something; never one it also uses for an error) | no | — |
+| *dependencies_scanner* | Finds vulnerable dependencies on every pull request, with *run*, *version_command*, its SARIF *results* and its *completed_exit_codes* (the exits of a finished scan: 0 when it found nothing, the others only when it found something; never one it also uses for an error) | no | — |
 | *build* | How the product is packaged | yes | — |
 | *deployment* | How the product is delivered | yes | — |
 | *version_control* | Where the code and its history live | yes | GitHub |

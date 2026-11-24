@@ -4,10 +4,12 @@ The stack declares two scanners, its secrets_scanner and dependencies_scanner
 rows, each with a pinned version (TOOL_VERSION_MISMATCH, as for the
 checks) and SARIF results; each runs once per tree. Both must finish with
 one of their row's completed_exit_codes and write SARIF 2.1.0 — a version and
-runs, each naming its tool — or the scan did not run (SCAN_NOT_RUN): a scanner
-exits non-zero when it finds something, but also when it fails, and a failed
-scan's leftover or empty report proves nothing. Among completed scans the
-results decide, not the exit code. No result may be critical or high
+at least one run, each naming its tool and listing its results — or the scan
+did not run (SCAN_NOT_RUN): a scanner exits non-zero when it finds something,
+but also when it fails, and a failed scan's leftover or empty report proves
+nothing. A finished exit other than 0 says the scan found something, so it
+comes with at least one result, or the report is not that scan's. Among
+completed scans the results decide. No result may be critical or high
 (SECURITY_FINDING): one whose security-severity, on the result or on its rule,
 is 7.0 or more — or one with no score at all, since a found secret has none and
 always blocks (decision 8 of the quality assurance stage).
@@ -75,6 +77,17 @@ def check(config: ProductConfig) -> list[Finding]:
                 )
             )
             continue
+        if run.exit_code != 0 and not any(r["results"] for s in results for r in s["runs"]):
+            findings.append(
+                Finding(
+                    "SCAN_NOT_RUN",
+                    shown,
+                    None,
+                    f"{label} ({entry['run']}) exited {run.exit_code}, which says it found "
+                    f"something, but {entry['results']} lists no result: {_tail(run.output)}",
+                )
+            )
+            continue
         for sarif in results:
             findings += [
                 Finding("SECURITY_FINDING", _relative(config, file), line, f"{label}: {text}")
@@ -127,8 +140,9 @@ def _relative(config: ProductConfig, uri: str) -> str:
 
 
 def _read(path: Path) -> dict | None:
-    """The SARIF log at path, when it is one: version 2.1.0 and runs, each
-    naming the tool that made it."""
+    """The SARIF log at path, when it is one: version 2.1.0 and at least one
+    run, each naming the tool that made it and listing its results as objects
+    (a run without results did not compute them)."""
     try:
         data = json.loads(path.read_text())
     except (OSError, ValueError):
@@ -136,9 +150,15 @@ def _read(path: Path) -> dict | None:
     if not isinstance(data, dict) or data.get("version") != "2.1.0":
         return None
     runs = data.get("runs")
-    if not isinstance(runs, list) or not all(_named(run) for run in runs):
+    if not isinstance(runs, list) or not runs or not all(_complete(run) for run in runs):
         return None
     return data
+
+
+def _complete(run: object) -> bool:
+    results = run.get("results") if isinstance(run, dict) else None
+    listed = isinstance(results, list) and all(isinstance(r, dict) for r in results)
+    return listed and _named(run)
 
 
 def _named(run: object) -> bool:

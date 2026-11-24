@@ -115,3 +115,37 @@ def test_a_report_that_is_no_sarif_log_did_not_run(tmp_path, stack, log):
     row["run"] = f"mkdir -p build && echo '{json.dumps(log)}' > {row['results']}"
     product = build_python_product(tmp_path / "empty", stack=empty)
     assert _rules(product) == ["SCAN_NOT_RUN"]
+
+
+NAMED = {"tool": {"driver": {"name": "gitleaks"}}}
+
+
+@pytest.mark.parametrize(
+    "log",
+    [
+        {"version": "2.1.0", "runs": []},
+        {"version": "2.1.0", "runs": [NAMED]},
+        {"version": "2.1.0", "runs": [{**NAMED, "results": {"ruleId": "R1"}}]},
+        {"version": "2.1.0", "runs": [{**NAMED, "results": ["leak"]}]},
+    ],
+)
+def test_a_log_with_no_run_or_no_list_of_results_did_not_run(tmp_path, stack, log):
+    """FB-11: no run, or results not computed or not results, prove no scan —
+    reported as one, not as a crash."""
+    empty = json.loads(json.dumps(stack))
+    row = _row(empty, "secrets_scanner")
+    row["run"] = f"mkdir -p build && echo '{json.dumps(log)}' > {row['results']}"
+    product = build_python_product(tmp_path / "empty", stack=empty)
+    assert _rules(product) == ["SCAN_NOT_RUN"]
+
+
+def test_an_exit_that_says_found_with_no_result_did_not_run(tmp_path, stack):
+    """FB-11: a finished exit other than 0 says the scan found something; a
+    report listing nothing is not that scan's."""
+    log = {"version": "2.1.0", "runs": [{**NAMED, "results": []}]}
+    leaks = json.loads(json.dumps(stack))
+    row = _row(leaks, "secrets_scanner")
+    row["run"] = f"mkdir -p build && echo '{json.dumps(log)}' > {row['results']}; exit 1"
+    product = build_python_product(tmp_path / "leaks", stack=leaks)
+    (finding,) = check(read_product_config(product))
+    assert finding.rule == "SCAN_NOT_RUN" and "lists no result" in finding.message

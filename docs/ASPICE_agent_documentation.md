@@ -3625,8 +3625,10 @@ and a person approves the results and answers the questions of what is wanted
    *secrets_scanner* and *dependencies_scanner*, each with its command, a
    pinned version, SARIF results and the exit codes of a finished scan
    (*completed_exit_codes*). *scan_security_gate* requires both scans
-   finished — an exit among those codes and a SARIF 2.1.0 log whose runs name
-   their tool — or the scan did not run (SCAN_NOT_RUN), and no
+   finished — an exit among those codes and a SARIF 2.1.0 log with at least
+   one run, each naming its tool and listing its results; an exit other than 0
+   says the scan found something, so it comes with a result — or the scan did
+   not run (SCAN_NOT_RUN), and no
    critical or high finding (SECURITY_FINDING): a result whose rule's
    *security-severity* is 7.0 or more, or any result without one — a found
    secret has no score and always blocks.
@@ -5820,7 +5822,11 @@ label together.
   uses one exit code for both findings and errors — the stack chooses a
   tool option that separates them (gitleaks *--exit-code 3*). *Not taken:*
   the report's shape only (a stale clean report still passes); validating
-  the full SARIF schema (heavy, and the exit is still unread).
+  the full SARIF schema (heavy, and the exit is still unread). *Extended*
+  (FB-11 of TBO-STUDIO): a log with no run, or a run without a list of
+  results, did not run either, and a finished exit other than 0 means the
+  scan found something, so a report listing no result is not that scan's —
+  the row's other exits never stand for "nothing found".
 - **A session never runs the person's own hooks** (2026-11-20, FB-8 of
   TBO-STUDIO; Alex D58 B). The step 8 lines load the person's user settings,
   and their hooks run as shell commands outside the rights each line gives:
